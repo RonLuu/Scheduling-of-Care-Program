@@ -1,0 +1,453 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Care Program – Access & Auth</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, sans-serif; margin:0; background:#f7f7fb; }
+      header { background:#1f2937; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; }
+      main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+      .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; }
+      input, select, button { padding:10px; border-radius:8px; border:1px solid #d1d5db; width:100%; margin:6px 0 12px; }
+      button { background:#2C3F70; color:white; cursor:pointer; }
+      button.secondary { background:#fff; color:#2C3F70; border:1px solid #d1d5db; }
+      .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+      .badge { padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; }
+      nav a { color:#d1d5db; margin-left:12px; text-decoration:none; }
+      nav a.active { color:#fff; text-decoration:underline; }
+      code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div><strong>Care Program</strong> <span style="opacity:.7">· Access & Auth</span></div>
+      <nav>
+        <a href="#" id="nav-login">Login</a>
+        <a href="#" id="nav-register">Register</a>
+        <a href="#" id="nav-dashboard">Dashboard</a>
+      </nav>
+    </header>
+    <main><div id="root"></div></main>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="react">
+      const API = "/api";
+
+      function useAuth() {
+        const [me, setMe] = React.useState(null);
+        React.useEffect(() => {
+          const jwt = localStorage.getItem("jwt");
+          if (!jwt) return;
+          fetch(API + "/auth/me", { headers: { Authorization: "Bearer " + jwt } })
+            .then(r => r.json()).then(d => setMe(d.user)).catch(()=>setMe(null));
+        }, []);
+        return [me, setMe];
+      }
+
+      function Login({ onAuthed }) {
+        const [email, setEmail] = React.useState("");
+        const [password, setPassword] = React.useState("");
+        const [err, setErr] = React.useState("");
+
+        async function submit(e) {
+          e.preventDefault();
+          setErr("");
+          const r = await fetch(API + "/auth/login", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ email, password })
+          });
+          const d = await r.json();
+          if (!r.ok) return setErr(d.error || "Login failed");
+          localStorage.setItem("jwt", d.session.jwt);
+          onAuthed(d.user);
+        }
+
+        return (
+          <div className="card">
+            <h2>Login</h2>
+            <form onSubmit={submit}>
+              <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+              <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+              <button>Sign in</button>
+            </form>
+            {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+          </div>
+        );
+      }
+
+      function Register({ onAuthed }) {
+        const [token, setToken] = React.useState("");
+        const [preview, setPreview] = React.useState(null);
+        const [name, setName] = React.useState("");
+        const [email, setEmail] = React.useState("");
+        const [password, setPassword] = React.useState("");
+        const [err, setErr] = React.useState("");
+
+        async function verify() {
+          setErr("");
+          const r = await fetch(API + "/tokens/verify", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ token })
+          });
+          const d = await r.json();
+          setPreview(d.valid ? d : { valid:false });
+          if (!d.valid) setErr("Invalid or expired token");
+        }
+
+        async function submit(e) {
+          e.preventDefault();
+          setErr("");
+          const r = await fetch(API + "/auth/register", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ token, name, email, password })
+          });
+          const d = await r.json();
+          if (!r.ok) return setErr(d.error || "Registration failed");
+          localStorage.setItem("jwt", d.session.jwt);
+          onAuthed(d.user);
+        }
+
+        return (
+          <div>
+            <div className="card">
+              <h2>Register with a token</h2>
+              <div className="row">
+                <div>
+                  <input placeholder="Invitation token" value={token} onChange={e=>setToken(e.target.value)} />
+                  <button className="secondary" type="button" onClick={verify}>Verify</button>
+                  {preview && (preview.valid
+                    ? <p><span className="badge">{preview.role}</span> · org <code>{preview.organizationId}</code></p>
+                    : <p>Token invalid</p>)}
+                </div>
+                <div>
+                  <input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} />
+                  <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+                  <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+                  <button onClick={submit}>Create account</button>
+                </div>
+              </div>
+              {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+            </div>
+            <RegisterFamily onAuthed={onAuthed} />
+          </div>
+        );
+      }
+
+      function RegisterFamily({ onAuthed }) {
+        const [name, setName] = React.useState("");
+        const [email, setEmail] = React.useState("");
+        const [password, setPassword] = React.useState("");
+        const [organizationId, setOrganizationId] = React.useState("");
+        const [err, setErr] = React.useState("");
+
+        async function submit(e) {
+          e.preventDefault();
+          setErr("");
+          const r = await fetch("/api/auth/register-family", {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({ name, email, password, organizationId })
+          });
+          const d = await r.json();
+          if (!r.ok) return setErr(d.error || "Registration failed");
+          localStorage.setItem("jwt", d.session.jwt);
+          onAuthed(d.user);
+        }
+
+        return (
+          <div className="card">
+            <h2>Register as a new family member</h2>
+            <form onSubmit={submit}>
+              <input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} />
+              <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+              <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+              <input placeholder="Organization ID" value={organizationId} onChange={e=>setOrganizationId(e.target.value)} />
+              <button>Create family account</button>
+            </form>
+            {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+          </div>
+        );
+      }
+
+      function Dashboard({ me, onLogout }){
+        const jwt = localStorage.getItem("jwt");
+        const initialType = (me && me.role === "Admin") ? "STAFF_INVITE" : "MANAGER_TOKEN";
+        const [type, setType] = React.useState(initialType);
+        const [organizationId, setOrganizationId] = React.useState((me && me.organizationId) || "");
+        const [expiresInDays, setExpiresInDays] = React.useState(7);
+        const [maxUses, setMaxUses] = React.useState(1);
+        const [tokenResult, setTokenResult] = React.useState(null);
+        const [list, setList] = React.useState([]);
+
+        const [clients, setClients] = React.useState([]);
+
+        const [newPName, setNewPName] = React.useState("");
+        const [newPDob, setNewPDob] = React.useState(""); // yyyy-mm-dd
+        const [newPMed, setNewPMed] = React.useState("");
+        const [adding, setAdding] = React.useState(false);
+        const [addErr, setAddErr] = React.useState("");
+
+        const [selectedPersonId, setSelectedPersonId] = React.useState("");
+
+        // Fetch links + persons when dashboard loads
+        React.useEffect(() => {
+          if (!jwt || !me) return;
+          // get links for this user
+          fetch(`/api/person-user-links?userId=${me.id}`, {
+            headers: { Authorization: "Bearer " + jwt }
+          })
+            .then(r => r.json())
+            .then(async links => {
+              //  fetch each person
+              const persons = await Promise.all(
+                links.map(l =>
+                  fetch(`/api/person-with-needs/${l.personId}`, {
+                    headers: { Authorization: "Bearer " + jwt }
+                  })
+                    .then(r => r.json())
+                    .then(p => ({ ...p, relationshipType: l.relationshipType }))
+                )
+              );
+              setClients(persons);
+            })
+            .catch(err => console.error("Failed to load clients", err));
+        }, [jwt, me]);
+        
+        React.useEffect(() => {
+          if (!jwt) return;
+          fetch(API + "/tokens", { headers: { Authorization: "Bearer " + jwt } })
+            .then(r=>r.json()).then(setList).catch(()=>{});
+        }, []);
+
+        function allowedTypesFor(role) {
+          if (role === "Admin") return [["STAFF_INVITE","Staff invite"]];
+          if (role === "Family" || role === "PoA") return [["FAMILY_TOKEN","Family invite"],["MANAGER_TOKEN","Manager invite"]];
+          return [];
+        }
+
+        async function createToken(e) {
+          e.preventDefault();
+          if (!selectedPersonId) {
+            setTokenResult({ error: "Please select a client." });
+            return;
+          }
+
+          const r = await fetch(API + "/tokens", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json", Authorization: "Bearer " + jwt },
+            body: JSON.stringify({
+              type,
+              organizationId,
+              personIds: [selectedPersonId],
+              expiresInDays: Number(expiresInDays),
+              maxUses: Number(maxUses)
+            })
+          });
+          const d = await r.json();
+          setTokenResult(r.ok ? d : { error: d.error || "Failed" });
+          if (r.ok) {
+            const refreshed = await fetch(API + "/tokens", { headers:{ Authorization: "Bearer " + jwt }});
+            setList(await refreshed.json());
+          }
+        }
+
+        async function addClient(e) {
+          e.preventDefault();
+          if (!me || me.role !== "Family") return;
+          setAdding(true); setAddErr("");
+
+          try {
+            // 1) Create PersonWithNeeds (org derived from current user on server OR we pass nothing and server derives)
+            const r1 = await fetch("/api/person-with-needs", {
+              method: "POST",
+              headers: {
+                "Content-Type":"application/json",
+                Authorization: "Bearer " + jwt
+              },
+              body: JSON.stringify({
+                name: newPName,
+                dateOfBirth: newPDob ? new Date(newPDob).toISOString() : undefined,
+                medicalInfo: newPMed,
+                organizationId: me.organizationId
+                // (DO NOT send organizationId; backend should derive from user OR set from your server rules)
+              })
+            });
+            const p = await r1.json();
+            if (!r1.ok) throw new Error(p.error || "Failed to create person");
+
+            // 2) Create PersonUserLink
+            const r2 = await fetch("/api/person-user-links", {
+              method: "POST",
+              headers: {
+                "Content-Type":"application/json",
+                Authorization: "Bearer " + jwt
+              },
+              body: JSON.stringify({
+                personId: p._id,
+                userId: me.id,
+                relationshipType: "Family",
+                active: true,
+                startAt: new Date()
+              })
+            });
+            const l = await r2.json();
+            if (!r2.ok) throw new Error(l.error || "Failed to link person");
+
+            // 3) Refresh My Clients list
+            const linksRes = await fetch(`/api/person-user-links?userId=${me.id}`, {
+              headers: { Authorization: "Bearer " + jwt }
+            });
+            const links = await linksRes.json();
+            const persons = await Promise.all(
+              links.map(link =>
+                fetch(`/api/person-with-needs/${link.personId}`, {
+                  headers: { Authorization: "Bearer " + jwt }
+                }).then(rr => rr.json())
+                .then(pp => ({ ...pp, relationshipType: link.relationshipType }))
+              )
+            );
+            setClients(persons);
+
+            // 4) Clear form
+            setNewPName(""); setNewPDob(""); setNewPMed("");
+          } catch (err) {
+            setAddErr(err.message || String(err));
+          } finally {
+            setAdding(false);
+          }
+        }
+
+        return (
+          <React.Fragment>
+            <div className="card">
+              <h2>Welcome, {(me && me.name) || ""} <span className="badge">{(me && me.role) || ""}</span></h2>
+              <p>Org: <code>{(me && me.organizationId) || ""}</code> · {(me && me.email) || ""}</p>
+              <button className="secondary" onClick={onLogout}>Log out</button>
+            </div>
+            {me && (me.role === "Admin" || me.role === "Family" || me.role === "PoA") && (
+              <div className="card">
+                <h3>Create invite token</h3>
+                <label>Type</label>
+                <select value={type} onChange={e=>setType(e.target.value)}>
+                  {allowedTypesFor(me.role).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                </select>
+
+                <label>Organization ID</label>
+                <input value={organizationId} disabled />
+
+                <label>Client (required)</label>
+                <select value={selectedPersonId} onChange={e=>setSelectedPersonId(e.target.value)}>
+                  <option value="">— Select a client —</option>
+                  {clients.map(c => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="row">
+                  <div>
+                    <label>Expires in (days)</label>
+                    <input type="number" min="1" value={expiresInDays} onChange={e=>setExpiresInDays(e.target.value)} />
+                  </div>
+                  <div>
+                    <label>Max uses</label>
+                    <input type="number" min="1" max="15" value={maxUses} onChange={e=>setMaxUses(e.target.value)} />
+                  </div>
+                </div>
+
+                <button onClick={createToken} disabled={!selectedPersonId}>Create token</button>
+                {tokenResult && (tokenResult.token
+                  ? <p>Share code: <code>{tokenResult.token}</code> (expires {new Date(tokenResult.expiresAt).toLocaleString()})</p>
+                  : <p style={{color:"#b91c1c"}}>Error: {tokenResult.error}</p>
+                )}
+              </div>
+            )}
+
+            {me && me.role === "Family" && (
+              <div className="card">
+                <h3>Add a client (PWSN)</h3>
+                <form onSubmit={addClient}>
+                  <input placeholder="Client name" value={newPName} onChange={e=>setNewPName(e.target.value)} />
+                  <div className="row">
+                    <div>
+                      <label>Date of birth</label>
+                      <input type="date" value={newPDob} onChange={e=>setNewPDob(e.target.value)} />
+                    </div>
+                    <div>
+                      <label>Medical info (optional)</label>
+                      <input value={newPMed} onChange={e=>setNewPMed(e.target.value)} placeholder="e.g., allergies, notes..." />
+                    </div>
+                  </div>
+                  <button disabled={adding}>{adding ? "Adding..." : "Add client"}</button>
+                  {addErr && <p style={{color:"#b91c1c"}}>Error: {addErr}</p>}
+                  <p className="badge">Org derived from your account: <code>{(me && me.organizationId) || ""}</code></p>
+                </form>
+              </div>
+            )}
+
+            <div className="card">
+              <h3>My Clients</h3>
+              {clients.length === 0 ? (
+                <p>No linked clients.</p>
+              ) : (
+                <ul>
+                  {clients.map(c => (
+                    <li key={c._id}>
+                      <strong>{c.name}</strong> ({c.relationshipType})
+                      {c.dateOfBirth && <span> · DOB {new Date(c.dateOfBirth).toLocaleDateString()}</span>}
+                      {c.status && <span> · Status {c.status}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Recent tokens</h3>
+              {list.length === 0 ? <p>No tokens yet.</p> :
+                <ul>
+                  {list.map(t => (
+                    <li key={t._id}>
+                      <span className="badge">{t.type}</span> · uses {t.uses}/{t.maxUses} · expires {new Date(t.expiresAt).toLocaleDateString()}
+                    </li>
+                  ))}
+                </ul>}
+            </div>
+          </React.Fragment>
+        );
+      }
+
+      function App() {
+        const [me, setMe] = useAuth();
+        const [page, setPage] = React.useState("login");
+
+        React.useEffect(() => {
+          const bind = (id, p) => { document.getElementById(id).onclick = (e)=>{ e.preventDefault(); setPage(p); }; };
+          bind("nav-login","login"); bind("nav-register","register"); bind("nav-dashboard","dashboard");
+        }, []);
+
+        function onAuthed(user){ setMe(user); setPage("dashboard"); }
+        function logout(){ localStorage.removeItem("jwt"); setMe(null); setPage("login"); }
+
+        return (
+          <React.Fragment>
+            {(!me && page==="login") && <Login onAuthed={onAuthed} />}
+            {(!me && page==="register") && <Register onAuthed={onAuthed} />}
+            {(me && page==="dashboard") && <Dashboard me={me} onLogout={logout} />}
+            {(!me && page==="dashboard") && <div className="card"><p>Please login first.</p></div>}
+          </React.Fragment>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
