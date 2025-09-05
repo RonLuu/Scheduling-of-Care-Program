@@ -13,6 +13,11 @@ const CareTaskSchema = new Schema(
     title:    { type: String, required: true, trim: true },
     dueDate:  { type: Date, index: true },
 
+    // Schedule mode
+    scheduleType: { type: String, enum: ["AllDay", "Timed"], default: "AllDay", required: true },
+    startAt:  { type: Date }, // set if Timed
+    endAt:    { type: Date }, // set if Timed
+
     status:   { type: String, enum: ["Scheduled","Completed","Missed","Skipped","Cancelled"], default: "Scheduled", index: true },
 
     assignedToUserId:  { type: Schema.Types.ObjectId, ref: "User", index: true },

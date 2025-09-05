@@ -11,14 +11,28 @@ router.get("/:commentId", requireAuth, getComment);
 router.put("/:commentId", requireAuth, updateComment);
 router.delete("/:commentId", requireAuth, deleteComment);
 
+
 async function listComments(req, res) {
   const { careTaskId, authorUserId } = req.query;
   const filter = {};
   if (careTaskId) filter.careTaskId = careTaskId;
   if (authorUserId) filter.authorUserId = authorUserId;
-  const comments = await Comment.find(filter).lean();
-  res.json(comments);
+
+  const comments = await Comment.find(filter)
+    .sort({ createdAt: 1 })
+    .populate("authorUserId", "name email")  // <-- populate user
+    .lean();
+
+  // Optional: flatten to { author: { id, name, email }, ... }
+  const out = comments.map(c => ({
+    ...c,
+    author: c.authorUserId
+      ? { id: c.authorUserId._id, name: c.authorUserId.name, email: c.authorUserId.email }
+      : null,
+  }));
+  res.json(out);
 }
+
 
 async function createComment(req, res) {
   const { careTaskId, text } = req.body;
@@ -33,8 +47,16 @@ async function createComment(req, res) {
     authorUserId: req.user.id || req.user._id,
     text
   });
-  res.status(201).json(c);
+
+  const populated = await Comment.findById(c._id).populate("authorUserId", "name email").lean();
+  res.status(201).json({
+    ...populated,
+    author: populated.authorUserId
+      ? { id: populated.authorUserId._id, name: populated.authorUserId.name, email: populated.authorUserId.email }
+      : null,
+  });
 }
+
 
 async function getComment(req, res) {
   const c = await Comment.findById(req.params.commentId).lean();

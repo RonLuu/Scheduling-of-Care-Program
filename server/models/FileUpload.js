@@ -14,4 +14,6 @@ const FileUploadSchema = new Schema(
   { timestamps: true }
 );
 
+FileUploadSchema.index({ careTaskId: 1, createdAt: 1 });
+
 export default model("FileUpload", FileUploadSchema);
