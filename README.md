@@ -7,7 +7,12 @@ Frontend is a small React SPA served statically by the Express backend.
 
 npm i
 npm start
+<<<<<<< HEAD
 
 # Server: http://localhost:3000
 
 # APIs: http://localhost:3000/api/\*
+=======
+# Server: http://localhost:3000
+# APIs:   http://localhost:3000/api/*
+>>>>>>> origin/main
