@@ -21,7 +21,7 @@
   </head>
   <body>
     <header>
-      <div><strong>Care Program</strong> <span style="opacity:.7">· Access & Auth</span></div>
+      <div><strong>Care Program</strong> <span style="opacity:.7">· Care Item & Care Task</span></div>
       <nav>
         <a href="#" id="nav-login">Login</a>
         <a href="#" id="nav-register">Register</a>
@@ -196,6 +196,58 @@
 
         const [selectedPersonId, setSelectedPersonId] = React.useState("");
 
+        // --- Create Care Need Item form state ---
+        const [ciPersonId, setCiPersonId] = React.useState("");
+        const [ciName, setCiName] = React.useState("");
+        const [ciDesc, setCiDesc] = React.useState("");
+        const [ciCategory, setCiCategory] = React.useState("Medical");
+
+        const [ciIntervalType, setCiIntervalType] = React.useState("Daily");
+        const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
+        const [ciStartDate, setCiStartDate] = React.useState(""); // yyyy-mm-dd
+        const [ciEndMode, setCiEndMode] = React.useState("none"); // "none" | "endDate" | "count"
+        const [ciEndDate, setCiEndDate] = React.useState("");
+        const [ciOccurrenceCount, setCiOccurrenceCount] = React.useState("");
+
+        const [ciPurchaseCost, setCiPurchaseCost] = React.useState(0);
+        const [ciOccurrenceCost, setCiOccurrenceCost] = React.useState(0);
+
+        const [ciScheduleType, setCiScheduleType] = React.useState("AllDay"); // "AllDay" | "Timed"
+        const [ciStartTime, setCiStartTime] = React.useState("09:00");         // HH:mm
+        const [ciEndTime, setCiEndTime] = React.useState("10:00");             // HH:mm
+
+        const [ciBusy, setCiBusy] = React.useState(false);
+        const [ciErr, setCiErr] = React.useState("");
+        const [ciSuccess, setCiSuccess] = React.useState("");
+
+        const [tasksClientId, setTasksClientId] = React.useState("");
+        const [tasks, setTasks] = React.useState([]);
+        const [tasksLoading, setTasksLoading] = React.useState(false);
+        const [tasksErr, setTasksErr] = React.useState("");
+
+        // --- Comments / Files state ---
+        const [openCommentsFor, setOpenCommentsFor] = React.useState(null); // taskId or null
+        const [openFilesFor, setOpenFilesFor] = React.useState(null);       // taskId or null
+
+        const [commentsByTask, setCommentsByTask] = React.useState({});     // { [taskId]: [...] }
+        const [filesByTask, setFilesByTask]       = React.useState({});     // { [taskId]: [...] }
+
+        const [newCommentText, setNewCommentText] = React.useState("");     // input for current openCommentsFor
+
+        // simple link uploads (url/path)
+        const [newFile, setNewFile] = React.useState({
+          filename: "",
+          urlOrPath: "",
+          fileType: "",
+          size: "",
+          description: ""
+        });
+
+        // draft cost per task id (string values so inputs are controlled)
+        const [costDraftByTask, setCostDraftByTask] = React.useState({});
+        const aud = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
+
+
         // Fetch links + persons when dashboard loads
         React.useEffect(() => {
           if (!jwt || !me) return;
@@ -324,6 +376,327 @@
           }
         }
 
+        async function submitCareNeedItem(e) {
+          e.preventDefault();
+          setCiErr(""); setCiSuccess(""); setCiBusy(true);
+
+          try {
+            const jwt = localStorage.getItem("jwt");            
+            if (!jwt) throw new Error("UNAUTHENTICATED");
+
+            if (!ciPersonId) throw new Error("Please select a client.");
+            if (!ciName) throw new Error("Name is required.");
+            if (!ciStartDate) throw new Error("Start date is required.");
+
+            // Build payload
+            const payload = {
+              personId: ciPersonId,
+              name: ciName,
+              description: ciDesc,
+              category: ciCategory,
+              frequency: {
+                intervalType: ciIntervalType,
+                intervalValue: Number(ciIntervalValue),
+                startDate: new Date(ciStartDate).toISOString()
+              },
+              scheduleType: ciScheduleType,  // NEW
+              purchaseCost: Number(ciPurchaseCost) || 0,
+              occurrenceCost: Number(ciOccurrenceCost) || 0
+            };
+
+            if (ciScheduleType === "Timed") {
+              payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
+            }
+
+            if (ciEndMode === "endDate" && ciEndDate) {
+              payload.endDate = new Date(ciEndDate).toISOString();
+            }
+            if (ciEndMode === "count" && ciOccurrenceCount) {
+              payload.occurrenceCount = Number(ciOccurrenceCount);
+            }
+
+
+            // 1) Create CareNeedItem
+            const r1 = await fetch("/api/care-need-items", {
+              method: "POST",
+              headers: {
+                "Content-Type":"application/json",
+                Authorization: "Bearer " + jwt
+              },
+              body: JSON.stringify(payload)
+            });
+            const item = await r1.json();
+            if (!r1.ok) throw new Error(item.error || "Failed to create item");
+
+            const r2 = await fetch(`/api/scheduling/care-need-items/${item._id}/generate-tasks`, {
+              method: "POST",
+              headers: { Authorization: "Bearer " + jwt }
+            });
+            const gen = await r2.json();
+            if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
+
+            setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
+            // optional: clear form
+            setCiName(""); setCiDesc(""); setCiPurchaseCost(0); setCiOccurrenceCost(0);
+            setCiIntervalType("Daily"); setCiIntervalValue(1); setCiEndMode("none"); setCiEndDate(""); setCiOccurrenceCount("");
+          } catch (err) {
+            setCiErr(err.message || String(err));
+          } finally {
+            setCiBusy(false);
+          }
+        }
+
+
+        async function loadTasksFor(personId) {
+          try {
+            setTasksLoading(true);
+            setTasksErr("");
+            const jwtNow = localStorage.getItem("jwt");
+            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+            // Adjust the query as you like: add &status=Scheduled or date filters if your API supports them
+            const r = await fetch(`/api/care-tasks?personId=${encodeURIComponent(personId)}&sort=dueDate`, {
+              headers: { Authorization: "Bearer " + jwtNow }
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Failed to load tasks");
+
+            // Optional: sort client-side if server doesn’t
+            data.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            setTasks(data);
+          } catch (e) {
+            setTasksErr(e.message || String(e));
+            setTasks([]);
+          } finally {
+            setTasksLoading(false);
+          }
+        }
+        // When clients change, pick default client for tasks
+        React.useEffect(() => {
+          if (clients && clients.length > 0) {
+            const firstId = clients[0]._id;
+            setTasksClientId(firstId);
+            loadTasksFor(firstId);
+          } else {
+            setTasksClientId("");
+            setTasks([]);
+          }
+        }, [clients]);
+
+        function onChangeTasksClient(e) {
+          const id = e.target.value;
+          setTasksClientId(id);
+          if (id) loadTasksFor(id);
+        }
+
+        async function toggleTaskComplete(task, checked) {
+          try {
+            const jwtNow = localStorage.getItem("jwt");
+            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+            const body = checked
+              ? { status: "Completed", completedAt: new Date().toISOString(), completedByUserId: me.id }
+              : { status: "Scheduled", completedAt: null, completedByUserId: null };
+
+            const r = await fetch(`/api/care-tasks/${task._id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwtNow },
+              body: JSON.stringify(body)
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Update failed");
+
+            // Refresh list for the currently selected client
+            if (tasksClientId) loadTasksFor(tasksClientId);
+          } catch (e) {
+            alert("Failed to update task: " + (e.message || e));
+          }
+        }
+        // async function toggleTaskComplete(task, checked) {
+        //   try {
+        //     const jwtNow = localStorage.getItem("jwt");
+        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+        //     let body = {};
+        //     if (checked) {
+        //       body.status = "Completed";
+        //       // (optional) prompt for cost immediately:
+        //       const input = prompt("Enter budget spent (AUD) – optional:", "");
+        //       if (input !== null && input.trim() !== "") {
+        //         const v = Number(input);
+        //         if (!Number.isNaN(v) && v >= 0) body.cost = v;
+        //       }
+        //     } else {
+        //       body.status = "Scheduled";
+        //       // cost will be rejected by backend if present; don't send it
+        //     }
+
+        //     const r = await fetch(`/api/care-tasks/${task._id}`, {
+        //       method: "PATCH",
+        //       headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
+        //       body: JSON.stringify(body)
+        //     });
+        //     const d = await r.json();
+        //     if (!r.ok) throw new Error(d.error || "Update failed");
+
+        //     if (tasksClientId) loadTasksFor(tasksClientId);
+        //   } catch (e) {
+        //     alert("Failed to update task: " + (e.message || e));
+        //   }
+        // }
+
+        async function loadComments(taskId) {
+          const jwtNow = localStorage.getItem("jwt");
+          if (!jwtNow) return;
+          const r = await fetch(`/api/comments?careTaskId=${encodeURIComponent(taskId)}`, {
+            headers: { Authorization: "Bearer " + jwtNow }
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || "Failed to load comments");
+          setCommentsByTask(prev => ({ ...prev, [taskId]: data.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)) }));
+        }
+
+        async function addComment(taskId) {
+          try {
+            const jwtNow = localStorage.getItem("jwt");
+            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+            if (!newCommentText.trim()) return;
+
+            const r = await fetch(`/api/comments`, {
+              method: "POST",
+              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
+              body: JSON.stringify({ careTaskId: taskId, text: newCommentText.trim() })
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to add comment");
+
+            setNewCommentText("");
+            await loadComments(taskId);
+          } catch (e) {
+            alert("Failed to add comment: " + (e.message || e));
+          }
+        }
+
+        async function loadFiles(taskId) {
+          const jwtNow = localStorage.getItem("jwt");
+          if (!jwtNow) return;
+          const r = await fetch(`/api/file-upload?careTaskId=${encodeURIComponent(taskId)}`, {
+            headers: { Authorization: "Bearer " + jwtNow }
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || "Failed to load files");
+          setFilesByTask(prev => ({ ...prev, [taskId]: data.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)) }));
+        }
+
+        function resetNewFile() {
+          setNewFile({ filename:"", urlOrPath:"", fileType:"", size:"", description:"" });
+        }
+
+        async function addFile(taskId) {
+          try {
+            const jwtNow = localStorage.getItem("jwt");
+            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+            if (!newFile.filename || !newFile.urlOrPath) {
+              alert("Please provide filename and URL/path.");
+              return;
+            }
+            const payload = {
+              careTaskId: taskId,
+              filename: newFile.filename,
+              urlOrPath: newFile.urlOrPath,
+              fileType: newFile.fileType || undefined,
+              size: newFile.size ? Number(newFile.size) : undefined,
+              description: newFile.description || undefined
+            };
+            const r = await fetch(`/api/file-upload`, {
+              method: "POST",
+              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
+              body: JSON.stringify(payload)
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to add file");
+
+            resetNewFile();
+            await loadFiles(taskId);
+          } catch (e) {
+            alert("Failed to add file: " + (e.message || e));
+          }
+        }
+
+        function toggleComments(taskId) {
+          if (openCommentsFor === taskId) {
+            setOpenCommentsFor(null);
+          } else {
+            setOpenCommentsFor(taskId);
+            loadComments(taskId);
+          }
+        }
+
+        function toggleFiles(taskId) {
+          if (openFilesFor === taskId) {
+            setOpenFilesFor(null);
+          } else {
+            setOpenFilesFor(taskId);
+            loadFiles(taskId);
+          }
+        }
+
+        async function saveTaskCost(taskId) {
+          try {
+            const jwtNow = localStorage.getItem("jwt");
+            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+            const val = costDraftByTask[taskId];
+            if (val === undefined || val === "") return; // nothing to save
+            const num = Number(val);
+            if (Number.isNaN(num) || num < 0) {
+              alert("Please enter a valid non-negative amount.");
+              return;
+            }
+            const r = await fetch(`/api/care-tasks/${taskId}`, {
+              method: "PATCH",
+              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
+              body: JSON.stringify({ cost: num })
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Update failed");
+
+            // refresh list
+            if (tasksClientId) await loadTasksFor(tasksClientId);
+          } catch (e) {
+            alert("Failed to save cost: " + (e.message || String(e)));
+          }
+        }
+
+        // On dashboard load, mark past-due Scheduled tasks as Missed (server-side sweep)
+        React.useEffect(() => {
+          const jwtNow = localStorage.getItem("jwt");
+          if (!jwtNow) return;
+          fetch("/api/care-tasks/sweep-overdue", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + jwtNow }
+          })
+            .then(() => {
+              // after sweep, refresh current client's tasks
+              if (tasksClientId) loadTasksFor(tasksClientId);
+            })
+            .catch(() => {});
+        }, [tasksClientId]); // re-run when switching client to keep list fresh
+
+        // Ensure rolling horizon for no-end items (org scoped / linked-scope for staff)
+        React.useEffect(() => {
+          const jwtNow = localStorage.getItem("jwt");
+          if (!jwtNow) return;
+          fetch("/api/scheduling/ensure-horizon?horizonDays=730", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + jwtNow }
+          })
+            .then(() => {
+              // reload current client's tasks after extending horizon
+              if (tasksClientId) loadTasksFor(tasksClientId);
+            })
+            .catch(() => {});
+        }, [tasksClientId]); // re-run when switching client to keep list fresh
+
         return (
           <React.Fragment>
             <div className="card">
@@ -393,6 +766,7 @@
               </div>
             )}
 
+            
             <div className="card">
               <h3>My Clients</h3>
               {clients.length === 0 ? (
@@ -404,6 +778,380 @@
                       <strong>{c.name}</strong> ({c.relationshipType})
                       {c.dateOfBirth && <span> · DOB {new Date(c.dateOfBirth).toLocaleDateString()}</span>}
                       {c.status && <span> · Status {c.status}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+
+            {me && (me.role === "Family" || me.role === "Admin") && (
+              <div className="card">
+                <h3>Create Care Need Item</h3>
+                <form onSubmit={submitCareNeedItem}>
+                  <label>Client</label>
+                  <select value={ciPersonId} onChange={e=>setCiPersonId(e.target.value)}>
+                    <option value="">— Select a client —</option>
+                    {clients.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+
+                  <div className="row">
+                    <div>
+                      <label>Name</label>
+                      <input value={ciName} onChange={e=>setCiName(e.target.value)} placeholder="e.g., Dental visit" />
+                    </div>
+                    <div>
+                      <label>Category</label>
+                      <select value={ciCategory} onChange={e=>setCiCategory(e.target.value)}>
+                        <option value="Medical">Medical</option>
+                        <option value="DailyLiving">DailyLiving</option>
+                        <option value="Nutrition">Nutrition</option>
+                        <option value="Mobility">Mobility</option>
+                        <option value="Therapy">Therapy</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <label>Description</label>
+                  <input value={ciDesc} onChange={e=>setCiDesc(e.target.value)} placeholder="Optional notes" />
+
+                  <div className="row">
+                    <div>
+                      <label>Interval Type</label>
+                      <select value={ciIntervalType} onChange={e=>setCiIntervalType(e.target.value)}>
+                        <option value="Daily">Daily</option>
+                        <option value="Weekly">Weekly</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Yearly">Yearly</option>
+                        <option value="OneTime">OneTime</option>
+                      </select>
+                    </div>
+                    {ciIntervalType !== "OneTime" &&
+                      <div>
+                        <label>Every N (interval value)</label>
+                        <input type="number" min="1" value={ciIntervalValue} onChange={e=>setCiIntervalValue(e.target.value)} />
+                      </div>
+                    }
+                  </div>
+
+                  <div className="row">
+                    <div>
+                      <label>Start date</label>
+                      <input type="date" value={ciStartDate} onChange={e=>setCiStartDate(e.target.value)} />
+                    </div>
+                    {ciIntervalType !== "OneTime" &&
+                      <div>
+                        <label>End condition</label>
+                        <select value={ciEndMode} onChange={e=>setCiEndMode(e.target.value)}>
+                          <option value="none">No end</option>
+                          <option value="endDate">End by date</option>
+                          <option value="count">End after N occurrences</option>
+                        </select>
+                      </div>
+                    }
+                  </div>
+
+                  {ciEndMode === "endDate" && (
+                    <div>
+                      <label>End date</label>
+                      <input type="date" value={ciEndDate} onChange={e=>setCiEndDate(e.target.value)} />
+                    </div>
+                  )}
+                  {ciEndMode === "count" && (
+                    <div>
+                      <label>Occurrences</label>
+                      <input type="number" min="1" value={ciOccurrenceCount} onChange={e=>setCiOccurrenceCount(e.target.value)} />
+                    </div>
+                  )}
+
+
+                  <div className="row">
+                    <div>
+                      <label>Schedule type</label>
+                      <select value={ciScheduleType} onChange={e=>setCiScheduleType(e.target.value)}>
+                        <option value="AllDay">All-day</option>
+                        <option value="Timed">Scheduled (start/end)</option>
+                      </select>
+                    </div>
+
+                    {ciScheduleType === "Timed" && (
+                      <div>
+                        <label>Start time / End time</label>
+                        <div className="row">
+                          <input type="time" value={ciStartTime} onChange={e=>setCiStartTime(e.target.value)} />
+                          <input type="time" value={ciEndTime} onChange={e=>setCiEndTime(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="row">
+                    <div>
+                      <label>Purchase cost</label>
+                      <input type="number" min="0" step="0.01" value={ciPurchaseCost} onChange={e=>setCiPurchaseCost(e.target.value)} />
+                    </div>
+                    {ciIntervalType !== "OneTime" &&
+                    <div>
+                      <label>Occurrence cost (per task)</label>
+                      <input type="number" min="0" step="0.01" value={ciOccurrenceCost} onChange={e=>setCiOccurrenceCost(e.target.value)} />
+                    </div>
+                    }
+                  </div>
+
+
+                  <button disabled={ciBusy}>{ciBusy ? "Saving..." : "Create & Generate"}</button>
+                  {ciErr && <p style={{color:"#b91c1c"}}>Error: {ciErr}</p>}
+                  {ciSuccess && <p style={{color:"#065f46"}}>{ciSuccess}</p>}
+                </form>
+              </div>
+            )}
+
+            <div className="card">
+              <h3>My Tasks</h3>
+
+              {/* Client picker shows only if you have more than one client */}
+              {clients.length > 1 && (
+                <div>
+                  <label>Client</label>
+                  <select value={tasksClientId} onChange={onChangeTasksClient}>
+                    {clients.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* If only one client, show its name */}
+              {clients.length === 1 && (
+                <p>Client: <strong>{clients[0].name}</strong></p>
+              )}
+
+              {tasksLoading && <p>Loading…</p>}
+              {tasksErr && <p style={{color:"#b91c1c"}}>Error: {tasksErr}</p>}
+
+              {!tasksLoading && !tasksErr && tasks.length === 0 && (
+                <p>No tasks found for this client.</p>
+              )}
+
+              {!tasksLoading && !tasksErr && tasks.length > 0 && (
+                <ul>
+                  {tasks.map(t => (
+                    <li key={t._id} >
+                      <div>
+                        <div style={{ display: "inline", marginLeft: 8 }}>
+                          {/*
+                          <strong>{t.title}</strong>
+                          {" · "}
+                          {new Date(t.dueDate).toLocaleDateString()}
+                          {t.scheduleType === "Timed" && t.startAt && t.endAt && (
+                            <React.Fragment>
+                              {" · "}
+                              {new Date(t.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {" – "}
+                              {new Date(t.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </React.Fragment>
+                          )}
+                          {" · "}
+                          <span className="badge">{t.scheduleType === "AllDay" ? "All-day" : "Timed"}</span>
+                          {" · "}
+                          <span className="badge">{t.status}</span>
+                          */}
+                          <strong>{t.title}</strong>
+                          {" · "}
+                          {new Date(t.dueDate).toLocaleDateString()}
+                          {t.scheduleType === "Timed" && t.startAt && t.endAt && (
+                            <React.Fragment>
+                              {" · "}
+                              {new Date(t.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {" – "}
+                              {new Date(t.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </React.Fragment>
+                          )}
+                          {" · "}
+                          <span className="badge">{t.scheduleType === "AllDay" ? "All-day" : "Timed"}</span>
+                          {" · "}
+                          <span className="badge">{t.status}</span>
+                          {/* Show spent amount (read-only) if present */}
+                          {t.status === "Completed" && t.cost !== undefined && t.cost !== null && (
+                            <React.Fragment>{" · "}Spent: <strong>{aud.format(t.cost)}</strong></React.Fragment>
+                          )}
+                        </div>
+                        <input style={{display:"inline", width:"auto", marginLeft:16}}
+                          type="checkbox"
+                          checked={t.status === "Completed"}
+                          onChange={e => toggleTaskComplete(t, e.target.checked)}
+                          title={t.status === "Completed" ? "Unmark as completed" : "Mark as completed"}
+                        />
+                        <button className="secondary" onClick={() => toggleComments(t._id)}>Comments</button>
+                        <button className="secondary" onClick={() => toggleFiles(t._id)}>Files</button>
+                      </div>
+
+                      {/* Cost entry appears ONLY when completed and no cost yet (or you still want to edit) */}
+                      {t.status === "Completed" && (
+                        <div style={{ marginTop: 8, display:"flex", alignItems:"center", gap: 8 }}>
+                          <label style={{ minWidth: 120 }}>Budget spent (AUD)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={
+                              costDraftByTask[t._id] !== undefined
+                                ? costDraftByTask[t._id]
+                                : (t.cost !== undefined && t.cost !== null ? t.cost : "")
+                            }
+                            onChange={e => setCostDraftByTask(prev => ({ ...prev, [t._id]: e.target.value }))}
+                            style={{ maxWidth: 160 }}
+                          />
+                          <button onClick={() => saveTaskCost(t._id)}>Save</button>
+                          {/*}
+                          {t.cost !== undefined && t.cost !== null && (
+                            <span style={{ opacity:.7 }}>Saved: {aud.format(t.cost)}</span>
+                          )}
+                          */}
+                        </div>
+                      )}
+
+                      {/* Comments panel */}
+                      {openCommentsFor === t._id && (
+                        <div style={{ marginTop: 8, background:"#fafafa", borderRadius:8, padding:8 }}>
+                          <h4 style={{ margin:"4px 0" }}>Comments</h4>
+                          <div>
+                            {(commentsByTask[t._id] || []).length === 0 ? (
+                              <p>No comments yet.</p>
+                            ) : (
+                              <ul>
+                                {(commentsByTask[t._id] || []).map(c => (
+                                  <li key={c._id}>
+                                    <strong>{(c.author && (c.author.name || c.author.email)) || "Unknown"}</strong>
+                                    {" · "}
+                                    {new Date(c.createdAt).toLocaleString()}
+                                    <div>{c.text}</div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div className="row">
+                            <input
+                              placeholder="Write a comment…"
+                              value={newCommentText}
+                              onChange={e=>setNewCommentText(e.target.value)}
+                            />
+                            <button onClick={() => addComment(t._id)}>Add</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Files panel */}
+                      {openFilesFor === t._id && (
+                        <div style={{ marginTop: 8, background:"#fafafa", borderRadius:8, padding:8 }}>
+                          <h4 style={{ margin:"4px 0" }}>Files</h4>
+
+                          {/* Existing list */}
+                          <div>
+                            {(filesByTask[t._id] || []).length === 0 ? (
+                              <p>No files yet.</p>
+                            ) : (
+                              <ul>
+                                {(filesByTask[t._id] || []).map(f => (
+                                  <li key={f._id} style={{ marginBottom: 6 }}>
+                                    {/* small thumbnail for images */}
+                                    {f.fileType && f.fileType.startsWith("image/") ? (
+                                      <a href={f.urlOrPath} target="_blank" rel="noreferrer">
+                                        <img src={f.urlOrPath} alt={f.filename} style={{ maxHeight: 64, maxWidth: 96, objectFit: "cover", marginRight: 8, verticalAlign:"middle", borderRadius:4, border:"1px solid #ddd" }}/>
+                                      </a>
+                                    ) : (
+                                      <a href={f.urlOrPath} target="_blank" rel="noreferrer">{f.filename}</a>
+                                    )}
+                                    {" · "}
+                                    {new Date(f.createdAt).toLocaleString()}
+                                    {f.description ? <div>{f.description}</div> : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+
+                          {/* --- Link mode (kept) --- */}
+                          <h5>Add by link</h5>
+                          <div className="row">
+                            <input
+                              placeholder="Filename (e.g., Pyjamas photo)"
+                              value={newFile.filename}
+                              onChange={e=>setNewFile(prev=>({ ...prev, filename: e.target.value }))}
+                            />
+                            <input
+                              placeholder="URL or path (https://…)"
+                              value={newFile.urlOrPath}
+                              onChange={e=>setNewFile(prev=>({ ...prev, urlOrPath: e.target.value }))}
+                            />
+                          </div>
+                          {/*
+                          <div className="row">
+                            <input
+                              placeholder="File type (image/jpeg, pdf, …)"
+                              value={newFile.fileType}
+                              onChange={e=>setNewFile(prev=>({ ...prev, fileType: e.target.value }))}
+                            />
+                            <input
+                              placeholder="Size (bytes)"
+                              type="number"
+                              min="0"
+                              value={newFile.size}
+                              onChange={e=>setNewFile(prev=>({ ...prev, size: e.target.value }))}
+                            />
+                          </div>
+                          */}
+
+                          <input
+                            placeholder="Description (optional)"
+                            value={newFile.description}
+                            onChange={e=>setNewFile(prev=>({ ...prev, description: e.target.value }))}
+                          />
+                          <button onClick={() => addFile(t._id)}>Add file (link)</button>
+
+                          {/* --- Real upload (new) --- */}
+                          <h5 style={{ marginTop: 12 }}>Upload a file</h5>
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const form = e.currentTarget;             // <-- keep a real DOM ref
+                              try {
+                                const jwtNow = localStorage.getItem("jwt");
+                                if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+                                const fd = new FormData(form);          // build before awaits is fine too
+                                fd.set("careTaskId", t._id);            // ensure task id included
+
+                                const r = await fetch("/api/file-upload/upload", {
+                                  method: "POST",
+                                  headers: { Authorization: "Bearer " + jwtNow }, // DON'T set Content-Type
+                                  body: fd
+                                });
+
+                                // Be robust to non-JSON errors
+                                const isJson = r.headers.get("content-type").includes("application/json");
+                                const data = isJson ? await r.json() : { error: await r.text() };
+
+                                if (!r.ok) throw new Error(data.error || "Upload failed");
+
+                                form.reset();                            // <-- safe now
+                                await loadFiles(t._id);
+                              } catch (err) {
+                                alert("Upload failed: " + (err.message || String(err)));
+                              }
+                            }}
+                          >
+                            <input type="file" name="file" required />
+                            <input name="description" placeholder="Description (optional)" />
+                            <button type="submit">Upload</button>
+                          </form>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

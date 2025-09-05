@@ -1,13 +1,15 @@
 import { Router } from "express";
 import CareNeedItem from "../models/CareNeedItem.js";
-import Person from "../models/PersonWithNeeds.js";
+import PersonWithNeeds from "../models/PersonWithNeeds.js";
 import { requireAuth, requireRole, ensureCanManagePerson } from "../middleware/authz.js";
+import { requireJwt } from "../middleware/passport.js";
 
 const router = Router();
 
 router.get("/", requireAuth, listItems);
 
 // Only Admin, Family, PoA can create/update/delete items
+//router.post("/", requireAuth, requireRole("Admin","Family","PoA"), createItem);
 router.post("/", requireAuth, requireRole("Admin","Family","PoA"), createItem);
 router.get("/:itemId", requireAuth, getItem);
 router.put("/:itemId", requireAuth, requireRole("Admin","Family","PoA"), updateItem);
@@ -23,22 +25,90 @@ async function listItems(req, res) {
   res.json(items);
 }
 
+// async function createItem(req, res) {
+//   const { personId } = req.body;
+
+//   // Permission: creator must manage this person (Admin in same org OR Family/PoA linked)
+//   const perm = await ensureCanManagePerson(req.user, personId);
+//   if (!perm.ok) return res.status(403).json({ error: perm.code });
+
+//   const doc = {
+//     ...req.body,
+//     organizationId: perm.person.organizationId,
+//     createdByUserId: req.user.id || req.user._id
+//   };
+//   const item = await CareNeedItem.create(doc);
+//   res.status(201).json(item);
+// }
 async function createItem(req, res) {
-  const { personId } = req.body;
+  try {
+    const {
+      personId,
+      name,
+      description,
+      category,
+      frequency,        // { intervalType, intervalValue, startDate }
+      endDate,
+      occurrenceCount,
+      purchaseCost,
+      occurrenceCost,
+      scheduleType,              // NEW
+      timeWindow
+    } = req.body;
 
-  // Permission: creator must manage this person (Admin in same org OR Family/PoA linked)
-  const perm = await ensureCanManagePerson(req.user, personId);
-  if (!perm.ok) return res.status(403).json({ error: perm.code });
+    // Load person to derive org & validate scope
+    const person = await PersonWithNeeds.findById(personId).select("organizationId");
+    if (!person) return res.status(400).json({ error: "INVALID_PERSON" });
 
-  const doc = {
-    ...req.body,
-    organizationId: perm.person.organizationId,
-    createdByUserId: req.user.id || req.user._id
-  };
-  const item = await CareNeedItem.create(doc);
-  res.status(201).json(item);
-}
+    // Optional: role guard (only Family/Admin can create)
+    if (!["Family", "Admin"].includes(req.user.role)) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
+    // Optional: ensure caller is same org as the person
+    if (String(person.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
 
+    // Validate scheduleType/timeWindow
+    const st = scheduleType === "Timed" ? "Timed" : "AllDay";
+    let tw;
+    if (st === "Timed") {
+      if (!timeWindow || !timeWindow.startTime || !timeWindow.endTime) {
+        return res.status(400).json({ error: "TIME_WINDOW_REQUIRED" });
+      }
+      const re = /^[0-2]\d:[0-5]\d$/;
+      if (!re.test(timeWindow.startTime) || !re.test(timeWindow.endTime)) {
+        return res.status(400).json({ error: "INVALID_TIME_FORMAT" });
+      }
+      if (timeWindow.endTime <= timeWindow.startTime) {
+        return res.status(400).json({ error: "END_TIME_MUST_BE_AFTER_START_TIME" });
+      }
+      tw = { startTime: timeWindow.startTime, endTime: timeWindow.endTime };
+    }
+
+    // Create item (force organizationId from person)
+    const item = await CareNeedItem.create({
+      personId,
+      organizationId: person.organizationId,
+      name,
+      description,
+      category,
+      frequency,
+      endDate: endDate || null,
+      occurrenceCount: occurrenceCount || null,
+      purchaseCost: Number(purchaseCost) || 0,
+      occurrenceCost: Number(occurrenceCost) || 0,
+      scheduleType: st,
+      timeWindow: tw,
+      createdByUserId: req.user.id,
+      status: "Active"
+    });
+
+    res.status(201).json(item);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+};
 async function getItem(req, res) {
   const item = await CareNeedItem.findById(req.params.itemId).lean();
   if (!item) return res.status(404).json({ error: "Not found" });

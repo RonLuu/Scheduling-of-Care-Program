@@ -3,6 +3,7 @@ import CareTask from "../models/CareTask.js";
 import CareNeedItem from "../models/CareNeedItem.js";
 import Person from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
+import PersonUserLink from "../models/PersonUserLink.js";
 import { requireAuth, requireRole, ensureCanManagePerson, ensureCanWorkOnTask } from "../middleware/authz.js";
 
 const router = Router();
@@ -16,7 +17,8 @@ router.put("/:taskId", requireAuth, requireRole("Admin","Family","PoA"), updateT
 router.delete("/:taskId", requireAuth, requireRole("Admin","Family","PoA"), deleteTask);
 
 // Anyone who can work on the task (incl. GeneralCareStaff) can mark complete
-router.patch("/:taskId/complete", requireAuth, completeTask);
+router.patch("/:taskId", requireAuth, completeTask);
+router.post("/sweep-overdue", requireAuth, sweepOverdue);
 
 async function listTasks(req, res) {
   const { personId, organizationId, assignedToUserId, status } = req.query;
@@ -119,26 +121,116 @@ async function deleteTask(req, res) {
   res.json({ message: "Task deleted" });
 }
 
-async function completeTask(req, res) {
-  const task = await CareTask.findById(req.params.taskId);
-  if (!task) return res.status(404).json({ error: "Not found" });
+// async function completeTask(req, res) {
+//   const task = await CareTask.findById(req.params.taskId);
+//   if (!task) return res.status(404).json({ error: "Not found" });
 
-  const access = await ensureCanWorkOnTask(req.user, task);
-  if (!access.ok) return res.status(403).json({ error: access.code });
+//   const access = await ensureCanWorkOnTask(req.user, task);
+//   if (!access.ok) return res.status(403).json({ error: access.code });
 
-  const patch = {
-    status: "Completed",
-    completedByUserId: req.user.id || req.user._id,
-    completedAt: new Date()
-  };
-  if (req.body.cost !== undefined) patch.cost = req.body.cost;
+//   const patch = {
+//     status: "Completed",
+//     completedByUserId: req.user.id || req.user._id,
+//     completedAt: new Date()
+//   };
+//   if (req.body.cost !== undefined) patch.cost = req.body.cost;
 
-  const updated = await CareTask.findByIdAndUpdate(
-    req.params.taskId,
-    patch,
-    { new: true, runValidators: true }
-  );
-  res.json(updated);
+//   const updated = await CareTask.findByIdAndUpdate(
+//     req.params.taskId,
+//     patch,
+//     { new: true, runValidators: true }
+//   );
+//   res.json(updated);
+// }
+
+// Helper: ensure user can manage this task (same org + linked where applicable)
+async function canManageTask(user, task) {
+  if (!task) return { ok: false, code: "TASK_NOT_FOUND" };
+  if (String(task.organizationId) !== String(user.organizationId)) {
+    return { ok: false, code: "ORG_SCOPE_INVALID" };
+  }
+  if (user.role === "Admin") return { ok: true };
+  // Family/PoA/Staff must be linked to the person
+  const link = await PersonUserLink.findOne({
+    userId: user.id,
+    personId: task.personId,
+    active: true
+  }).lean();
+  if (!link) return { ok: false, code: "NOT_LINKED" };
+  return { ok: true };
 }
+
+async function completeTask(req, res) {
+  try {
+    const task = await CareTask.findById(req.params.taskId);
+    if (!task) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const perm = await canManageTask(req.user, task);
+    if (!perm.ok) return res.status(403).json({ error: perm.code });
+
+    const patch = {};
+    let nextStatus = task.status;
+    if (req.body.status) {
+      const allowed = ["Scheduled","Completed","Missed","Skipped","Cancelled"];
+      if (!allowed.includes(req.body.status)) {
+        return res.status(400).json({ error: "INVALID_STATUS" });
+      }
+      patch.status = req.body.status;
+      if (req.body.status === "Completed") {
+        patch.completedAt = req.body.completedAt ? new Date(req.body.completedAt) : new Date();
+        patch.completedByUserId = req.user.id;
+      } else {
+        patch.completedAt = null;
+        patch.completedByUserId = null;
+      }
+    }
+    // cost update (only when completed)
+    if (req.body.cost !== undefined) {
+      const n = Number(req.body.cost);
+      if (Number.isNaN(n) || n < 0) {
+        return res.status(400).json({ error: "INVALID_COST" });
+      }
+      // allow if task is already Completed OR we're also marking it Completed in this request
+      const willBeCompleted = nextStatus === "Completed";
+      if (!willBeCompleted) {
+        return res.status(400).json({ error: "COST_ONLY_ALLOWED_WHEN_COMPLETED" });
+      }
+      patch.cost = n;
+    }
+    // (Optional) allow reassignment by Admin
+    if (req.body.assignedToUserId && req.user.role === "Admin") {
+      patch.assignedToUserId = req.body.assignedToUserId;
+    }
+
+    const updated = await CareTask.findByIdAndUpdate(task._id, patch, { new: true, runValidators: true });
+    res.json(updated);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+async function sweepOverdue(req, res) {
+  try {
+    const now = new Date();
+
+    let filter = {
+      organizationId: req.user.organizationId,
+      status: "Scheduled",
+      dueDate: { $lt: now }
+    };
+
+    // // Restrict scope for Staff to only their linked persons
+    // if (req.user.role === "GeneralCareStaff") {
+    //   const links = await PersonUserLink.find({ userId: req.user.id, active: true }).select("personId");
+    //   const ids = links.map(l => l.personId);
+    //   filter.personId = { $in: ids.length ? ids : [null] }; // none if empty
+    // }
+
+    const result = await CareTask.updateMany(filter, { $set: { status: "Missed" } });
+    res.json({ updated: result.modifiedCount || 0 });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+};
 
 export default router;

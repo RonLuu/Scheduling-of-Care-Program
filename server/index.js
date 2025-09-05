@@ -20,6 +20,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+
+
+// Serve static files from the React app
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, "..", "public")));
+app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
+
 // app.get('/', (req, res) => {
 //     res.send('Care Scheduler API is running. Try /api/organizations, /api/users, /api/person-with-needs, /api/person-user-links');
 // });
@@ -27,12 +35,6 @@ app.use(express.urlencoded({ extended: true }));
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "index.html"));
 });
-
-// Serve static files from the React app
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "..", "public")));
-
 
 app.use('/api', routes);
 
