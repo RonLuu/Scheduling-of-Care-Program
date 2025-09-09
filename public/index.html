@@ -191,6 +191,11 @@
         const [newPName, setNewPName] = React.useState("");
         const [newPDob, setNewPDob] = React.useState(""); // yyyy-mm-dd
         const [newPMed, setNewPMed] = React.useState("");
+
+        const [newPBudgetType, setNewPBudgetType] = React.useState("Year");  // Year | Month | Week
+        const [newPBudgetAmt, setNewPBudgetAmt]   = React.useState("");
+
+
         const [adding, setAdding] = React.useState(false);
         const [addErr, setAddErr] = React.useState("");
 
@@ -220,6 +225,14 @@
         const [ciErr, setCiErr] = React.useState("");
         const [ciSuccess, setCiSuccess] = React.useState("");
 
+
+        // --- Care Need Items listing state ---
+        const [cniClientId, setCniClientId]   = React.useState(""); // selected client for item list
+        const [cniItems, setCniItems]         = React.useState([]);
+        const [cniLoading, setCniLoading]     = React.useState(false);
+        const [cniErr, setCniErr]             = React.useState("");
+
+
         const [tasksClientId, setTasksClientId] = React.useState("");
         const [tasks, setTasks] = React.useState([]);
         const [tasksLoading, setTasksLoading] = React.useState(false);
@@ -245,7 +258,15 @@
 
         // draft cost per task id (string values so inputs are controlled)
         const [costDraftByTask, setCostDraftByTask] = React.useState({});
-        const aud = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
+
+        // cost editor visibility per task
+        const [costEditorHiddenByTask, setCostEditorHiddenByTask] = React.useState({});
+
+        const [reportClientId, setReportClientId] = React.useState("");
+        const [reportYear, setReportYear]         = React.useState(new Date().getFullYear());
+        const [report, setReport]                 = React.useState(null);
+        const [reportErr, setReportErr]           = React.useState("");
+        const aud = new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" });
 
 
         // Fetch links + persons when dashboard loads
@@ -312,10 +333,12 @@
 
         async function addClient(e) {
           e.preventDefault();
-          if (!me || me.role !== "Family") return;
+          if (!me || (me.role !== "Family" && me.role !== "PoA")) return;
           setAdding(true); setAddErr("");
 
           try {
+            const annual = toAnnualBudget(newPBudgetType, newPBudgetAmt);
+
             // 1) Create PersonWithNeeds (org derived from current user on server OR we pass nothing and server derives)
             const r1 = await fetch("/api/person-with-needs", {
               method: "POST",
@@ -327,8 +350,9 @@
                 name: newPName,
                 dateOfBirth: newPDob ? new Date(newPDob).toISOString() : undefined,
                 medicalInfo: newPMed,
-                organizationId: me.organizationId
+                organizationId: me.organizationId,
                 // (DO NOT send organizationId; backend should derive from user OR set from your server rules)
+                currentAnnualBudget: annual
               })
             });
             const p = await r1.json();
@@ -368,7 +392,7 @@
             setClients(persons);
 
             // 4) Clear form
-            setNewPName(""); setNewPDob(""); setNewPMed("");
+            setNewPName(""); setNewPDob(""); setNewPMed(""); setNewPBudgetType("Year"); setNewPBudgetAmt("");
           } catch (err) {
             setAddErr(err.message || String(err));
           } finally {
@@ -446,6 +470,59 @@
           }
         }
 
+        // Format: "every N day/week/month/year" OR "one-time"
+        function formatFrequency(freq) {
+          if (!freq || !freq.intervalType) return "";
+          if (freq.intervalType === "OneTime") {
+            // Optional: show the date if present
+            const d = freq.startDate ? new Date(freq.startDate).toLocaleDateString() : "";
+            return d ? `One-time (${d})` : "One-time";
+          }
+          const n = Number(freq.intervalValue || 1);
+          const unit = freq.intervalType.toLowerCase(); // daily/weekly/monthly/yearly → day/week/month/year
+          // normalize plural
+          const singular = { daily: "day", weekly: "week", monthly: "month", yearly: "year" }[unit] || unit;
+          return `Every ${n} ${n === 1 ? singular : singular + "s"}`;
+        }
+
+        async function loadCareNeedItemsFor(personId) {
+          try {
+            setCniLoading(true);
+            setCniErr("");
+            setCniItems([]);
+            const jwt = localStorage.getItem("jwt"); if (!jwt) throw new Error("UNAUTHENTICATED");
+            if (!personId) return;
+
+            const r = await fetch(`/api/care-need-items?personId=${encodeURIComponent(personId)}`, {
+              headers: { Authorization: "Bearer " + jwt }
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to load items");
+
+            // Optional: sort by startDate or name
+            d.sort((a,b) => {
+              const as = a.frequency.startDate ? new Date(a.frequency.startDate).getTime() : 0;
+              const bs = b.frequency.startDate ? new Date(b.frequency.startDate).getTime() : 0;
+              return as - bs || a.name.localeCompare(b.name);
+            });
+
+            setCniItems(d);
+          } catch (e) {
+            setCniErr(e.message || String(e));
+          } finally {
+            setCniLoading(false);
+          }
+        }
+
+        React.useEffect(() => {
+          if (clients && clients.length > 0 && !cniClientId) {
+            const first = clients[0]._id;
+            setCniClientId(first);
+            loadCareNeedItemsFor(first);
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [clients]);
+
 
         async function loadTasksFor(personId) {
           try {
@@ -464,6 +541,29 @@
             // Optional: sort client-side if server doesn’t
             data.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
             setTasks(data);
+
+            // Initialize cost editor visibility:
+            // Completed + has cost  => hide editor
+            // Completed + no cost   => show editor
+            // Anything else         => hide editor (not completed)
+            const hidden = {};
+            const drafts = {};
+            for (const t of data) {
+              if (t.status === "Completed") {
+                if (t.cost !== undefined && t.cost !== null) {
+                  hidden[t._id] = true;   // hide on load if it already has a saved cost
+                } else {
+                  hidden[t._id] = false;  // show editor if completed but no cost yet
+                }
+              } else {
+                hidden[t._id] = true;     // not completed -> never show editor
+              }
+              drafts[t._id] = "";         // clear drafts on load
+            }
+
+            setCostEditorHiddenByTask(hidden);
+            setCostDraftByTask(drafts);
+
           } catch (e) {
             setTasksErr(e.message || String(e));
             setTasks([]);
@@ -495,23 +595,66 @@
             if (!jwtNow) throw new Error("UNAUTHENTICATED");
 
             const body = checked
-              ? { status: "Completed", completedAt: new Date().toISOString(), completedByUserId: me.id }
-              : { status: "Scheduled", completedAt: null, completedByUserId: null };
+              ? { status: "Completed" }
+              : { status: "Scheduled" };
 
             const r = await fetch(`/api/care-tasks/${task._id}`, {
               method: "PATCH",
-              headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwtNow },
+              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
               body: JSON.stringify(body)
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Update failed");
 
-            // Refresh list for the currently selected client
+            // Refresh tasks list
+            if (tasksClientId) {
+              await loadTasksFor(tasksClientId);
+            }
+
+
+            // visibility behavior:
+            if (checked) {
+              // just completed → show the editor
+              setCostEditorHiddenByTask(prev => ({ ...prev, [task._id]: false }));
+              // optional: clear draft so user types fresh
+              setCostDraftByTask(prev => ({ ...prev, [task._id]: "" }));
+            } else {
+              // un-completed → next time it completes, show editor again
+              setCostEditorHiddenByTask(prev => ({ ...prev, [task._id]: false }));
+            }
+
             if (tasksClientId) loadTasksFor(tasksClientId);
           } catch (e) {
             alert("Failed to update task: " + (e.message || e));
           }
         }
+
+
+
+        // async function toggleTaskComplete(task, checked) {
+        //   try {
+        //     const jwtNow = localStorage.getItem("jwt");
+        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+        //     const body = checked
+        //       ? { status: "Completed", completedAt: new Date().toISOString(), completedByUserId: me.id }
+        //       : { status: "Scheduled", completedAt: null, completedByUserId: null };
+
+        //     const r = await fetch(`/api/care-tasks/${task._id}`, {
+        //       method: "PATCH",
+        //       headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwtNow },
+        //       body: JSON.stringify(body)
+        //     });
+        //     const d = await r.json();
+        //     if (!r.ok) throw new Error(d.error || "Update failed");
+
+        //     // Refresh list for the currently selected client
+        //     if (tasksClientId) loadTasksFor(tasksClientId);
+        //   } catch (e) {
+        //     alert("Failed to update task: " + (e.message || e));
+        //   }
+        // }
+
         // async function toggleTaskComplete(task, checked) {
         //   try {
         //     const jwtNow = localStorage.getItem("jwt");
@@ -641,17 +784,21 @@
           }
         }
 
+
         async function saveTaskCost(taskId) {
           try {
             const jwtNow = localStorage.getItem("jwt");
             if (!jwtNow) throw new Error("UNAUTHENTICATED");
-            const val = costDraftByTask[taskId];
-            if (val === undefined || val === "") return; // nothing to save
-            const num = Number(val);
+
+            const raw = costDraftByTask[taskId];
+            // Treat empty/undefined/null as 0
+            const num = (raw === "" || raw === undefined || raw === null) ? 0 : Number(raw);
+
             if (Number.isNaN(num) || num < 0) {
               alert("Please enter a valid non-negative amount.");
               return;
             }
+
             const r = await fetch(`/api/care-tasks/${taskId}`, {
               method: "PATCH",
               headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
@@ -660,10 +807,66 @@
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Update failed");
 
-            // refresh list
+            // hide editor until user unchecks & re-checks Completed
+            setCostEditorHiddenByTask(prev => ({ ...prev, [taskId]: true }));
+
+            // optional: clear draft; displayed value will come from refreshed task
+            setCostDraftByTask(prev => ({ ...prev, [taskId]: "" }));
+
             if (tasksClientId) await loadTasksFor(tasksClientId);
           } catch (e) {
             alert("Failed to save cost: " + (e.message || String(e)));
+          }
+        }
+
+        // async function saveTaskCost(taskId) {
+        //   try {
+        //     const jwtNow = localStorage.getItem("jwt");
+        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
+        //     const val = costDraftByTask[taskId];
+        //     if (val === undefined || val === "") return; // nothing to save
+        //     const num = Number(val);
+        //     if (Number.isNaN(num) || num < 0) {
+        //       alert("Please enter a valid non-negative amount.");
+        //       return;
+        //     }
+        //     const r = await fetch(`/api/care-tasks/${taskId}`, {
+        //       method: "PATCH",
+        //       headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
+        //       body: JSON.stringify({ cost: num })
+        //     });
+        //     const d = await r.json();
+        //     if (!r.ok) throw new Error(d.error || "Update failed");
+
+        //     // refresh list
+        //     if (tasksClientId) await loadTasksFor(tasksClientId);
+        //   } catch (e) {
+        //     alert("Failed to save cost: " + (e.message || String(e)));
+        //   }
+        // }
+
+        
+        function toAnnualBudget(type, amt) {
+          const n = Number(amt) || 0;
+          if (type === "Week")  return n * 52.15; // AU weeks per year ≈ 52.15
+          if (type === "Month") return n * 12;
+          return n; // Year
+        }
+
+        async function loadBudgetReport() {
+          try {
+            setReportErr(""); setReport(null);
+            const jwt = localStorage.getItem("jwt"); if (!jwt) throw new Error("UNAUTHENTICATED");
+            if (!reportClientId) throw new Error("Please choose a client");
+
+            const r = await fetch(`/api/reports/budget?personId=${encodeURIComponent(reportClientId)}&year=${encodeURIComponent(reportYear)}`, {
+              headers: { Authorization: "Bearer " + jwt }
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to load report");
+            setReport(d);
+          } catch (e) {
+            setReportErr(e.message || String(e));
           }
         }
 
@@ -696,6 +899,7 @@
             })
             .catch(() => {});
         }, [tasksClientId]); // re-run when switching client to keep list fresh
+
 
         return (
           <React.Fragment>
@@ -759,6 +963,28 @@
                       <input value={newPMed} onChange={e=>setNewPMed(e.target.value)} placeholder="e.g., allergies, notes..." />
                     </div>
                   </div>
+
+                  <div className="row">
+                    <div>
+                      <label>Budget period</label>
+                      <select value={newPBudgetType} onChange={e=>setNewPBudgetType(e.target.value)}>
+                        <option>Year</option>
+                        <option>Month</option>
+                        <option>Week</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Budget amount (AUD)</label>
+                      <input type="number" min="0" step="0.01" value={newPBudgetAmt} onChange={e=>setNewPBudgetAmt(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <p style={{opacity:.7}}>
+                    Annual budget will be saved as: <strong>
+                      {new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD"}).format(toAnnualBudget(newPBudgetType,newPBudgetAmt))}
+                    </strong>
+                  </p>
+
                   <button disabled={adding}>{adding ? "Adding..." : "Add client"}</button>
                   {addErr && <p style={{color:"#b91c1c"}}>Error: {addErr}</p>}
                   <p className="badge">Org derived from your account: <code>{(me && me.organizationId) || ""}</code></p>
@@ -890,13 +1116,13 @@
 
                   <div className="row">
                     <div>
-                      <label>Purchase cost</label>
-                      <input type="number" min="0" step="0.01" value={ciPurchaseCost} onChange={e=>setCiPurchaseCost(e.target.value)} />
+                      <label>Purchase cost (AUD)</label>
+                      <input type="number" min="0" step="0.01" value={ciPurchaseCost !== 0 ? ciPurchaseCost : ""} onChange={e=>setCiPurchaseCost(e.target.value)} placeholder="0.00"/>
                     </div>
                     {ciIntervalType !== "OneTime" &&
                     <div>
-                      <label>Occurrence cost (per task)</label>
-                      <input type="number" min="0" step="0.01" value={ciOccurrenceCost} onChange={e=>setCiOccurrenceCost(e.target.value)} />
+                      <label>Expected occurrence cost per task (AUD)</label>
+                      <input type="number" min="0" step="0.01" value={ciOccurrenceCost !== 0 ? ciOccurrenceCost : ""} onChange={e=>setCiOccurrenceCost(e.target.value)} placeholder="0.00"/>
                     </div>
                     }
                   </div>
@@ -908,6 +1134,78 @@
                 </form>
               </div>
             )}
+
+            <div className="card">
+              <h3>Care Need Items</h3>
+              <div className="row">
+                <div>
+                  <label>Client</label>
+                  <select
+                    value={cniClientId}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setCniClientId(v);
+                      if (v) loadCareNeedItemsFor(v);
+                    }}
+                  >
+                    <option value="">— Select client —</option>
+                    {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label>&nbsp;</label>
+                  <button className="secondary" onClick={() => cniClientId && loadCareNeedItemsFor(cniClientId)}>
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {cniErr && <p style={{ color:"#b91c1c" }}>Error: {cniErr}</p>}
+              {cniLoading && <p>Loading items…</p>}
+
+              {!cniLoading && cniItems.length === 0 && (
+                <p>No care need items for this client.</p>
+              )}
+
+              {cniItems.length > 0 && (
+                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign:"left" }}>Name</th>
+                      <th style={{ textAlign:"left" }}>Frequency</th>
+                      <th style={{ textAlign:"right" }}>Purchase cost</th>
+                      <th style={{ textAlign:"right" }}>Expected per task</th>
+                      <th style={{ textAlign:"left" }}>Schedule</th>
+                      <th style={{ textAlign:"left" }}>Category</th>
+                      <th style={{ textAlign:"left" }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cniItems.map(it => (
+                      <tr key={it._id} style={{ borderTop:"1px solid #eee" }}>
+                        <td>{it.name}</td>
+                        <td>{formatFrequency(it.frequency)}</td>
+                        <td style={{ textAlign:"right" }}>
+                          {new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" }).format(it.purchaseCost || 0)}
+                        </td>
+                        <td style={{ textAlign:"right" }}>
+                          {new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" }).format(it.occurrenceCost || 0)}
+                        </td>
+                        <td>
+                          <span className="badge">
+                            {it.scheduleType === "Timed" && it.timeWindow
+                              ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
+                              : "All-day"}
+                          </span>
+                        </td>
+                        <td>{it.category}</td>
+                        <td><span className="badge">{it.status}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
 
             <div className="card">
               <h3>My Tasks</h3>
@@ -962,6 +1260,7 @@
                           <strong>{t.title}</strong>
                           {" · "}
                           {new Date(t.dueDate).toLocaleDateString()}
+
                           {t.scheduleType === "Timed" && t.startAt && t.endAt && (
                             <React.Fragment>
                               {" · "}
@@ -974,22 +1273,44 @@
                           <span className="badge">{t.scheduleType === "AllDay" ? "All-day" : "Timed"}</span>
                           {" · "}
                           <span className="badge">{t.status}</span>
+                          <input style={{display:"inline", width:"auto", marginLeft:16}}
+                            type="checkbox"
+                            checked={t.status === "Completed"}
+                            onChange={e => toggleTaskComplete(t, e.target.checked)}
+                            title={t.status === "Completed" ? "Unmark as completed" : "Mark as completed"}
+                          />
                           {/* Show spent amount (read-only) if present */}
                           {t.status === "Completed" && t.cost !== undefined && t.cost !== null && (
-                            <React.Fragment>{" · "}Spent: <strong>{aud.format(t.cost)}</strong></React.Fragment>
+                            <React.Fragment>
+                              {" · "}Spent: <strong>{aud.format(t.cost)}</strong>
+                              {" "}
+                              <button
+                                className="secondary"
+                                style={{ marginTop: 8, borderRadius:8, padding: 10 }}
+                                onClick={() => {
+                                  // reopen editor & prefill with current cost (or 0)
+                                  setCostEditorHiddenByTask(prev => ({ ...prev, [t._id]: false }));
+                                  setCostDraftByTask(prev => ({
+                                    ...prev,
+                                    [t._id]:
+                                      (t.cost !== undefined && t.cost !== null)
+                                        ? String(t.cost) // keep as string for input
+                                        : "0"
+                                  }));
+                                }}
+                              >
+                                Change cost
+                              </button>
+
+                            </React.Fragment>
                           )}
                         </div>
-                        <input style={{display:"inline", width:"auto", marginLeft:16}}
-                          type="checkbox"
-                          checked={t.status === "Completed"}
-                          onChange={e => toggleTaskComplete(t, e.target.checked)}
-                          title={t.status === "Completed" ? "Unmark as completed" : "Mark as completed"}
-                        />
+                        
                         <button className="secondary" onClick={() => toggleComments(t._id)}>Comments</button>
                         <button className="secondary" onClick={() => toggleFiles(t._id)}>Files</button>
                       </div>
 
-                      {/* Cost entry appears ONLY when completed and no cost yet (or you still want to edit) */}
+                      {/* Cost entry appears ONLY when completed and no cost yet 
                       {t.status === "Completed" && (
                         <div style={{ marginTop: 8, display:"flex", alignItems:"center", gap: 8 }}>
                           <label style={{ minWidth: 120 }}>Budget spent (AUD)</label>
@@ -1007,13 +1328,31 @@
                             style={{ maxWidth: 160 }}
                           />
                           <button onClick={() => saveTaskCost(t._id)}>Save</button>
-                          {/*}
-                          {t.cost !== undefined && t.cost !== null && (
-                            <span style={{ opacity:.7 }}>Saved: {aud.format(t.cost)}</span>
-                          )}
-                          */}
                         </div>
                       )}
+                      */}
+                      {/* Cost entry appears ONLY when completed and editor not hidden */}
+                      {t.status === "Completed" && !costEditorHiddenByTask[t._id] && (
+                        <div style={{ marginTop: 8, display:"flex", alignItems:"center", gap: 8 }}>
+                          <label style={{ minWidth: 120 }}>Budget spent (AUD)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={
+                              costDraftByTask[t._id] !== undefined
+                                ? costDraftByTask[t._id]
+                                : (t.cost !== undefined && t.cost !== null ? t.cost : 0)
+                            }
+                            onChange={e => setCostDraftByTask(prev => ({ ...prev, [t._id]: e.target.value }))}
+                            style={{ maxWidth: 160 }}
+                          />
+                          <button onClick={() => saveTaskCost(t._id)}>Save</button>
+                        </div>
+                      )}
+
+                      {/* Cost entry appears ONLY when completed, no cost yet, and not hidden */}
 
                       {/* Comments panel */}
                       {openCommentsFor === t._id && (
@@ -1155,6 +1494,64 @@
                     </li>
                   ))}
                 </ul>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Budget Reporting</h3>
+              <div className="row">
+                <div>
+                  <label>Client</label>
+                  <select value={reportClientId} onChange={e=>setReportClientId(e.target.value)}>
+                    <option value="">— Select client —</option>
+                    {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label>Year</label>
+                  <input type="number" min="2000" max="2100" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))} />
+                </div>
+              </div>
+              <button onClick={loadBudgetReport}>Run report</button>
+              {reportErr && <p style={{color:"#b91c1c"}}>Error: {reportErr}</p>}
+
+              {report && (
+                <div style={{ marginTop: 12 }}>
+                  <p>
+                    <strong>Annual budget:</strong> {aud.format(report.annualBudget)}<br/>
+                    <strong>Already spent:</strong> {aud.format(report.spent.total)}
+                    {" "}<span style={{opacity:.7}}>(purchase {aud.format(report.spent.purchase)} + completed tasks {aud.format(report.spent.completed)})</span><br/>
+                    <strong>Current balance:</strong> {aud.format(report.balance.current)}<br/>
+                    <strong>Expected remaining (uncompleted tasks):</strong> {aud.format(report.expected.remaining)}<br/>
+                    <strong>Expected balance at year end:</strong> {aud.format(report.balance.expectedAtYearEnd)}
+                  </p>
+
+                  <h4>By category</h4>
+                  {report.categories.length === 0 ? <p>No category data.</p> : (
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={{textAlign:"left"}}>Category</th>
+                          <th style={{textAlign:"right"}}>Spent</th>
+                          <th style={{textAlign:"right"}}>Expected To Spend</th>
+                          <th style={{textAlign:"right"}}>% Spent</th>
+                          <th style={{textAlign:"right"}}>% Expected To Spend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.categories.map(c => (
+                          <tr key={c.category}>
+                            <td>{c.category}</td>
+                            <td style={{textAlign:"right"}}>{aud.format(c.totalSpent)}</td>
+                            <td style={{textAlign:"right"}}>{aud.format(c.expected)}</td>
+                            <td style={{textAlign:"right"}}>{(c.spentPct*100).toFixed(1)}%</td>
+                            <td style={{textAlign:"right"}}>{(c.expectedPct*100).toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               )}
             </div>
 

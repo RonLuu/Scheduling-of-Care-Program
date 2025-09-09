@@ -28,9 +28,6 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
-// app.get('/', (req, res) => {
-//     res.send('Care Scheduler API is running. Try /api/organizations, /api/users, /api/person-with-needs, /api/person-user-links');
-// });
 
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "index.html"));
