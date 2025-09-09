@@ -1,27 +1,87 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>Care Program – Access & Auth</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font-family: system-ui, sans-serif; margin:0; background:#f7f7fb; }
-      header { background:#1f2937; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; }
-      main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
-      .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; }
-      input, select, button { padding:10px; border-radius:8px; border:1px solid #d1d5db; width:100%; margin:6px 0 12px; }
-      button { background:#2C3F70; color:white; cursor:pointer; }
-      button.secondary { background:#fff; color:#2C3F70; border:1px solid #d1d5db; }
-      .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-      .badge { padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; }
-      nav a { color:#d1d5db; margin-left:12px; text-decoration:none; }
-      nav a.active { color:#fff; text-decoration:underline; }
-      code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        background: #f7f7fb;
+      }
+      header {
+        background: #1f2937;
+        color: #fff;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+      }
+      main {
+        max-width: 900px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      input,
+      select,
+      button {
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        width: 100%;
+        margin: 6px 0 12px;
+      }
+      button {
+        background: #2c3f70;
+        color: white;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #fff;
+        color: #2c3f70;
+        border: 1px solid #d1d5db;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .badge {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 12px;
+      }
+      nav a {
+        color: #d1d5db;
+        margin-left: 12px;
+        text-decoration: none;
+      }
+      nav a.active {
+        color: #fff;
+        text-decoration: underline;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
     </style>
   </head>
   <body>
     <header>
-      <div><strong>Care Program</strong> <span style="opacity:.7">· Care Item & Care Task</span></div>
+      <div>
+        <strong>Care Program</strong>
+        <span style="opacity: 0.7">· Care Item & Care Task</span>
+      </div>
       <nav>
         <a href="#" id="nav-login">Login</a>
         <a href="#" id="nav-register">Register</a>
@@ -42,8 +102,12 @@
         React.useEffect(() => {
           const jwt = localStorage.getItem("jwt");
           if (!jwt) return;
-          fetch(API + "/auth/me", { headers: { Authorization: "Bearer " + jwt } })
-            .then(r => r.json()).then(d => setMe(d.user)).catch(()=>setMe(null));
+          fetch(API + "/auth/me", {
+            headers: { Authorization: "Bearer " + jwt },
+          })
+            .then((r) => r.json())
+            .then((d) => setMe(d.user))
+            .catch(() => setMe(null));
         }, []);
         return [me, setMe];
       }
@@ -57,9 +121,9 @@
           e.preventDefault();
           setErr("");
           const r = await fetch(API + "/auth/login", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ email, password })
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
           });
           const d = await r.json();
           if (!r.ok) return setErr(d.error || "Login failed");
@@ -71,11 +135,20 @@
           <div className="card">
             <h2>Login</h2>
             <form onSubmit={submit}>
-              <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+              <input
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
               <button>Sign in</button>
             </form>
-            {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+            {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
           </div>
         );
       }
@@ -88,15 +161,17 @@
         const [password, setPassword] = React.useState("");
         const [err, setErr] = React.useState("");
 
+        const [selectedOrgId, setSelectedOrgId] = React.useState("");
+
         async function verify() {
           setErr("");
           const r = await fetch(API + "/tokens/verify", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ token })
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
           });
           const d = await r.json();
-          setPreview(d.valid ? d : { valid:false });
+          setPreview(d.valid ? d : { valid: false });
           if (!d.valid) setErr("Invalid or expired token");
         }
 
@@ -104,9 +179,9 @@
           e.preventDefault();
           setErr("");
           const r = await fetch(API + "/auth/register", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ token, name, email, password })
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, name, email, password }),
           });
           const d = await r.json();
           if (!r.ok) return setErr(d.error || "Registration failed");
@@ -120,40 +195,77 @@
               <h2>Register with a token</h2>
               <div className="row">
                 <div>
-                  <input placeholder="Invitation token" value={token} onChange={e=>setToken(e.target.value)} />
-                  <button className="secondary" type="button" onClick={verify}>Verify</button>
-                  {preview && (preview.valid
-                    ? <p><span className="badge">{preview.role}</span> · org <code>{preview.organizationId}</code></p>
-                    : <p>Token invalid</p>)}
+                  <input
+                    placeholder="Invitation token"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                  />
+                  <button className="secondary" type="button" onClick={verify}>
+                    Verify
+                  </button>
+                  {preview &&
+                    (preview.valid ? (
+                      <p>
+                        <span className="badge">{preview.role}</span> · org{" "}
+                        <code>{preview.organizationId}</code>
+                      </p>
+                    ) : (
+                      <p>Token invalid</p>
+                    ))}
                 </div>
                 <div>
-                  <input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} />
-                  <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-                  <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+                  <input
+                    placeholder="Full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                  <input
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                   <button onClick={submit}>Create account</button>
                 </div>
               </div>
-              {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+              {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
             </div>
-            <RegisterFamily onAuthed={onAuthed} />
+            <RegisterFamily
+              onAuthed={onAuthed}
+              defaultOrganizationId={selectedOrgId}
+            />
+            <RegisterOrganization
+              onCreated={(org) => setSelectedOrgId(org._id)}
+            />
           </div>
         );
       }
 
-      function RegisterFamily({ onAuthed }) {
+      function RegisterFamily({ onAuthed, defaultOrganizationId = "" }) {
         const [name, setName] = React.useState("");
         const [email, setEmail] = React.useState("");
         const [password, setPassword] = React.useState("");
-        const [organizationId, setOrganizationId] = React.useState("");
+        const [organizationId, setOrganizationId] = React.useState(
+          defaultOrganizationId
+        );
         const [err, setErr] = React.useState("");
+
+        React.useEffect(() => {
+          if (defaultOrganizationId) setOrganizationId(defaultOrganizationId);
+        }, [defaultOrganizationId]);
 
         async function submit(e) {
           e.preventDefault();
           setErr("");
           const r = await fetch("/api/auth/register-family", {
             method: "POST",
-            headers: { "Content-Type":"application/json" },
-            body: JSON.stringify({ name, email, password, organizationId })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, organizationId }),
           });
           const d = await r.json();
           if (!r.ok) return setErr(d.error || "Registration failed");
@@ -165,22 +277,102 @@
           <div className="card">
             <h2>Register as a new family member</h2>
             <form onSubmit={submit}>
-              <input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} />
-              <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
-              <input placeholder="Organization ID" value={organizationId} onChange={e=>setOrganizationId(e.target.value)} />
+              <input
+                placeholder="Full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <input
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <input
+                placeholder="Organization ID"
+                value={organizationId}
+                onChange={(e) => setOrganizationId(e.target.value)}
+              />
               <button>Create family account</button>
             </form>
-            {err && <p style={{color:"#b91c1c"}}>{err}</p>}
+            {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
           </div>
         );
       }
 
-      function Dashboard({ me, onLogout }){
+      function RegisterOrganization({ onCreated }) {
+        const [name, setName] = React.useState("");
+        const [address, setAddress] = React.useState("");
+        const [org, setOrg] = React.useState(null);
+        const [err, setErr] = React.useState("");
+        const [busy, setBusy] = React.useState(false);
+
+        async function submit(e) {
+          e.preventDefault();
+          setErr("");
+          setBusy(true);
+          setOrg(null);
+          try {
+            const r = await fetch("/api/organizations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, address }),
+            });
+            const d = await r.json();
+            if (!r.ok)
+              throw new Error(d.error || "Failed to create organisation");
+            setOrg(d); // d should contain _id, name, address
+            onCreated && onCreated(d); // pass back to parent (to prefill the family form)
+          } catch (e2) {
+            setErr(e2.message || String(e2));
+          } finally {
+            setBusy(false);
+          }
+        }
+
+        return (
+          <div className="card">
+            <h2>Register a new organisation</h2>
+            <form onSubmit={submit}>
+              <input
+                placeholder="Organisation name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <input
+                placeholder="Address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+              <button disabled={busy}>
+                {busy ? "Creating..." : "Create organisation"}
+              </button>
+            </form>
+            {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+            {org && (
+              <p>
+                Created: <strong>{org.name}</strong>
+                <br />
+                Organisation ID: <code>{org._id}</code>
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      function Dashboard({ me, onLogout }) {
         const jwt = localStorage.getItem("jwt");
-        const initialType = (me && me.role === "Admin") ? "STAFF_INVITE" : "MANAGER_TOKEN";
+        const initialType =
+          me && me.role === "Admin" ? "STAFF_INVITE" : "MANAGER_TOKEN";
         const [type, setType] = React.useState(initialType);
-        const [organizationId, setOrganizationId] = React.useState((me && me.organizationId) || "");
+        const [organizationId, setOrganizationId] = React.useState(
+          (me && me.organizationId) || ""
+        );
         const [expiresInDays, setExpiresInDays] = React.useState(7);
         const [maxUses, setMaxUses] = React.useState(1);
         const [tokenResult, setTokenResult] = React.useState(null);
@@ -192,9 +384,8 @@
         const [newPDob, setNewPDob] = React.useState(""); // yyyy-mm-dd
         const [newPMed, setNewPMed] = React.useState("");
 
-        const [newPBudgetType, setNewPBudgetType] = React.useState("Year");  // Year | Month | Week
-        const [newPBudgetAmt, setNewPBudgetAmt]   = React.useState("");
-
+        const [newPBudgetType, setNewPBudgetType] = React.useState("Year"); // Year | Month | Week
+        const [newPBudgetAmt, setNewPBudgetAmt] = React.useState("");
 
         const [adding, setAdding] = React.useState(false);
         const [addErr, setAddErr] = React.useState("");
@@ -218,20 +409,18 @@
         const [ciOccurrenceCost, setCiOccurrenceCost] = React.useState(0);
 
         const [ciScheduleType, setCiScheduleType] = React.useState("AllDay"); // "AllDay" | "Timed"
-        const [ciStartTime, setCiStartTime] = React.useState("09:00");         // HH:mm
-        const [ciEndTime, setCiEndTime] = React.useState("10:00");             // HH:mm
+        const [ciStartTime, setCiStartTime] = React.useState("09:00"); // HH:mm
+        const [ciEndTime, setCiEndTime] = React.useState("10:00"); // HH:mm
 
         const [ciBusy, setCiBusy] = React.useState(false);
         const [ciErr, setCiErr] = React.useState("");
         const [ciSuccess, setCiSuccess] = React.useState("");
 
-
         // --- Care Need Items listing state ---
-        const [cniClientId, setCniClientId]   = React.useState(""); // selected client for item list
-        const [cniItems, setCniItems]         = React.useState([]);
-        const [cniLoading, setCniLoading]     = React.useState(false);
-        const [cniErr, setCniErr]             = React.useState("");
-
+        const [cniClientId, setCniClientId] = React.useState(""); // selected client for item list
+        const [cniItems, setCniItems] = React.useState([]);
+        const [cniLoading, setCniLoading] = React.useState(false);
+        const [cniErr, setCniErr] = React.useState("");
 
         const [tasksClientId, setTasksClientId] = React.useState("");
         const [tasks, setTasks] = React.useState([]);
@@ -240,12 +429,12 @@
 
         // --- Comments / Files state ---
         const [openCommentsFor, setOpenCommentsFor] = React.useState(null); // taskId or null
-        const [openFilesFor, setOpenFilesFor] = React.useState(null);       // taskId or null
+        const [openFilesFor, setOpenFilesFor] = React.useState(null); // taskId or null
 
-        const [commentsByTask, setCommentsByTask] = React.useState({});     // { [taskId]: [...] }
-        const [filesByTask, setFilesByTask]       = React.useState({});     // { [taskId]: [...] }
+        const [commentsByTask, setCommentsByTask] = React.useState({}); // { [taskId]: [...] }
+        const [filesByTask, setFilesByTask] = React.useState({}); // { [taskId]: [...] }
 
-        const [newCommentText, setNewCommentText] = React.useState("");     // input for current openCommentsFor
+        const [newCommentText, setNewCommentText] = React.useState(""); // input for current openCommentsFor
 
         // simple link uploads (url/path)
         const [newFile, setNewFile] = React.useState({
@@ -253,55 +442,71 @@
           urlOrPath: "",
           fileType: "",
           size: "",
-          description: ""
+          description: "",
         });
 
         // draft cost per task id (string values so inputs are controlled)
         const [costDraftByTask, setCostDraftByTask] = React.useState({});
 
         // cost editor visibility per task
-        const [costEditorHiddenByTask, setCostEditorHiddenByTask] = React.useState({});
+        const [costEditorHiddenByTask, setCostEditorHiddenByTask] =
+          React.useState({});
 
         const [reportClientId, setReportClientId] = React.useState("");
-        const [reportYear, setReportYear]         = React.useState(new Date().getFullYear());
-        const [report, setReport]                 = React.useState(null);
-        const [reportErr, setReportErr]           = React.useState("");
-        const aud = new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" });
-
+        const [reportYear, setReportYear] = React.useState(
+          new Date().getFullYear()
+        );
+        const [report, setReport] = React.useState(null);
+        const [reportErr, setReportErr] = React.useState("");
+        const aud = new Intl.NumberFormat("en-AU", {
+          style: "currency",
+          currency: "AUD",
+        });
 
         // Fetch links + persons when dashboard loads
         React.useEffect(() => {
           if (!jwt || !me) return;
           // get links for this user
           fetch(`/api/person-user-links?userId=${me.id}`, {
-            headers: { Authorization: "Bearer " + jwt }
+            headers: { Authorization: "Bearer " + jwt },
           })
-            .then(r => r.json())
-            .then(async links => {
+            .then((r) => r.json())
+            .then(async (links) => {
               //  fetch each person
               const persons = await Promise.all(
-                links.map(l =>
+                links.map((l) =>
                   fetch(`/api/person-with-needs/${l.personId}`, {
-                    headers: { Authorization: "Bearer " + jwt }
+                    headers: { Authorization: "Bearer " + jwt },
                   })
-                    .then(r => r.json())
-                    .then(p => ({ ...p, relationshipType: l.relationshipType }))
+                    .then((r) => r.json())
+                    .then((p) => ({
+                      ...p,
+                      relationshipType: l.relationshipType,
+                    }))
                 )
               );
               setClients(persons);
             })
-            .catch(err => console.error("Failed to load clients", err));
+            .catch((err) => console.error("Failed to load clients", err));
         }, [jwt, me]);
-        
+
         React.useEffect(() => {
           if (!jwt) return;
-          fetch(API + "/tokens", { headers: { Authorization: "Bearer " + jwt } })
-            .then(r=>r.json()).then(setList).catch(()=>{});
+          fetch(API + "/tokens", {
+            headers: { Authorization: "Bearer " + jwt },
+          })
+            .then((r) => r.json())
+            .then(setList)
+            .catch(() => {});
         }, []);
 
         function allowedTypesFor(role) {
-          if (role === "Admin") return [["STAFF_INVITE","Staff invite"]];
-          if (role === "Family" || role === "PoA") return [["FAMILY_TOKEN","Family invite"],["MANAGER_TOKEN","Manager invite"]];
+          if (role === "Admin") return [["STAFF_INVITE", "Staff invite"]];
+          if (role === "Family" || role === "PoA")
+            return [
+              ["FAMILY_TOKEN", "Family invite"],
+              ["MANAGER_TOKEN", "Manager invite"],
+            ];
           return [];
         }
 
@@ -313,20 +518,25 @@
           }
 
           const r = await fetch(API + "/tokens", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json", Authorization: "Bearer " + jwt },
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + jwt,
+            },
             body: JSON.stringify({
               type,
               organizationId,
               personIds: [selectedPersonId],
               expiresInDays: Number(expiresInDays),
-              maxUses: Number(maxUses)
-            })
+              maxUses: Number(maxUses),
+            }),
           });
           const d = await r.json();
           setTokenResult(r.ok ? d : { error: d.error || "Failed" });
           if (r.ok) {
-            const refreshed = await fetch(API + "/tokens", { headers:{ Authorization: "Bearer " + jwt }});
+            const refreshed = await fetch(API + "/tokens", {
+              headers: { Authorization: "Bearer " + jwt },
+            });
             setList(await refreshed.json());
           }
         }
@@ -334,7 +544,8 @@
         async function addClient(e) {
           e.preventDefault();
           if (!me || (me.role !== "Family" && me.role !== "PoA")) return;
-          setAdding(true); setAddErr("");
+          setAdding(true);
+          setAddErr("");
 
           try {
             const annual = toAnnualBudget(newPBudgetType, newPBudgetAmt);
@@ -343,17 +554,19 @@
             const r1 = await fetch("/api/person-with-needs", {
               method: "POST",
               headers: {
-                "Content-Type":"application/json",
-                Authorization: "Bearer " + jwt
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwt,
               },
               body: JSON.stringify({
                 name: newPName,
-                dateOfBirth: newPDob ? new Date(newPDob).toISOString() : undefined,
+                dateOfBirth: newPDob
+                  ? new Date(newPDob).toISOString()
+                  : undefined,
                 medicalInfo: newPMed,
                 organizationId: me.organizationId,
                 // (DO NOT send organizationId; backend should derive from user OR set from your server rules)
-                currentAnnualBudget: annual
-              })
+                currentAnnualBudget: annual,
+              }),
             });
             const p = await r1.json();
             if (!r1.ok) throw new Error(p.error || "Failed to create person");
@@ -362,37 +575,48 @@
             const r2 = await fetch("/api/person-user-links", {
               method: "POST",
               headers: {
-                "Content-Type":"application/json",
-                Authorization: "Bearer " + jwt
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwt,
               },
               body: JSON.stringify({
                 personId: p._id,
                 userId: me.id,
                 relationshipType: "Family",
                 active: true,
-                startAt: new Date()
-              })
+                startAt: new Date(),
+              }),
             });
             const l = await r2.json();
             if (!r2.ok) throw new Error(l.error || "Failed to link person");
 
             // 3) Refresh My Clients list
-            const linksRes = await fetch(`/api/person-user-links?userId=${me.id}`, {
-              headers: { Authorization: "Bearer " + jwt }
-            });
+            const linksRes = await fetch(
+              `/api/person-user-links?userId=${me.id}`,
+              {
+                headers: { Authorization: "Bearer " + jwt },
+              }
+            );
             const links = await linksRes.json();
             const persons = await Promise.all(
-              links.map(link =>
+              links.map((link) =>
                 fetch(`/api/person-with-needs/${link.personId}`, {
-                  headers: { Authorization: "Bearer " + jwt }
-                }).then(rr => rr.json())
-                .then(pp => ({ ...pp, relationshipType: link.relationshipType }))
+                  headers: { Authorization: "Bearer " + jwt },
+                })
+                  .then((rr) => rr.json())
+                  .then((pp) => ({
+                    ...pp,
+                    relationshipType: link.relationshipType,
+                  }))
               )
             );
             setClients(persons);
 
             // 4) Clear form
-            setNewPName(""); setNewPDob(""); setNewPMed(""); setNewPBudgetType("Year"); setNewPBudgetAmt("");
+            setNewPName("");
+            setNewPDob("");
+            setNewPMed("");
+            setNewPBudgetType("Year");
+            setNewPBudgetAmt("");
           } catch (err) {
             setAddErr(err.message || String(err));
           } finally {
@@ -402,10 +626,12 @@
 
         async function submitCareNeedItem(e) {
           e.preventDefault();
-          setCiErr(""); setCiSuccess(""); setCiBusy(true);
+          setCiErr("");
+          setCiSuccess("");
+          setCiBusy(true);
 
           try {
-            const jwt = localStorage.getItem("jwt");            
+            const jwt = localStorage.getItem("jwt");
             if (!jwt) throw new Error("UNAUTHENTICATED");
 
             if (!ciPersonId) throw new Error("Please select a client.");
@@ -421,15 +647,18 @@
               frequency: {
                 intervalType: ciIntervalType,
                 intervalValue: Number(ciIntervalValue),
-                startDate: new Date(ciStartDate).toISOString()
+                startDate: new Date(ciStartDate).toISOString(),
               },
-              scheduleType: ciScheduleType,  // NEW
+              scheduleType: ciScheduleType, // NEW
               purchaseCost: Number(ciPurchaseCost) || 0,
-              occurrenceCost: Number(ciOccurrenceCost) || 0
+              occurrenceCost: Number(ciOccurrenceCost) || 0,
             };
 
             if (ciScheduleType === "Timed") {
-              payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
+              payload.timeWindow = {
+                startTime: ciStartTime,
+                endTime: ciEndTime,
+              };
             }
 
             if (ciEndMode === "endDate" && ciEndDate) {
@@ -439,30 +668,42 @@
               payload.occurrenceCount = Number(ciOccurrenceCount);
             }
 
-
             // 1) Create CareNeedItem
             const r1 = await fetch("/api/care-need-items", {
               method: "POST",
               headers: {
-                "Content-Type":"application/json",
-                Authorization: "Bearer " + jwt
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwt,
               },
-              body: JSON.stringify(payload)
+              body: JSON.stringify(payload),
             });
             const item = await r1.json();
             if (!r1.ok) throw new Error(item.error || "Failed to create item");
 
-            const r2 = await fetch(`/api/scheduling/care-need-items/${item._id}/generate-tasks`, {
-              method: "POST",
-              headers: { Authorization: "Bearer " + jwt }
-            });
+            const r2 = await fetch(
+              `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
+              {
+                method: "POST",
+                headers: { Authorization: "Bearer " + jwt },
+              }
+            );
             const gen = await r2.json();
-            if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
+            if (!r2.ok)
+              throw new Error(gen.error || "Failed to generate tasks");
 
-            setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
+            setCiSuccess(
+              `Created item and generated ${gen.upserts || 0} tasks.`
+            );
             // optional: clear form
-            setCiName(""); setCiDesc(""); setCiPurchaseCost(0); setCiOccurrenceCost(0);
-            setCiIntervalType("Daily"); setCiIntervalValue(1); setCiEndMode("none"); setCiEndDate(""); setCiOccurrenceCount("");
+            setCiName("");
+            setCiDesc("");
+            setCiPurchaseCost(0);
+            setCiOccurrenceCost(0);
+            setCiIntervalType("Daily");
+            setCiIntervalValue(1);
+            setCiEndMode("none");
+            setCiEndDate("");
+            setCiOccurrenceCount("");
           } catch (err) {
             setCiErr(err.message || String(err));
           } finally {
@@ -475,13 +716,18 @@
           if (!freq || !freq.intervalType) return "";
           if (freq.intervalType === "OneTime") {
             // Optional: show the date if present
-            const d = freq.startDate ? new Date(freq.startDate).toLocaleDateString() : "";
+            const d = freq.startDate
+              ? new Date(freq.startDate).toLocaleDateString()
+              : "";
             return d ? `One-time (${d})` : "One-time";
           }
           const n = Number(freq.intervalValue || 1);
           const unit = freq.intervalType.toLowerCase(); // daily/weekly/monthly/yearly → day/week/month/year
           // normalize plural
-          const singular = { daily: "day", weekly: "week", monthly: "month", yearly: "year" }[unit] || unit;
+          const singular =
+            { daily: "day", weekly: "week", monthly: "month", yearly: "year" }[
+              unit
+            ] || unit;
           return `Every ${n} ${n === 1 ? singular : singular + "s"}`;
         }
 
@@ -490,19 +736,27 @@
             setCniLoading(true);
             setCniErr("");
             setCniItems([]);
-            const jwt = localStorage.getItem("jwt"); if (!jwt) throw new Error("UNAUTHENTICATED");
+            const jwt = localStorage.getItem("jwt");
+            if (!jwt) throw new Error("UNAUTHENTICATED");
             if (!personId) return;
 
-            const r = await fetch(`/api/care-need-items?personId=${encodeURIComponent(personId)}`, {
-              headers: { Authorization: "Bearer " + jwt }
-            });
+            const r = await fetch(
+              `/api/care-need-items?personId=${encodeURIComponent(personId)}`,
+              {
+                headers: { Authorization: "Bearer " + jwt },
+              }
+            );
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Failed to load items");
 
             // Optional: sort by startDate or name
-            d.sort((a,b) => {
-              const as = a.frequency.startDate ? new Date(a.frequency.startDate).getTime() : 0;
-              const bs = b.frequency.startDate ? new Date(b.frequency.startDate).getTime() : 0;
+            d.sort((a, b) => {
+              const as = a.frequency.startDate
+                ? new Date(a.frequency.startDate).getTime()
+                : 0;
+              const bs = b.frequency.startDate
+                ? new Date(b.frequency.startDate).getTime()
+                : 0;
               return as - bs || a.name.localeCompare(b.name);
             });
 
@@ -523,7 +777,6 @@
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [clients]);
 
-
         async function loadTasksFor(personId) {
           try {
             setTasksLoading(true);
@@ -532,9 +785,14 @@
             if (!jwtNow) throw new Error("UNAUTHENTICATED");
 
             // Adjust the query as you like: add &status=Scheduled or date filters if your API supports them
-            const r = await fetch(`/api/care-tasks?personId=${encodeURIComponent(personId)}&sort=dueDate`, {
-              headers: { Authorization: "Bearer " + jwtNow }
-            });
+            const r = await fetch(
+              `/api/care-tasks?personId=${encodeURIComponent(
+                personId
+              )}&sort=dueDate`,
+              {
+                headers: { Authorization: "Bearer " + jwtNow },
+              }
+            );
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Failed to load tasks");
 
@@ -551,19 +809,18 @@
             for (const t of data) {
               if (t.status === "Completed") {
                 if (t.cost !== undefined && t.cost !== null) {
-                  hidden[t._id] = true;   // hide on load if it already has a saved cost
+                  hidden[t._id] = true; // hide on load if it already has a saved cost
                 } else {
-                  hidden[t._id] = false;  // show editor if completed but no cost yet
+                  hidden[t._id] = false; // show editor if completed but no cost yet
                 }
               } else {
-                hidden[t._id] = true;     // not completed -> never show editor
+                hidden[t._id] = true; // not completed -> never show editor
               }
-              drafts[t._id] = "";         // clear drafts on load
+              drafts[t._id] = ""; // clear drafts on load
             }
 
             setCostEditorHiddenByTask(hidden);
             setCostDraftByTask(drafts);
-
           } catch (e) {
             setTasksErr(e.message || String(e));
             setTasks([]);
@@ -600,8 +857,11 @@
 
             const r = await fetch(`/api/care-tasks/${task._id}`, {
               method: "PATCH",
-              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-              body: JSON.stringify(body)
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwtNow,
+              },
+              body: JSON.stringify(body),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Update failed");
@@ -611,16 +871,21 @@
               await loadTasksFor(tasksClientId);
             }
 
-
             // visibility behavior:
             if (checked) {
               // just completed → show the editor
-              setCostEditorHiddenByTask(prev => ({ ...prev, [task._id]: false }));
+              setCostEditorHiddenByTask((prev) => ({
+                ...prev,
+                [task._id]: false,
+              }));
               // optional: clear draft so user types fresh
-              setCostDraftByTask(prev => ({ ...prev, [task._id]: "" }));
+              setCostDraftByTask((prev) => ({ ...prev, [task._id]: "" }));
             } else {
               // un-completed → next time it completes, show editor again
-              setCostEditorHiddenByTask(prev => ({ ...prev, [task._id]: false }));
+              setCostEditorHiddenByTask((prev) => ({
+                ...prev,
+                [task._id]: false,
+              }));
             }
 
             if (tasksClientId) loadTasksFor(tasksClientId);
@@ -628,8 +893,6 @@
             alert("Failed to update task: " + (e.message || e));
           }
         }
-
-
 
         // async function toggleTaskComplete(task, checked) {
         //   try {
@@ -691,12 +954,20 @@
         async function loadComments(taskId) {
           const jwtNow = localStorage.getItem("jwt");
           if (!jwtNow) return;
-          const r = await fetch(`/api/comments?careTaskId=${encodeURIComponent(taskId)}`, {
-            headers: { Authorization: "Bearer " + jwtNow }
-          });
+          const r = await fetch(
+            `/api/comments?careTaskId=${encodeURIComponent(taskId)}`,
+            {
+              headers: { Authorization: "Bearer " + jwtNow },
+            }
+          );
           const data = await r.json();
           if (!r.ok) throw new Error(data.error || "Failed to load comments");
-          setCommentsByTask(prev => ({ ...prev, [taskId]: data.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)) }));
+          setCommentsByTask((prev) => ({
+            ...prev,
+            [taskId]: data.sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            ),
+          }));
         }
 
         async function addComment(taskId) {
@@ -707,8 +978,14 @@
 
             const r = await fetch(`/api/comments`, {
               method: "POST",
-              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-              body: JSON.stringify({ careTaskId: taskId, text: newCommentText.trim() })
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwtNow,
+              },
+              body: JSON.stringify({
+                careTaskId: taskId,
+                text: newCommentText.trim(),
+              }),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Failed to add comment");
@@ -723,16 +1000,30 @@
         async function loadFiles(taskId) {
           const jwtNow = localStorage.getItem("jwt");
           if (!jwtNow) return;
-          const r = await fetch(`/api/file-upload?careTaskId=${encodeURIComponent(taskId)}`, {
-            headers: { Authorization: "Bearer " + jwtNow }
-          });
+          const r = await fetch(
+            `/api/file-upload?careTaskId=${encodeURIComponent(taskId)}`,
+            {
+              headers: { Authorization: "Bearer " + jwtNow },
+            }
+          );
           const data = await r.json();
           if (!r.ok) throw new Error(data.error || "Failed to load files");
-          setFilesByTask(prev => ({ ...prev, [taskId]: data.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)) }));
+          setFilesByTask((prev) => ({
+            ...prev,
+            [taskId]: data.sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            ),
+          }));
         }
 
         function resetNewFile() {
-          setNewFile({ filename:"", urlOrPath:"", fileType:"", size:"", description:"" });
+          setNewFile({
+            filename: "",
+            urlOrPath: "",
+            fileType: "",
+            size: "",
+            description: "",
+          });
         }
 
         async function addFile(taskId) {
@@ -749,12 +1040,15 @@
               urlOrPath: newFile.urlOrPath,
               fileType: newFile.fileType || undefined,
               size: newFile.size ? Number(newFile.size) : undefined,
-              description: newFile.description || undefined
+              description: newFile.description || undefined,
             };
             const r = await fetch(`/api/file-upload`, {
               method: "POST",
-              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-              body: JSON.stringify(payload)
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwtNow,
+              },
+              body: JSON.stringify(payload),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Failed to add file");
@@ -784,7 +1078,6 @@
           }
         }
 
-
         async function saveTaskCost(taskId) {
           try {
             const jwtNow = localStorage.getItem("jwt");
@@ -792,7 +1085,8 @@
 
             const raw = costDraftByTask[taskId];
             // Treat empty/undefined/null as 0
-            const num = (raw === "" || raw === undefined || raw === null) ? 0 : Number(raw);
+            const num =
+              raw === "" || raw === undefined || raw === null ? 0 : Number(raw);
 
             if (Number.isNaN(num) || num < 0) {
               alert("Please enter a valid non-negative amount.");
@@ -801,17 +1095,20 @@
 
             const r = await fetch(`/api/care-tasks/${taskId}`, {
               method: "PATCH",
-              headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-              body: JSON.stringify({ cost: num })
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwtNow,
+              },
+              body: JSON.stringify({ cost: num }),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Update failed");
 
             // hide editor until user unchecks & re-checks Completed
-            setCostEditorHiddenByTask(prev => ({ ...prev, [taskId]: true }));
+            setCostEditorHiddenByTask((prev) => ({ ...prev, [taskId]: true }));
 
             // optional: clear draft; displayed value will come from refreshed task
-            setCostDraftByTask(prev => ({ ...prev, [taskId]: "" }));
+            setCostDraftByTask((prev) => ({ ...prev, [taskId]: "" }));
 
             if (tasksClientId) await loadTasksFor(tasksClientId);
           } catch (e) {
@@ -845,23 +1142,29 @@
         //   }
         // }
 
-        
         function toAnnualBudget(type, amt) {
           const n = Number(amt) || 0;
-          if (type === "Week")  return n * 52.15; // AU weeks per year ≈ 52.15
+          if (type === "Week") return n * 52.15; // AU weeks per year ≈ 52.15
           if (type === "Month") return n * 12;
           return n; // Year
         }
 
         async function loadBudgetReport() {
           try {
-            setReportErr(""); setReport(null);
-            const jwt = localStorage.getItem("jwt"); if (!jwt) throw new Error("UNAUTHENTICATED");
+            setReportErr("");
+            setReport(null);
+            const jwt = localStorage.getItem("jwt");
+            if (!jwt) throw new Error("UNAUTHENTICATED");
             if (!reportClientId) throw new Error("Please choose a client");
 
-            const r = await fetch(`/api/reports/budget?personId=${encodeURIComponent(reportClientId)}&year=${encodeURIComponent(reportYear)}`, {
-              headers: { Authorization: "Bearer " + jwt }
-            });
+            const r = await fetch(
+              `/api/reports/budget?personId=${encodeURIComponent(
+                reportClientId
+              )}&year=${encodeURIComponent(reportYear)}`,
+              {
+                headers: { Authorization: "Bearer " + jwt },
+              }
+            );
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || "Failed to load report");
             setReport(d);
@@ -876,7 +1179,7 @@
           if (!jwtNow) return;
           fetch("/api/care-tasks/sweep-overdue", {
             method: "POST",
-            headers: { Authorization: "Bearer " + jwtNow }
+            headers: { Authorization: "Bearer " + jwtNow },
           })
             .then(() => {
               // after sweep, refresh current client's tasks
@@ -891,7 +1194,7 @@
           if (!jwtNow) return;
           fetch("/api/scheduling/ensure-horizon?horizonDays=730", {
             method: "POST",
-            headers: { Authorization: "Bearer " + jwtNow }
+            headers: { Authorization: "Bearer " + jwtNow },
           })
             .then(() => {
               // reload current client's tasks after extending horizon
@@ -900,74 +1203,129 @@
             .catch(() => {});
         }, [tasksClientId]); // re-run when switching client to keep list fresh
 
-
         return (
           <React.Fragment>
             <div className="card">
-              <h2>Welcome, {(me && me.name) || ""} <span className="badge">{(me && me.role) || ""}</span></h2>
-              <p>Org: <code>{(me && me.organizationId) || ""}</code> · {(me && me.email) || ""}</p>
-              <button className="secondary" onClick={onLogout}>Log out</button>
+              <h2>
+                Welcome, {(me && me.name) || ""}{" "}
+                <span className="badge">{(me && me.role) || ""}</span>
+              </h2>
+              <p>
+                Org: <code>{(me && me.organizationId) || ""}</code> ·{" "}
+                {(me && me.email) || ""}
+              </p>
+              <button className="secondary" onClick={onLogout}>
+                Log out
+              </button>
             </div>
-            {me && (me.role === "Admin" || me.role === "Family" || me.role === "PoA") && (
-              <div className="card">
-                <h3>Create invite token</h3>
-                <label>Type</label>
-                <select value={type} onChange={e=>setType(e.target.value)}>
-                  {allowedTypesFor(me.role).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                </select>
+            {me &&
+              (me.role === "Admin" ||
+                me.role === "Family" ||
+                me.role === "PoA") && (
+                <div className="card">
+                  <h3>Create invite token</h3>
+                  <label>Type</label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                  >
+                    {allowedTypesFor(me.role).map(([v, label]) => (
+                      <option key={v} value={v}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
 
-                <label>Organization ID</label>
-                <input value={organizationId} disabled />
+                  <label>Organization ID</label>
+                  <input value={organizationId} disabled />
 
-                <label>Client (required)</label>
-                <select value={selectedPersonId} onChange={e=>setSelectedPersonId(e.target.value)}>
-                  <option value="">— Select a client —</option>
-                  {clients.map(c => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <label>Client (required)</label>
+                  <select
+                    value={selectedPersonId}
+                    onChange={(e) => setSelectedPersonId(e.target.value)}
+                  >
+                    <option value="">— Select a client —</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
 
-                <div className="row">
-                  <div>
-                    <label>Expires in (days)</label>
-                    <input type="number" min="1" value={expiresInDays} onChange={e=>setExpiresInDays(e.target.value)} />
+                  <div className="row">
+                    <div>
+                      <label>Expires in (days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={expiresInDays}
+                        onChange={(e) => setExpiresInDays(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label>Max uses</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="15"
+                        value={maxUses}
+                        onChange={(e) => setMaxUses(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label>Max uses</label>
-                    <input type="number" min="1" max="15" value={maxUses} onChange={e=>setMaxUses(e.target.value)} />
-                  </div>
+
+                  <button onClick={createToken} disabled={!selectedPersonId}>
+                    Create token
+                  </button>
+                  {tokenResult &&
+                    (tokenResult.token ? (
+                      <p>
+                        Share code: <code>{tokenResult.token}</code> (expires{" "}
+                        {new Date(tokenResult.expiresAt).toLocaleString()})
+                      </p>
+                    ) : (
+                      <p style={{ color: "#b91c1c" }}>
+                        Error: {tokenResult.error}
+                      </p>
+                    ))}
                 </div>
-
-                <button onClick={createToken} disabled={!selectedPersonId}>Create token</button>
-                {tokenResult && (tokenResult.token
-                  ? <p>Share code: <code>{tokenResult.token}</code> (expires {new Date(tokenResult.expiresAt).toLocaleString()})</p>
-                  : <p style={{color:"#b91c1c"}}>Error: {tokenResult.error}</p>
-                )}
-              </div>
-            )}
+              )}
 
             {me && me.role === "Family" && (
               <div className="card">
                 <h3>Add a client (PWSN)</h3>
                 <form onSubmit={addClient}>
-                  <input placeholder="Client name" value={newPName} onChange={e=>setNewPName(e.target.value)} />
+                  <input
+                    placeholder="Client name"
+                    value={newPName}
+                    onChange={(e) => setNewPName(e.target.value)}
+                  />
                   <div className="row">
                     <div>
                       <label>Date of birth</label>
-                      <input type="date" value={newPDob} onChange={e=>setNewPDob(e.target.value)} />
+                      <input
+                        type="date"
+                        value={newPDob}
+                        onChange={(e) => setNewPDob(e.target.value)}
+                      />
                     </div>
                     <div>
                       <label>Medical info (optional)</label>
-                      <input value={newPMed} onChange={e=>setNewPMed(e.target.value)} placeholder="e.g., allergies, notes..." />
+                      <input
+                        value={newPMed}
+                        onChange={(e) => setNewPMed(e.target.value)}
+                        placeholder="e.g., allergies, notes..."
+                      />
                     </div>
                   </div>
 
                   <div className="row">
                     <div>
                       <label>Budget period</label>
-                      <select value={newPBudgetType} onChange={e=>setNewPBudgetType(e.target.value)}>
+                      <select
+                        value={newPBudgetType}
+                        onChange={(e) => setNewPBudgetType(e.target.value)}
+                      >
                         <option>Year</option>
                         <option>Month</option>
                         <option>Week</option>
@@ -975,34 +1333,55 @@
                     </div>
                     <div>
                       <label>Budget amount (AUD)</label>
-                      <input type="number" min="0" step="0.01" value={newPBudgetAmt} onChange={e=>setNewPBudgetAmt(e.target.value)} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newPBudgetAmt}
+                        onChange={(e) => setNewPBudgetAmt(e.target.value)}
+                      />
                     </div>
                   </div>
 
-                  <p style={{opacity:.7}}>
-                    Annual budget will be saved as: <strong>
-                      {new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD"}).format(toAnnualBudget(newPBudgetType,newPBudgetAmt))}
+                  <p style={{ opacity: 0.7 }}>
+                    Annual budget will be saved as:{" "}
+                    <strong>
+                      {new Intl.NumberFormat("en-AU", {
+                        style: "currency",
+                        currency: "AUD",
+                      }).format(toAnnualBudget(newPBudgetType, newPBudgetAmt))}
                     </strong>
                   </p>
 
-                  <button disabled={adding}>{adding ? "Adding..." : "Add client"}</button>
-                  {addErr && <p style={{color:"#b91c1c"}}>Error: {addErr}</p>}
-                  <p className="badge">Org derived from your account: <code>{(me && me.organizationId) || ""}</code></p>
+                  <button disabled={adding}>
+                    {adding ? "Adding..." : "Add client"}
+                  </button>
+                  {addErr && (
+                    <p style={{ color: "#b91c1c" }}>Error: {addErr}</p>
+                  )}
+                  <p className="badge">
+                    Org derived from your account:{" "}
+                    <code>{(me && me.organizationId) || ""}</code>
+                  </p>
                 </form>
               </div>
             )}
 
-            
             <div className="card">
               <h3>My Clients</h3>
               {clients.length === 0 ? (
                 <p>No linked clients.</p>
               ) : (
                 <ul>
-                  {clients.map(c => (
+                  {clients.map((c) => (
                     <li key={c._id}>
                       <strong>{c.name}</strong> ({c.relationshipType})
-                      {c.dateOfBirth && <span> · DOB {new Date(c.dateOfBirth).toLocaleDateString()}</span>}
+                      {c.dateOfBirth && (
+                        <span>
+                          {" "}
+                          · DOB {new Date(c.dateOfBirth).toLocaleDateString()}
+                        </span>
+                      )}
                       {c.status && <span> · Status {c.status}</span>}
                     </li>
                   ))}
@@ -1010,27 +1389,38 @@
               )}
             </div>
 
-
             {me && (me.role === "Family" || me.role === "Admin") && (
               <div className="card">
                 <h3>Create Care Need Item</h3>
                 <form onSubmit={submitCareNeedItem}>
                   <label>Client</label>
-                  <select value={ciPersonId} onChange={e=>setCiPersonId(e.target.value)}>
+                  <select
+                    value={ciPersonId}
+                    onChange={(e) => setCiPersonId(e.target.value)}
+                  >
                     <option value="">— Select a client —</option>
-                    {clients.map(c => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
 
                   <div className="row">
                     <div>
                       <label>Name</label>
-                      <input value={ciName} onChange={e=>setCiName(e.target.value)} placeholder="e.g., Dental visit" />
+                      <input
+                        value={ciName}
+                        onChange={(e) => setCiName(e.target.value)}
+                        placeholder="e.g., Dental visit"
+                      />
                     </div>
                     <div>
                       <label>Category</label>
-                      <select value={ciCategory} onChange={e=>setCiCategory(e.target.value)}>
+                      <select
+                        value={ciCategory}
+                        onChange={(e) => setCiCategory(e.target.value)}
+                      >
                         <option value="Medical">Medical</option>
                         <option value="DailyLiving">DailyLiving</option>
                         <option value="Nutrition">Nutrition</option>
@@ -1042,12 +1432,19 @@
                   </div>
 
                   <label>Description</label>
-                  <input value={ciDesc} onChange={e=>setCiDesc(e.target.value)} placeholder="Optional notes" />
+                  <input
+                    value={ciDesc}
+                    onChange={(e) => setCiDesc(e.target.value)}
+                    placeholder="Optional notes"
+                  />
 
                   <div className="row">
                     <div>
                       <label>Interval Type</label>
-                      <select value={ciIntervalType} onChange={e=>setCiIntervalType(e.target.value)}>
+                      <select
+                        value={ciIntervalType}
+                        onChange={(e) => setCiIntervalType(e.target.value)}
+                      >
                         <option value="Daily">Daily</option>
                         <option value="Weekly">Weekly</option>
                         <option value="Monthly">Monthly</option>
@@ -1055,49 +1452,72 @@
                         <option value="OneTime">OneTime</option>
                       </select>
                     </div>
-                    {ciIntervalType !== "OneTime" &&
+                    {ciIntervalType !== "OneTime" && (
                       <div>
                         <label>Every N (interval value)</label>
-                        <input type="number" min="1" value={ciIntervalValue} onChange={e=>setCiIntervalValue(e.target.value)} />
+                        <input
+                          type="number"
+                          min="1"
+                          value={ciIntervalValue}
+                          onChange={(e) => setCiIntervalValue(e.target.value)}
+                        />
                       </div>
-                    }
+                    )}
                   </div>
 
                   <div className="row">
                     <div>
                       <label>Start date</label>
-                      <input type="date" value={ciStartDate} onChange={e=>setCiStartDate(e.target.value)} />
+                      <input
+                        type="date"
+                        value={ciStartDate}
+                        onChange={(e) => setCiStartDate(e.target.value)}
+                      />
                     </div>
-                    {ciIntervalType !== "OneTime" &&
+                    {ciIntervalType !== "OneTime" && (
                       <div>
                         <label>End condition</label>
-                        <select value={ciEndMode} onChange={e=>setCiEndMode(e.target.value)}>
+                        <select
+                          value={ciEndMode}
+                          onChange={(e) => setCiEndMode(e.target.value)}
+                        >
                           <option value="none">No end</option>
                           <option value="endDate">End by date</option>
                           <option value="count">End after N occurrences</option>
                         </select>
                       </div>
-                    }
+                    )}
                   </div>
 
                   {ciEndMode === "endDate" && (
                     <div>
                       <label>End date</label>
-                      <input type="date" value={ciEndDate} onChange={e=>setCiEndDate(e.target.value)} />
+                      <input
+                        type="date"
+                        value={ciEndDate}
+                        onChange={(e) => setCiEndDate(e.target.value)}
+                      />
                     </div>
                   )}
                   {ciEndMode === "count" && (
                     <div>
                       <label>Occurrences</label>
-                      <input type="number" min="1" value={ciOccurrenceCount} onChange={e=>setCiOccurrenceCount(e.target.value)} />
+                      <input
+                        type="number"
+                        min="1"
+                        value={ciOccurrenceCount}
+                        onChange={(e) => setCiOccurrenceCount(e.target.value)}
+                      />
                     </div>
                   )}
-
 
                   <div className="row">
                     <div>
                       <label>Schedule type</label>
-                      <select value={ciScheduleType} onChange={e=>setCiScheduleType(e.target.value)}>
+                      <select
+                        value={ciScheduleType}
+                        onChange={(e) => setCiScheduleType(e.target.value)}
+                      >
                         <option value="AllDay">All-day</option>
                         <option value="Timed">Scheduled (start/end)</option>
                       </select>
@@ -1107,8 +1527,16 @@
                       <div>
                         <label>Start time / End time</label>
                         <div className="row">
-                          <input type="time" value={ciStartTime} onChange={e=>setCiStartTime(e.target.value)} />
-                          <input type="time" value={ciEndTime} onChange={e=>setCiEndTime(e.target.value)} />
+                          <input
+                            type="time"
+                            value={ciStartTime}
+                            onChange={(e) => setCiStartTime(e.target.value)}
+                          />
+                          <input
+                            type="time"
+                            value={ciEndTime}
+                            onChange={(e) => setCiEndTime(e.target.value)}
+                          />
                         </div>
                       </div>
                     )}
@@ -1117,20 +1545,35 @@
                   <div className="row">
                     <div>
                       <label>Purchase cost (AUD)</label>
-                      <input type="number" min="0" step="0.01" value={ciPurchaseCost !== 0 ? ciPurchaseCost : ""} onChange={e=>setCiPurchaseCost(e.target.value)} placeholder="0.00"/>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={ciPurchaseCost !== 0 ? ciPurchaseCost : ""}
+                        onChange={(e) => setCiPurchaseCost(e.target.value)}
+                        placeholder="0.00"
+                      />
                     </div>
-                    {ciIntervalType !== "OneTime" &&
-                    <div>
-                      <label>Expected occurrence cost per task (AUD)</label>
-                      <input type="number" min="0" step="0.01" value={ciOccurrenceCost !== 0 ? ciOccurrenceCost : ""} onChange={e=>setCiOccurrenceCost(e.target.value)} placeholder="0.00"/>
-                    </div>
-                    }
+                    {ciIntervalType !== "OneTime" && (
+                      <div>
+                        <label>Expected occurrence cost per task (AUD)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={ciOccurrenceCost !== 0 ? ciOccurrenceCost : ""}
+                          onChange={(e) => setCiOccurrenceCost(e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    )}
                   </div>
 
-
-                  <button disabled={ciBusy}>{ciBusy ? "Saving..." : "Create & Generate"}</button>
-                  {ciErr && <p style={{color:"#b91c1c"}}>Error: {ciErr}</p>}
-                  {ciSuccess && <p style={{color:"#065f46"}}>{ciSuccess}</p>}
+                  <button disabled={ciBusy}>
+                    {ciBusy ? "Saving..." : "Create & Generate"}
+                  </button>
+                  {ciErr && <p style={{ color: "#b91c1c" }}>Error: {ciErr}</p>}
+                  {ciSuccess && <p style={{ color: "#065f46" }}>{ciSuccess}</p>}
                 </form>
               </div>
             )}
@@ -1142,25 +1585,34 @@
                   <label>Client</label>
                   <select
                     value={cniClientId}
-                    onChange={e => {
+                    onChange={(e) => {
                       const v = e.target.value;
                       setCniClientId(v);
                       if (v) loadCareNeedItemsFor(v);
                     }}
                   >
                     <option value="">— Select client —</option>
-                    {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label>&nbsp;</label>
-                  <button className="secondary" onClick={() => cniClientId && loadCareNeedItemsFor(cniClientId)}>
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      cniClientId && loadCareNeedItemsFor(cniClientId)
+                    }
+                  >
                     Refresh
                   </button>
                 </div>
               </div>
 
-              {cniErr && <p style={{ color:"#b91c1c" }}>Error: {cniErr}</p>}
+              {cniErr && <p style={{ color: "#b91c1c" }}>Error: {cniErr}</p>}
               {cniLoading && <p>Loading items…</p>}
 
               {!cniLoading && cniItems.length === 0 && (
@@ -1168,28 +1620,34 @@
               )}
 
               {cniItems.length > 0 && (
-                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign:"left" }}>Name</th>
-                      <th style={{ textAlign:"left" }}>Frequency</th>
-                      <th style={{ textAlign:"right" }}>Purchase cost</th>
-                      <th style={{ textAlign:"right" }}>Expected per task</th>
-                      <th style={{ textAlign:"left" }}>Schedule</th>
-                      <th style={{ textAlign:"left" }}>Category</th>
-                      <th style={{ textAlign:"left" }}>Status</th>
+                      <th style={{ textAlign: "left" }}>Name</th>
+                      <th style={{ textAlign: "left" }}>Frequency</th>
+                      <th style={{ textAlign: "right" }}>Purchase cost</th>
+                      <th style={{ textAlign: "right" }}>Expected per task</th>
+                      <th style={{ textAlign: "left" }}>Schedule</th>
+                      <th style={{ textAlign: "left" }}>Category</th>
+                      <th style={{ textAlign: "left" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {cniItems.map(it => (
-                      <tr key={it._id} style={{ borderTop:"1px solid #eee" }}>
+                    {cniItems.map((it) => (
+                      <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
                         <td>{it.name}</td>
                         <td>{formatFrequency(it.frequency)}</td>
-                        <td style={{ textAlign:"right" }}>
-                          {new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" }).format(it.purchaseCost || 0)}
+                        <td style={{ textAlign: "right" }}>
+                          {new Intl.NumberFormat("en-AU", {
+                            style: "currency",
+                            currency: "AUD",
+                          }).format(it.purchaseCost || 0)}
                         </td>
-                        <td style={{ textAlign:"right" }}>
-                          {new Intl.NumberFormat("en-AU", { style:"currency", currency:"AUD" }).format(it.occurrenceCost || 0)}
+                        <td style={{ textAlign: "right" }}>
+                          {new Intl.NumberFormat("en-AU", {
+                            style: "currency",
+                            currency: "AUD",
+                          }).format(it.occurrenceCost || 0)}
                         </td>
                         <td>
                           <span className="badge">
@@ -1199,7 +1657,9 @@
                           </span>
                         </td>
                         <td>{it.category}</td>
-                        <td><span className="badge">{it.status}</span></td>
+                        <td>
+                          <span className="badge">{it.status}</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1215,8 +1675,10 @@
                 <div>
                   <label>Client</label>
                   <select value={tasksClientId} onChange={onChangeTasksClient}>
-                    {clients.map(c => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1224,11 +1686,15 @@
 
               {/* If only one client, show its name */}
               {clients.length === 1 && (
-                <p>Client: <strong>{clients[0].name}</strong></p>
+                <p>
+                  Client: <strong>{clients[0].name}</strong>
+                </p>
               )}
 
               {tasksLoading && <p>Loading…</p>}
-              {tasksErr && <p style={{color:"#b91c1c"}}>Error: {tasksErr}</p>}
+              {tasksErr && (
+                <p style={{ color: "#b91c1c" }}>Error: {tasksErr}</p>
+              )}
 
               {!tasksLoading && !tasksErr && tasks.length === 0 && (
                 <p>No tasks found for this client.</p>
@@ -1236,8 +1702,8 @@
 
               {!tasksLoading && !tasksErr && tasks.length > 0 && (
                 <ul>
-                  {tasks.map(t => (
-                    <li key={t._id} >
+                  {tasks.map((t) => (
+                    <li key={t._id}>
                       <div>
                         <div style={{ display: "inline", marginLeft: 8 }}>
                           {/*
@@ -1261,53 +1727,92 @@
                           {" · "}
                           {new Date(t.dueDate).toLocaleDateString()}
 
-                          {t.scheduleType === "Timed" && t.startAt && t.endAt && (
-                            <React.Fragment>
-                              {" · "}
-                              {new Date(t.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              {" – "}
-                              {new Date(t.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </React.Fragment>
-                          )}
+                          {t.scheduleType === "Timed" &&
+                            t.startAt &&
+                            t.endAt && (
+                              <React.Fragment>
+                                {" · "}
+                                {new Date(t.startAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                                {" – "}
+                                {new Date(t.endAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </React.Fragment>
+                            )}
                           {" · "}
-                          <span className="badge">{t.scheduleType === "AllDay" ? "All-day" : "Timed"}</span>
+                          <span className="badge">
+                            {t.scheduleType === "AllDay" ? "All-day" : "Timed"}
+                          </span>
                           {" · "}
                           <span className="badge">{t.status}</span>
-                          <input style={{display:"inline", width:"auto", marginLeft:16}}
+                          <input
+                            style={{
+                              display: "inline",
+                              width: "auto",
+                              marginLeft: 16,
+                            }}
                             type="checkbox"
                             checked={t.status === "Completed"}
-                            onChange={e => toggleTaskComplete(t, e.target.checked)}
-                            title={t.status === "Completed" ? "Unmark as completed" : "Mark as completed"}
+                            onChange={(e) =>
+                              toggleTaskComplete(t, e.target.checked)
+                            }
+                            title={
+                              t.status === "Completed"
+                                ? "Unmark as completed"
+                                : "Mark as completed"
+                            }
                           />
                           {/* Show spent amount (read-only) if present */}
-                          {t.status === "Completed" && t.cost !== undefined && t.cost !== null && (
-                            <React.Fragment>
-                              {" · "}Spent: <strong>{aud.format(t.cost)}</strong>
-                              {" "}
-                              <button
-                                className="secondary"
-                                style={{ marginTop: 8, borderRadius:8, padding: 10 }}
-                                onClick={() => {
-                                  // reopen editor & prefill with current cost (or 0)
-                                  setCostEditorHiddenByTask(prev => ({ ...prev, [t._id]: false }));
-                                  setCostDraftByTask(prev => ({
-                                    ...prev,
-                                    [t._id]:
-                                      (t.cost !== undefined && t.cost !== null)
-                                        ? String(t.cost) // keep as string for input
-                                        : "0"
-                                  }));
-                                }}
-                              >
-                                Change cost
-                              </button>
-
-                            </React.Fragment>
-                          )}
+                          {t.status === "Completed" &&
+                            t.cost !== undefined &&
+                            t.cost !== null && (
+                              <React.Fragment>
+                                {" · "}Spent:{" "}
+                                <strong>{aud.format(t.cost)}</strong>{" "}
+                                <button
+                                  className="secondary"
+                                  style={{
+                                    marginTop: 8,
+                                    borderRadius: 8,
+                                    padding: 10,
+                                  }}
+                                  onClick={() => {
+                                    // reopen editor & prefill with current cost (or 0)
+                                    setCostEditorHiddenByTask((prev) => ({
+                                      ...prev,
+                                      [t._id]: false,
+                                    }));
+                                    setCostDraftByTask((prev) => ({
+                                      ...prev,
+                                      [t._id]:
+                                        t.cost !== undefined && t.cost !== null
+                                          ? String(t.cost) // keep as string for input
+                                          : "0",
+                                    }));
+                                  }}
+                                >
+                                  Change cost
+                                </button>
+                              </React.Fragment>
+                            )}
                         </div>
-                        
-                        <button className="secondary" onClick={() => toggleComments(t._id)}>Comments</button>
-                        <button className="secondary" onClick={() => toggleFiles(t._id)}>Files</button>
+
+                        <button
+                          className="secondary"
+                          onClick={() => toggleComments(t._id)}
+                        >
+                          Comments
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => toggleFiles(t._id)}
+                        >
+                          Files
+                        </button>
                       </div>
 
                       {/* Cost entry appears ONLY when completed and no cost yet 
@@ -1332,40 +1837,70 @@
                       )}
                       */}
                       {/* Cost entry appears ONLY when completed and editor not hidden */}
-                      {t.status === "Completed" && !costEditorHiddenByTask[t._id] && (
-                        <div style={{ marginTop: 8, display:"flex", alignItems:"center", gap: 8 }}>
-                          <label style={{ minWidth: 120 }}>Budget spent (AUD)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={
-                              costDraftByTask[t._id] !== undefined
-                                ? costDraftByTask[t._id]
-                                : (t.cost !== undefined && t.cost !== null ? t.cost : 0)
-                            }
-                            onChange={e => setCostDraftByTask(prev => ({ ...prev, [t._id]: e.target.value }))}
-                            style={{ maxWidth: 160 }}
-                          />
-                          <button onClick={() => saveTaskCost(t._id)}>Save</button>
-                        </div>
-                      )}
+                      {t.status === "Completed" &&
+                        !costEditorHiddenByTask[t._id] && (
+                          <div
+                            style={{
+                              marginTop: 8,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <label style={{ minWidth: 120 }}>
+                              Budget spent (AUD)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={
+                                costDraftByTask[t._id] !== undefined
+                                  ? costDraftByTask[t._id]
+                                  : t.cost !== undefined && t.cost !== null
+                                  ? t.cost
+                                  : 0
+                              }
+                              onChange={(e) =>
+                                setCostDraftByTask((prev) => ({
+                                  ...prev,
+                                  [t._id]: e.target.value,
+                                }))
+                              }
+                              style={{ maxWidth: 160 }}
+                            />
+                            <button onClick={() => saveTaskCost(t._id)}>
+                              Save
+                            </button>
+                          </div>
+                        )}
 
                       {/* Cost entry appears ONLY when completed, no cost yet, and not hidden */}
 
                       {/* Comments panel */}
                       {openCommentsFor === t._id && (
-                        <div style={{ marginTop: 8, background:"#fafafa", borderRadius:8, padding:8 }}>
-                          <h4 style={{ margin:"4px 0" }}>Comments</h4>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            background: "#fafafa",
+                            borderRadius: 8,
+                            padding: 8,
+                          }}
+                        >
+                          <h4 style={{ margin: "4px 0" }}>Comments</h4>
                           <div>
                             {(commentsByTask[t._id] || []).length === 0 ? (
                               <p>No comments yet.</p>
                             ) : (
                               <ul>
-                                {(commentsByTask[t._id] || []).map(c => (
+                                {(commentsByTask[t._id] || []).map((c) => (
                                   <li key={c._id}>
-                                    <strong>{(c.author && (c.author.name || c.author.email)) || "Unknown"}</strong>
+                                    <strong>
+                                      {(c.author &&
+                                        (c.author.name || c.author.email)) ||
+                                        "Unknown"}
+                                    </strong>
                                     {" · "}
                                     {new Date(c.createdAt).toLocaleString()}
                                     <div>{c.text}</div>
@@ -1378,17 +1913,28 @@
                             <input
                               placeholder="Write a comment…"
                               value={newCommentText}
-                              onChange={e=>setNewCommentText(e.target.value)}
+                              onChange={(e) =>
+                                setNewCommentText(e.target.value)
+                              }
                             />
-                            <button onClick={() => addComment(t._id)}>Add</button>
+                            <button onClick={() => addComment(t._id)}>
+                              Add
+                            </button>
                           </div>
                         </div>
                       )}
 
                       {/* Files panel */}
                       {openFilesFor === t._id && (
-                        <div style={{ marginTop: 8, background:"#fafafa", borderRadius:8, padding:8 }}>
-                          <h4 style={{ margin:"4px 0" }}>Files</h4>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            background: "#fafafa",
+                            borderRadius: 8,
+                            padding: 8,
+                          }}
+                        >
+                          <h4 style={{ margin: "4px 0" }}>Files</h4>
 
                           {/* Existing list */}
                           <div>
@@ -1396,19 +1942,44 @@
                               <p>No files yet.</p>
                             ) : (
                               <ul>
-                                {(filesByTask[t._id] || []).map(f => (
+                                {(filesByTask[t._id] || []).map((f) => (
                                   <li key={f._id} style={{ marginBottom: 6 }}>
                                     {/* small thumbnail for images */}
-                                    {f.fileType && f.fileType.startsWith("image/") ? (
-                                      <a href={f.urlOrPath} target="_blank" rel="noreferrer">
-                                        <img src={f.urlOrPath} alt={f.filename} style={{ maxHeight: 64, maxWidth: 96, objectFit: "cover", marginRight: 8, verticalAlign:"middle", borderRadius:4, border:"1px solid #ddd" }}/>
+                                    {f.fileType &&
+                                    f.fileType.startsWith("image/") ? (
+                                      <a
+                                        href={f.urlOrPath}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        <img
+                                          src={f.urlOrPath}
+                                          alt={f.filename}
+                                          style={{
+                                            maxHeight: 64,
+                                            maxWidth: 96,
+                                            objectFit: "cover",
+                                            marginRight: 8,
+                                            verticalAlign: "middle",
+                                            borderRadius: 4,
+                                            border: "1px solid #ddd",
+                                          }}
+                                        />
                                       </a>
                                     ) : (
-                                      <a href={f.urlOrPath} target="_blank" rel="noreferrer">{f.filename}</a>
+                                      <a
+                                        href={f.urlOrPath}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {f.filename}
+                                      </a>
                                     )}
                                     {" · "}
                                     {new Date(f.createdAt).toLocaleString()}
-                                    {f.description ? <div>{f.description}</div> : null}
+                                    {f.description ? (
+                                      <div>{f.description}</div>
+                                    ) : null}
                                   </li>
                                 ))}
                               </ul>
@@ -1421,12 +1992,22 @@
                             <input
                               placeholder="Filename (e.g., Pyjamas photo)"
                               value={newFile.filename}
-                              onChange={e=>setNewFile(prev=>({ ...prev, filename: e.target.value }))}
+                              onChange={(e) =>
+                                setNewFile((prev) => ({
+                                  ...prev,
+                                  filename: e.target.value,
+                                }))
+                              }
                             />
                             <input
                               placeholder="URL or path (https://…)"
                               value={newFile.urlOrPath}
-                              onChange={e=>setNewFile(prev=>({ ...prev, urlOrPath: e.target.value }))}
+                              onChange={(e) =>
+                                setNewFile((prev) => ({
+                                  ...prev,
+                                  urlOrPath: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                           {/*
@@ -1449,44 +2030,69 @@
                           <input
                             placeholder="Description (optional)"
                             value={newFile.description}
-                            onChange={e=>setNewFile(prev=>({ ...prev, description: e.target.value }))}
+                            onChange={(e) =>
+                              setNewFile((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
                           />
-                          <button onClick={() => addFile(t._id)}>Add file (link)</button>
+                          <button onClick={() => addFile(t._id)}>
+                            Add file (link)
+                          </button>
 
                           {/* --- Real upload (new) --- */}
                           <h5 style={{ marginTop: 12 }}>Upload a file</h5>
                           <form
                             onSubmit={async (e) => {
                               e.preventDefault();
-                              const form = e.currentTarget;             // <-- keep a real DOM ref
+                              const form = e.currentTarget; // <-- keep a real DOM ref
                               try {
                                 const jwtNow = localStorage.getItem("jwt");
                                 if (!jwtNow) throw new Error("UNAUTHENTICATED");
 
-                                const fd = new FormData(form);          // build before awaits is fine too
-                                fd.set("careTaskId", t._id);            // ensure task id included
+                                const fd = new FormData(form); // build before awaits is fine too
+                                fd.set("careTaskId", t._id); // ensure task id included
 
-                                const r = await fetch("/api/file-upload/upload", {
-                                  method: "POST",
-                                  headers: { Authorization: "Bearer " + jwtNow }, // DON'T set Content-Type
-                                  body: fd
-                                });
+                                const r = await fetch(
+                                  "/api/file-upload/upload",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      Authorization: "Bearer " + jwtNow,
+                                    }, // DON'T set Content-Type
+                                    body: fd,
+                                  }
+                                );
 
                                 // Be robust to non-JSON errors
-                                const isJson = r.headers.get("content-type").includes("application/json");
-                                const data = isJson ? await r.json() : { error: await r.text() };
+                                const isJson = r.headers
+                                  .get("content-type")
+                                  .includes("application/json");
+                                const data = isJson
+                                  ? await r.json()
+                                  : { error: await r.text() };
 
-                                if (!r.ok) throw new Error(data.error || "Upload failed");
+                                if (!r.ok)
+                                  throw new Error(
+                                    data.error || "Upload failed"
+                                  );
 
-                                form.reset();                            // <-- safe now
+                                form.reset(); // <-- safe now
                                 await loadFiles(t._id);
                               } catch (err) {
-                                alert("Upload failed: " + (err.message || String(err)));
+                                alert(
+                                  "Upload failed: " +
+                                    (err.message || String(err))
+                                );
                               }
                             }}
                           >
                             <input type="file" name="file" required />
-                            <input name="description" placeholder="Description (optional)" />
+                            <input
+                              name="description"
+                              placeholder="Description (optional)"
+                            />
                             <button type="submit">Upload</button>
                           </form>
                         </div>
@@ -1502,50 +2108,95 @@
               <div className="row">
                 <div>
                   <label>Client</label>
-                  <select value={reportClientId} onChange={e=>setReportClientId(e.target.value)}>
+                  <select
+                    value={reportClientId}
+                    onChange={(e) => setReportClientId(e.target.value)}
+                  >
                     <option value="">— Select client —</option>
-                    {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label>Year</label>
-                  <input type="number" min="2000" max="2100" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))} />
+                  <input
+                    type="number"
+                    min="2000"
+                    max="2100"
+                    value={reportYear}
+                    onChange={(e) => setReportYear(Number(e.target.value))}
+                  />
                 </div>
               </div>
               <button onClick={loadBudgetReport}>Run report</button>
-              {reportErr && <p style={{color:"#b91c1c"}}>Error: {reportErr}</p>}
+              {reportErr && (
+                <p style={{ color: "#b91c1c" }}>Error: {reportErr}</p>
+              )}
 
               {report && (
                 <div style={{ marginTop: 12 }}>
                   <p>
-                    <strong>Annual budget:</strong> {aud.format(report.annualBudget)}<br/>
-                    <strong>Already spent:</strong> {aud.format(report.spent.total)}
-                    {" "}<span style={{opacity:.7}}>(purchase {aud.format(report.spent.purchase)} + completed tasks {aud.format(report.spent.completed)})</span><br/>
-                    <strong>Current balance:</strong> {aud.format(report.balance.current)}<br/>
-                    <strong>Expected remaining (uncompleted tasks):</strong> {aud.format(report.expected.remaining)}<br/>
-                    <strong>Expected balance at year end:</strong> {aud.format(report.balance.expectedAtYearEnd)}
+                    <strong>Annual budget:</strong>{" "}
+                    {aud.format(report.annualBudget)}
+                    <br />
+                    <strong>Already spent:</strong>{" "}
+                    {aud.format(report.spent.total)}{" "}
+                    <span style={{ opacity: 0.7 }}>
+                      (purchase {aud.format(report.spent.purchase)} + completed
+                      tasks {aud.format(report.spent.completed)})
+                    </span>
+                    <br />
+                    <strong>Current balance:</strong>{" "}
+                    {aud.format(report.balance.current)}
+                    <br />
+                    <strong>
+                      Expected remaining (uncompleted tasks):
+                    </strong>{" "}
+                    {aud.format(report.expected.remaining)}
+                    <br />
+                    <strong>Expected balance at year end:</strong>{" "}
+                    {aud.format(report.balance.expectedAtYearEnd)}
                   </p>
 
                   <h4>By category</h4>
-                  {report.categories.length === 0 ? <p>No category data.</p> : (
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  {report.categories.length === 0 ? (
+                    <p>No category data.</p>
+                  ) : (
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
                       <thead>
                         <tr>
-                          <th style={{textAlign:"left"}}>Category</th>
-                          <th style={{textAlign:"right"}}>Spent</th>
-                          <th style={{textAlign:"right"}}>Expected To Spend</th>
-                          <th style={{textAlign:"right"}}>% Spent</th>
-                          <th style={{textAlign:"right"}}>% Expected To Spend</th>
+                          <th style={{ textAlign: "left" }}>Category</th>
+                          <th style={{ textAlign: "right" }}>Spent</th>
+                          <th style={{ textAlign: "right" }}>
+                            Expected To Spend
+                          </th>
+                          <th style={{ textAlign: "right" }}>% Spent</th>
+                          <th style={{ textAlign: "right" }}>
+                            % Expected To Spend
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {report.categories.map(c => (
+                        {report.categories.map((c) => (
                           <tr key={c.category}>
                             <td>{c.category}</td>
-                            <td style={{textAlign:"right"}}>{aud.format(c.totalSpent)}</td>
-                            <td style={{textAlign:"right"}}>{aud.format(c.expected)}</td>
-                            <td style={{textAlign:"right"}}>{(c.spentPct*100).toFixed(1)}%</td>
-                            <td style={{textAlign:"right"}}>{(c.expectedPct*100).toFixed(1)}%</td>
+                            <td style={{ textAlign: "right" }}>
+                              {aud.format(c.totalSpent)}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {aud.format(c.expected)}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {(c.spentPct * 100).toFixed(1)}%
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {(c.expectedPct * 100).toFixed(1)}%
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1557,14 +2208,19 @@
 
             <div className="card">
               <h3>Recent tokens</h3>
-              {list.length === 0 ? <p>No tokens yet.</p> :
+              {list.length === 0 ? (
+                <p>No tokens yet.</p>
+              ) : (
                 <ul>
-                  {list.map(t => (
+                  {list.map((t) => (
                     <li key={t._id}>
-                      <span className="badge">{t.type}</span> · uses {t.uses}/{t.maxUses} · expires {new Date(t.expiresAt).toLocaleDateString()}
+                      <span className="badge">{t.type}</span> · uses {t.uses}/
+                      {t.maxUses} · expires{" "}
+                      {new Date(t.expiresAt).toLocaleDateString()}
                     </li>
                   ))}
-                </ul>}
+                </ul>
+              )}
             </div>
           </React.Fragment>
         );
@@ -1575,19 +2231,39 @@
         const [page, setPage] = React.useState("login");
 
         React.useEffect(() => {
-          const bind = (id, p) => { document.getElementById(id).onclick = (e)=>{ e.preventDefault(); setPage(p); }; };
-          bind("nav-login","login"); bind("nav-register","register"); bind("nav-dashboard","dashboard");
+          const bind = (id, p) => {
+            document.getElementById(id).onclick = (e) => {
+              e.preventDefault();
+              setPage(p);
+            };
+          };
+          bind("nav-login", "login");
+          bind("nav-register", "register");
+          bind("nav-dashboard", "dashboard");
         }, []);
 
-        function onAuthed(user){ setMe(user); setPage("dashboard"); }
-        function logout(){ localStorage.removeItem("jwt"); setMe(null); setPage("login"); }
+        function onAuthed(user) {
+          setMe(user);
+          setPage("dashboard");
+        }
+        function logout() {
+          localStorage.removeItem("jwt");
+          setMe(null);
+          setPage("login");
+        }
 
         return (
           <React.Fragment>
-            {(!me && page==="login") && <Login onAuthed={onAuthed} />}
-            {(!me && page==="register") && <Register onAuthed={onAuthed} />}
-            {(me && page==="dashboard") && <Dashboard me={me} onLogout={logout} />}
-            {(!me && page==="dashboard") && <div className="card"><p>Please login first.</p></div>}
+            {!me && page === "login" && <Login onAuthed={onAuthed} />}
+            {!me && page === "register" && <Register onAuthed={onAuthed} />}
+            {me && page === "dashboard" && (
+              <Dashboard me={me} onLogout={logout} />
+            )}
+            {!me && page === "dashboard" && (
+              <div className="card">
+                <p>Please login first.</p>
+              </div>
+            )}
           </React.Fragment>
         );
       }
