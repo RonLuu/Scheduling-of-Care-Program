@@ -174,96 +174,105 @@
         );
       }
 
+      // function Register({ onAuthed }) {
+      //   const [token, setToken] = React.useState("");
+      //   const [preview, setPreview] = React.useState(null);
+      //   const [name, setName] = React.useState("");
+      //   const [email, setEmail] = React.useState("");
+      //   const [password, setPassword] = React.useState("");
+      //   const [err, setErr] = React.useState("");
+
+      //   const [selectedOrgId, setSelectedOrgId] = React.useState("");
+
+      //   async function verify() {
+      //     setErr("");
+      //     const r = await fetch(API + "/tokens/verify", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify({ token }),
+      //     });
+      //     const d = await r.json();
+      //     setPreview(d.valid ? d : { valid: false });
+      //     if (!d.valid) setErr("Invalid or expired token");
+      //   }
+
+      //   async function submit(e) {
+      //     e.preventDefault();
+      //     setErr("");
+      //     const r = await fetch(API + "/auth/register", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify({ token, name, email, password }),
+      //     });
+      //     const d = await r.json();
+      //     if (!r.ok) return setErr(d.error || "Registration failed");
+      //     localStorage.setItem("jwt", d.session.jwt);
+      //     onAuthed(d.user);
+      //   }
+
+      //   return (
+      //     <div>
+      //       <div className="card">
+      //         <h2>Register with a token</h2>
+      //         <div className="row">
+      //           <div>
+      //             <input
+      //               placeholder="Invitation token"
+      //               value={token}
+      //               onChange={(e) => setToken(e.target.value)}
+      //             />
+      //             <button className="secondary" type="button" onClick={verify}>
+      //               Verify
+      //             </button>
+      //             {preview &&
+      //               (preview.valid ? (
+      //                 <p>
+      //                   <span className="badge">{preview.role}</span> · org{" "}
+      //                   <code>{preview.organizationId}</code>
+      //                 </p>
+      //               ) : (
+      //                 <p>Token invalid</p>
+      //               ))}
+      //           </div>
+      //           <div>
+      //             <input
+      //               placeholder="Full name"
+      //               value={name}
+      //               onChange={(e) => setName(e.target.value)}
+      //             />
+      //             <input
+      //               placeholder="Email"
+      //               value={email}
+      //               onChange={(e) => setEmail(e.target.value)}
+      //             />
+      //             <input
+      //               type="password"
+      //               placeholder="Password"
+      //               value={password}
+      //               onChange={(e) => setPassword(e.target.value)}
+      //             />
+      //             <button onClick={submit}>Create account</button>
+      //           </div>
+      //         </div>
+      //         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+      //       </div>
+      //       <RegisterBasic onAuthed={onAuthed} />
+      //       <RegisterFamily
+      //         onAuthed={onAuthed}
+      //         defaultOrganizationId={selectedOrgId}
+      //       />
+      //       <RegisterOrganization
+      //         onCreated={(org) => setSelectedOrgId(org._id)}
+      //       />
+      //     </div>
+      //   );
+      // }
+
       function Register({ onAuthed }) {
-        const [token, setToken] = React.useState("");
-        const [preview, setPreview] = React.useState(null);
-        const [name, setName] = React.useState("");
-        const [email, setEmail] = React.useState("");
-        const [password, setPassword] = React.useState("");
-        const [err, setErr] = React.useState("");
-
-        const [selectedOrgId, setSelectedOrgId] = React.useState("");
-
-        async function verify() {
-          setErr("");
-          const r = await fetch(API + "/tokens/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          });
-          const d = await r.json();
-          setPreview(d.valid ? d : { valid: false });
-          if (!d.valid) setErr("Invalid or expired token");
-        }
-
-        async function submit(e) {
-          e.preventDefault();
-          setErr("");
-          const r = await fetch(API + "/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, name, email, password }),
-          });
-          const d = await r.json();
-          if (!r.ok) return setErr(d.error || "Registration failed");
-          localStorage.setItem("jwt", d.session.jwt);
-          onAuthed(d.user);
-        }
-
         return (
           <div>
-            <div className="card">
-              <h2>Register with a token</h2>
-              <div className="row">
-                <div>
-                  <input
-                    placeholder="Invitation token"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                  />
-                  <button className="secondary" type="button" onClick={verify}>
-                    Verify
-                  </button>
-                  {preview &&
-                    (preview.valid ? (
-                      <p>
-                        <span className="badge">{preview.role}</span> · org{" "}
-                        <code>{preview.organizationId}</code>
-                      </p>
-                    ) : (
-                      <p>Token invalid</p>
-                    ))}
-                </div>
-                <div>
-                  <input
-                    placeholder="Full name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  <input
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button onClick={submit}>Create account</button>
-                </div>
-              </div>
-              {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
-            </div>
             <RegisterBasic onAuthed={onAuthed} />
-            <RegisterFamily
-              onAuthed={onAuthed}
-              defaultOrganizationId={selectedOrgId}
-            />
-            <RegisterOrganization
-              onCreated={(org) => setSelectedOrgId(org._id)}
-            />
+            <RegisterOrganization />
           </div>
         );
       }
@@ -327,7 +336,7 @@
         );
       }
 
-      function RegisterOrganization({ onCreated }) {
+      function RegisterOrganization() {
         const [name, setName] = React.useState("");
         const [address, setAddress] = React.useState("");
         const [org, setOrg] = React.useState(null);
@@ -349,7 +358,6 @@
             if (!r.ok)
               throw new Error(d.error || "Failed to create organisation");
             setOrg(d); // d should contain _id, name, address
-            onCreated && onCreated(d); // pass back to parent (to prefill the family form)
           } catch (e2) {
             setErr(e2.message || String(e2));
           } finally {
@@ -359,7 +367,7 @@
 
         return (
           <div className="card">
-            <h2>Register a new organisation</h2>
+            <h2>Register Organization</h2>
             <form onSubmit={submit}>
               <input
                 placeholder="Organisation name"
@@ -411,7 +419,7 @@
 
         return (
           <div className="card">
-            <h2>Register (no token)</h2>
+            <h2>Register User</h2>
             <form onSubmit={submit}>
               <div className="row">
                 <div>
