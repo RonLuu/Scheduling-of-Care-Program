@@ -109,6 +109,27 @@
             .then((d) => setMe(d.user))
             .catch(() => setMe(null));
         }, []);
+
+        // listen for jwt changes (e.g., other tabs) and refresh
+        React.useEffect(() => {
+          function onStorage(e) {
+            if (e.key === "jwt") {
+              const jwt = e.newValue;
+              if (!jwt) {
+                setMe(null);
+                return;
+              }
+              fetch("/api/auth/me", {
+                headers: { Authorization: "Bearer " + jwt },
+              })
+                .then((r) => r.json())
+                .then((d) => setMe(d.user))
+                .catch(() => setMe(null));
+            }
+          }
+          window.addEventListener("storage", onStorage);
+          return () => window.removeEventListener("storage", onStorage);
+        }, []);
         return [me, setMe];
       }
 
@@ -235,6 +256,7 @@
               </div>
               {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
             </div>
+            <RegisterBasic onAuthed={onAuthed} />
             <RegisterFamily
               onAuthed={onAuthed}
               defaultOrganizationId={selectedOrgId}
@@ -365,6 +387,71 @@
         );
       }
 
+      function RegisterBasic({ onAuthed }) {
+        const [name, setName] = React.useState("");
+        const [email, setEmail] = React.useState("");
+        const [password, setPassword] = React.useState("");
+        const [role, setRole] = React.useState("Family"); // default
+        const [err, setErr] = React.useState("");
+
+        async function submit(e) {
+          e.preventDefault();
+          setErr("");
+          const r = await fetch("/api/auth/register-basic", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, role }),
+          });
+
+          const d = await r.json();
+          if (!r.ok) return setErr(d.error || "Registration failed");
+          localStorage.setItem("jwt", d.session.jwt);
+          onAuthed(d.user);
+        }
+
+        return (
+          <div className="card">
+            <h2>Register (no token)</h2>
+            <form onSubmit={submit}>
+              <div className="row">
+                <div>
+                  <input
+                    placeholder="Full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                  <input
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label>Role</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  >
+                    <option value="Family">Family</option>
+                    <option value="PoA">PoA</option>
+                    <option value="Admin">Admin</option>
+                    <option value="GeneralCareStaff">GeneralCareStaff</option>
+                  </select>
+                </div>
+              </div>
+              <button>Create account</button>
+            </form>
+            {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+          </div>
+        );
+      }
+
       function Dashboard({ me, onLogout }) {
         const jwt = localStorage.getItem("jwt");
         const initialType =
@@ -463,6 +550,19 @@
           currency: "AUD",
         });
 
+        const [pendingOrgId, setPendingOrgId] = React.useState(
+          me.organizationId || ""
+        );
+        const [orgSaveMsg, setOrgSaveMsg] = React.useState("");
+
+        const [token, setToken] = React.useState("");
+        const [reqMsg, setReqMsg] = React.useState("");
+        const [reqFeedback, setReqFeedback] = React.useState("");
+
+        const [accessClientId, setAccessClientId] = React.useState("");
+        const [accessLinks, setAccessLinks] = React.useState([]);
+        const [accessErr, setAccessErr] = React.useState("");
+
         // Fetch links + persons when dashboard loads
         React.useEffect(() => {
           if (!jwt || !me) return;
@@ -541,8 +641,98 @@
           }
         }
 
+        function OrgBadge({ me }) {
+          return (
+            <p>
+              Org:{" "}
+              {me.organizationId ? (
+                <code>{me.organizationId}</code>
+              ) : (
+                <em>none set</em>
+              )}
+            </p>
+          );
+        }
+
+        function IncomingAccessRequests({ jwt }) {
+          const [items, setItems] = React.useState([]);
+          const [err, setErr] = React.useState("");
+
+          async function load() {
+            try {
+              setErr("");
+              const r = await fetch("/api/access-requests/incoming", {
+                headers: { Authorization: "Bearer " + jwt },
+              });
+              const d = await r.json();
+              if (!r.ok) throw new Error(d.error || "Failed to load requests");
+              setItems(d);
+            } catch (e) {
+              setErr(e.message || String(e));
+            }
+          }
+          React.useEffect(() => {
+            load();
+          }, []);
+
+          async function decide(id, approve) {
+            const r = await fetch(`/api/access-requests/${id}/decision`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwt,
+              },
+              body: JSON.stringify({ approve }),
+            });
+            const d = await r.json();
+            if (!r.ok) {
+              alert(d.error || "Failed");
+              return;
+            }
+            load();
+          }
+
+          return (
+            <div className="card">
+              <h3>Incoming access requests</h3>
+              {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+              {items.length === 0 ? (
+                <p>No pending requests.</p>
+              ) : (
+                <ul>
+                  {items.map((ar) => (
+                    <li key={ar._id} style={{ marginBottom: 8 }}>
+                      <span className="badge">{ar.tokenType}</span>{" "}
+                      {ar.requesterEmail} ({ar.requesterRole}) · org{" "}
+                      <code>{ar.organizationId}</code>
+                      {ar.message && (
+                        <React.Fragment> · “{ar.message}”</React.Fragment>
+                      )}
+                      <div style={{ marginTop: 6 }}>
+                        <button onClick={() => decide(ar._id, true)}>
+                          Approve
+                        </button>{" "}
+                        <button
+                          className="secondary"
+                          onClick={() => decide(ar._id, false)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        }
+
         async function addClient(e) {
           e.preventDefault();
+          if (!me.organizationId) {
+            setAddErr("Please set your organisation first.");
+            return;
+          }
           if (!me || (me.role !== "Family" && me.role !== "PoA")) return;
           setAdding(true);
           setAddErr("");
@@ -621,6 +811,38 @@
             setAddErr(err.message || String(err));
           } finally {
             setAdding(false);
+          }
+        }
+
+        async function loadAccessLinks(pid) {
+          try {
+            setAccessErr("");
+            const r = await fetch(`/api/person-user-links/by-person/${pid}`, {
+              headers: { Authorization: "Bearer " + jwt },
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to load access list");
+            setAccessLinks(d);
+          } catch (e) {
+            setAccessErr(e.message || String(e));
+            setAccessLinks([]);
+          }
+        }
+
+        async function revokeAccess(linkId) {
+          try {
+            const r = await fetch(`/api/person-user-links/${linkId}/revoke`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + jwt,
+              },
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Failed to revoke");
+            if (accessClientId) await loadAccessLinks(accessClientId);
+          } catch (e) {
+            alert("Error: " + (e.message || e));
           }
         }
 
@@ -894,63 +1116,6 @@
           }
         }
 
-        // async function toggleTaskComplete(task, checked) {
-        //   try {
-        //     const jwtNow = localStorage.getItem("jwt");
-        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
-
-        //     const body = checked
-        //       ? { status: "Completed", completedAt: new Date().toISOString(), completedByUserId: me.id }
-        //       : { status: "Scheduled", completedAt: null, completedByUserId: null };
-
-        //     const r = await fetch(`/api/care-tasks/${task._id}`, {
-        //       method: "PATCH",
-        //       headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwtNow },
-        //       body: JSON.stringify(body)
-        //     });
-        //     const d = await r.json();
-        //     if (!r.ok) throw new Error(d.error || "Update failed");
-
-        //     // Refresh list for the currently selected client
-        //     if (tasksClientId) loadTasksFor(tasksClientId);
-        //   } catch (e) {
-        //     alert("Failed to update task: " + (e.message || e));
-        //   }
-        // }
-
-        // async function toggleTaskComplete(task, checked) {
-        //   try {
-        //     const jwtNow = localStorage.getItem("jwt");
-        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
-
-        //     let body = {};
-        //     if (checked) {
-        //       body.status = "Completed";
-        //       // (optional) prompt for cost immediately:
-        //       const input = prompt("Enter budget spent (AUD) – optional:", "");
-        //       if (input !== null && input.trim() !== "") {
-        //         const v = Number(input);
-        //         if (!Number.isNaN(v) && v >= 0) body.cost = v;
-        //       }
-        //     } else {
-        //       body.status = "Scheduled";
-        //       // cost will be rejected by backend if present; don't send it
-        //     }
-
-        //     const r = await fetch(`/api/care-tasks/${task._id}`, {
-        //       method: "PATCH",
-        //       headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-        //       body: JSON.stringify(body)
-        //     });
-        //     const d = await r.json();
-        //     if (!r.ok) throw new Error(d.error || "Update failed");
-
-        //     if (tasksClientId) loadTasksFor(tasksClientId);
-        //   } catch (e) {
-        //     alert("Failed to update task: " + (e.message || e));
-        //   }
-        // }
-
         async function loadComments(taskId) {
           const jwtNow = localStorage.getItem("jwt");
           if (!jwtNow) return;
@@ -1116,32 +1281,6 @@
           }
         }
 
-        // async function saveTaskCost(taskId) {
-        //   try {
-        //     const jwtNow = localStorage.getItem("jwt");
-        //     if (!jwtNow) throw new Error("UNAUTHENTICATED");
-        //     const val = costDraftByTask[taskId];
-        //     if (val === undefined || val === "") return; // nothing to save
-        //     const num = Number(val);
-        //     if (Number.isNaN(num) || num < 0) {
-        //       alert("Please enter a valid non-negative amount.");
-        //       return;
-        //     }
-        //     const r = await fetch(`/api/care-tasks/${taskId}`, {
-        //       method: "PATCH",
-        //       headers: { "Content-Type":"application/json", Authorization: "Bearer " + jwtNow },
-        //       body: JSON.stringify({ cost: num })
-        //     });
-        //     const d = await r.json();
-        //     if (!r.ok) throw new Error(d.error || "Update failed");
-
-        //     // refresh list
-        //     if (tasksClientId) await loadTasksFor(tasksClientId);
-        //   } catch (e) {
-        //     alert("Failed to save cost: " + (e.message || String(e)));
-        //   }
-        // }
-
         function toAnnualBudget(type, amt) {
           const n = Number(amt) || 0;
           if (type === "Week") return n * 52.15; // AU weeks per year ≈ 52.15
@@ -1218,6 +1357,115 @@
                 Log out
               </button>
             </div>
+            {me && (me.role === "Family" || me.role === "PoA") && (
+              <div className="card">
+                <h3>Your organisation</h3>
+                <OrgBadge me={me} />
+                <div className="row">
+                  <div>
+                    <input
+                      placeholder="Organisation ID"
+                      value={pendingOrgId}
+                      onChange={(e) => setPendingOrgId(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <button
+                      className="secondary"
+                      onClick={async () => {
+                        try {
+                          setOrgSaveMsg("");
+                          const r = await fetch("/api/users/me/organization", {
+                            method: "PATCH",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: "Bearer " + jwt,
+                            },
+                            body: JSON.stringify({
+                              organizationId: pendingOrgId,
+                            }),
+                          });
+                          const d = await r.json();
+                          if (!r.ok)
+                            throw new Error(
+                              d.error || "Failed to save organisation"
+                            );
+                          setOrgSaveMsg("Saved.");
+                          // refresh /auth/me
+                          const rr = await fetch("/api/auth/me", {
+                            headers: { Authorization: "Bearer " + jwt },
+                          });
+                          const dd = await rr.json();
+                          // push up to App via a small lift if you have, or:
+                          // naive: window.location.reload();
+                          // or if you have setMe: setMe(dd.user);
+                          // Assuming you have setMe in Dashboard props:
+                          // setMe && setMe(dd.user);
+                        } catch (e) {
+                          setOrgSaveMsg("Error: " + (e.message || e));
+                        }
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+                {orgSaveMsg && <p>{orgSaveMsg}</p>}
+                {!me.organizationId && (
+                  <p style={{ color: "#92400e" }}>
+                    You must set your organisation before adding a client.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {me && (me.role === "Admin" || me.role === "GeneralCareStaff") && (
+              <div className="card">
+                <h3>Request access with a token</h3>
+                <p>
+                  Paste the invite token you received, add an optional message,
+                  and request access. The issuer will review and approve.
+                </p>
+                <input
+                  placeholder="Invite token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+                <input
+                  placeholder="Optional message"
+                  value={reqMsg}
+                  onChange={(e) => setReqMsg(e.target.value)}
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      setReqFeedback("");
+                      // optionally: call /tokens/verify first to give immediate feedback about type/org
+                      const r = await fetch("/api/access-requests", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: "Bearer " + jwt,
+                        },
+                        body: JSON.stringify({ token, message: reqMsg }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok)
+                        throw new Error(d.error || "Failed to submit request");
+                      setReqFeedback("Request submitted. Await approval.");
+                      setToken("");
+                      setReqMsg("");
+                    } catch (e) {
+                      setReqFeedback("Error: " + (e.message || e));
+                    }
+                  }}
+                >
+                  Request access
+                </button>
+                {reqFeedback && <p>{reqFeedback}</p>}
+              </div>
+            )}
+
             {me &&
               (me.role === "Admin" ||
                 me.role === "Family" ||
@@ -1290,6 +1538,11 @@
                     ))}
                 </div>
               )}
+
+            {me &&
+              (me.role === "Family" ||
+                me.role === "PoA" ||
+                me.role === "Admin") && <IncomingAccessRequests jwt={jwt} />}
 
             {me && me.role === "Family" && (
               <div className="card">
@@ -1388,6 +1641,96 @@
                 </ul>
               )}
             </div>
+
+            {me &&
+              (me.role === "Family" ||
+                me.role === "PoA" ||
+                me.role === "Admin") && (
+                <div className="card">
+                  <h3>Client Access Management</h3>
+                  <label>Select client</label>
+                  <select
+                    value={accessClientId}
+                    onChange={(e) => {
+                      setAccessClientId(e.target.value);
+                      if (e.target.value) loadAccessLinks(e.target.value);
+                    }}
+                  >
+                    <option value="">— Choose client —</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {accessErr && (
+                    <p style={{ color: "#b91c1c" }}>Error: {accessErr}</p>
+                  )}
+                  {!accessClientId && (
+                    <p>Select a client to see associated users.</p>
+                  )}
+
+                  {accessClientId && accessLinks.length > 0 && (
+                    <table
+                      style={{
+                        width: "100%",
+                        marginTop: 12,
+                        borderCollapse: "collapse",
+                      }}
+                    >
+                      <thead>
+                        <tr>
+                          <th align="left">Name</th>
+                          <th align="left">Email</th>
+                          <th align="left">Role</th>
+                          <th align="left">Relationship</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessLinks.map((l) => {
+                          const u = l.userId;
+                          // Hide users depending on current viewer's role
+                          if (me.role === "Family" || me.role === "PoA") {
+                            // Family/PoA can see everyone
+                            if (me.id === u._id) {
+                              // but not themselves
+                              return null;
+                            }
+                          } else if (me.role === "Admin") {
+                            // Admin should only see staff
+                            if (u.role !== "GeneralCareStaff") return null;
+                          } else {
+                            return null;
+                          }
+
+                          return (
+                            <tr key={l._id}>
+                              <td>{u.name}</td>
+                              <td>{u.email}</td>
+                              <td>{u.role}</td>
+                              <td>{l.relationshipType}</td>
+                              <td>
+                                <button
+                                  className="secondary"
+                                  onClick={() => revokeAccess(l._id)}
+                                >
+                                  Revoke
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {accessClientId && accessLinks.length === 0 && (
+                    <p>No associated users yet.</p>
+                  )}
+                </div>
+              )}
 
             {me && (me.role === "Family" || me.role === "Admin") && (
               <div className="card">
@@ -1815,27 +2158,6 @@
                         </button>
                       </div>
 
-                      {/* Cost entry appears ONLY when completed and no cost yet 
-                      {t.status === "Completed" && (
-                        <div style={{ marginTop: 8, display:"flex", alignItems:"center", gap: 8 }}>
-                          <label style={{ minWidth: 120 }}>Budget spent (AUD)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={
-                              costDraftByTask[t._id] !== undefined
-                                ? costDraftByTask[t._id]
-                                : (t.cost !== undefined && t.cost !== null ? t.cost : "")
-                            }
-                            onChange={e => setCostDraftByTask(prev => ({ ...prev, [t._id]: e.target.value }))}
-                            style={{ maxWidth: 160 }}
-                          />
-                          <button onClick={() => saveTaskCost(t._id)}>Save</button>
-                        </div>
-                      )}
-                      */}
                       {/* Cost entry appears ONLY when completed and editor not hidden */}
                       {t.status === "Completed" &&
                         !costEditorHiddenByTask[t._id] && (
@@ -2010,22 +2332,6 @@
                               }
                             />
                           </div>
-                          {/*
-                          <div className="row">
-                            <input
-                              placeholder="File type (image/jpeg, pdf, …)"
-                              value={newFile.fileType}
-                              onChange={e=>setNewFile(prev=>({ ...prev, fileType: e.target.value }))}
-                            />
-                            <input
-                              placeholder="Size (bytes)"
-                              type="number"
-                              min="0"
-                              value={newFile.size}
-                              onChange={e=>setNewFile(prev=>({ ...prev, size: e.target.value }))}
-                            />
-                          </div>
-                          */}
 
                           <input
                             placeholder="Description (optional)"

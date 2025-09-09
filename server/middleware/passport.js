@@ -10,7 +10,10 @@ passport.use(
     { usernameField: "email", passwordField: "password", session: false },
     async (email, password, done) => {
       try {
-        const user = await User.findOne({ email: email.toLowerCase(), isActive: true });
+        const user = await User.findOne({
+          email: email.toLowerCase(),
+          isActive: true,
+        });
         if (!user) return done(null, false, { message: "INVALID_CREDENTIALS" });
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return done(null, false, { message: "INVALID_CREDENTIALS" });
@@ -27,13 +30,19 @@ passport.use(
   new JwtStrategy(
     {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.JWT_SECRET
+      secretOrKey: process.env.JWT_SECRET,
     },
     async (payload, done) => {
       try {
         const user = await User.findOne({ _id: payload.sub, isActive: true });
         if (!user) return done(null, false);
-        return done(null, { id: user._id, role: user.role, organizationId: user.organizationId, email: user.email, name: user.name });
+        return done(null, {
+          id: user._id,
+          role: user.role,
+          organizationId: user.organizationId || null,
+          email: user.email,
+          name: user.name,
+        });
       } catch (e) {
         done(e, false);
       }
@@ -42,11 +51,13 @@ passport.use(
 );
 
 export const requireJwt = passport.authenticate("jwt", { session: false });
+
 export const requireLocal = passport.authenticate("local", { session: false });
 
 export function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) return res.status(403).json({ error: "FORBIDDEN" });
+    if (!req.user || !roles.includes(req.user.role))
+      return res.status(403).json({ error: "FORBIDDEN" });
     next();
   };
 }

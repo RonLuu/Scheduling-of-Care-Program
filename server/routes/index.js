@@ -11,20 +11,26 @@ import fileUploadRouter from "./fileUpload.js";
 import schedulingRouter from "./scheduling.js";
 import authRouter from "./auth.js";
 import reportsRouter from "./reports.js";
+import authBasicRouter from "./auth.basic.js";
+import userMeRouter from "./users.me.js";
+import accessRequestRouter from "./accessRequest.js";
 
 const router = Router();
 
 router.use("/auth", authRouter);
+router.use("/auth", authBasicRouter);
 router.use("/organizations", organizationsRouter);
 router.use("/users", usersRouter);
+router.use("/users", userMeRouter);
 router.use("/person-with-needs", personWithNeedsRouter);
 router.use("/person-user-links", personUserLinkRouter);
 router.use("/tokens", tokenRouter);
 router.use("/care-need-items", careNeedItemRouter);
 router.use("/care-tasks", careTaskRouter);
 router.use("/comments", commentRouter);
-router.use("/file-upload", fileUploadRouter);   
+router.use("/file-upload", fileUploadRouter);
 router.use("/scheduling", schedulingRouter);
 router.use("/reports", reportsRouter);
+router.use("/access-requests", accessRequestRouter);
 
 export default router;

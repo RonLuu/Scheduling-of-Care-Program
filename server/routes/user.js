@@ -4,14 +4,9 @@ import Organization from "../models/Organization.js";
 
 const router = Router();
 
-router.route("/")
-  .get(getUsers)
-  .post(postUser);
+router.route("/").get(getUsers).post(postUser);
 
-router.route("/:userId")
-  .get(getUser)
-  .put(putUser)
-  .delete(deleteUser);
+router.route("/:userId").get(getUser).put(putUser).delete(deleteUser);
 
 async function getUsers(req, res) {
   const { organizationId } = req.query;
@@ -43,11 +38,10 @@ async function putUser(req, res) {
     const org = await Organization.exists({ _id: req.body.organizationId });
     if (!org) return res.status(400).json({ error: "Invalid organizationId" });
   }
-  const user = await User.findByIdAndUpdate(
-    req.params.userId,
-    req.body,
-    { new: true, runValidators: true }
-  );
+  const user = await User.findByIdAndUpdate(req.params.userId, req.body, {
+    new: true,
+    runValidators: true,
+  });
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json(user);
 }
