@@ -174,100 +174,6 @@
         );
       }
 
-      // function Register({ onAuthed }) {
-      //   const [token, setToken] = React.useState("");
-      //   const [preview, setPreview] = React.useState(null);
-      //   const [name, setName] = React.useState("");
-      //   const [email, setEmail] = React.useState("");
-      //   const [password, setPassword] = React.useState("");
-      //   const [err, setErr] = React.useState("");
-
-      //   const [selectedOrgId, setSelectedOrgId] = React.useState("");
-
-      //   async function verify() {
-      //     setErr("");
-      //     const r = await fetch(API + "/tokens/verify", {
-      //       method: "POST",
-      //       headers: { "Content-Type": "application/json" },
-      //       body: JSON.stringify({ token }),
-      //     });
-      //     const d = await r.json();
-      //     setPreview(d.valid ? d : { valid: false });
-      //     if (!d.valid) setErr("Invalid or expired token");
-      //   }
-
-      //   async function submit(e) {
-      //     e.preventDefault();
-      //     setErr("");
-      //     const r = await fetch(API + "/auth/register", {
-      //       method: "POST",
-      //       headers: { "Content-Type": "application/json" },
-      //       body: JSON.stringify({ token, name, email, password }),
-      //     });
-      //     const d = await r.json();
-      //     if (!r.ok) return setErr(d.error || "Registration failed");
-      //     localStorage.setItem("jwt", d.session.jwt);
-      //     onAuthed(d.user);
-      //   }
-
-      //   return (
-      //     <div>
-      //       <div className="card">
-      //         <h2>Register with a token</h2>
-      //         <div className="row">
-      //           <div>
-      //             <input
-      //               placeholder="Invitation token"
-      //               value={token}
-      //               onChange={(e) => setToken(e.target.value)}
-      //             />
-      //             <button className="secondary" type="button" onClick={verify}>
-      //               Verify
-      //             </button>
-      //             {preview &&
-      //               (preview.valid ? (
-      //                 <p>
-      //                   <span className="badge">{preview.role}</span> · org{" "}
-      //                   <code>{preview.organizationId}</code>
-      //                 </p>
-      //               ) : (
-      //                 <p>Token invalid</p>
-      //               ))}
-      //           </div>
-      //           <div>
-      //             <input
-      //               placeholder="Full name"
-      //               value={name}
-      //               onChange={(e) => setName(e.target.value)}
-      //             />
-      //             <input
-      //               placeholder="Email"
-      //               value={email}
-      //               onChange={(e) => setEmail(e.target.value)}
-      //             />
-      //             <input
-      //               type="password"
-      //               placeholder="Password"
-      //               value={password}
-      //               onChange={(e) => setPassword(e.target.value)}
-      //             />
-      //             <button onClick={submit}>Create account</button>
-      //           </div>
-      //         </div>
-      //         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
-      //       </div>
-      //       <RegisterBasic onAuthed={onAuthed} />
-      //       <RegisterFamily
-      //         onAuthed={onAuthed}
-      //         defaultOrganizationId={selectedOrgId}
-      //       />
-      //       <RegisterOrganization
-      //         onCreated={(org) => setSelectedOrgId(org._id)}
-      //       />
-      //     </div>
-      //   );
-      // }
-
       function Register({ onAuthed }) {
         return (
           <div>
@@ -491,16 +397,18 @@
         const [ciPersonId, setCiPersonId] = React.useState("");
         const [ciName, setCiName] = React.useState("");
         const [ciDesc, setCiDesc] = React.useState("");
-        const [ciCategory, setCiCategory] = React.useState("Medical");
+        const [ciCategory, setCiCategory] = React.useState("HygieneProducts");
 
         const [ciIntervalType, setCiIntervalType] = React.useState("Daily");
         const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
         const [ciStartDate, setCiStartDate] = React.useState(""); // yyyy-mm-dd
         const [ciEndMode, setCiEndMode] = React.useState("none"); // "none" | "endDate" | "count"
         const [ciEndDate, setCiEndDate] = React.useState("");
+
+        const [ciBudgetCost, setCiBudgetCost] = React.useState(0);
+        const [ciPurchaseCost, setCiPurchaseCost] = React.useState(0);
         const [ciOccurrenceCount, setCiOccurrenceCount] = React.useState("");
 
-        const [ciPurchaseCost, setCiPurchaseCost] = React.useState(0);
         const [ciOccurrenceCost, setCiOccurrenceCost] = React.useState(0);
 
         const [ciScheduleType, setCiScheduleType] = React.useState("AllDay"); // "AllDay" | "Timed"
@@ -866,8 +774,11 @@
 
             if (!ciPersonId) throw new Error("Please select a client.");
             if (!ciName) throw new Error("Name is required.");
-            if (!ciStartDate) throw new Error("Start date is required.");
 
+            if (ciIntervalType === "JustPurchase") {
+              ciStartDate = null;
+              ciIntervalValue = null;
+            }
             // Build payload
             const payload = {
               personId: ciPersonId,
@@ -880,6 +791,7 @@
                 startDate: new Date(ciStartDate).toISOString(),
               },
               scheduleType: ciScheduleType, // NEW
+              budgetCost: Number(ciBudgetCost) || 0,
               purchaseCost: Number(ciPurchaseCost) || 0,
               occurrenceCost: Number(ciOccurrenceCost) || 0,
             };
@@ -929,6 +841,7 @@
             setCiDesc("");
             setCiPurchaseCost(0);
             setCiOccurrenceCost(0);
+            setCiBudgetCost(0);
             setCiIntervalType("Daily");
             setCiIntervalValue(1);
             setCiEndMode("none");
@@ -944,6 +857,10 @@
         // Format: "every N day/week/month/year" OR "one-time"
         function formatFrequency(freq) {
           if (!freq || !freq.intervalType) return "";
+          if (freq.intervalType === "JustPurchase") {
+            return "Just purchase (no recurrence)";
+          }
+
           if (freq.intervalType === "OneTime") {
             // Optional: show the date if present
             const d = freq.startDate
@@ -1358,13 +1275,63 @@
                 <span className="badge">{(me && me.role) || ""}</span>
               </h2>
               <p>
-                Org: <code>{(me && me.organizationId) || ""}</code> ·{" "}
+                {me && me.organizationId && (
+                  <span>
+                    Org: <code>{me.organizationId}</code> ·{" "}
+                  </span>
+                )}
                 {(me && me.email) || ""}
               </p>
+
+              {/* Leave organisation button only for Admin or Staff */}
+              {me &&
+                (me.role === "Admin" || me.role === "GeneralCareStaff") &&
+                me.organizationId && (
+                  <button
+                    className="secondary"
+                    onClick={async () => {
+                      try {
+                        const jwt = localStorage.getItem("jwt");
+                        if (!jwt) throw new Error("UNAUTHENTICATED");
+
+                        const r = await fetch(
+                          "/api/users/me/leave-organization",
+                          {
+                            method: "PATCH",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: "Bearer " + jwt,
+                            },
+                          }
+                        );
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.error || "Failed");
+
+                        alert("You left the organisation successfully.");
+                        // Refresh auth/me
+                        const rr = await fetch("/api/auth/me", {
+                          headers: { Authorization: "Bearer " + jwt },
+                        });
+                        const dd = await rr.json();
+                        if (rr.ok) {
+                          refreshMe();
+                        }
+                      } catch (e) {
+                        alert(
+                          "Error leaving organisation: " + (e.message || e)
+                        );
+                      }
+                    }}
+                  >
+                    Leave organization
+                  </button>
+                )}
+
               <button className="secondary" onClick={onLogout}>
                 Log out
               </button>
             </div>
+
             {me && (me.role === "Family" || me.role === "PoA") && (
               <div className="card">
                 <h3>Your organisation</h3>
@@ -1383,6 +1350,19 @@
                       onClick={async () => {
                         try {
                           setOrgSaveMsg("");
+                          if (!pendingOrgId) {
+                            setOrgSaveMsg("Please enter an organisation ID.");
+                            return;
+                          }
+
+                          // If Family/PoA, ask whether to cascade move clients
+                          let migrateClients = false;
+                          if (me.role === "Family" || me.role === "PoA") {
+                            migrateClients = window.confirm(
+                              "Also move ALL your clients to the new organisation, move other Family/PoA linked to those clients, update all items/tasks, and revoke all staff/admin access on those clients?\n\nClick OK to proceed."
+                            );
+                          }
+
                           const r = await fetch("/api/users/me/organization", {
                             method: "PATCH",
                             headers: {
@@ -1391,6 +1371,7 @@
                             },
                             body: JSON.stringify({
                               organizationId: pendingOrgId,
+                              migrateClients,
                             }),
                           });
                           const d = await r.json();
@@ -1398,17 +1379,24 @@
                             throw new Error(
                               d.error || "Failed to save organisation"
                             );
+
                           setOrgSaveMsg("Saved.");
-                          // refresh /auth/me
+
+                          // Show a quick summary if cascade ran
+                          if (d.cascade) {
+                            const c = d.cascade;
+                            setOrgSaveMsg(
+                              `Saved. Moved Persons: ${c.personsMoved}, Items: ${c.itemsMoved}, Tasks: ${c.tasksMoved}, Family/PoA moved: ${c.familyMoved}, Staff/Admin links revoked: ${c.staffRevoked}.`
+                            );
+                          }
+
+                          // Refresh current user (so org updates immediately)
                           const rr = await fetch("/api/auth/me", {
                             headers: { Authorization: "Bearer " + jwt },
                           });
                           const dd = await rr.json();
-                          // push up to App via a small lift if you have, or:
-                          // naive: window.location.reload();
-                          // or if you have setMe: setMe(dd.user);
-                          // Assuming you have setMe in Dashboard props:
-                          // setMe && setMe(dd.user);
+                          // If your App passes setMe down, call setMe(dd.user); or fallback to reload:
+                          // window.location.reload();
                         } catch (e) {
                           setOrgSaveMsg("Error: " + (e.message || e));
                         }
@@ -1692,7 +1680,6 @@
                           <th align="left">Name</th>
                           <th align="left">Email</th>
                           <th align="left">Role</th>
-                          <th align="left">Relationship</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -1718,7 +1705,6 @@
                               <td>{u.name}</td>
                               <td>{u.email}</td>
                               <td>{u.role}</td>
-                              <td>{l.relationshipType}</td>
                               <td>
                                 <button
                                   className="secondary"
@@ -1772,11 +1758,12 @@
                         value={ciCategory}
                         onChange={(e) => setCiCategory(e.target.value)}
                       >
-                        <option value="Medical">Medical</option>
-                        <option value="DailyLiving">DailyLiving</option>
-                        <option value="Nutrition">Nutrition</option>
-                        <option value="Mobility">Mobility</option>
-                        <option value="Therapy">Therapy</option>
+                        <option value="HygieneProducts">
+                          Hygiene Products
+                        </option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Health">Health</option>
+                        <option value="Entertainment">Entertainment</option>
                         <option value="Other">Other</option>
                       </select>
                     </div>
@@ -1796,49 +1783,55 @@
                         value={ciIntervalType}
                         onChange={(e) => setCiIntervalType(e.target.value)}
                       >
+                        <option value="JustPurchase">Just Purchase</option>
+                        <option value="OneTime">One Time</option>
                         <option value="Daily">Daily</option>
                         <option value="Weekly">Weekly</option>
                         <option value="Monthly">Monthly</option>
                         <option value="Yearly">Yearly</option>
-                        <option value="OneTime">OneTime</option>
                       </select>
                     </div>
-                    {ciIntervalType !== "OneTime" && (
-                      <div>
-                        <label>Every N (interval value)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={ciIntervalValue}
-                          onChange={(e) => setCiIntervalValue(e.target.value)}
-                        />
-                      </div>
-                    )}
+                    {ciIntervalType !== "OneTime" &&
+                      ciIntervalType !== "JustPurchase" && (
+                        <div>
+                          <label>Every N (interval value)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={ciIntervalValue}
+                            onChange={(e) => setCiIntervalValue(e.target.value)}
+                          />
+                        </div>
+                      )}
                   </div>
 
-                  <div className="row">
-                    <div>
-                      <label>Start date</label>
-                      <input
-                        type="date"
-                        value={ciStartDate}
-                        onChange={(e) => setCiStartDate(e.target.value)}
-                      />
-                    </div>
-                    {ciIntervalType !== "OneTime" && (
+                  {ciIntervalType !== "JustPurchase" && (
+                    <div className="row">
                       <div>
-                        <label>End condition</label>
-                        <select
-                          value={ciEndMode}
-                          onChange={(e) => setCiEndMode(e.target.value)}
-                        >
-                          <option value="none">No end</option>
-                          <option value="endDate">End by date</option>
-                          <option value="count">End after N occurrences</option>
-                        </select>
+                        <label>Start date</label>
+                        <input
+                          type="date"
+                          value={ciStartDate}
+                          onChange={(e) => setCiStartDate(e.target.value)}
+                        />
                       </div>
-                    )}
-                  </div>
+                      {ciIntervalType !== "OneTime" && (
+                        <div>
+                          <label>End condition</label>
+                          <select
+                            value={ciEndMode}
+                            onChange={(e) => setCiEndMode(e.target.value)}
+                          >
+                            <option value="none">No end</option>
+                            <option value="endDate">End by date</option>
+                            <option value="count">
+                              End after N occurrences
+                            </option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {ciEndMode === "endDate" && (
                     <div>
@@ -1862,35 +1855,51 @@
                     </div>
                   )}
 
+                  {ciIntervalType !== "JustPurchase" && (
+                    <div className="row">
+                      <div>
+                        <label>Schedule type</label>
+                        <select
+                          value={ciScheduleType}
+                          onChange={(e) => setCiScheduleType(e.target.value)}
+                        >
+                          <option value="AllDay">All-day</option>
+                          <option value="Timed">Scheduled (start/end)</option>
+                        </select>
+                      </div>
+
+                      {ciScheduleType === "Timed" && (
+                        <div>
+                          <label>Start time / End time</label>
+                          <div className="row">
+                            <input
+                              type="time"
+                              value={ciStartTime}
+                              onChange={(e) => setCiStartTime(e.target.value)}
+                            />
+                            <input
+                              type="time"
+                              value={ciEndTime}
+                              onChange={(e) => setCiEndTime(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="row">
                     <div>
-                      <label>Schedule type</label>
-                      <select
-                        value={ciScheduleType}
-                        onChange={(e) => setCiScheduleType(e.target.value)}
-                      >
-                        <option value="AllDay">All-day</option>
-                        <option value="Timed">Scheduled (start/end)</option>
-                      </select>
+                      <label>Budget (AUD)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={ciBudgetCost !== 0 ? ciBudgetCost : ""}
+                        onChange={(e) => setCiBudgetCost(e.target.value)}
+                        placeholder="0.00"
+                      />
                     </div>
-
-                    {ciScheduleType === "Timed" && (
-                      <div>
-                        <label>Start time / End time</label>
-                        <div className="row">
-                          <input
-                            type="time"
-                            value={ciStartTime}
-                            onChange={(e) => setCiStartTime(e.target.value)}
-                          />
-                          <input
-                            type="time"
-                            value={ciEndTime}
-                            onChange={(e) => setCiEndTime(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="row">
@@ -1905,7 +1914,7 @@
                         placeholder="0.00"
                       />
                     </div>
-                    {ciIntervalType !== "OneTime" && (
+                    {ciIntervalType !== "JustPurchase" && (
                       <div>
                         <label>Expected occurrence cost per task (AUD)</label>
                         <input
@@ -1976,11 +1985,11 @@
                     <tr>
                       <th style={{ textAlign: "left" }}>Name</th>
                       <th style={{ textAlign: "left" }}>Frequency</th>
-                      <th style={{ textAlign: "right" }}>Purchase cost</th>
-                      <th style={{ textAlign: "right" }}>Expected per task</th>
+                      <th style={{ textAlign: "left" }}>Budget</th>
+                      <th style={{ textAlign: "left" }}>Purchase cost</th>
+                      <th style={{ textAlign: "left" }}>Expected per task</th>
                       <th style={{ textAlign: "left" }}>Schedule</th>
                       <th style={{ textAlign: "left" }}>Category</th>
-                      <th style={{ textAlign: "left" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1988,13 +1997,19 @@
                       <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
                         <td>{it.name}</td>
                         <td>{formatFrequency(it.frequency)}</td>
-                        <td style={{ textAlign: "right" }}>
+                        <td style={{ textAlign: "left" }}>
+                          {new Intl.NumberFormat("en-AU", {
+                            style: "currency",
+                            currency: "AUD",
+                          }).format(it.budgetCost || 0)}
+                        </td>
+                        <td style={{ textAlign: "left" }}>
                           {new Intl.NumberFormat("en-AU", {
                             style: "currency",
                             currency: "AUD",
                           }).format(it.purchaseCost || 0)}
                         </td>
-                        <td style={{ textAlign: "right" }}>
+                        <td style={{ textAlign: "left" }}>
                           {new Intl.NumberFormat("en-AU", {
                             style: "currency",
                             currency: "AUD",
@@ -2008,9 +2023,6 @@
                           </span>
                         </td>
                         <td>{it.category}</td>
-                        <td>
-                          <span className="badge">{it.status}</span>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2057,23 +2069,6 @@
                     <li key={t._id}>
                       <div>
                         <div style={{ display: "inline", marginLeft: 8 }}>
-                          {/*
-                          <strong>{t.title}</strong>
-                          {" · "}
-                          {new Date(t.dueDate).toLocaleDateString()}
-                          {t.scheduleType === "Timed" && t.startAt && t.endAt && (
-                            <React.Fragment>
-                              {" · "}
-                              {new Date(t.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              {" – "}
-                              {new Date(t.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </React.Fragment>
-                          )}
-                          {" · "}
-                          <span className="badge">{t.scheduleType === "AllDay" ? "All-day" : "Timed"}</span>
-                          {" · "}
-                          <span className="badge">{t.status}</span>
-                          */}
                           <strong>{t.title}</strong>
                           {" · "}
                           {new Date(t.dueDate).toLocaleDateString()}
@@ -2485,14 +2480,19 @@
                       <thead>
                         <tr>
                           <th style={{ textAlign: "left" }}>Category</th>
-                          <th style={{ textAlign: "right" }}>Spent</th>
+                          <th style={{ textAlign: "right" }}>Annual Budget</th>
+                          <th style={{ textAlign: "right" }}>Already Spent</th>
                           <th style={{ textAlign: "right" }}>
-                            Expected To Spend
+                            Current Balance
+                          </th>
+                          <th style={{ textAlign: "right" }}>
+                            Expected Remaining
+                          </th>
+                          <th style={{ textAlign: "right" }}>
+                            Expected Balance
                           </th>
                           <th style={{ textAlign: "right" }}>% Spent</th>
-                          <th style={{ textAlign: "right" }}>
-                            % Expected To Spend
-                          </th>
+                          <th style={{ textAlign: "right" }}>% Expected</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2500,16 +2500,25 @@
                           <tr key={c.category}>
                             <td>{c.category}</td>
                             <td style={{ textAlign: "right" }}>
-                              {aud.format(c.totalSpent)}
+                              {aud.format(c.annualBudget || 0)}
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              {aud.format(c.expected)}
+                              {aud.format(c.totalSpent || 0)}
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              {(c.spentPct * 100).toFixed(1)}%
+                              {aud.format(c.currentBalance || 0)}
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              {(c.expectedPct * 100).toFixed(1)}%
+                              {aud.format(c.expected || 0)}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {aud.format(c.expectedBalanceAtYearEnd || 0)}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {((c.spentPct || 0) * 100).toFixed(1)}%
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {((c.expectedPct || 0) * 100).toFixed(1)}%
                             </td>
                           </tr>
                         ))}
@@ -2566,12 +2575,26 @@
           setPage("login");
         }
 
+        async function refreshMe() {
+          const jwt = localStorage.getItem("jwt");
+          if (!jwt) {
+            setMe(null);
+            return;
+          }
+          const rr = await fetch("/api/auth/me", {
+            headers: { Authorization: "Bearer " + jwt },
+          });
+          const dd = await rr.json();
+          if (rr.ok) setMe(dd.user);
+          else setMe(null);
+        }
+
         return (
           <React.Fragment>
             {!me && page === "login" && <Login onAuthed={onAuthed} />}
             {!me && page === "register" && <Register onAuthed={onAuthed} />}
             {me && page === "dashboard" && (
-              <Dashboard me={me} onLogout={logout} />
+              <Dashboard me={me} onLogout={logout} refreshMe={refreshMe} />
             )}
             {!me && page === "dashboard" && (
               <div className="card">

@@ -5,16 +5,27 @@ import mongoose, { Schema, model } from "mongoose";
  */
 const PersonWithNeedsSchema = new Schema(
   {
-    organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
 
     name: { type: String, required: true, index: true, trim: true },
     dateOfBirth: Date,
     medicalInfo: String,
 
-    status: { type: String, enum: ["Active", "Transferred", "Inactive"], default: "Active" },
+    status: {
+      type: String,
+      enum: ["Active", "Transferred", "Inactive"],
+      default: "Active",
+    },
 
     // Optional: current budget policy kept on the Person, reports snapshot separately
-    currentAnnualBudget: { type: Number, default: 0 }
+    currentAnnualBudget: { type: Number, default: 0 },
+
+    customCategories: { type: [String], default: [] },
   },
   { timestamps: true }
 );

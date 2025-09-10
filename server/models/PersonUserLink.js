@@ -21,7 +21,7 @@ const PersonUserLinkSchema = new Schema(
 
     relationshipType: {
       type: String,
-      enum: ["GeneralCareStaff", "PrimaryManager", "Family", "PoA", "Viewer"],
+      enum: ["GeneralCareStaff", "Admin", "Family", "PoA"],
       required: true,
       index: true,
     },

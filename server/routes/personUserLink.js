@@ -15,7 +15,6 @@ async function getLinks(req, res) {
   const filter = {};
   if (personId) filter.personId = personId;
   if (userId) filter.userId = userId;
-  // if (active !== undefined) filter.active = active === "true";
   filter.active = active ? active : true;
 
   const links = await PersonUserLink.find(filter).lean();

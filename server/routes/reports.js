@@ -10,10 +10,11 @@ const router = Router();
 router.get("/budget", requireAuth, async (req, res) => {
   try {
     const { personId, year } = req.query;
-    if (!personId || !year) return res.status(400).json({ error: "MISSING_PARAMS" });
+    if (!personId || !year)
+      return res.status(400).json({ error: "MISSING_PARAMS" });
     const y = Number(year);
     const from = new Date(Date.UTC(y, 0, 1));
-    const to   = new Date(Date.UTC(y + 1, 0, 1));
+    const to = new Date(Date.UTC(y + 1, 0, 1));
 
     // Load person + org guard
     const person = await Person.findById(personId).lean();
@@ -26,115 +27,196 @@ router.get("/budget", requireAuth, async (req, res) => {
 
     // --- completed spend from CareTask.cost ---
     const completedAgg = await CareTask.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           status: "Completed",
           dueDate: { $gte: from, $lt: to },
-          cost: { $ne: null }
-      }},
-      { $group: { _id: null, total: { $sum: "$cost" } } }
+          cost: { $ne: null },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$cost" } } },
     ]);
     const completedSpend = completedAgg[0]?.total || 0;
 
     // expected remaining from uncompleted tasks (join to item.occurrenceCost + category) ---
     const pendingAgg = await CareTask.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           status: { $in: ["Scheduled", "Missed"] },
-          dueDate: { $gte: from, $lt: to }
-      }},
-      { $lookup: {
+          dueDate: { $gte: from, $lt: to },
+        },
+      },
+      {
+        $lookup: {
           from: "careneeditems",
           localField: "careNeedItemId",
           foreignField: "_id",
-          as: "item"
-      }},
+          as: "item",
+        },
+      },
       { $unwind: "$item" },
-      { $group: {
+      {
+        $group: {
           _id: null,
-          total: { $sum: "$item.occurrenceCost" }
-      }}
+          total: { $sum: "$item.occurrenceCost" },
+        },
+      },
     ]);
     const expectedRemaining = pendingAgg[0]?.total || 0;
 
     // --- purchase cost counted in the year items start ---
     const purchaseAgg = await CareNeedItem.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           "frequency.startDate": { $gte: from, $lt: to },
-          purchaseCost: { $gt: 0 }
-      }},
-      { $group: { _id: null, total: { $sum: "$purchaseCost" } } }
+          purchaseCost: { $gt: 0 },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$purchaseCost" } } },
     ]);
     const purchaseSpend = purchaseAgg[0]?.total || 0;
 
     const totalSpent = completedSpend + purchaseSpend;
     const currentBalance = annualBudget - totalSpent;
-    const expectedBalanceAtYearEnd = annualBudget - totalSpent - expectedRemaining;
+    const expectedBalanceAtYearEnd =
+      annualBudget - totalSpent - expectedRemaining;
 
     // --- category breakdowns: spent (completed+purchase) and expected ---
     // completed by category
     const completedByCat = await CareTask.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           status: "Completed",
           dueDate: { $gte: from, $lt: to },
-          cost: { $ne: null }
-      }},
-      { $lookup: {
+          cost: { $ne: null },
+        },
+      },
+      {
+        $lookup: {
           from: "careneeditems",
           localField: "careNeedItemId",
           foreignField: "_id",
-          as: "item"
-      }},
+          as: "item",
+        },
+      },
       { $unwind: "$item" },
-      { $group: { _id: "$item.category", spent: { $sum: "$cost" } } }
+      { $group: { _id: "$item.category", spent: { $sum: "$cost" } } },
     ]);
 
     // purchase by category (items that started this year)
     const purchaseByCat = await CareNeedItem.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           "frequency.startDate": { $gte: from, $lt: to },
-          purchaseCost: { $gt: 0 }
-      }},
-      { $group: { _id: "$category", purchase: { $sum: "$purchaseCost" } } }
+          purchaseCost: { $gt: 0 },
+        },
+      },
+      { $group: { _id: "$category", purchase: { $sum: "$purchaseCost" } } },
     ]);
 
     // expected by category (pending tasks)
     const expectedByCat = await CareTask.aggregate([
-      { $match: {
+      {
+        $match: {
           personId: person._id,
           organizationId: person.organizationId,
           status: { $in: ["Scheduled", "Missed"] },
-          dueDate: { $gte: from, $lt: to }
-      }},
-      { $lookup: {
+          dueDate: { $gte: from, $lt: to },
+        },
+      },
+      {
+        $lookup: {
           from: "careneeditems",
           localField: "careNeedItemId",
           foreignField: "_id",
-          as: "item"
-      }},
+          as: "item",
+        },
+      },
       { $unwind: "$item" },
-      { $group: { _id: "$item.category", expected: { $sum: "$item.occurrenceCost" } } }
+      {
+        $group: {
+          _id: "$item.category",
+          expected: { $sum: "$item.occurrenceCost" },
+        },
+      },
+    ]);
+
+    // category annual budgets (sum of item.budgetCost per category) FOR THE YEAR
+    const catBudgetAgg = await CareNeedItem.aggregate([
+      {
+        $match: {
+          personId: person._id,
+          organizationId: person.organizationId,
+          createdAt: { $gte: from, $lt: to }, // <-- bound to report year
+          budgetCost: { $gt: 0 },
+        },
+      },
+      { $group: { _id: "$category", annualBudget: { $sum: "$budgetCost" } } },
     ]);
 
     // merge per-category results
     const cats = {};
-    for (const r of completedByCat) cats[r._id] = { category: r._id, spent: r.spent || 0, purchase: 0, expected: 0 };
-    for (const r of purchaseByCat)  (cats[r._id] ||= { category: r._id, spent: 0, purchase: 0, expected: 0 }).purchase = r.purchase || 0;
-    for (const r of expectedByCat)  (cats[r._id] ||= { category: r._id, spent: 0, purchase: 0, expected: 0 }).expected = r.expected || 0;
+    for (const r of completedByCat)
+      cats[r._id] = {
+        category: r._id,
+        spent: r.spent || 0,
+        purchase: 0,
+        expected: 0,
+      };
+    for (const r of purchaseByCat)
+      (cats[r._id] ||= {
+        category: r._id,
+        spent: 0,
+        purchase: 0,
+        expected: 0,
+      }).purchase = r.purchase || 0;
+    for (const r of expectedByCat)
+      (cats[r._id] ||= {
+        category: r._id,
+        spent: 0,
+        purchase: 0,
+        expected: 0,
+      }).expected = r.expected || 0;
+    for (const r of catBudgetAgg)
+      (cats[r._id] ||= {
+        category: r._id,
+        spent: 0,
+        purchase: 0,
+        expected: 0,
+        annualBudget: 0,
+      }).annualBudget = r.annualBudget || 0;
 
-    const categories = Object.values(cats).map(c => {
-      const totalCatSpent = (c.spent + c.purchase);
-      const spentPct    = totalSpent > 0 ? totalCatSpent / totalSpent : 0;
-      const expectedPct = (expectedRemaining > 0) ? (c.expected / expectedRemaining) : 0;
-      return { ...c, totalSpent: totalCatSpent, spentPct, expectedPct };
+    const categories = Object.values(cats).map((c) => {
+      const totalCatSpent = c.spent + c.purchase;
+      const currentCatBalance = c.annualBudget - totalCatSpent;
+      const expectedCatBalanceAtYearEnd =
+        c.annualBudget - totalCatSpent - c.expected;
+
+      // keep existing percentage columns (optional)
+      const spentPct = totalSpent > 0 ? totalCatSpent / totalSpent : 0;
+      const expectedPct =
+        expectedRemaining > 0 ? c.expected / expectedRemaining : 0;
+
+      return {
+        category: c.category,
+        annualBudget: c.annualBudget,
+        totalSpent: totalCatSpent,
+        currentBalance: currentCatBalance,
+        expected: c.expected,
+        expectedBalanceAtYearEnd: expectedCatBalanceAtYearEnd,
+        spentPct,
+        expectedPct,
+      };
     });
 
     res.json({
@@ -144,16 +226,16 @@ router.get("/budget", requireAuth, async (req, res) => {
       spent: {
         purchase: purchaseSpend,
         completed: completedSpend,
-        total: totalSpent
+        total: totalSpent,
       },
       expected: {
-        remaining: expectedRemaining
+        remaining: expectedRemaining,
       },
       balance: {
         current: currentBalance,
-        expectedAtYearEnd: expectedBalanceAtYearEnd
+        expectedAtYearEnd: expectedBalanceAtYearEnd,
       },
-      categories
+      categories,
     });
   } catch (e) {
     res.status(400).json({ error: e.message });

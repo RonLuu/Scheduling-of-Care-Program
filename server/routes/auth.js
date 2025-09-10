@@ -51,8 +51,8 @@ router.post("/register", async (req, res) => {
       t.type === "FAMILY_TOKEN"
         ? "Family"
         : t.type === "MANAGER_TOKEN"
-        ? "PrimaryManager"
-        : "AssignedStaff";
+        ? "Admin"
+        : "GeneralCareStaff";
     await PersonUserLink.insertMany(
       persons.map((p) => ({
         personId: p._id,

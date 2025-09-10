@@ -9,53 +9,78 @@ import { Schema, model } from "mongoose";
 const TimeWindowSchema = new Schema(
   {
     startTime: { type: String, match: /^[0-2]\d:[0-5]\d$/ }, // "HH:mm" 24h
-    endTime:   { type: String, match: /^[0-2]\d:[0-5]\d$/ }, // "HH:mm"
+    endTime: { type: String, match: /^[0-2]\d:[0-5]\d$/ }, // "HH:mm"
   },
   { _id: false }
 );
 
 const CareNeedItemSchema = new Schema(
   {
-    personId:       { type: Schema.Types.ObjectId, ref: "PersonWithNeeds", required: true, index: true },
-    organizationId: { type: Schema.Types.ObjectId, ref: "Organization",  required: true, index: true }, // mirror Person.organizationId
+    personId: {
+      type: Schema.Types.ObjectId,
+      ref: "PersonWithNeeds",
+      required: true,
+      index: true,
+    },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    }, // mirror Person.organizationId
 
-    name:        { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true },
     description: { type: String },
 
     frequency: {
-      intervalType:  { type: String, enum: ["Daily","Weekly","Monthly","Yearly","OneTime"], required: true },
+      intervalType: {
+        type: String,
+        enum: [
+          "JustPurchase",
+          "OneTime",
+          "Daily",
+          "Weekly",
+          "Monthly",
+          "Yearly",
+        ],
+        required: true,
+      },
       intervalValue: { type: Number, default: 1 },
-      startDate:     { type: Date }
+      startDate: { type: Date },
     },
 
     // Schedule mode for each occurrence
-    scheduleType: { type: String, enum: ["AllDay", "Timed"], default: "AllDay", required: true },
-    timeWindow:   { type: TimeWindowSchema, default: undefined }, // required if scheduleType==="Timed"
-
-    endDate:       { type: Date },     // stop on/before this date
-    occurrenceCount:{ type: Number },   // or stop after N occurrences (incl. start)
-
-    nextDueDate:    { type: Date, index: true },
-    category: {
+    scheduleType: {
       type: String,
-      enum: [
-        "Medical",
-        "DailyLiving",
-        "Nutrition",
-        "Mobility",
-        "Therapy",
-        "Other"
-      ],
-      required: true
+      enum: ["AllDay", "Timed"],
+      default: "AllDay",
     },
+    timeWindow: { type: TimeWindowSchema, default: undefined }, // required if scheduleType==="Timed"
+
+    endDate: { type: Date }, // stop on/before this date
+    occurrenceCount: { type: Number }, // or stop after N occurrences (incl. start)
+
+    nextDueDate: { type: Date, index: true },
+    // category: {
+    //   type: String,
+    //   enum: ["HygieneProducts", "Clothing", "Health", "Entertainment", "Other"],
+    //   required: true,
+    // },
+
+    category: { type: String, required: true, trim: true },
 
     // Expected costs
-    purchaseCost:   { type: Number, default: 0 },  // one-off
-    occurrenceCost: { type: Number, default: 0 },  // per generated occurrence
+    budgetCost: { type: Number, default: 0 }, // estimated budgeted annual cost
+    purchaseCost: { type: Number, default: 0 }, // one-off when purchase
+    occurrenceCost: { type: Number, default: 0 }, // per generated occurrence
 
-    status: { type: String, enum: ["Active","Suspended","Deleted"], default: "Active" },
+    status: {
+      type: String,
+      enum: ["Active", "Suspended", "Deleted"],
+      default: "Active",
+    },
 
-    createdByUserId: { type: Schema.Types.ObjectId, ref: "User" }
+    createdByUserId: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
