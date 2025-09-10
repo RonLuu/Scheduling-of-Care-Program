@@ -3,11 +3,10 @@ import Organization from "../models/Organization.js";
 
 const router = Router();
 
-router.route("/")
-  .get(getOrganizations)
-  .post(postOrganization);
+router.route("/").get(getOrganizations).post(postOrganization);
 
-router.route("/:organizationId")
+router
+  .route("/:organizationId")
   .get(getOrganization)
   .put(putOrganization)
   .delete(deleteOrganization);
@@ -18,7 +17,9 @@ async function getOrganizations(req, res) {
 }
 
 async function postOrganization(req, res) {
-  const org = await Organization.create(req.body);
+  const { name, address } = req.body;
+  if (!name) return res.status(400).json({ error: "NAME_REQUIRED" });
+  const org = await Organization.create({ name, address });
   res.status(201).json(org);
 }
 

@@ -10,5 +10,6 @@ const CommentSchema = new Schema(
   },
   { timestamps: true }
 );
+CommentSchema.index({ careTaskId: 1, createdAt: 1 });
 
 export default model("Comment", CommentSchema);

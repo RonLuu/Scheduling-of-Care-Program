@@ -5,6 +5,15 @@ import { Schema, model } from "mongoose";
  * - organizationId is derived from Person (must match on create/update)
  * - No approval fields (out of scope).
  */
+
+const TimeWindowSchema = new Schema(
+  {
+    startTime: { type: String, match: /^[0-2]\d:[0-5]\d$/ }, // "HH:mm" 24h
+    endTime:   { type: String, match: /^[0-2]\d:[0-5]\d$/ }, // "HH:mm"
+  },
+  { _id: false }
+);
+
 const CareNeedItemSchema = new Schema(
   {
     personId:       { type: Schema.Types.ObjectId, ref: "PersonWithNeeds", required: true, index: true },
@@ -19,11 +28,26 @@ const CareNeedItemSchema = new Schema(
       startDate:     { type: Date }
     },
 
+    // Schedule mode for each occurrence
+    scheduleType: { type: String, enum: ["AllDay", "Timed"], default: "AllDay", required: true },
+    timeWindow:   { type: TimeWindowSchema, default: undefined }, // required if scheduleType==="Timed"
+
     endDate:       { type: Date },     // stop on/before this date
     occurrenceCount:{ type: Number },   // or stop after N occurrences (incl. start)
 
     nextDueDate:    { type: Date, index: true },
-    category:       { type: String },
+    category: {
+      type: String,
+      enum: [
+        "Medical",
+        "DailyLiving",
+        "Nutrition",
+        "Mobility",
+        "Therapy",
+        "Other"
+      ],
+      required: true
+    },
 
     // Expected costs
     purchaseCost:   { type: Number, default: 0 },  // one-off

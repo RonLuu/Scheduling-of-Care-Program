@@ -6,20 +6,30 @@ import { Schema, model } from "mongoose";
  */
 const PersonUserLinkSchema = new Schema(
   {
-    personId: { type: Schema.Types.ObjectId, ref: "PersonWithNeeds", required: true, index: true },
-    userId:   { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    personId: {
+      type: Schema.Types.ObjectId,
+      ref: "PersonWithNeeds",
+      required: true,
+      index: true,
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
     relationshipType: {
       type: String,
-      enum: ["AssignedStaff", "PrimaryManager", "Family", "PoA", "Viewer"],
+      enum: ["GeneralCareStaff", "PrimaryManager", "Family", "PoA", "Viewer"],
       required: true,
-      index: true
+      index: true,
     },
 
-    active:  { type: Boolean, default: true, index: true },
+    active: { type: Boolean, default: true, index: true },
     startAt: { type: Date },
-    endAt:   { type: Date },
-    notes:   { type: String }
+    endAt: { type: Date },
+    notes: { type: String },
   },
   { timestamps: true }
 );

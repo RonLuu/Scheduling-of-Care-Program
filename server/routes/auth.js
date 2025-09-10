@@ -13,7 +13,8 @@ const router = Router();
 // POST /api/auth/register { token, email, password, name }
 router.post("/register", async (req, res) => {
   const { token, email, password, name } = req.body;
-  if (!token || !email || !password || !name) return res.status(400).json({ error: "MISSING_FIELDS" });
+  if (!token || !email || !password || !name)
+    return res.status(400).json({ error: "MISSING_FIELDS" });
 
   const t = await Token.findOne({ tokenHash: hashToken(token) });
   if (!t || t.revoked || t.expiresAt <= new Date() || t.uses >= t.maxUses) {
@@ -33,36 +34,54 @@ router.post("/register", async (req, res) => {
     passwordHash,
     organizationId: t.organizationId,
     role,
-    isActive: true
+    isActive: true,
   });
 
   if (t.personIds?.length) {
-    const persons = await Person.find({ _id: { $in: t.personIds } }, "organizationId");
-    if (persons.some(p => String(p.organizationId) !== String(t.organizationId))) {
+    const persons = await Person.find(
+      { _id: { $in: t.personIds } },
+      "organizationId"
+    );
+    if (
+      persons.some((p) => String(p.organizationId) !== String(t.organizationId))
+    ) {
       return res.status(400).json({ error: "PERSON_SCOPE_ORG_MISMATCH" });
     }
     const relationshipType =
-      t.type === "FAMILY_TOKEN"  ? "Family" :
-      t.type === "MANAGER_TOKEN" ? "PrimaryManager" :
-                                    "AssignedStaff";
-    await PersonUserLink.insertMany(persons.map(p => ({
-      personId: p._id,
-      userId: user._id,
-      relationshipType,
-      active: true,
-      startAt: new Date()
-    })));
-  }
-  else {
+      t.type === "FAMILY_TOKEN"
+        ? "Family"
+        : t.type === "MANAGER_TOKEN"
+        ? "PrimaryManager"
+        : "AssignedStaff";
+    await PersonUserLink.insertMany(
+      persons.map((p) => ({
+        personId: p._id,
+        userId: user._id,
+        relationshipType,
+        active: true,
+        startAt: new Date(),
+      }))
+    );
+  } else {
     return res.status(400).json({ error: "PERSON_IDS_REQUIRED" });
   }
 
   await Token.updateOne({ _id: t._id }, { $inc: { uses: 1 } });
 
-  const jwtToken = jwt.sign({ sub: user._id, role: user.role, org: user.organizationId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  const jwtToken = jwt.sign(
+    { sub: user._id, role: user.role, org: user.organizationId },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
   res.status(201).json({
     session: { jwt: jwtToken, expiresIn: 3600 },
-    user: { id: user._id, role: user.role, organizationId: user.organizationId, email: user.email, name: user.name }
+    user: {
+      id: user._id,
+      role: user.role,
+      organizationId: user.organizationId,
+      email: user.email,
+      name: user.name,
+    },
   });
 });
 
@@ -83,23 +102,43 @@ router.post("/register-family", async (req, res) => {
     passwordHash,
     organizationId: orgId,
     role: "Family",
-    isActive: true
+    isActive: true,
   });
 
-  const jwtToken = jwt.sign({ sub: user._id, role: user.role, org: user.organizationId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  const jwtToken = jwt.sign(
+    { sub: user._id, role: user.role, org: user.organizationId },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
   res.status(201).json({
     session: { jwt: jwtToken, expiresIn: 3600 },
-    user: { id: user._id, role: user.role, organizationId: user.organizationId, email: user.email, name: user.name }
+    user: {
+      id: user._id,
+      role: user.role,
+      organizationId: user.organizationId,
+      email: user.email,
+      name: user.name,
+    },
   });
 });
 
 // POST /api/auth/login { email, password }
 router.post("/login", requireLocal, (req, res) => {
   const u = req.user;
-  const jwtToken = jwt.sign({ sub: u._id, role: u.role, org: u.organizationId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  const jwtToken = jwt.sign(
+    { sub: u._id, role: u.role, org: u.organizationId },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
   res.json({
     session: { jwt: jwtToken, expiresIn: 3600 },
-    user: { id: u._id, role: u.role, organizationId: u.organizationId, email: u.email, name: u.name }
+    user: {
+      id: u._id,
+      role: u.role,
+      organizationId: u.organizationId,
+      email: u.email,
+      name: u.name,
+    },
   });
 });
 

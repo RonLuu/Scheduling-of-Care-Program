@@ -2,24 +2,21 @@ import { Router } from "express";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
 import PersonUserLink from "../models/PersonUserLink.js";
+import { requireAuth } from "../middleware/authz.js";
 
 const router = Router();
 
-router.route("/")
-  .get(getLinks)
-  .post(postLink);
+router.route("/").get(getLinks).post(postLink);
 
-router.route("/:linkId")
-  .get(getLink)
-  .put(putLink)
-  .delete(deleteLink);
+router.route("/:linkId").get(getLink).put(putLink).delete(deleteLink);
 
 async function getLinks(req, res) {
   const { personId, userId, active } = req.query;
   const filter = {};
   if (personId) filter.personId = personId;
   if (userId) filter.userId = userId;
-  if (active !== undefined) filter.active = active === "true";
+  // if (active !== undefined) filter.active = active === "true";
+  filter.active = active ? active : true;
 
   const links = await PersonUserLink.find(filter).lean();
   res.json(links);
@@ -31,15 +28,22 @@ async function postLink(req, res) {
   // Fetch both and enforce org-invariant
   const [person, user] = await Promise.all([
     PersonWithNeeds.findById(personId),
-    User.findById(userId)
+    User.findById(userId),
   ]);
-  if (!person || !user) return res.status(400).json({ error: "Person or User not found" });
+  if (!person || !user)
+    return res.status(400).json({ error: "Person or User not found" });
   if (String(person.organizationId) !== String(user.organizationId)) {
-    return res.status(400).json({ error: "ORG_MISMATCH: user and person must be in the same organization" });
+    return res.status(400).json({
+      error: "ORG_MISMATCH: user and person must be in the same organization",
+    });
   }
 
   const link = await PersonUserLink.create({
-    personId, userId, relationshipType, active, startAt: new Date()
+    personId,
+    userId,
+    relationshipType,
+    active,
+    startAt: new Date(),
   });
   res.status(201).json(link);
 }
@@ -64,11 +68,14 @@ async function putLink(req, res) {
   if (makeActive) {
     const [person, user] = await Promise.all([
       PersonWithNeeds.findById(personId),
-      User.findById(userId)
+      User.findById(userId),
     ]);
-    if (!person || !user) return res.status(400).json({ error: "Person or User not found" });
+    if (!person || !user)
+      return res.status(400).json({ error: "Person or User not found" });
     if (String(person.organizationId) !== String(user.organizationId)) {
-      return res.status(400).json({ error: "ORG_MISMATCH: user and person must be in the same organization" });
+      return res.status(400).json({
+        error: "ORG_MISMATCH: user and person must be in the same organization",
+      });
     }
   }
 
@@ -84,5 +91,35 @@ async function deleteLink(req, res) {
   await PersonUserLink.deleteOne({ _id: req.params.linkId });
   res.json({ message: "Link deleted" });
 }
+
+router.get("/by-person/:personId", requireAuth, async (req, res) => {
+  try {
+    const links = await PersonUserLink.find({
+      personId: req.params.personId,
+      active: true,
+    })
+      .populate("userId", "name email role organizationId")
+      .lean();
+    res.json(links);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PATCH /api/person-user-links/:id/revoke
+router.patch("/:id/revoke", requireAuth, async (req, res) => {
+  try {
+    const link = await PersonUserLink.findById(req.params.id);
+    if (!link) return res.status(404).json({ error: "LINK_NOT_FOUND" });
+
+    link.active = false;
+    link.endAt = new Date();
+    await link.save();
+
+    res.json({ ok: true, revokedId: link._id });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 export default router;

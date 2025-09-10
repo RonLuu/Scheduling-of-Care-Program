@@ -3,16 +3,30 @@ import { Schema, model } from "mongoose";
 const UserSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, index: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true,
+    },
     passwordHash: { type: String, required: true },
 
-    organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      index: true,
+    },
 
- 
-    role: { type: String, enum: ["GeneralCareStaff", "Family", "PoA", "Admin"], required: true, index: true },
+    role: {
+      type: String,
+      enum: ["GeneralCareStaff", "Family", "PoA", "Admin"],
+      required: true,
+      index: true,
+    },
 
     isActive: { type: Boolean, default: true },
-    lastLogin: { type: Date }
+    lastLogin: { type: Date },
   },
   { timestamps: true }
 );
