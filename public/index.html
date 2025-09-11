@@ -398,10 +398,19 @@
         const [ciName, setCiName] = React.useState("");
         const [ciDesc, setCiDesc] = React.useState("");
         const [ciCategory, setCiCategory] = React.useState("HygieneProducts");
+        const [ciCategories, setCiCategories] = React.useState([
+          "HygieneProducts",
+          "Clothing",
+          "Health",
+          "Entertainment",
+          "Other",
+        ]);
+        const [ciUseCustomCat, setCiUseCustomCat] = React.useState(false);
+        const [ciCustomCat, setCiCustomCat] = React.useState("");
 
         const [ciIntervalType, setCiIntervalType] = React.useState("Daily");
         const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
-        const [ciStartDate, setCiStartDate] = React.useState(""); // yyyy-mm-dd
+        const [ciStartDate, setCiStartDate] = React.useState(); // yyyy-mm-dd
         const [ciEndMode, setCiEndMode] = React.useState("none"); // "none" | "endDate" | "count"
         const [ciEndDate, setCiEndDate] = React.useState("");
 
@@ -775,20 +784,23 @@
             if (!ciPersonId) throw new Error("Please select a client.");
             if (!ciName) throw new Error("Name is required.");
 
-            if (ciIntervalType === "JustPurchase") {
-              ciStartDate = null;
-              ciIntervalValue = null;
-            }
+            const startDate =
+              ciIntervalType === "JustPurchase"
+                ? new Date() // today
+                : new Date(ciStartDate);
             // Build payload
             const payload = {
               personId: ciPersonId,
               name: ciName,
               description: ciDesc,
               category: ciCategory,
+              ...(ciUseCustomCat
+                ? { newCategoryName: ciCustomCat }
+                : { category: ciCategory }),
               frequency: {
                 intervalType: ciIntervalType,
                 intervalValue: Number(ciIntervalValue),
-                startDate: new Date(ciStartDate).toISOString(),
+                startDate: startDate.toISOString(),
               },
               scheduleType: ciScheduleType, // NEW
               budgetCost: Number(ciBudgetCost) || 0,
@@ -839,6 +851,8 @@
             // optional: clear form
             setCiName("");
             setCiDesc("");
+            setCiUseCustomCat(false);
+            setCiCustomCat("");
             setCiPurchaseCost(0);
             setCiOccurrenceCost(0);
             setCiBudgetCost(0);
@@ -1266,6 +1280,29 @@
             })
             .catch(() => {});
         }, [tasksClientId]); // re-run when switching client to keep list fresh
+
+        // Load categories when client is selected
+        React.useEffect(() => {
+          const jwt = localStorage.getItem("jwt");
+          if (!jwt || !ciPersonId) return;
+
+          fetch(`/api/person-with-needs/${ciPersonId}/categories`, {
+            headers: { Authorization: "Bearer " + jwt },
+          })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d && Array.isArray(d.categories)) {
+                setCiCategories(d.categories);
+                // if current ciCategory is not in list, keep it or reset:
+                if (!d.categories.includes(ciCategory)) {
+                  setCiCategory(d.categories[0] || "Other");
+                }
+              }
+            })
+            .catch(() => {
+              /* ignore */
+            });
+        }, [ciPersonId]);
 
         return (
           <React.Fragment>
@@ -1752,20 +1789,51 @@
                         placeholder="e.g., Dental visit"
                       />
                     </div>
+
                     <div>
                       <label>Category</label>
-                      <select
-                        value={ciCategory}
-                        onChange={(e) => setCiCategory(e.target.value)}
-                      >
-                        <option value="HygieneProducts">
-                          Hygiene Products
-                        </option>
-                        <option value="Clothing">Clothing</option>
-                        <option value="Health">Health</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      {!ciUseCustomCat ? (
+                        <React.Fragment>
+                          <select
+                            value={ciCategory}
+                            onChange={(e) => setCiCategory(e.target.value)}
+                          >
+                            {ciCategories.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => {
+                              setCiUseCustomCat(true);
+                              setCiCustomCat("");
+                            }}
+                            style={{ marginTop: 6 }}
+                          >
+                            + Add custom
+                          </button>
+                        </React.Fragment>
+                      ) : (
+                        <React.Fragment>
+                          <input
+                            placeholder="Type new category"
+                            value={ciCustomCat}
+                            onChange={(e) => setCiCustomCat(e.target.value)}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => setCiUseCustomCat(false)}
+                            >
+                              Use list instead
+                            </button>
+                          </div>
+                        </React.Fragment>
+                      )}
                     </div>
                   </div>
 

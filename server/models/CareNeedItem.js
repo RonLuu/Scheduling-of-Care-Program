@@ -61,24 +61,23 @@ const CareNeedItemSchema = new Schema(
     occurrenceCount: { type: Number }, // or stop after N occurrences (incl. start)
 
     nextDueDate: { type: Date, index: true },
-    // category: {
-    //   type: String,
-    //   enum: ["HygieneProducts", "Clothing", "Health", "Entertainment", "Other"],
-    //   required: true,
-    // },
-
-    category: { type: String, required: true, trim: true },
+    category: {
+      type: String,
+      enum: ["HygieneProducts", "Clothing", "Health", "Entertainment", "Other"],
+      required: true,
+    },
 
     // Expected costs
-    budgetCost: { type: Number, default: 0 }, // estimated budgeted annual cost
+    budgetCost: { type: Number, default: 0 }, // estimated budget per year
     purchaseCost: { type: Number, default: 0 }, // one-off when purchase
     occurrenceCost: { type: Number, default: 0 }, // per generated occurrence
 
-    status: {
-      type: String,
-      enum: ["Active", "Suspended", "Deleted"],
-      default: "Active",
-    },
+    // status: {
+    //   type: String,
+    //   enum: ["Active", "Suspended", "Deleted"],
+    //   default: "Active",
+    // },
+    category: { type: String, required: true, trim: true },
 
     createdByUserId: { type: Schema.Types.ObjectId, ref: "User" },
   },

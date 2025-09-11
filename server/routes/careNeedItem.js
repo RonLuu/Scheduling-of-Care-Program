@@ -48,7 +48,8 @@ async function createItem(req, res) {
       personId,
       name,
       description,
-      category,
+      category, // may be "Other" or any predefined/custom
+      newCategoryName, // optional: custom category typed by user
       frequency,
       endDate,
       occurrenceCount,
@@ -93,13 +94,42 @@ async function createItem(req, res) {
       tw = { startTime: timeWindow.startTime, endTime: timeWindow.endTime };
     }
 
+    // Decide final category
+    let finalCategory =
+      newCategoryName && newCategoryName.trim()
+        ? newCategoryName.trim()
+        : (category || "").trim();
+    if (!finalCategory)
+      return res.status(400).json({ error: "CATEGORY_REQUIRED" });
+
+    // If new, persist into person's customCategories (case-insensitive uniqueness)
+    const existing = new Set(
+      (person.customCategories || []).map((s) => s.toLowerCase())
+    );
+    const predefined = [
+      "HygieneProducts",
+      "Clothing",
+      "Health",
+      "Entertainment",
+      "Other",
+    ].map((s) => s.toLowerCase());
+    if (
+      !existing.has(finalCategory.toLowerCase()) &&
+      !predefined.includes(finalCategory.toLowerCase())
+    ) {
+      await PersonWithNeeds.updateOne(
+        { _id: person._id },
+        { $addToSet: { customCategories: finalCategory } }
+      );
+    }
+
     // Create item (force organizationId from person)
     const item = await CareNeedItem.create({
       personId,
       organizationId: person.organizationId,
       name,
       description,
-      category,
+      category: finalCategory,
       frequency,
       endDate: endDate || null,
       occurrenceCount: occurrenceCount || null,
