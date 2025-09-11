@@ -8,7 +8,7 @@ import passport from "passport";
 import { connectDB } from "./models/index.js";
 import routes from "./routes/index.js";
 import "./middleware/passport.js";
-
+// TODO: client port as constant
 dotenv.config();
 
 const app = express();
