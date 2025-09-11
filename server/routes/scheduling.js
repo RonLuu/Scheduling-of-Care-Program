@@ -28,6 +28,7 @@ router.post(
 async function generateTasksForItem(req, res) {
   const { itemId } = req.params;
   const { from, to } = req.query;
+  const { assignToUserId } = req.body || {};
 
   const item = await CareNeedItem.findById(itemId);
   if (!item) return res.status(404).json({ error: "ITEM_NOT_FOUND" });
@@ -94,6 +95,7 @@ async function generateTasksForItem(req, res) {
         title: item.name,
         dueDate,
         status: "Scheduled",
+        ...(assignToUserId ? { assignedToUserId: assignToUserId } : {}),
       },
       $set: {
         scheduleType: item.scheduleType === "Timed" ? "Timed" : "AllDay",

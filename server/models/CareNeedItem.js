@@ -72,11 +72,6 @@ const CareNeedItemSchema = new Schema(
     purchaseCost: { type: Number, default: 0 }, // one-off when purchase
     occurrenceCost: { type: Number, default: 0 }, // per generated occurrence
 
-    // status: {
-    //   type: String,
-    //   enum: ["Active", "Suspended", "Deleted"],
-    //   default: "Active",
-    // },
     category: { type: String, required: true, trim: true },
 
     createdByUserId: { type: Schema.Types.ObjectId, ref: "User" },

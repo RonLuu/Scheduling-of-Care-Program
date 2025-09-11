@@ -133,17 +133,36 @@ router.patch("/:id/decision", requireAuth, async (req, res) => {
         : "Family";
 
     for (const pid of ar.personIds) {
-      await PersonUserLink.updateOne(
-        { personId: pid, userId: requester._id },
-        {
-          $setOnInsert: {
-            relationshipType: rel,
-            active: true,
-            startAt: new Date(),
-          },
-        },
-        { upsert: true }
-      );
+      // Try to find an existing link first
+      const existing = await PersonUserLink.findOne({
+        personId: pid,
+        userId: requester._id,
+      });
+
+      if (!existing) {
+        // Create new active link
+        await PersonUserLink.create({
+          personId: pid,
+          userId: requester._id,
+          relationshipType: rel,
+          active: true,
+          startAt: new Date(),
+        });
+      } else if (!existing.active) {
+        // Reactivate a revoked link
+        existing.active = true;
+        existing.endAt = undefined; // clear the end date
+        existing.relationshipType = rel; // align with current role
+        // keep original startAt, or set if it was never set
+        if (!existing.startAt) existing.startAt = new Date();
+        await existing.save();
+      } else {
+        // Link is already active; optionally update relationship type if it changed
+        if (existing.relationshipType !== rel) {
+          existing.relationshipType = rel;
+          await existing.save();
+        }
+      }
     }
 
     // increment token uses

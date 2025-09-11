@@ -34,6 +34,7 @@ const PersonUserLinkSchema = new Schema(
   { timestamps: true }
 );
 
+PersonUserLinkSchema.index({ personId: 1, userId: 1 }, { unique: true });
 PersonUserLinkSchema.index({ personId: 1, relationshipType: 1, active: 1 });
 PersonUserLinkSchema.index({ userId: 1, active: 1 });
 

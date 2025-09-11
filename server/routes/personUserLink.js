@@ -8,14 +8,14 @@ const router = Router();
 
 router.route("/").get(getLinks).post(postLink);
 
-router.route("/:linkId").get(getLink).put(putLink).delete(deleteLink);
-
 async function getLinks(req, res) {
   const { personId, userId, active } = req.query;
   const filter = {};
   if (personId) filter.personId = personId;
   if (userId) filter.userId = userId;
-  filter.active = active ? active : true;
+  if (active === "true") filter.active = true;
+  else if (active === "false") filter.active = false;
+  else filter.active = true;
 
   const links = await PersonUserLink.find(filter).lean();
   res.json(links);
@@ -120,5 +120,52 @@ router.patch("/:id/revoke", requireAuth, async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+
+// GET /api/person-user-links/assignable-users?personId=...
+// Returns [{ userId, name, email, role }]
+router.get("/assignable-users", requireAuth, async (req, res) => {
+  try {
+    const { personId } = req.query;
+    if (!personId) return res.status(400).json({ error: "MISSING_PERSON_ID" });
+
+    // Pull active links for this person, then populate user
+    const links = await PersonUserLink.find({
+      personId,
+      active: true,
+      relationshipType: { $in: ["Admin", "GeneralCareStaff"] }, // Admin/Staff
+    })
+      .populate("userId", "name email role organizationId")
+      .lean();
+
+    // Optional org guard: user viewing must be in same org as the person
+    const person = await PersonWithNeeds.findById(personId).select(
+      "organizationId"
+    );
+    if (!person) return res.status(404).json({ error: "PERSON_NOT_FOUND" });
+    if (String(person.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
+
+    const out = links
+      .map((l) => l.userId)
+      .filter(Boolean)
+      .filter((u) => u.role === "Admin" || u.role === "GeneralCareStaff")
+      .map((u) => ({
+        userId: String(u._id),
+        name: u.name,
+        email: u.email,
+        role: u.role,
+      }));
+
+    // de-dup by userId
+    const byId = {};
+    for (const u of out) byId[u.userId] = u;
+    res.json(Object.values(byId));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.route("/:linkId").get(getLink).put(putLink).delete(deleteLink);
 
 export default router;

@@ -424,6 +424,10 @@
         const [ciStartTime, setCiStartTime] = React.useState("09:00"); // HH:mm
         const [ciEndTime, setCiEndTime] = React.useState("10:00"); // HH:mm
 
+        // Assign user to care need item
+        const [assignableUsers, setAssignableUsers] = React.useState([]);
+        const [ciAssignedTo, setCiAssignedTo] = React.useState(""); // optional userId
+
         const [ciBusy, setCiBusy] = React.useState(false);
         const [ciErr, setCiErr] = React.useState("");
         const [ciSuccess, setCiSuccess] = React.useState("");
@@ -838,7 +842,13 @@
               `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
               {
                 method: "POST",
-                headers: { Authorization: "Bearer " + jwt },
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: "Bearer " + jwt,
+                },
+                body: JSON.stringify(
+                  ciAssignedTo ? { assignToUserId: ciAssignedTo } : {}
+                ),
               }
             );
             const gen = await r2.json();
@@ -1302,6 +1312,31 @@
             .catch(() => {
               /* ignore */
             });
+        }, [ciPersonId]);
+
+        // Load assignable staff when client is selected to create care need item
+        React.useEffect(() => {
+          const jwtNow = localStorage.getItem("jwt");
+          if (!jwtNow || !ciPersonId) {
+            setAssignableUsers([]);
+            setCiAssignedTo("");
+            return;
+          }
+
+          fetch(
+            `/api/person-user-links/assignable-users?personId=${encodeURIComponent(
+              ciPersonId
+            )}`,
+            {
+              headers: { Authorization: "Bearer " + jwtNow },
+            }
+          )
+            .then((r) => r.json())
+            .then((d) => {
+              if (Array.isArray(d)) setAssignableUsers(d);
+              else setAssignableUsers([]);
+            })
+            .catch(() => setAssignableUsers([]));
         }, [ciPersonId]);
 
         return (
@@ -1997,6 +2032,28 @@
                     )}
                   </div>
 
+                  {ciPersonId && (
+                    <div className="row">
+                      <div>
+                        <label>Assign to (optional)</label>
+                        <select
+                          value={ciAssignedTo}
+                          onChange={(e) => setCiAssignedTo(e.target.value)}
+                        >
+                          <option value="">— Unassigned —</option>
+                          {assignableUsers.map((u) => (
+                            <option key={u.userId} value={u.userId}>
+                              {u.name} ({u.role})
+                            </option>
+                          ))}
+                        </select>
+                        <p style={{ opacity: 0.7, marginTop: -6 }}>
+                          Admins and staff linked to this client
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <button disabled={ciBusy}>
                     {ciBusy ? "Saving..." : "Create & Generate"}
                   </button>
@@ -2140,7 +2197,6 @@
                           <strong>{t.title}</strong>
                           {" · "}
                           {new Date(t.dueDate).toLocaleDateString()}
-
                           {t.scheduleType === "Timed" &&
                             t.startAt &&
                             t.endAt && (
@@ -2180,40 +2236,65 @@
                                 : "Mark as completed"
                             }
                           />
-                          {/* Show spent amount (read-only) if present */}
-                          {t.status === "Completed" &&
-                            t.cost !== undefined &&
-                            t.cost !== null && (
-                              <React.Fragment>
-                                {" · "}Spent:{" "}
-                                <strong>{aud.format(t.cost)}</strong>{" "}
-                                <button
-                                  className="secondary"
-                                  style={{
-                                    marginTop: 8,
-                                    borderRadius: 8,
-                                    padding: 10,
-                                  }}
-                                  onClick={() => {
-                                    // reopen editor & prefill with current cost (or 0)
-                                    setCostEditorHiddenByTask((prev) => ({
-                                      ...prev,
-                                      [t._id]: false,
-                                    }));
-                                    setCostDraftByTask((prev) => ({
-                                      ...prev,
-                                      [t._id]:
-                                        t.cost !== undefined && t.cost !== null
-                                          ? String(t.cost) // keep as string for input
-                                          : "0",
-                                    }));
-                                  }}
-                                >
-                                  Change cost
-                                </button>
-                              </React.Fragment>
-                            )}
+                          {t.assignedToUserId ? (
+                            <span title="Assigned to">
+                              Assigned:{" "}
+                              <strong>
+                                {t.assignedToUserId.name || "Unknown"}
+                              </strong>
+                            </span>
+                          ) : (
+                            <span className="badge" title="No assignee">
+                              Unassigned
+                            </span>
+                          )}
+                          {t.completedByUserId && (
+                            <React.Fragment>
+                              {" · "}
+                              <span title="Completed by">
+                                Completed by:{" "}
+                                <strong>
+                                  {t.completedByUserId.name || "Unknown"}
+                                </strong>
+                              </span>
+                            </React.Fragment>
+                          )}
                         </div>
+
+                        {/* Show spent amount (read-only) if present */}
+                        {t.status === "Completed" &&
+                          t.cost !== undefined &&
+                          t.cost !== null && (
+                            <React.Fragment>
+                              {" · "}Spent:{" "}
+                              <strong>{aud.format(t.cost)}</strong>{" "}
+                              <button
+                                className="secondary"
+                                style={{
+                                  marginTop: 8,
+                                  borderRadius: 8,
+                                  padding: 10,
+                                }}
+                                onClick={() => {
+                                  // reopen editor & prefill with current cost (or 0)
+                                  setCostEditorHiddenByTask((prev) => ({
+                                    ...prev,
+                                    [t._id]: false,
+                                  }));
+                                  setCostDraftByTask((prev) => ({
+                                    ...prev,
+                                    [t._id]:
+                                      t.cost !== undefined && t.cost !== null
+                                        ? String(t.cost) // keep as string for input
+                                        : "0",
+                                  }));
+                                }}
+                              >
+                                Change cost
+                              </button>
+                            </React.Fragment>
+                          )}
+                        {" · "}
 
                         <button
                           className="secondary"
