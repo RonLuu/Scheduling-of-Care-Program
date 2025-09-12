@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Care Program – Access & Auth</title>
+    <title>Care Program Scheduling</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body {
@@ -75,12 +75,18 @@
         border-radius: 6px;
       }
     </style>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
   </head>
   <body>
     <header>
       <div>
         <strong>Care Program</strong>
-        <span style="opacity: 0.7">· Care Item & Care Task</span>
+        <span style="opacity: 0.7">· Calendar View</span>
       </div>
       <nav>
         <a href="#" id="nav-login">Login</a>
@@ -179,65 +185,6 @@
           <div>
             <RegisterBasic onAuthed={onAuthed} />
             <RegisterOrganization />
-          </div>
-        );
-      }
-
-      function RegisterFamily({ onAuthed, defaultOrganizationId = "" }) {
-        const [name, setName] = React.useState("");
-        const [email, setEmail] = React.useState("");
-        const [password, setPassword] = React.useState("");
-        const [organizationId, setOrganizationId] = React.useState(
-          defaultOrganizationId
-        );
-        const [err, setErr] = React.useState("");
-
-        React.useEffect(() => {
-          if (defaultOrganizationId) setOrganizationId(defaultOrganizationId);
-        }, [defaultOrganizationId]);
-
-        async function submit(e) {
-          e.preventDefault();
-          setErr("");
-          const r = await fetch("/api/auth/register-family", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password, organizationId }),
-          });
-          const d = await r.json();
-          if (!r.ok) return setErr(d.error || "Registration failed");
-          localStorage.setItem("jwt", d.session.jwt);
-          onAuthed(d.user);
-        }
-
-        return (
-          <div className="card">
-            <h2>Register as a new family member</h2>
-            <form onSubmit={submit}>
-              <input
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <input
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <input
-                placeholder="Organization ID"
-                value={organizationId}
-                onChange={(e) => setOrganizationId(e.target.value)}
-              />
-              <button>Create family account</button>
-            </form>
-            {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
           </div>
         );
       }
@@ -1339,6 +1286,525 @@
             .catch(() => setAssignableUsers([]));
         }, [ciPersonId]);
 
+        function TasksPanel({
+          clients,
+          tasks,
+          tasksLoading,
+          tasksErr,
+          onChangeTasksClient,
+          tasksClientId,
+          ...rest
+        }) {
+          const [viewMode, setViewMode] = React.useState("list"); // "list" | "calendar"
+
+          return (
+            <div className="card">
+              <h3>My Tasks</h3>
+
+              {clients.length > 1 && (
+                <div>
+                  <label>Client</label>
+                  <select value={tasksClientId} onChange={onChangeTasksClient}>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {clients.length === 1 && (
+                <p>
+                  Client: <strong>{clients[0].name}</strong>
+                </p>
+              )}
+
+              <div style={{ margin: "8px 0" }}>
+                <button
+                  className={viewMode === "list" ? "" : "secondary"}
+                  onClick={() => setViewMode("list")}
+                  style={{ marginRight: 8 }}
+                >
+                  List
+                </button>
+                <button
+                  className={viewMode === "calendar" ? "" : "secondary"}
+                  onClick={() => setViewMode("calendar")}
+                >
+                  Calendar
+                </button>
+              </div>
+
+              {tasksLoading && <p>Loading…</p>}
+              {tasksErr && (
+                <p style={{ color: "#b91c1c" }}>Error: {tasksErr}</p>
+              )}
+
+              {!tasksLoading && !tasksErr && tasks.length === 0 && (
+                <p>No tasks found for this client.</p>
+              )}
+
+              {!tasksLoading &&
+                !tasksErr &&
+                tasks.length > 0 &&
+                (viewMode === "calendar" ? (
+                  <CareTaskCalendar tasks={tasks} />
+                ) : (
+                  <CareTaskList tasks={tasks} />
+                ))}
+            </div>
+          );
+        }
+
+        function CareTaskList({ task }) {
+          return (
+            <ul>
+              {tasks.map((t) => (
+                <li key={t._id}>
+                  <div>
+                    <div style={{ display: "inline", marginLeft: 8 }}>
+                      <strong>{t.title}</strong>
+                      {" · "}
+                      {new Date(t.dueDate).toLocaleDateString()}
+                      {t.scheduleType === "Timed" && t.startAt && t.endAt && (
+                        <React.Fragment>
+                          {" · "}
+                          {new Date(t.startAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {" – "}
+                          {new Date(t.endAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </React.Fragment>
+                      )}
+                      {" · "}
+                      <span className="badge">
+                        {t.scheduleType === "AllDay" ? "All-day" : "Timed"}
+                      </span>
+                      {" · "}
+                      <span className="badge">{t.status}</span>
+                      <input
+                        style={{
+                          display: "inline",
+                          width: "auto",
+                          marginLeft: 16,
+                        }}
+                        type="checkbox"
+                        checked={t.status === "Completed"}
+                        onChange={(e) =>
+                          toggleTaskComplete(t, e.target.checked)
+                        }
+                        title={
+                          t.status === "Completed"
+                            ? "Unmark as completed"
+                            : "Mark as completed"
+                        }
+                      />
+                      {t.assignedToUserId ? (
+                        <span title="Assigned to">
+                          Assigned:{" "}
+                          <strong>
+                            {t.assignedToUserId.name || "Unknown"}
+                          </strong>
+                        </span>
+                      ) : (
+                        <span className="badge" title="No assignee">
+                          Unassigned
+                        </span>
+                      )}
+                      {t.completedByUserId && (
+                        <React.Fragment>
+                          {" · "}
+                          <span title="Completed by">
+                            Completed by:{" "}
+                            <strong>
+                              {t.completedByUserId.name || "Unknown"}
+                            </strong>
+                          </span>
+                        </React.Fragment>
+                      )}
+                    </div>
+
+                    {/* Show spent amount (read-only) if present */}
+                    {t.status === "Completed" &&
+                      t.cost !== undefined &&
+                      t.cost !== null && (
+                        <React.Fragment>
+                          {" · "}Spent: <strong>{aud.format(t.cost)}</strong>{" "}
+                          <button
+                            className="secondary"
+                            style={{
+                              marginTop: 8,
+                              borderRadius: 8,
+                              padding: 10,
+                            }}
+                            onClick={() => {
+                              // reopen editor & prefill with current cost (or 0)
+                              setCostEditorHiddenByTask((prev) => ({
+                                ...prev,
+                                [t._id]: false,
+                              }));
+                              setCostDraftByTask((prev) => ({
+                                ...prev,
+                                [t._id]:
+                                  t.cost !== undefined && t.cost !== null
+                                    ? String(t.cost) // keep as string for input
+                                    : "0",
+                              }));
+                            }}
+                          >
+                            Change cost
+                          </button>
+                        </React.Fragment>
+                      )}
+                    {" · "}
+
+                    <button
+                      className="secondary"
+                      onClick={() => toggleComments(t._id)}
+                    >
+                      Comments
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => toggleFiles(t._id)}
+                    >
+                      Files
+                    </button>
+                  </div>
+
+                  {/* Cost entry appears ONLY when completed and editor not hidden */}
+                  {t.status === "Completed" &&
+                    !costEditorHiddenByTask[t._id] && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <label style={{ minWidth: 120 }}>
+                          Budget spent (AUD)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={
+                            costDraftByTask[t._id] !== undefined
+                              ? costDraftByTask[t._id]
+                              : t.cost !== undefined && t.cost !== null
+                              ? t.cost
+                              : 0
+                          }
+                          onChange={(e) =>
+                            setCostDraftByTask((prev) => ({
+                              ...prev,
+                              [t._id]: e.target.value,
+                            }))
+                          }
+                          style={{ maxWidth: 160 }}
+                        />
+                        <button onClick={() => saveTaskCost(t._id)}>
+                          Save
+                        </button>
+                      </div>
+                    )}
+
+                  {/* Cost entry appears ONLY when completed, no cost yet, and not hidden */}
+
+                  {/* Comments panel */}
+                  {openCommentsFor === t._id && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        background: "#fafafa",
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
+                    >
+                      <h4 style={{ margin: "4px 0" }}>Comments</h4>
+                      <div>
+                        {(commentsByTask[t._id] || []).length === 0 ? (
+                          <p>No comments yet.</p>
+                        ) : (
+                          <ul>
+                            {(commentsByTask[t._id] || []).map((c) => (
+                              <li key={c._id}>
+                                <strong>
+                                  {(c.author &&
+                                    (c.author.name || c.author.email)) ||
+                                    "Unknown"}
+                                </strong>
+                                {" · "}
+                                {new Date(c.createdAt).toLocaleString()}
+                                <div>{c.text}</div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <div className="row">
+                        <input
+                          placeholder="Write a comment…"
+                          value={newCommentText}
+                          onChange={(e) => setNewCommentText(e.target.value)}
+                        />
+                        <button onClick={() => addComment(t._id)}>Add</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Files panel */}
+                  {openFilesFor === t._id && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        background: "#fafafa",
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
+                    >
+                      <h4 style={{ margin: "4px 0" }}>Files</h4>
+
+                      {/* Existing list */}
+                      <div>
+                        {(filesByTask[t._id] || []).length === 0 ? (
+                          <p>No files yet.</p>
+                        ) : (
+                          <ul>
+                            {(filesByTask[t._id] || []).map((f) => (
+                              <li key={f._id} style={{ marginBottom: 6 }}>
+                                {/* small thumbnail for images */}
+                                {f.fileType &&
+                                f.fileType.startsWith("image/") ? (
+                                  <a
+                                    href={f.urlOrPath}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <img
+                                      src={f.urlOrPath}
+                                      alt={f.filename}
+                                      style={{
+                                        maxHeight: 64,
+                                        maxWidth: 96,
+                                        objectFit: "cover",
+                                        marginRight: 8,
+                                        verticalAlign: "middle",
+                                        borderRadius: 4,
+                                        border: "1px solid #ddd",
+                                      }}
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={f.urlOrPath}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {f.filename}
+                                  </a>
+                                )}
+                                {" · "}
+                                {new Date(f.createdAt).toLocaleString()}
+                                {f.description ? (
+                                  <div>{f.description}</div>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      {/* --- Link mode (kept) --- */}
+                      <h5>Add by link</h5>
+                      <div className="row">
+                        <input
+                          placeholder="Filename (e.g., Pyjamas photo)"
+                          value={newFile.filename}
+                          onChange={(e) =>
+                            setNewFile((prev) => ({
+                              ...prev,
+                              filename: e.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          placeholder="URL or path (https://…)"
+                          value={newFile.urlOrPath}
+                          onChange={(e) =>
+                            setNewFile((prev) => ({
+                              ...prev,
+                              urlOrPath: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <input
+                        placeholder="Description (optional)"
+                        value={newFile.description}
+                        onChange={(e) =>
+                          setNewFile((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                      />
+                      <button onClick={() => addFile(t._id)}>
+                        Add file (link)
+                      </button>
+
+                      {/* --- Real upload (new) --- */}
+                      <h5 style={{ marginTop: 12 }}>Upload a file</h5>
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget; // <-- keep a real DOM ref
+                          try {
+                            const jwtNow = localStorage.getItem("jwt");
+                            if (!jwtNow) throw new Error("UNAUTHENTICATED");
+
+                            const fd = new FormData(form); // build before awaits is fine too
+                            fd.set("careTaskId", t._id); // ensure task id included
+
+                            const r = await fetch("/api/file-upload/upload", {
+                              method: "POST",
+                              headers: {
+                                Authorization: "Bearer " + jwtNow,
+                              }, // DON'T set Content-Type
+                              body: fd,
+                            });
+
+                            // Be robust to non-JSON errors
+                            const isJson = r.headers
+                              .get("content-type")
+                              .includes("application/json");
+                            const data = isJson
+                              ? await r.json()
+                              : { error: await r.text() };
+
+                            if (!r.ok)
+                              throw new Error(data.error || "Upload failed");
+
+                            form.reset(); // <-- safe now
+                            await loadFiles(t._id);
+                          } catch (err) {
+                            alert(
+                              "Upload failed: " + (err.message || String(err))
+                            );
+                          }
+                        }}
+                      >
+                        <input type="file" name="file" required />
+                        <input
+                          name="description"
+                          placeholder="Description (optional)"
+                        />
+                        <button type="submit">Upload</button>
+                      </form>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        function CareTaskCalendar({ tasks }) {
+          const ref = React.useRef(null);
+          const calendarRef = React.useRef(null);
+
+          // Convert tasks to FullCalendar events
+          const toEvents = React.useCallback(() => {
+            return (tasks || []).map((t) => {
+              if (t.scheduleType === "Timed" && t.startAt && t.endAt) {
+                // timed event
+                return {
+                  id: t._id,
+                  title: `${t.title} · ${t.status}`,
+                  start: t.startAt, // ISO strings from your API are fine
+                  end: t.endAt,
+                  allDay: false,
+                  backgroundColor:
+                    t.status === "Completed"
+                      ? "#059669"
+                      : t.status === "Missed"
+                      ? "#b91c1c"
+                      : undefined,
+                  borderColor: "transparent",
+                };
+              } else {
+                // all-day -> show on the due date as a full-day block
+                // FullCalendar allDay events show [start, end), so add +1 day to end
+                const d = new Date(t.dueDate);
+                const end = new Date(d);
+                end.setDate(end.getDate() + 1);
+                return {
+                  id: t._id,
+                  title: `${t.title} · ${t.status}`,
+                  start: d.toISOString().slice(0, 10),
+                  end: end.toISOString().slice(0, 10),
+                  allDay: true,
+                  backgroundColor:
+                    t.status === "Completed"
+                      ? "#059669"
+                      : t.status === "Missed"
+                      ? "#b91c1c"
+                      : undefined,
+                  borderColor: "transparent",
+                };
+              }
+            });
+          }, [tasks]);
+
+          // Init once
+          React.useEffect(() => {
+            if (!ref.current) return;
+            const calendar = new FullCalendar.Calendar(ref.current, {
+              initialView: "dayGridMonth",
+              headerToolbar: {
+                left: "prev,next today",
+                center: "title",
+                right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+              },
+              height: "auto",
+              nowIndicator: true,
+              // tweak: show times in local zone
+              timeZone: "local",
+              // optional: click -> show a simple alert / hook
+              eventClick: (info) => {
+                const e = info.event;
+                alert(
+                  `${e.title}\nStart: ${e.start.toLocaleString()}\nEnd: ${
+                    e.end.toLocaleString() || "—"
+                  }`
+                );
+              },
+              events: toEvents(),
+            });
+            calendar.render();
+            calendarRef.current = calendar;
+            return () => calendar.destroy();
+          }, []); // init once
+
+          // Update events when tasks change
+          React.useEffect(() => {
+            if (!calendarRef.current) return;
+            const calendar = calendarRef.current;
+            calendar.removeAllEvents();
+            calendar.addEventSource(toEvents());
+          }, [toEvents]);
+
+          return <div ref={ref} />;
+        }
+
         return (
           <React.Fragment>
             <div className="card">
@@ -2155,411 +2621,14 @@
               )}
             </div>
 
-            <div className="card">
-              <h3>My Tasks</h3>
-
-              {/* Client picker shows only if you have more than one client */}
-              {clients.length > 1 && (
-                <div>
-                  <label>Client</label>
-                  <select value={tasksClientId} onChange={onChangeTasksClient}>
-                    {clients.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* If only one client, show its name */}
-              {clients.length === 1 && (
-                <p>
-                  Client: <strong>{clients[0].name}</strong>
-                </p>
-              )}
-
-              {tasksLoading && <p>Loading…</p>}
-              {tasksErr && (
-                <p style={{ color: "#b91c1c" }}>Error: {tasksErr}</p>
-              )}
-
-              {!tasksLoading && !tasksErr && tasks.length === 0 && (
-                <p>No tasks found for this client.</p>
-              )}
-
-              {!tasksLoading && !tasksErr && tasks.length > 0 && (
-                <ul>
-                  {tasks.map((t) => (
-                    <li key={t._id}>
-                      <div>
-                        <div style={{ display: "inline", marginLeft: 8 }}>
-                          <strong>{t.title}</strong>
-                          {" · "}
-                          {new Date(t.dueDate).toLocaleDateString()}
-                          {t.scheduleType === "Timed" &&
-                            t.startAt &&
-                            t.endAt && (
-                              <React.Fragment>
-                                {" · "}
-                                {new Date(t.startAt).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                                {" – "}
-                                {new Date(t.endAt).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </React.Fragment>
-                            )}
-                          {" · "}
-                          <span className="badge">
-                            {t.scheduleType === "AllDay" ? "All-day" : "Timed"}
-                          </span>
-                          {" · "}
-                          <span className="badge">{t.status}</span>
-                          <input
-                            style={{
-                              display: "inline",
-                              width: "auto",
-                              marginLeft: 16,
-                            }}
-                            type="checkbox"
-                            checked={t.status === "Completed"}
-                            onChange={(e) =>
-                              toggleTaskComplete(t, e.target.checked)
-                            }
-                            title={
-                              t.status === "Completed"
-                                ? "Unmark as completed"
-                                : "Mark as completed"
-                            }
-                          />
-                          {t.assignedToUserId ? (
-                            <span title="Assigned to">
-                              Assigned:{" "}
-                              <strong>
-                                {t.assignedToUserId.name || "Unknown"}
-                              </strong>
-                            </span>
-                          ) : (
-                            <span className="badge" title="No assignee">
-                              Unassigned
-                            </span>
-                          )}
-                          {t.completedByUserId && (
-                            <React.Fragment>
-                              {" · "}
-                              <span title="Completed by">
-                                Completed by:{" "}
-                                <strong>
-                                  {t.completedByUserId.name || "Unknown"}
-                                </strong>
-                              </span>
-                            </React.Fragment>
-                          )}
-                        </div>
-
-                        {/* Show spent amount (read-only) if present */}
-                        {t.status === "Completed" &&
-                          t.cost !== undefined &&
-                          t.cost !== null && (
-                            <React.Fragment>
-                              {" · "}Spent:{" "}
-                              <strong>{aud.format(t.cost)}</strong>{" "}
-                              <button
-                                className="secondary"
-                                style={{
-                                  marginTop: 8,
-                                  borderRadius: 8,
-                                  padding: 10,
-                                }}
-                                onClick={() => {
-                                  // reopen editor & prefill with current cost (or 0)
-                                  setCostEditorHiddenByTask((prev) => ({
-                                    ...prev,
-                                    [t._id]: false,
-                                  }));
-                                  setCostDraftByTask((prev) => ({
-                                    ...prev,
-                                    [t._id]:
-                                      t.cost !== undefined && t.cost !== null
-                                        ? String(t.cost) // keep as string for input
-                                        : "0",
-                                  }));
-                                }}
-                              >
-                                Change cost
-                              </button>
-                            </React.Fragment>
-                          )}
-                        {" · "}
-
-                        <button
-                          className="secondary"
-                          onClick={() => toggleComments(t._id)}
-                        >
-                          Comments
-                        </button>
-                        <button
-                          className="secondary"
-                          onClick={() => toggleFiles(t._id)}
-                        >
-                          Files
-                        </button>
-                      </div>
-
-                      {/* Cost entry appears ONLY when completed and editor not hidden */}
-                      {t.status === "Completed" &&
-                        !costEditorHiddenByTask[t._id] && (
-                          <div
-                            style={{
-                              marginTop: 8,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <label style={{ minWidth: 120 }}>
-                              Budget spent (AUD)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={
-                                costDraftByTask[t._id] !== undefined
-                                  ? costDraftByTask[t._id]
-                                  : t.cost !== undefined && t.cost !== null
-                                  ? t.cost
-                                  : 0
-                              }
-                              onChange={(e) =>
-                                setCostDraftByTask((prev) => ({
-                                  ...prev,
-                                  [t._id]: e.target.value,
-                                }))
-                              }
-                              style={{ maxWidth: 160 }}
-                            />
-                            <button onClick={() => saveTaskCost(t._id)}>
-                              Save
-                            </button>
-                          </div>
-                        )}
-
-                      {/* Cost entry appears ONLY when completed, no cost yet, and not hidden */}
-
-                      {/* Comments panel */}
-                      {openCommentsFor === t._id && (
-                        <div
-                          style={{
-                            marginTop: 8,
-                            background: "#fafafa",
-                            borderRadius: 8,
-                            padding: 8,
-                          }}
-                        >
-                          <h4 style={{ margin: "4px 0" }}>Comments</h4>
-                          <div>
-                            {(commentsByTask[t._id] || []).length === 0 ? (
-                              <p>No comments yet.</p>
-                            ) : (
-                              <ul>
-                                {(commentsByTask[t._id] || []).map((c) => (
-                                  <li key={c._id}>
-                                    <strong>
-                                      {(c.author &&
-                                        (c.author.name || c.author.email)) ||
-                                        "Unknown"}
-                                    </strong>
-                                    {" · "}
-                                    {new Date(c.createdAt).toLocaleString()}
-                                    <div>{c.text}</div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                          <div className="row">
-                            <input
-                              placeholder="Write a comment…"
-                              value={newCommentText}
-                              onChange={(e) =>
-                                setNewCommentText(e.target.value)
-                              }
-                            />
-                            <button onClick={() => addComment(t._id)}>
-                              Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Files panel */}
-                      {openFilesFor === t._id && (
-                        <div
-                          style={{
-                            marginTop: 8,
-                            background: "#fafafa",
-                            borderRadius: 8,
-                            padding: 8,
-                          }}
-                        >
-                          <h4 style={{ margin: "4px 0" }}>Files</h4>
-
-                          {/* Existing list */}
-                          <div>
-                            {(filesByTask[t._id] || []).length === 0 ? (
-                              <p>No files yet.</p>
-                            ) : (
-                              <ul>
-                                {(filesByTask[t._id] || []).map((f) => (
-                                  <li key={f._id} style={{ marginBottom: 6 }}>
-                                    {/* small thumbnail for images */}
-                                    {f.fileType &&
-                                    f.fileType.startsWith("image/") ? (
-                                      <a
-                                        href={f.urlOrPath}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        <img
-                                          src={f.urlOrPath}
-                                          alt={f.filename}
-                                          style={{
-                                            maxHeight: 64,
-                                            maxWidth: 96,
-                                            objectFit: "cover",
-                                            marginRight: 8,
-                                            verticalAlign: "middle",
-                                            borderRadius: 4,
-                                            border: "1px solid #ddd",
-                                          }}
-                                        />
-                                      </a>
-                                    ) : (
-                                      <a
-                                        href={f.urlOrPath}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        {f.filename}
-                                      </a>
-                                    )}
-                                    {" · "}
-                                    {new Date(f.createdAt).toLocaleString()}
-                                    {f.description ? (
-                                      <div>{f.description}</div>
-                                    ) : null}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-
-                          {/* --- Link mode (kept) --- */}
-                          <h5>Add by link</h5>
-                          <div className="row">
-                            <input
-                              placeholder="Filename (e.g., Pyjamas photo)"
-                              value={newFile.filename}
-                              onChange={(e) =>
-                                setNewFile((prev) => ({
-                                  ...prev,
-                                  filename: e.target.value,
-                                }))
-                              }
-                            />
-                            <input
-                              placeholder="URL or path (https://…)"
-                              value={newFile.urlOrPath}
-                              onChange={(e) =>
-                                setNewFile((prev) => ({
-                                  ...prev,
-                                  urlOrPath: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-
-                          <input
-                            placeholder="Description (optional)"
-                            value={newFile.description}
-                            onChange={(e) =>
-                              setNewFile((prev) => ({
-                                ...prev,
-                                description: e.target.value,
-                              }))
-                            }
-                          />
-                          <button onClick={() => addFile(t._id)}>
-                            Add file (link)
-                          </button>
-
-                          {/* --- Real upload (new) --- */}
-                          <h5 style={{ marginTop: 12 }}>Upload a file</h5>
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              const form = e.currentTarget; // <-- keep a real DOM ref
-                              try {
-                                const jwtNow = localStorage.getItem("jwt");
-                                if (!jwtNow) throw new Error("UNAUTHENTICATED");
-
-                                const fd = new FormData(form); // build before awaits is fine too
-                                fd.set("careTaskId", t._id); // ensure task id included
-
-                                const r = await fetch(
-                                  "/api/file-upload/upload",
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      Authorization: "Bearer " + jwtNow,
-                                    }, // DON'T set Content-Type
-                                    body: fd,
-                                  }
-                                );
-
-                                // Be robust to non-JSON errors
-                                const isJson = r.headers
-                                  .get("content-type")
-                                  .includes("application/json");
-                                const data = isJson
-                                  ? await r.json()
-                                  : { error: await r.text() };
-
-                                if (!r.ok)
-                                  throw new Error(
-                                    data.error || "Upload failed"
-                                  );
-
-                                form.reset(); // <-- safe now
-                                await loadFiles(t._id);
-                              } catch (err) {
-                                alert(
-                                  "Upload failed: " +
-                                    (err.message || String(err))
-                                );
-                              }
-                            }}
-                          >
-                            <input type="file" name="file" required />
-                            <input
-                              name="description"
-                              placeholder="Description (optional)"
-                            />
-                            <button type="submit">Upload</button>
-                          </form>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <TasksPanel
+              clients={clients}
+              tasks={tasks}
+              tasksLoading={tasksLoading}
+              tasksErr={tasksErr}
+              tasksClientId={tasksClientId}
+              onChangeTasksClient={onChangeTasksClient}
+            ></TasksPanel>
 
             <div className="card">
               <h3>Budget Reporting</h3>
