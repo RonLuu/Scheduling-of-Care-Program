@@ -10,7 +10,6 @@ const welcome = () => {
       </div>
       <nav>
         <a href="#" id="nav-login">Login</a>
-        {/* <a href="#" id="nav-register">Register</a> */}
         <Link to='/api/register'>Register</Link>
         <a href="#" id="nav-dashboard">Dashboard</a>
       </nav>

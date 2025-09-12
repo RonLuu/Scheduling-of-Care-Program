@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import RegisterFamily from './RegisterFamily';
 import RegisterCareTaker from './RegisterCareTaker';
 import RegisterAdmin from './RegisterAdmin';
+import './Register.css';
 
 // Register: A wrapper for different kind of registry
 // depending on the role the user selected
