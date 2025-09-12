@@ -8,11 +8,12 @@ import passport from "passport";
 import { connectDB } from "./models/index.js";
 import routes from "./routes/index.js";
 import "./middleware/passport.js";
-// TODO: client port as constant
+import { client_port } from "../constants.js";
+
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || client_port;
 
 app.use(cors());
 app.use(passport.initialize());
