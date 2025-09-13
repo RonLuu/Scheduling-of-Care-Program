@@ -1,3 +1,4 @@
+// TODO: Decide a constant file
 const client_port = 3000
 const client_URL_users = "http://localhost:5000/api/users"
 const server_port = 5000
