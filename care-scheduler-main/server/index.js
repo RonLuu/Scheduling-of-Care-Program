@@ -8,12 +8,11 @@ import passport from "passport";
 import { connectDB } from "./models/index.js";
 import routes from "./routes/index.js";
 import "./middleware/passport.js";
-import { client_port } from "../constants.js";
+import { server_port } from "../constants.js";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || client_port;
 
 app.use(cors());
 app.use(passport.initialize());
@@ -27,7 +26,7 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
 app.get(/^\/(?!api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+  res.sendFile("public/index.html");
 });
 
 app.use("/api", routes);
@@ -35,8 +34,8 @@ app.use("/api", routes);
 const start = async () => {
   try {
     await connectDB();
-    const server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    const server = app.listen(server_port, () => {
+      console.log(`Server running on port ${server_port}`);
     });
 
     // Graceful shutdown
