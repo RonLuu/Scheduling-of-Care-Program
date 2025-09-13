@@ -11,7 +11,7 @@ const Register = () =>
     const [role, setRole] = useState();
     
     const roleInputs = {
-        familymember: <RegisterFamily/>,
+        familymember: <RegisterFamily role = "Family"/>,
         caretaker: <RegisterCareTaker/>,
         admin: <RegisterAdmin/>
     }

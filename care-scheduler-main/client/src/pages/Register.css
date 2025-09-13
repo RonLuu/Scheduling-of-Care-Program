@@ -1,0 +1,18 @@
+/* TODO: fix the scrolling */
+.wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding-top: 70px;
+}
+
+.card {
+    background: #fff;
+    border: 5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    width: 750px;
+    max-width: 1000px;
+}
