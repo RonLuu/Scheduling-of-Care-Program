@@ -30,7 +30,7 @@ function LogIn({ onAuthed }) {
       }
       onAuthed({ ...d.user, jwt, expiresIn });
     } catch {
-      setErr("Network error. Please try again.");
+      setErr("Incorrect email or password. Please try again");
     } finally {
       setLoading(false); // always stop loading
     }
