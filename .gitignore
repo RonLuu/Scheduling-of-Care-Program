@@ -8,13 +8,13 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
-public/dist/
+client/dist/
 server/dist/
 
 # Environment variables
 .env
 .env.local
-public/.env
+client/.env
 server/.env
 
 # Local databases / dev-only files
@@ -57,13 +57,13 @@ yarn-error.log*
 # Builds
 dist/
 build/
-public/dist/
+client/dist/
 server/dist/
 
 # Env & local DB
 .env
 .env.local
-public/.env
+client/.env
 server/.env
 
 

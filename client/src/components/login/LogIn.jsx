@@ -1,0 +1,63 @@
+import React from "react";
+
+function LogIn({ onAuthed }) {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [err, setErr] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setErr("");
+    setLoading(true); // start loading
+    try {
+      const r = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const d = await r.json();
+      if (!r.ok) return setErr(d.error || "Login failed");
+
+      const jwt = d.session?.jwt;
+      const expiresIn = d.session?.expiresIn ?? 3600;
+      if (jwt) {
+        localStorage.setItem("jwt", jwt);
+        localStorage.setItem(
+          "jwt_expires_at",
+          String(Date.now() + expiresIn * 1000)
+        );
+      }
+      onAuthed({ ...d.user, jwt, expiresIn });
+    } catch {
+      setErr("Network error. Please try again.");
+    } finally {
+      setLoading(false); // always stop loading
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>Login</h2>
+      <form onSubmit={submit}>
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+      {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+    </div>
+  );
+}
+
+export default LogIn;
