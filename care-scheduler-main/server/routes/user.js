@@ -18,6 +18,7 @@ async function getUsers(req, res) {
 
 async function postUser(req, res) {
   // (Optional) check org exists
+  // TODO: make a hash password
   if (req.body.organizationId) {
     const org = await Organization.exists({ _id: req.body.organizationId });
     if (!org) return res.status(400).json({ error: "Invalid organizationId" });
