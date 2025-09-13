@@ -24,7 +24,8 @@ const RegisterFamily = ({role}) =>
     // }
 
     const submit = () => {
-        
+        // TODO add prevent reload
+        //e.preventDefault();
         const familyMember = {
             name,
             email,
