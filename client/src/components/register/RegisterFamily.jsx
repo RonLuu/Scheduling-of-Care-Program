@@ -58,10 +58,9 @@ function RegisterFamily() {
   }
 
   return (
-    <div className="card">
+    <div>
       <form onSubmit={submit}>
-        <div className="row">
-          <div>
+        <div>
             <input
               placeholder="Full name"
               value={name}
@@ -86,11 +85,12 @@ function RegisterFamily() {
               autoComplete="new-password"
               minLength={6}
             />
-          </div>
         </div>
-        <button disabled={loading}>
-          {loading ? "Creating…" : "Create account"}
-        </button>
+        <div className="button-containter">
+          <button disabled={loading}>
+            {loading ? "Creating…" : "Create account"}
+          </button>
+        </div>
       </form>
       {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
     </div>
