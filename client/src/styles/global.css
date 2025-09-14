@@ -1,7 +1,8 @@
 body {
-  font-family: system-ui, sans-serif;
   margin: 0;
-  background: #f7f7fb;
+  background: #fff;
+  font-family: 'inter';
+  /* font-family: 'Courier New', Courier, monospace; */
 }
 header {
   background: #1f2937;
@@ -9,6 +10,7 @@ header {
   padding: 12px 16px;
   display: flex;
   justify-content: space-between;
+
 }
 main {
   max-width: 900px;
@@ -22,7 +24,7 @@ main {
   padding: 16px;
   margin-bottom: 16px;
 }
-input,
+/* input,
 select,
 button {
   padding: 10px;
@@ -30,11 +32,17 @@ button {
   border: 1px solid #d1d5db;
   width: 100%;
   margin: 6px 0 12px;
-}
+} */
 button {
-  background: #2c3f70;
+  background-color: #2C3F70;
   color: white;
-  cursor: pointer;
+  font-family: 'inria serif';
+  padding: 15px 32px;
+  margin: 0px 50px 0px 50px;
+  font-size: 15px;
+  border: none;
+  font-size: 40px;
+  transition-duration: 0.4s;
 }
 button.secondary {
   background: #fff;
