@@ -11,14 +11,12 @@ import fileUploadRouter from "./fileUpload.js";
 import schedulingRouter from "./scheduling.js";
 import authRouter from "./auth.js";
 import reportsRouter from "./reports.js";
-import authBasicRouter from "./auth.basic.js";
 import userMeRouter from "./users.me.js";
 import accessRequestRouter from "./accessRequest.js";
 
 const router = Router();
 
 router.use("/auth", authRouter);
-router.use("/auth", authBasicRouter);
 router.use("/organizations", organizationsRouter);
 router.use("/users", usersRouter);
 router.use("/users", userMeRouter);

@@ -24,9 +24,60 @@ function AccessControl({ me, jwt, clients }) {
     }
   };
 
-  const revokeAccess = async (linkId) => {
+  const handleClientChange = (e) => {
+    const value = e.target.value;
+    setAccessClientId(value);
+    if (value) loadAccessLinks(value);
+  };
+
+  // Show all associated users for Admin / Family / PoA
+  const shouldShowUser = () => {
+    if (!me) return false;
+    return me.role === "Admin" || me.role === "Family" || me.role === "PoA";
+  };
+
+  // Permission: who can be revoked by current user?
+  const canRevoke = (userLink) => {
+    const u = userLink.userId;
+    if (!u) return false;
+
+    // Never allow revoking yourself
+    if (String(u._id) === String(me.id)) return false;
+
+    if (me.role === "Family" || me.role === "PoA") {
+      // Family/PoA can revoke anyone except themselves (including Admin)
+      return true;
+    }
+
+    if (me.role === "Admin") {
+      // Admin can only revoke staff
+      return u.role === "GeneralCareStaff";
+    }
+
+    return false;
+  };
+
+  const confirmText = (link) => {
+    const target = link?.userId || {};
+    const targetLabel = [target.role, target.name || target.email]
+      .filter(Boolean)
+      .join(" ");
+    const isFamily = me.role === "Family" || me.role === "PoA";
+
+    if (isFamily && target.role === "Admin") {
+      return `You're about to revoke ${targetLabel}'s access to this client.\n\nThis will ALSO revoke ALL GeneralCareStaff for this client.\n\nContinue?`;
+    }
+    return `Revoke access for ${targetLabel}?`;
+  };
+
+  // NOTE: pass the whole link so we can decide prompts and show cascade results
+  const revokeAccess = async (link) => {
+    // Confirm for ALL revoke actions
+    const ok = window.confirm(confirmText(link));
+    if (!ok) return;
+
     try {
-      const r = await fetch(`/api/person-user-links/${linkId}/revoke`, {
+      const r = await fetch(`/api/person-user-links/${link._id}/revoke`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -35,29 +86,45 @@ function AccessControl({ me, jwt, clients }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to revoke");
+
+      let msg = "Access revoked.";
+      if (d.cascade && typeof d.cascade.staffRevoked === "number") {
+        msg += ` Also revoked ${d.cascade.staffRevoked} staff access.`;
+      }
+      alert(msg);
+
       if (accessClientId) await loadAccessLinks(accessClientId);
     } catch (e) {
       alert("Error: " + (e.message || e));
     }
   };
 
-  const handleClientChange = (e) => {
-    const value = e.target.value;
-    setAccessClientId(value);
-    if (value) loadAccessLinks(value);
-  };
+  const actionCell = (link) => {
+    const u = link.userId;
+    const isSelf = String(u._id) === String(me.id);
+    const allowed = canRevoke(link);
 
-  const shouldShowUser = (userLink) => {
-    const u = userLink.userId;
-
-    if (me.role === "Family" || me.role === "PoA") {
-      // Family/PoA can see everyone except themselves
-      return me.id !== u._id;
-    } else if (me.role === "Admin") {
-      // Admin should only see staff
-      return u.role === "GeneralCareStaff";
+    if (isSelf) {
+      return (
+        <button className="secondary" disabled>
+          You
+        </button>
+      );
     }
-    return false;
+
+    if (allowed) {
+      return (
+        <button className="secondary" onClick={() => revokeAccess(link)}>
+          Revoke
+        </button>
+      );
+    }
+
+    return (
+      <button className="secondary" disabled>
+        Cannot revoke
+      </button>
+    );
   };
 
   return (
@@ -74,7 +141,6 @@ function AccessControl({ me, jwt, clients }) {
       </select>
 
       {accessErr && <p style={{ color: "#b91c1c" }}>Error: {accessErr}</p>}
-
       {isLoading && <p>Loading...</p>}
 
       {!accessClientId && !isLoading && (
@@ -105,14 +171,7 @@ function AccessControl({ me, jwt, clients }) {
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{u.role}</td>
-                  <td>
-                    <button
-                      className="secondary"
-                      onClick={() => revokeAccess(l._id)}
-                    >
-                      Revoke
-                    </button>
-                  </td>
+                  <td>{actionCell(l)}</td>
                 </tr>
               );
             })}

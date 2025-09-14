@@ -21,13 +21,13 @@ router.post("/", requireAuth, async (req, res) => {
     // 2) Role compatibility
     // FAMILY_TOKEN → requester must be Family or PoA
     // MANAGER_TOKEN → requester must be Admin
-    // STAFF_INVITE → requester must be GeneralCareStaff
+    // STAFF_TOKEN → requester must be GeneralCareStaff
     const role = req.user.role;
     const type = t.type;
     const allowed =
       (type === "FAMILY_TOKEN" && (role === "Family" || role === "PoA")) ||
       (type === "MANAGER_TOKEN" && role === "Admin") ||
-      (type === "STAFF_INVITE" && role === "GeneralCareStaff");
+      (type === "STAFF_TOKEN" && role === "GeneralCareStaff");
     if (!allowed)
       return res.status(400).json({ error: "ROLE_MISMATCH_FOR_TOKEN" });
 
@@ -36,11 +36,47 @@ router.post("/", requireAuth, async (req, res) => {
       req.user.organizationId &&
       String(req.user.organizationId) !== String(t.organizationId)
     ) {
-      return res.status(400).json({ error: "ORG_MISMATCH" });
+      return res
+        .status(400)
+        .json({ error: "ORG_MISMATCH (MUST BE IN SAME ORG)" });
     }
 
     if (!t.personIds || t.personIds.length === 0)
       return res.status(400).json({ error: "TOKEN_HAS_NO_PERSON_SCOPE" });
+
+    if (String(t.issuerId) === String(req.user.id)) {
+      return res.status(400).json({ error: "CANNOT_REQUEST_WITH_OWN_TOKEN" });
+    }
+
+    // prevent duplicate request for same token
+    const existingReq = await AccessRequest.findOne({
+      requesterId: req.user.id,
+      tokenId: t._id,
+      status: { $in: ["Pending", "Approved", "Rejected"] },
+    });
+
+    // prevent if user already has active link with any client in token scope
+    const hasActiveLink = await PersonUserLink.exists({
+      userId: req.user.id,
+      personId: { $in: t.personIds },
+      active: true,
+    });
+    if (hasActiveLink) {
+      return res
+        .status(400)
+        .json({ error: "ALREADY_HAS_ACTIVE_ACCESS_FOR_CLIENT" });
+    }
+
+    if (existingReq) {
+      return res.status(400).json({ error: "ALREADY_REQUESTED_THIS_TOKEN" });
+    }
+
+    if (t.uses >= t.maxUses) {
+      return res.status(400).json({ error: "TOKEN_MAX_USES" });
+    }
+
+    t.uses += 1;
+    await t.save();
 
     // 4) Create Pending request (no PersonUserLink yet)
     const ar = await AccessRequest.create({
@@ -64,7 +100,7 @@ router.post("/", requireAuth, async (req, res) => {
 
 // GET /api/access-requests/incoming  (issuer views requests for their tokens)
 router.get("/incoming", requireAuth, async (req, res) => {
-  // Issuer is either Family/PoA (for FAMILY_TOKEN/MANAGER_TOKEN) or Admin (for STAFF_INVITE)
+  // Issuer is either Family/PoA (for FAMILY_TOKEN/MANAGER_TOKEN) or Admin (for STAFF_TOKEN)
   const list = await AccessRequest.find({
     issuerId: req.user.id,
     status: "Pending",
@@ -85,6 +121,8 @@ router.patch("/:id/decision", requireAuth, async (req, res) => {
     if (ar.status !== "Pending")
       return res.status(400).json({ error: "ALREADY_DECIDED" });
 
+    const t = await Token.findById(ar.tokenId);
+
     if (!approve) {
       ar.status = "Rejected";
       ar.decidedAt = new Date();
@@ -94,7 +132,7 @@ router.patch("/:id/decision", requireAuth, async (req, res) => {
     }
 
     // Re-check token still valid and not overused
-    const t = await Token.findById(ar.tokenId);
+
     if (!t || t.revoked || t.expiresAt < new Date()) {
       ar.status = "Rejected";
       ar.decidedAt = new Date();
@@ -102,7 +140,7 @@ router.patch("/:id/decision", requireAuth, async (req, res) => {
       await ar.save();
       return res.status(400).json({ error: "TOKEN_INVALID_NOW", request: ar });
     }
-    if (t.uses >= t.maxUses) {
+    if (t.uses > t.maxUses) {
       ar.status = "Rejected";
       ar.decidedAt = new Date();
       ar.decidedBy = req.user.id;
@@ -164,10 +202,6 @@ router.patch("/:id/decision", requireAuth, async (req, res) => {
         }
       }
     }
-
-    // increment token uses
-    t.uses += 1;
-    await t.save();
 
     ar.status = "Approved";
     ar.decidedAt = new Date();
