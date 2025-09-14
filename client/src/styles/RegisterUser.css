@@ -21,3 +21,35 @@
     cursor: pointer;
 }
 
+.button-containter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+input {
+    width: 100%;
+    /* full width */
+    padding: 10px 14px;
+    /* comfortable padding */
+    margin-bottom: 16px;
+    /* spacing between inputs */
+    border: 1px solid #d1d5db;
+    /* light gray border */
+    border-radius: 8px;
+    /* rounded corners */
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 16px;
+    color: #111827;
+    background-color: #ffffff;
+    outline: none;
+    /* remove default focus outline */
+    box-sizing: border-box;
+    /* include padding in width */
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input::placeholder {
+    color: #aaa;
+    font-style: italic;
+}
