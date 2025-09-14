@@ -1,0 +1,13 @@
+.button:hover {
+    background-color: #04AA6D;
+    color: white;
+}
+
+.button-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    /* take full height */
+    gap: 12px;
+}
