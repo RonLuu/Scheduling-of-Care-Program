@@ -1,9 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom';
-import LogIn from '../login/LogIn'
-import Register from "../register/Register";
-import Dashboard from "../dashboard/Dashboard";
-import "../../styles/register.css"
 import "../../styles/global.css"
 // ---- custom hook (define OUTSIDE component) ----
 function useAuth() {
@@ -120,12 +116,12 @@ const Welcome = () => {
                 )}
             </nav>
 
-            {!me && page === "login" && <LogIn onAuthed={onAuthed} />}
+            {/* {!me && page === "login" && <LogIn onAuthed={onAuthed} />}
             {!me && page === "register" && <Register onAuthed={onAuthed} />}
 
             {me && page === "dashboard" && (
                 <Dashboard me={me} onLogout={logout} refreshMe={refreshMe} />
-            )}
+            )} */}
 
             {/* {!me && page === "dashboard" && (
         <div className="card">
