@@ -26,7 +26,7 @@ const AccessRequestSchema = new Schema(
     },
     tokenType: {
       type: String,
-      enum: ["FAMILY_TOKEN", "MANAGER_TOKEN", "STAFF_INVITE"],
+      enum: ["FAMILY_TOKEN", "MANAGER_TOKEN", "STAFF_TOKEN"],
       required: true,
     },
 
@@ -64,4 +64,9 @@ const AccessRequestSchema = new Schema(
 );
 
 AccessRequestSchema.index({ issuerId: 1, status: 1, createdAt: -1 });
+AccessRequestSchema.index(
+  { requesterId: 1, tokenId: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: "Pending" } }
+);
+
 export default model("AccessRequest", AccessRequestSchema);

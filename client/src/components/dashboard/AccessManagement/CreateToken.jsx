@@ -2,7 +2,7 @@ import React from "react";
 
 function CreateToken({ me, jwt, clients, organizationId }) {
   const initialType =
-    me && me.role === "Admin" ? "STAFF_INVITE" : "MANAGER_TOKEN";
+    me && me.role === "Admin" ? "STAFF_TOKEN" : "MANAGER_TOKEN";
   const [type, setType] = React.useState(initialType);
   const [expiresInDays, setExpiresInDays] = React.useState(7);
   const [maxUses, setMaxUses] = React.useState(1);
@@ -10,7 +10,7 @@ function CreateToken({ me, jwt, clients, organizationId }) {
   const [tokenResult, setTokenResult] = React.useState(null);
 
   const allowedTypesFor = (role) => {
-    if (role === "Admin") return [["STAFF_INVITE", "Staff invite"]];
+    if (role === "Admin") return [["STAFF_TOKEN", "Staff invite"]];
     if (role === "Family" || role === "PoA")
       return [
         ["FAMILY_TOKEN", "Family invite"],

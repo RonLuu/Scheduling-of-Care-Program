@@ -110,9 +110,61 @@ router.patch("/:id/revoke", requireAuth, async (req, res) => {
   try {
     const link = await PersonUserLink.findById(req.params.id);
     if (!link) return res.status(404).json({ error: "LINK_NOT_FOUND" });
+    if (!link.active) return res.status(400).json({ error: "ALREADY_REVOKED" });
 
+    const requesterRole = req.user.role;
+    const now = new Date();
+
+    // Security: Admins can only revoke staff
+    if (
+      requesterRole === "Admin" &&
+      link.relationshipType !== "GeneralCareStaff"
+    ) {
+      return res.status(403).json({ error: "ADMIN_CAN_ONLY_REVOKE_STAFF" });
+    }
+
+    // If Family/PoA revokes an Admin, also revoke ALL staff for this person (client).
+    if (
+      (requesterRole === "Family" || requesterRole === "PoA") &&
+      link.relationshipType === "Admin"
+    ) {
+      const session = await mongoose.startSession();
+      let staffRes = { modifiedCount: 0 };
+
+      try {
+        await session.withTransaction(async () => {
+          // Revoke targeted admin link
+          await PersonUserLink.updateOne(
+            { _id: link._id, active: true },
+            { $set: { active: false, endAt: now } },
+            { session }
+          );
+
+          // Revoke all GeneralCareStaff for this person (do NOT touch other admins)
+          staffRes = await PersonUserLink.updateMany(
+            {
+              personId: link.personId,
+              relationshipType: "GeneralCareStaff",
+              active: true,
+            },
+            { $set: { active: false, endAt: now } },
+            { session }
+          );
+        });
+
+        return res.json({
+          ok: true,
+          revokedId: link._id,
+          cascade: { staffRevoked: staffRes.modifiedCount || 0 },
+        });
+      } finally {
+        session.endSession();
+      }
+    }
+
+    // Default: simple revoke of the one link
     link.active = false;
-    link.endAt = new Date();
+    link.endAt = now;
     await link.save();
 
     res.json({ ok: true, revokedId: link._id });

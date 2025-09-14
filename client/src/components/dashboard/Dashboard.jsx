@@ -68,7 +68,7 @@ function Dashboard({ me, onLogout, refreshMe }) {
           </>
         )}
 
-      {me && me.role === "Family" && (
+      {me && (me.role === "Family" || me.role === "PoA") && (
         <ClientManagement.AddClient me={me} jwt={jwt} setClients={setClients} />
       )}
 

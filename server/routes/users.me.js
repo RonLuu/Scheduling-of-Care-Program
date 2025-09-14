@@ -10,6 +10,60 @@ import PersonUserLink from "../models/PersonUserLink.js";
 import mongoose from "mongoose";
 const router = Router();
 
+// BFS over Family/PoA ↔ Person graph using active:true only
+async function collectClosure(startUserId, session) {
+  const visitedFamily = new Set([String(startUserId)]);
+  const visitedPersons = new Set();
+  let frontierFamily = [String(startUserId)];
+
+  while (frontierFamily.length > 0) {
+    // Family/PoA users → persons
+    const linksUP = await PersonUserLink.find({
+      userId: { $in: frontierFamily },
+      relationshipType: { $in: ["Family", "PoA"] },
+      active: true,
+    })
+      .select("personId")
+      .lean()
+      .session(session);
+
+    const newPersonIds = [];
+    for (const l of linksUP) {
+      const pid = String(l.personId);
+      if (!visitedPersons.has(pid)) {
+        visitedPersons.add(pid);
+        newPersonIds.push(pid);
+      }
+    }
+    if (newPersonIds.length === 0) break;
+
+    // persons → Family/PoA users
+    const linksPU = await PersonUserLink.find({
+      personId: { $in: newPersonIds },
+      relationshipType: { $in: ["Family", "PoA"] },
+      active: true,
+    })
+      .select("userId")
+      .lean()
+      .session(session);
+
+    const nextFrontier = [];
+    for (const l of linksPU) {
+      const uid = String(l.userId);
+      if (!visitedFamily.has(uid)) {
+        visitedFamily.add(uid);
+        nextFrontier.push(uid);
+      }
+    }
+    frontierFamily = nextFrontier;
+  }
+
+  return {
+    familyUserIds: Array.from(visitedFamily),
+    personIds: Array.from(visitedPersons),
+  };
+}
+
 /**
  * PATCH /api/users/me/organization
  * Body: { organizationId: string, migrateClients?: boolean }
@@ -25,107 +79,106 @@ const router = Router();
  *   * Revoke (active=false, endAt=now) all non-family/poa links (GeneralCareStaff, Admin)
  */
 router.patch("/me/organization", requireAuth, async (req, res) => {
+  const { organizationId, migrateClients } = req.body || {};
+  if (!organizationId) return res.status(400).json({ error: "ORG_REQUIRED" });
+
+  const me = await User.findById(req.user.id);
+  if (!me) return res.status(404).json({ error: "USER_NOT_FOUND" });
+
+  const org = await Organization.findById(organizationId).lean();
+  if (!org) return res.status(404).json({ error: "ORG_NOT_FOUND" });
+
+  // Simple update if not cascading
+  if (!migrateClients) {
+    me.organizationId = organizationId;
+    await me.save();
+    return res.json({
+      ok: true,
+      user: { id: me._id, organizationId: me.organizationId },
+    });
+  }
+
+  if (!["Family", "PoA"].includes(me.role)) {
+    return res.status(403).json({ error: "ONLY_FAMILY_POA_CAN_CASCADE" });
+  }
+
+  const session = await mongoose.startSession();
+  let result = {
+    personsMoved: 0,
+    itemsMoved: 0,
+    tasksMoved: 0,
+    familyMoved: 0,
+    staffRevoked: 0,
+  };
+
   try {
-    const { organizationId, migrateClients } = req.body || {};
-    if (!organizationId) return res.status(400).json({ error: "ORG_REQUIRED" });
-
-    const me = await User.findById(req.user.id);
-    if (!me) return res.status(404).json({ error: "USER_NOT_FOUND" });
-
-    const org = await Organization.findById(organizationId).lean();
-    if (!org) return res.status(404).json({ error: "ORG_NOT_FOUND" });
-
-    // Just update user directly if not cascading
-    if (!migrateClients) {
-      me.organizationId = organizationId;
-      await me.save();
-      return res.json({
-        ok: true,
-        user: { id: me._id, organizationId: me.organizationId },
-      });
-    }
-
-    if (!["Family", "PoA"].includes(me.role)) {
-      return res.status(403).json({ error: "ONLY_FAMILY_POA_CAN_CASCADE" });
-    }
-
-    // 1) Update requester
-    await User.updateOne({ _id: me._id }, { $set: { organizationId } });
-
-    // 2) Find their clients
-    const myLinks = await PersonUserLink.find({
-      userId: me._id,
-      relationshipType: { $in: ["Family", "PoA"] },
-      active: true,
-    }).lean();
-    const personIds = [...new Set(myLinks.map((l) => String(l.personId)))];
-
-    let result = {
-      personsMoved: 0,
-      itemsMoved: 0,
-      tasksMoved: 0,
-      familyMoved: 0,
-      staffRevoked: 0,
-    };
-    if (personIds.length > 0) {
-      const personsRes = await PersonWithNeeds.updateMany(
-        { _id: { $in: personIds } },
-        { $set: { organizationId } }
-      );
-      const itemsRes = await CareNeedItem.updateMany(
-        { personId: { $in: personIds } },
-        { $set: { organizationId } }
-      );
-      const tasksRes = await CareTask.updateMany(
-        { personId: { $in: personIds } },
-        { $set: { organizationId } }
+    await session.withTransaction(async () => {
+      const { familyUserIds, personIds } = await collectClosure(
+        me._id,
+        session
       );
 
-      const famLinks = await PersonUserLink.find({
-        personId: { $in: personIds },
-        relationshipType: { $in: ["Family", "PoA"] },
-        active: true,
-      }).lean();
-      const familyUserIds = [...new Set(famLinks.map((l) => String(l.userId)))];
-      const otherFamilyUserIds = familyUserIds.filter(
-        (id) => id !== String(me._id)
+      const moveUsersRes = await User.updateMany(
+        { _id: { $in: familyUserIds } },
+        { $set: { organizationId } },
+        { session }
       );
-      if (otherFamilyUserIds.length > 0) {
-        const moveRes = await User.updateMany(
-          { _id: { $in: otherFamilyUserIds } },
-          { $set: { organizationId } }
-        );
-        result.familyMoved = moveRes.modifiedCount || 0;
-      }
 
-      const revokeRes = await PersonUserLink.updateMany(
-        {
-          personId: { $in: personIds },
-          relationshipType: {
-            $in: ["GeneralCareStaff", "Admin"],
-          },
-          active: true,
-        },
-        { $set: { active: false, endAt: new Date() } }
-      );
+      const personsRes = personIds.length
+        ? await PersonWithNeeds.updateMany(
+            { _id: { $in: personIds } },
+            { $set: { organizationId } },
+            { session }
+          )
+        : { modifiedCount: 0 };
+
+      const itemsRes = personIds.length
+        ? await CareNeedItem.updateMany(
+            { personId: { $in: personIds } },
+            { $set: { organizationId } },
+            { session }
+          )
+        : { modifiedCount: 0 };
+
+      const tasksRes = personIds.length
+        ? await CareTask.updateMany(
+            { personId: { $in: personIds } },
+            { $set: { organizationId } },
+            { session }
+          )
+        : { modifiedCount: 0 };
+
+      // Revoke Admin/Staff links to ALL discovered persons
+      const revokeRes = personIds.length
+        ? await PersonUserLink.updateMany(
+            {
+              personId: { $in: personIds },
+              relationshipType: { $in: ["GeneralCareStaff", "Admin"] },
+              active: true,
+            },
+            { $set: { active: false, endAt: new Date() } },
+            { session }
+          )
+        : { modifiedCount: 0 };
 
       result = {
         personsMoved: personsRes.modifiedCount || 0,
         itemsMoved: itemsRes.modifiedCount || 0,
         tasksMoved: tasksRes.modifiedCount || 0,
-        familyMoved: result.familyMoved,
+        familyMoved: Math.max((moveUsersRes.modifiedCount || 0) - 1, 0), // exclude requester
         staffRevoked: revokeRes.modifiedCount || 0,
       };
-    }
+    });
 
-    const freshMe = await User.findById(me._id).lean();
     res.json({
       ok: true,
-      user: { id: freshMe._id, organizationId: freshMe.organizationId },
+      user: { id: me._id, organizationId: organizationId },
       cascade: result,
     });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -137,10 +190,6 @@ router.patch("/me/leave-organization", requireAuth, async (req, res) => {
   try {
     const me = await User.findById(req.user.id);
     if (!me) return res.status(404).json({ error: "USER_NOT_FOUND" });
-
-    if (!["Admin", "GeneralCareStaff"].includes(me.role)) {
-      return res.status(403).json({ error: "ONLY_ADMIN_OR_STAFF" });
-    }
 
     // Check for active client links
     const activeLinks = await PersonUserLink.countDocuments({
