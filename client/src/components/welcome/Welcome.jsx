@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom';
-import "../../styles/global.css"
 // ---- custom hook (define OUTSIDE component) ----
 function useAuth() {
     const [me, setMe] = React.useState(null);
@@ -100,7 +99,7 @@ const Welcome = () => {
                                 Login
                             </button>
                         </Link>
-                        <Link to='/api/register'>
+                        <Link to='/api/registeruser'>
                             <button id="nav-register">
                                 Register
                             </button>

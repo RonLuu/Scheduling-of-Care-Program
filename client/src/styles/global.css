@@ -17,12 +17,15 @@ main {
   margin: 24px auto;
   padding: 0 16px;
 }
+
 .card {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 5px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 16px;
+  width: 750px;
+  max-width: 1000px;
+  box-sizing: border-box;
 }
 /* input,
 select,
