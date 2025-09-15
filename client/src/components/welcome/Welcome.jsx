@@ -95,12 +95,12 @@ const Welcome = () => {
             <nav className="navbar">
                 {!me ? (
                     <div className='button-wrapper'>
-                        <Link to= '/api/login'>
+                        <Link to= '/login'>
                             <button id="nav-login">
                                 Login
                             </button>
                         </Link>
-                        <Link to='/api/registeruser'>
+                        <Link to='/registeruser'>
                             <button id="nav-register">
                                 Register
                             </button>
