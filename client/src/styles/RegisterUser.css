@@ -1,13 +1,32 @@
-.wrapper {
+.register-wrapper {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    min-height: 100vh;
-    padding-top: 70px;
-    background-color: #f7f7fb;
+    padding-top: 100px;
+    background-color: #fff;
 }
 
-.choose {
+.register-input {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 16px;
+    color: #111827;
+    background-color: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.register-input::placeholder {
+    color: #aaa;
+    font-style: italic;
+}
+
+.register-choose {
     width: 100%;
     background: #fff;
     color: #000;
@@ -21,35 +40,8 @@
     cursor: pointer;
 }
 
-.button-containter {
+.register-button-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-input {
-    width: 100%;
-    /* full width */
-    padding: 10px 14px;
-    /* comfortable padding */
-    margin-bottom: 16px;
-    /* spacing between inputs */
-    border: 1px solid #d1d5db;
-    /* light gray border */
-    border-radius: 8px;
-    /* rounded corners */
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 16px;
-    color: #111827;
-    background-color: #ffffff;
-    outline: none;
-    /* remove default focus outline */
-    box-sizing: border-box;
-    /* include padding in width */
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-input::placeholder {
-    color: #aaa;
-    font-style: italic;
 }

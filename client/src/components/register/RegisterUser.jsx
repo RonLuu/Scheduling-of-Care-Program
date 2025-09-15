@@ -60,19 +60,19 @@ const RegisterUser = () => {
   }
 
   return (
-    <div className="wrapper">
+    <div className="register-wrapper">
       <div className="card">
         <h2>Register User</h2>
         <form onSubmit={submit}>
           <div>
-            <input
+            <input className="register-input"
               placeholder="Full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
             />
-            <input
+            <input className="register-input"
               type="email"
               placeholder="Email"
               value={email}
@@ -80,7 +80,7 @@ const RegisterUser = () => {
               required
               autoComplete="email"
             />
-            <input
+            <input className="register-input"
               type="password"
               placeholder="Password"
               value={password}
@@ -94,14 +94,14 @@ const RegisterUser = () => {
             <label htmlFor="role" style={{ fontSize: "20px" }}>
               Choose your role:
             </label>
-            <select className="choose" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+            <select className="register-choose" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">-- Select a role --</option>
               <option value="familymember">Family Member</option>
               <option value="admin">Admin</option>
               <option value="caretaker">Caretaker</option>
             </select>
           </div>
-          <div className="button-containter">
+          <div className="register-button-wrapper">
             <button disabled={loading}>
               {loading ? "Creating…" : "Create account"}
             </button>
