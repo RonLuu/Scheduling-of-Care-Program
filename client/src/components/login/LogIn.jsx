@@ -1,5 +1,5 @@
 import React from "react";
-
+import "../../styles/LogIn.css"
 function LogIn({ onAuthed }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -37,25 +37,29 @@ function LogIn({ onAuthed }) {
   }
 
   return (
-    <div className="card">
-      <h2>Login</h2>
-      <form onSubmit={submit}>
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-      {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+    <div className="login-wrapper">
+      <div className="card">
+        <h2>Login</h2>
+        <form onSubmit={submit}>
+          <input className="login-input"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            />
+          <input className="login-input"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            />
+          <div className="login-button-wrapper">
+            <button disabled={loading}>
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </div>
+        </form>
+        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+      </div>
     </div>
   );
 }
