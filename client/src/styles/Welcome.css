@@ -1,0 +1,20 @@
+.button-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh
+}
+
+#nav-login {
+    margin-bottom: 10rem;
+    height: 100px;
+    width: 250px;
+    font-size: 50px;
+}
+
+#nav-register {
+    margin-bottom: 10rem;
+    height: 100px;
+    width: 250px;
+    font-size: 50px;
+}

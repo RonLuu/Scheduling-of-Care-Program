@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom';
+import "../../styles/Welcome.css"
 // ---- custom hook (define OUTSIDE component) ----
 function useAuth() {
     const [me, setMe] = React.useState(null);
