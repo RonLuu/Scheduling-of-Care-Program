@@ -84,6 +84,8 @@ function Dashboard({ me, onLogout, refreshMe }) {
           <CareNeedItems.Create jwt={jwt} clients={clients} />
         )}
 
+      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
+
       <CareNeedItems.List jwt={jwt} clients={clients} />
 
       <TasksPanel jwt={jwt} clients={clients} />

@@ -38,10 +38,14 @@ function Create({ jwt, clients }) {
   const [ciErr, setCiErr] = React.useState("");
   const [ciSuccess, setCiSuccess] = React.useState("");
 
+  // Attachments
+  const [attachMode, setAttachMode] = React.useState("none"); // none | upload | reference
+  const [attachFile, setAttachFile] = React.useState(null);
+  const [sharedFileId, setSharedFileId] = React.useState("");
+
   // Load categories when client is selected
   React.useEffect(() => {
     if (!jwt || !ciPersonId) return;
-
     fetch(`/api/person-with-needs/${ciPersonId}/categories`, {
       headers: { Authorization: "Bearer " + jwt },
     })
@@ -74,10 +78,7 @@ function Create({ jwt, clients }) {
       }
     )
       .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d)) setAssignableUsers(d);
-        else setAssignableUsers([]);
-      })
+      .then((d) => setAssignableUsers(Array.isArray(d) ? d : []))
       .catch(() => setAssignableUsers([]));
   }, [ciPersonId, jwt]);
 
@@ -86,7 +87,6 @@ function Create({ jwt, clients }) {
     setCiErr("");
     setCiSuccess("");
     setCiBusy(true);
-
     try {
       if (!jwt) throw new Error("UNAUTHENTICATED");
       if (!ciPersonId) throw new Error("Please select a client.");
@@ -99,9 +99,8 @@ function Create({ jwt, clients }) {
         personId: ciPersonId,
         name: ciName,
         description: ciDesc,
-        category: ciCategory,
         ...(ciUseCustomCat
-          ? { newCategoryName: ciCustomCat }
+          ? { newCategoryName: ciCustomCat, category: ciCustomCat || "Other" }
           : { category: ciCategory }),
         frequency: {
           intervalType: ciIntervalType,
@@ -115,20 +114,14 @@ function Create({ jwt, clients }) {
       };
 
       if (ciScheduleType === "Timed") {
-        payload.timeWindow = {
-          startTime: ciStartTime,
-          endTime: ciEndTime,
-        };
+        payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
       }
-
-      if (ciEndMode === "endDate" && ciEndDate) {
+      if (ciEndMode === "endDate" && ciEndDate)
         payload.endDate = new Date(ciEndDate).toISOString();
-      }
-      if (ciEndMode === "count" && ciOccurrenceCount) {
+      if (ciEndMode === "count" && ciOccurrenceCount)
         payload.occurrenceCount = Number(ciOccurrenceCount);
-      }
 
-      // Create CareNeedItem
+      // 1) Create CareNeedItem
       const r1 = await fetch("/api/care-need-items", {
         method: "POST",
         headers: {
@@ -140,26 +133,58 @@ function Create({ jwt, clients }) {
       const item = await r1.json();
       if (!r1.ok) throw new Error(item.error || "Failed to create item");
 
-      // Generate tasks
-      const r2 = await fetch(
-        `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
-        {
+      // 2) Generate tasks unless JustPurchase
+      if (ciIntervalType !== "JustPurchase") {
+        const r2 = await fetch(
+          `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + jwt,
+            },
+            body: JSON.stringify(
+              ciAssignedTo ? { assignToUserId: ciAssignedTo } : {}
+            ),
+          }
+        );
+        const gen = await r2.json();
+        if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
+        setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
+      } else {
+        setCiSuccess(`Created purchase-only care need item (no tasks).`);
+      }
+
+      // 3) Attach (optional)
+      if (attachMode === "upload" && attachFile) {
+        const fd = new FormData();
+        fd.append("scope", "CareNeedItem");
+        fd.append("targetId", item._id);
+        fd.append("file", attachFile);
+        const up = await fetch("/api/file-upload/upload", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + jwt },
+          body: fd,
+        });
+        const ud = await up.json();
+        if (!up.ok) throw new Error(ud.error || "File upload failed");
+      } else if (attachMode === "reference" && sharedFileId) {
+        const ref = await fetch("/api/file-upload/shared/reference", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer " + jwt,
           },
-          body: JSON.stringify(
-            ciAssignedTo ? { assignToUserId: ciAssignedTo } : {}
-          ),
-        }
-      );
-      const gen = await r2.json();
-      if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
+          body: JSON.stringify({
+            careNeedItemId: item._id,
+            fileId: sharedFileId,
+          }),
+        });
+        const rd = await ref.json();
+        if (!ref.ok) throw new Error(rd.error || "Failed to reference receipt");
+      }
 
-      setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
-
-      // Clear form
+      // Reset
       setCiName("");
       setCiDesc("");
       setCiUseCustomCat(false);
@@ -172,6 +197,9 @@ function Create({ jwt, clients }) {
       setCiEndMode("none");
       setCiEndDate("");
       setCiOccurrenceCount("");
+      setAttachMode("none");
+      setAttachFile(null);
+      setSharedFileId("");
     } catch (err) {
       setCiErr(err.message || String(err));
     } finally {
@@ -209,7 +237,7 @@ function Create({ jwt, clients }) {
           <div>
             <label>Category</label>
             {!ciUseCustomCat ? (
-              <React.Fragment>
+              <>
                 <select
                   value={ciCategory}
                   onChange={(e) => setCiCategory(e.target.value)}
@@ -231,9 +259,9 @@ function Create({ jwt, clients }) {
                 >
                   + Add custom
                 </button>
-              </React.Fragment>
+              </>
             ) : (
-              <React.Fragment>
+              <>
                 <input
                   placeholder="Type new category"
                   value={ciCustomCat}
@@ -248,7 +276,7 @@ function Create({ jwt, clients }) {
                     Use list instead
                   </button>
                 </div>
-              </React.Fragment>
+              </>
             )}
           </div>
         </div>
@@ -433,9 +461,42 @@ function Create({ jwt, clients }) {
           </div>
         )}
 
-        <button disabled={ciBusy}>
-          {ciBusy ? "Saving..." : "Create & Generate"}
-        </button>
+        {/* Attach receipt */}
+        <hr />
+        <label>Attach receipt</label>
+        <select
+          value={attachMode}
+          onChange={(e) => setAttachMode(e.target.value)}
+        >
+          <option value="none">— No attachment —</option>
+          <option value="upload">Upload directly to this care item</option>
+          <option value="reference">Reference a shared receipt (bucket)</option>
+        </select>
+
+        {attachMode === "upload" && (
+          <div style={{ marginTop: 8 }}>
+            <input
+              type="file"
+              onChange={(e) => setAttachFile(e.target.files?.[0] || null)}
+            />
+          </div>
+        )}
+
+        {attachMode === "reference" && (
+          <div style={{ marginTop: 8 }}>
+            <input
+              placeholder="Paste shared receipt File ID"
+              value={sharedFileId}
+              onChange={(e) => setSharedFileId(e.target.value)}
+            />
+            <p style={{ opacity: 0.7, marginTop: -6 }}>
+              Get the File ID from the “Receipt buckets” page for this client &
+              month.
+            </p>
+          </div>
+        )}
+
+        <button disabled={ciBusy}>{ciBusy ? "Saving..." : "Create"}</button>
         {ciErr && <p style={{ color: "#b91c1c" }}>Error: {ciErr}</p>}
         {ciSuccess && <p style={{ color: "#065f46" }}>{ciSuccess}</p>}
       </form>

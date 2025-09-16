@@ -6,7 +6,6 @@ import {
   requireRole,
   ensureCanManagePerson,
 } from "../middleware/authz.js";
-import { requireJwt } from "../middleware/passport.js";
 
 const router = Router();
 
