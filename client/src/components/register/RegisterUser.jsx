@@ -1,20 +1,22 @@
 import React, { useState } from "react";
 import "../../styles/RegisterUser.css"
+import { Link } from "react-router-dom";
 
-function onAuthed(userWithJwt) {
-  setMe(userWithJwt);
-  localStorage.setItem("jwt", userWithJwt.jwt);
-  setPage("dashboard");
-}
 
 const RegisterUser = () => {
-
+  
+  const [status, setStatus] = useAuth();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState("Family"); // default
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  function onAuthed(userWithJwt) {
+    setStatus(userWithJwt);
+    localStorage.setItem("jwt", userWithJwt.jwt);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -52,6 +54,10 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
+      if (status)
+      {
+        <Link to='/dashboard'/>
+      }
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -96,9 +102,10 @@ const RegisterUser = () => {
             </label>
             <select className="register-choose" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">-- Select a role --</option>
-              <option value="familymember">Family Member</option>
-              <option value="admin">Admin</option>
-              <option value="caretaker">Caretaker</option>
+              <option value="Family">Family Member</option>
+              <option value="PoA">PoA</option>
+              <option value="Admin">Admin</option>
+              <option value="GeneralCareStaff">Caretaker</option>
             </select>
           </div>
           <div className="register-button-wrapper">
@@ -110,6 +117,7 @@ const RegisterUser = () => {
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
     </div>
+    
   );
 }
 
