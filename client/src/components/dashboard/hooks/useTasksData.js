@@ -149,7 +149,7 @@ export function useTasksData(jwt, clients) {
   const loadFiles = async (taskId) => {
     if (!jwt) return;
     const r = await fetch(
-      `/api/file-upload?careTaskId=${encodeURIComponent(taskId)}`,
+      `/api/file-upload?scope=CareTask&targetId=${encodeURIComponent(taskId)}`,
       {
         headers: { Authorization: "Bearer " + jwt },
       }

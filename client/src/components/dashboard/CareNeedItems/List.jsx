@@ -8,6 +8,29 @@ function List({ jwt, clients }) {
   const [cniLoading, setCniLoading] = React.useState(false);
   const [cniErr, setCniErr] = React.useState("");
 
+  function InlineAttachment({ f }) {
+    const isImg = f.fileType && f.fileType.startsWith("image/");
+    return (
+      <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
+        {isImg ? (
+          <img
+            src={f.urlOrPath}
+            alt={f.filename}
+            style={{
+              maxHeight: 64,
+              maxWidth: 96,
+              objectFit: "cover",
+              borderRadius: 6,
+              border: "1px solid #ddd",
+            }}
+          />
+        ) : (
+          <span style={{ textDecoration: "underline" }}>{f.filename}</span>
+        )}
+      </a>
+    );
+  }
+
   const loadFilesFor = async (itemId) => {
     try {
       const r = await fetch(`/api/file-upload/by-care-need-item/${itemId}`, {
@@ -153,16 +176,18 @@ function List({ jwt, clients }) {
                     {files.length === 0 ? (
                       <span style={{ opacity: 0.6 }}>—</span>
                     ) : (
-                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 16,
+                          display: "flex",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         {files.map((f) => (
-                          <li key={f._id}>
-                            <a
-                              href={f.urlOrPath}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {f.filename}
-                            </a>
+                          <li key={f._id} style={{ listStyle: "none" }}>
+                            <InlineAttachment f={f} />
                             {f.scope === "Shared" && (
                               <span className="badge" style={{ marginLeft: 6 }}>
                                 Shared

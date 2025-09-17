@@ -120,12 +120,6 @@ export default function App() {
       {me && page === "dashboard" && (
         <Dashboard me={me} onLogout={logout} refreshMe={refreshMe} />
       )}
-
-      {/* {!me && page === "dashboard" && (
-        <div className="card">
-          <p>Please login first.</p>
-        </div>
-      )} */}
     </>
   );
 }

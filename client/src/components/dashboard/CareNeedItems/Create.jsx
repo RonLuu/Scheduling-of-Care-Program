@@ -16,7 +16,7 @@ function Create({ jwt, clients }) {
   const [ciUseCustomCat, setCiUseCustomCat] = React.useState(false);
   const [ciCustomCat, setCiCustomCat] = React.useState("");
 
-  const [ciIntervalType, setCiIntervalType] = React.useState("Daily");
+  const [ciIntervalType, setCiIntervalType] = React.useState("JustPurchase");
   const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
   const [ciStartDate, setCiStartDate] = React.useState("");
   const [ciEndMode, setCiEndMode] = React.useState("none");
@@ -120,6 +120,30 @@ function Create({ jwt, clients }) {
         payload.endDate = new Date(ciEndDate).toISOString();
       if (ciEndMode === "count" && ciOccurrenceCount)
         payload.occurrenceCount = Number(ciOccurrenceCount);
+
+      if (attachMode === "reference") {
+        const id = (sharedFileId || "").trim();
+
+        // 1) Basic 24-hex check (client side)
+        const looksLikeObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+        if (!looksLikeObjectId) {
+          throw new Error("Invalid receipt File ID format.");
+        }
+
+        // 2) Check existence & scope === 'Shared'
+        const chk = await fetch(`/api/file-upload/${encodeURIComponent(id)}`, {
+          headers: { Authorization: "Bearer " + jwt },
+        });
+        const fd = await chk.json();
+        if (!chk.ok)
+          throw new Error(fd.error || "Failed to verify receipt File ID");
+
+        if (!fd || fd.scope !== "Shared") {
+          throw new Error(
+            "That File ID is not a shared receipt (bucket) file."
+          );
+        }
+      }
 
       // 1) Create CareNeedItem
       const r1 = await fetch("/api/care-need-items", {
@@ -400,7 +424,7 @@ function Create({ jwt, clients }) {
 
         <div className="row">
           <div>
-            <label>Budget (AUD)</label>
+            <label>Annual Budget (AUD)</label>
             <input
               type="number"
               min="0"
@@ -439,7 +463,7 @@ function Create({ jwt, clients }) {
           )}
         </div>
 
-        {ciPersonId && (
+        {ciPersonId && ciIntervalType !== "JustPurchase" && (
           <div className="row">
             <div>
               <label>Assign to (optional)</label>

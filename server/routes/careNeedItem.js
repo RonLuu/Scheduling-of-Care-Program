@@ -66,7 +66,7 @@ async function createItem(req, res) {
     if (!person) return res.status(400).json({ error: "INVALID_PERSON" });
 
     // Optional: role guard (only Family/Admin can create)
-    if (!["Family", "Admin"].includes(req.user.role)) {
+    if (!["Family", "Admin", "PoA"].includes(req.user.role)) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
     // Optional: ensure caller is same org as the person

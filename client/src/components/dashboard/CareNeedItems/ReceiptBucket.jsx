@@ -135,20 +135,40 @@ function ReceiptBuckets({ jwt, clients }) {
               <tr>
                 <th style={{ textAlign: "left" }}>File</th>
                 <th style={{ textAlign: "left" }}>File ID (copy)</th>
-                <th style={{ textAlign: "left" }}>Open</th>
               </tr>
             </thead>
             <tbody>
               {files.map((f) => (
                 <tr key={f._id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{f.filename}</td>
                   <td>
-                    <code>{f._id}</code>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      {f.fileType?.startsWith("image/") && (
+                        <a
+                          href={f.urlOrPath}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={f.filename}
+                        >
+                          <img
+                            src={f.urlOrPath}
+                            alt={f.filename}
+                            style={{
+                              height: 40,
+                              width: 60,
+                              objectFit: "cover",
+                              borderRadius: 4,
+                              border: "1px solid #eee",
+                            }}
+                          />
+                        </a>
+                      )}
+                      <span>{f.filename}</span>
+                    </div>
                   </td>
                   <td>
-                    <a href={f.urlOrPath} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
+                    <code>{f._id}</code>
                   </td>
                 </tr>
               ))}
