@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import "../../styles/Welcome.css"
 // ---- custom hook (define OUTSIDE component) ----
 function useAuth() {
-    const [me, setMe] = React.useState(null);
-
+    const [status, setStatus] = React.useState(null);
     // initial load: try JWT from localStorage
     React.useEffect(() => {
         const jwt = localStorage.getItem("jwt");
@@ -17,9 +16,9 @@ function useAuth() {
                 });
                 if (!res.ok) throw new Error(`auth/me ${res.status}`);
                 const data = await res.json();
-                setMe(data.user ?? null);
+                setStatus(data.user ?? null);
             } catch {
-                setMe(null);
+                setStatus(null);
             }
         })();
     }, []);
@@ -28,7 +27,7 @@ function useAuth() {
     React.useEffect(() => {
         async function refreshFromStorage(newJwt) {
             if (!newJwt) {
-                setMe(null);
+                setStatus(null);
                 return;
             }
             try {
@@ -37,9 +36,9 @@ function useAuth() {
                 });
                 if (!res.ok) throw new Error(`auth/me ${res.status}`);
                 const data = await res.json();
-                setMe(data.user ?? null);
+                setStatus(data.user ?? null);
             } catch {
-                setMe(null);
+                setStatus(null);
             }
         }
 
@@ -50,17 +49,19 @@ function useAuth() {
         return () => window.removeEventListener("storage", onStorage);
     }, []);
 
-    return [me, setMe];
+    return [status, setStatus];
 }
 
 const Welcome = () => {
-    const [me, setMe] = useAuth();
-    const [page, setPage] = React.useState("");
-
-    // if authenticated later, auto-go to dashboard
+    // Status for whether the user logged in
+    const [status, setStatus] = useAuth();
+    
     React.useEffect(() => {
-        if (me) setPage("dashboard");
-    }, [me]);
+        if (status)
+        {
+            return (<Link to='/dashboard'/>)
+        }
+    }, [status]);
 
     function onAuthed(userWithJwt) {
         setMe(userWithJwt);
@@ -70,64 +71,45 @@ const Welcome = () => {
 
     function logout() {
         localStorage.removeItem("jwt");
-        setMe(null);
-        setPage("login");
+        setStatus(null);
     }
 
-    async function refreshMe() {
+    async function refreshStatus() {
         const jwt = localStorage.getItem("jwt");
-        if (!jwt) return setMe(null);
+        if (!jwt) return setStatus(null);
         try {
             const res = await fetch("/api/auth/me", {
                 headers: { Authorization: `Bearer ${jwt}` },
             });
             if (!res.ok) throw new Error();
             const data = await res.json();
-            setMe(data.user ?? null);
+            setStatus(data.user ?? null);
         } catch {
-            setMe(null);
+            setStatus(null);
         }
     }
 
     // ---- render a React nav  ----
     return (
         <>
-            <nav className="navbar">
-                {!me ? (
-                    <div className='button-wrapper'>
-                        <Link to= '/login'>
-                            <button id="nav-login">
-                                Login
-                            </button>
-                        </Link>
-                        <Link to='/registeruser'>
-                            <button id="nav-register">
-                                Register
-                            </button>
-                        </Link>
-                    </div>
-                ) : (
-                    <>
-                        <button onClick={() => setPage("dashboard")} id="nav-dashboard">
-                            Dashboard
+            {!status ? (
+                <div className='button-wrapper'>
+                    <Link to='/login'>
+                        <button id="nav-login">
+                            Login
                         </button>
-                        <button onClick={logout}>Log out</button>
-                    </>
-                )}
-            </nav>
-
-            {/* {!me && page === "login" && <LogIn onAuthed={onAuthed} />}
-            {!me && page === "register" && <Register onAuthed={onAuthed} />}
-
-            {me && page === "dashboard" && (
-                <Dashboard me={me} onLogout={logout} refreshMe={refreshMe} />
-            )} */}
-
-            {/* {!me && page === "dashboard" && (
-        <div className="card">
-          <p>Please login first.</p>
-        </div>
-      )} */}
+                    </Link>
+                    <Link to='/registeruser'>
+                        <button id="nav-register">
+                            Register
+                        </button>
+                    </Link>
+                </div>
+            ) : (
+                <>
+                    <Link to='/dashboard'/>
+                </>
+            )}
         </>
     );
 }
