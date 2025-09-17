@@ -149,7 +149,7 @@ export function useTasksData(jwt, clients) {
   const loadFiles = async (taskId) => {
     if (!jwt) return;
     const r = await fetch(
-      `/api/file-upload?careTaskId=${encodeURIComponent(taskId)}`,
+      `/api/file-upload?scope=CareTask&targetId=${encodeURIComponent(taskId)}`,
       {
         headers: { Authorization: "Bearer " + jwt },
       }
@@ -171,8 +171,17 @@ export function useTasksData(jwt, clients) {
         alert("Please provide filename and URL/path.");
         return;
       }
+      // const payload = {
+      //   careTaskId: taskId,
+      //   filename: newFile.filename,
+      //   urlOrPath: newFile.urlOrPath,
+      //   fileType: newFile.fileType || undefined,
+      //   size: newFile.size ? Number(newFile.size) : undefined,
+      //   description: newFile.description || undefined,
+      // };
       const payload = {
-        careTaskId: taskId,
+        scope: "CareTask",
+        targetId: taskId,
         filename: newFile.filename,
         urlOrPath: newFile.urlOrPath,
         fileType: newFile.fileType || undefined,

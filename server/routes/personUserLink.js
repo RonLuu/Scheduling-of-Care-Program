@@ -3,6 +3,7 @@ import PersonWithNeeds from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
 import PersonUserLink from "../models/PersonUserLink.js";
 import { requireAuth } from "../middleware/authz.js";
+import mongoose from "mongoose";
 
 const router = Router();
 

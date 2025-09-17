@@ -1,5 +1,6 @@
 {
   "scripts": {
-    "start": "concurrently \"cd client && npm install && npm run build\" \"cd server && npm install && npm run dev\""
+    "start": "concurrently \"cd client && npm install && npm run build\" \"cd server && npm install && npm run dev\"",
+    "dev": "concurrently \"cd client && npm run build\" \"cd server && npm run dev\""
   }
 }

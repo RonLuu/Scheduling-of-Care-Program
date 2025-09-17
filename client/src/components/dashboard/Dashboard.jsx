@@ -1,11 +1,10 @@
 import React from "react";
-import UserProfile from "./UserProfile";
-import OrganizationManagement from "./OrganizationManagement";
+import Profile from "./Profile";
 import AccessManagement from "./AccessManagement";
 import ClientManagement from "./ClientManagement";
 import CareNeedItems from "./CareNeedItems";
 import TasksPanel from "./TasksPanel";
-import BudgetReporting from "./BudgetReporting";
+import Budget from "./Budget";
 
 function Dashboard({ me, onLogout, refreshMe }) {
   const jwt = localStorage.getItem("jwt");
@@ -42,7 +41,7 @@ function Dashboard({ me, onLogout, refreshMe }) {
 
   return (
     <>
-      <UserProfile
+      <Profile.UserProfile
         me={me}
         onLogout={onLogout}
         refreshMe={refreshMe}
@@ -50,7 +49,11 @@ function Dashboard({ me, onLogout, refreshMe }) {
       />
 
       {me && (me.role === "Family" || me.role === "PoA") && (
-        <OrganizationManagement me={me} jwt={jwt} refreshMe={refreshMe} />
+        <Profile.OrganizationManagement
+          me={me}
+          jwt={jwt}
+          refreshMe={refreshMe}
+        />
       )}
 
       <AccessManagement.RequestAccess jwt={jwt} />
@@ -84,11 +87,13 @@ function Dashboard({ me, onLogout, refreshMe }) {
           <CareNeedItems.Create jwt={jwt} clients={clients} />
         )}
 
+      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
+
       <CareNeedItems.List jwt={jwt} clients={clients} />
 
       <TasksPanel jwt={jwt} clients={clients} />
 
-      <BudgetReporting jwt={jwt} clients={clients} />
+      <Budget.BudgetReporting jwt={jwt} clients={clients} />
     </>
   );
 }

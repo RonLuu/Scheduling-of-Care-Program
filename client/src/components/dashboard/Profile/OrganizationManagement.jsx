@@ -6,6 +6,8 @@ function OrganizationManagement({ me, jwt, refreshMe }) {
     me.organizationId || ""
   );
   const [orgSaveMsg, setOrgSaveMsg] = React.useState("");
+  const [editing, setEditing] = React.useState(!me.organizationId);
+  // editing is true if org not set, false otherwise
 
   const handleSaveOrganization = async () => {
     try {
@@ -60,21 +62,30 @@ function OrganizationManagement({ me, jwt, refreshMe }) {
     <div className="card">
       <h3>Your organisation</h3>
       <OrgBadge me={me} />
-      <div className="row">
-        <div>
-          <input
-            placeholder="Organisation ID"
-            value={pendingOrgId}
-            onChange={(e) => setPendingOrgId(e.target.value)}
-          />
+
+      {editing ? (
+        <div className="row">
+          <div>
+            <input
+              placeholder="Organisation ID"
+              value={pendingOrgId}
+              onChange={(e) => setPendingOrgId(e.target.value)}
+            />
+          </div>
+          <div>
+            <button className="secondary" onClick={handleSaveOrganization}>
+              Save
+            </button>
+          </div>
         </div>
-        <div>
-          <button className="secondary" onClick={handleSaveOrganization}>
-            Save
-          </button>
-        </div>
-      </div>
+      ) : (
+        <button className="secondary" onClick={() => setEditing(true)}>
+          Change organization
+        </button>
+      )}
+
       {orgSaveMsg && <p>{orgSaveMsg}</p>}
+
       {!me.organizationId && (
         <p style={{ color: "#92400e" }}>
           You must set your organisation before adding a client.

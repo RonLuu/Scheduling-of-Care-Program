@@ -141,6 +141,7 @@ function AddClient({ me, jwt, setClients }) {
               step="0.01"
               value={newPBudgetAmt}
               onChange={(e) => setNewPBudgetAmt(e.target.value)}
+              placeholder="0.00"
             />
           </div>
         </div>

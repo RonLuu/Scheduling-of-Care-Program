@@ -16,8 +16,11 @@ function TaskFiles({
       const jwt = localStorage.getItem("jwt");
       if (!jwt) throw new Error("UNAUTHENTICATED");
 
-      const fd = new FormData(form);
-      fd.set("careTaskId", taskId);
+      const fd = new FormData();
+      fd.append("scope", "CareTask");
+      fd.append("targetId", taskId);
+      fd.append("description", form.description.value);
+      fd.append("file", form.file.files[0]);
 
       const r = await fetch("/api/file-upload/upload", {
         method: "POST",
