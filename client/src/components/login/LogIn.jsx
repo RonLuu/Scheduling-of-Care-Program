@@ -1,10 +1,20 @@
 import React from "react";
 import "../../styles/LogIn.css"
-function LogIn({ onAuthed }) {
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../AuthContext"
+
+function LogIn() {
+  const navigate = useNavigate();
+  const {setMe} = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  function onAuthed(userWithJwt) {
+    setMe(userWithJwt);
+    localStorage.setItem("jwt", userWithJwt.jwt);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -29,6 +39,7 @@ function LogIn({ onAuthed }) {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
+      navigate("/dashboard");
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {

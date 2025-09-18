@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import "../../styles/RegisterUser.css"
-import { Link } from "react-router-dom";
-
+import {useAuth} from "../../AuthContext"
+import { useNavigate } from "react-router-dom";
+// TODO refactor useAuth() to a different file function
 
 const RegisterUser = () => {
-  
-  const [status, setStatus] = useAuth();
+  const {setMe} = useAuth();
+  const navigate = useNavigate();
+
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -14,7 +16,7 @@ const RegisterUser = () => {
   const [loading, setLoading] = React.useState(false);
 
   function onAuthed(userWithJwt) {
-    setStatus(userWithJwt);
+    setMe(userWithJwt);
     localStorage.setItem("jwt", userWithJwt.jwt);
   }
 
@@ -38,7 +40,7 @@ const RegisterUser = () => {
       }
 
       if (!res.ok) {
-        const msg = data?.error || `Registration failed (${res.status})`;
+        const msg = data?.error || `Registration failed (${res.me})`;
         setErr(msg);
         return;
       }
@@ -54,10 +56,8 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      if (status)
-      {
-        <Link to='/dashboard'/>
-      }
+      navigate("/dashboard")
+
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -114,10 +114,10 @@ const RegisterUser = () => {
             </button>
           </div>
         </form>
+        {/* TODO: add route to sign in */}
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
-    </div>
-    
+    </div> 
   );
 }
 
