@@ -8,6 +8,14 @@ const TimeWindowSchema = new Schema(
   { _id: false }
 );
 
+const YearBudgetSchema = new Schema(
+  {
+    year: { type: Number, required: true }, // e.g., 2025
+    amount: { type: Number, default: 0 }, // annual budget for that year
+  },
+  { _id: false }
+);
+
 const CareNeedItemSchema = new Schema(
   {
     personId: {
@@ -58,7 +66,11 @@ const CareNeedItemSchema = new Schema(
     category: { type: String, required: true, trim: true },
 
     // Budgets / costs
-    budgetCost: { type: Number, default: 0 }, // per-item budget (yearly or total per your semantics)
+    budgetCost: { type: Number, default: 0 }, //  default annual budget
+
+    // actual per-year budgets
+    budgets: { type: [YearBudgetSchema], default: [] },
+
     purchaseCost: { type: Number, default: 0 }, // one-off spent at purchase
     occurrenceCost: { type: Number, default: 0 }, // per generated occurrence
 
@@ -76,6 +88,20 @@ const CareNeedItemSchema = new Schema(
   },
   { timestamps: true }
 );
+
+// Avoid duplicate year rows in a single doc
+CareNeedItemSchema.pre("save", function (next) {
+  if (this.budgets && this.budgets.length > 1) {
+    const seen = new Set();
+    this.budgets = this.budgets.filter((b) => {
+      const k = String(b.year);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  next();
+});
 
 CareNeedItemSchema.index({ organizationId: 1, nextDueDate: 1 });
 
