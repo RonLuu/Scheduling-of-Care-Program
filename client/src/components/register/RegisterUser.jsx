@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import "../../styles/RegisterUser.css"
 import {useAuth} from "../../AuthContext"
 import { useNavigate } from "react-router-dom";
-// TODO refactor useAuth() to a different file function
 
 const RegisterUser = () => {
   const {setMe} = useAuth();
@@ -114,7 +113,7 @@ const RegisterUser = () => {
             </button>
           </div>
         </form>
-        {/* TODO: add route to sign in */}
+        {/* TODO: add route to sign in page*/}
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
     </div> 

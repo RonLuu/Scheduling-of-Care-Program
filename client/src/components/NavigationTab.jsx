@@ -8,7 +8,6 @@ const NavigationTab = () => {
         <div className={`navigationtab-panel ${showTab ? "on" : "off"}`}>
             <div className='navigationtab-button-menu-wrapper'>
                 <button
-                    // TODO change the size of the icon
                     className={`navigationtab-button-menu ${showTab ? "on" : "off"}`}
                     onClick={() => setShowTab(!showTab)}>
                     <BiMenu />
