@@ -1,6 +1,6 @@
 import React from "react";
 import "../../styles/LogIn.css"
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext"
 
 function LogIn() {
@@ -69,6 +69,9 @@ function LogIn() {
             </button>
           </div>
         </form>
+        <div className="login-register-link-wrapper">
+          <Link className="login-register-link" to='/registeruser'>Don't have an account? Sign up here</Link>
+        </div>
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
     </div>

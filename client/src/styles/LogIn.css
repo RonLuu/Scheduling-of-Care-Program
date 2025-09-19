@@ -31,3 +31,17 @@
     justify-content: center;
     align-items: center;
 }
+
+.login-register-link-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 2%;
+}
+
+.login-register-link {
+    text-decoration: none;
+    font-family: 'inter';
+    cursor: pointer;
+    font-size: 0.85vw;
+    color: black;
+}

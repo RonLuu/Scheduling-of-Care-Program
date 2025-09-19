@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../../styles/RegisterUser.css"
 import {useAuth} from "../../AuthContext"
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from 'react-router-dom';
 
 const RegisterUser = () => {
   const {setMe} = useAuth();
@@ -113,7 +113,9 @@ const RegisterUser = () => {
             </button>
           </div>
         </form>
-        {/* TODO: add route to sign in page*/}
+        <div className="register-login-link-wrapper">
+          <Link className="register-login-link" to='/login'>Already a user? Login here</Link>
+        </div>
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
     </div> 

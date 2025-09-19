@@ -45,3 +45,17 @@
     justify-content: center;
     align-items: center;
 }
+
+.register-login-link-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 2%;
+}
+
+.register-login-link {
+    text-decoration: none;
+    font-family: 'inter';
+    cursor: pointer;
+    font-size: 0.85vw;
+    color: black;
+}
