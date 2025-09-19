@@ -1,16 +1,41 @@
 import React from "react";
+import { useAuth } from "../../AuthContext";
+import UserProfile from "./UserProfile";
+import OrganizationManagement from "./OrganizationManagement";
 import Profile from "./Profile";
+
 import AccessManagement from "./AccessManagement";
 import ClientManagement from "./ClientManagement";
 import CareNeedItems from "./CareNeedItems";
 import TasksPanel from "./TasksPanel";
 import Budget from "./Budget";
 
-function Dashboard({ me, onLogout, refreshMe }) {
+
+function Dashboard() {
+  const {me, setMe} = useAuth();
   const jwt = localStorage.getItem("jwt");
-  const organizationId = me.organizationId;
+  const organizationId = me?.organizationId;
   const [clients, setClients] = React.useState([]);
 
+  function logout() {
+    localStorage.removeItem("jwt");
+    setMe(null);
+  }
+
+  async function refreshMe() {
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) return setMe(null);
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMe(data.user ?? null);
+    } catch {
+      setMe(null);
+    }
+  }
   // Fetch links + persons when dashboard loads
   React.useEffect(() => {
     // get links for this user
@@ -43,7 +68,7 @@ function Dashboard({ me, onLogout, refreshMe }) {
     <>
       <Profile.UserProfile
         me={me}
-        onLogout={onLogout}
+        onLogout={logout}
         refreshMe={refreshMe}
         jwt={jwt}
       />

@@ -1,5 +1,5 @@
 import React from "react";
-
+import "../../styles/RegisterOrganization.css"
 function RegisterOrganization() {
   const [name, setName] = React.useState("");
   const [address, setAddress] = React.useState("");
@@ -56,37 +56,42 @@ function RegisterOrganization() {
   }
 
   return (
-    <div className="card">
-      <h2>Register Organization</h2>
-      <form onSubmit={submit}>
-        <input
-          placeholder="Organisation name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          placeholder="Address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          required
-          autoComplete="street-address"
-        />
-        <button disabled={busy}>
-          {busy ? "Creating..." : "Create organisation"}
-        </button>
-      </form>
+    <div className="regOrg-wrapper">
+      <div className="card">
+        <h2>Register Organization</h2>
+        <form onSubmit={submit}>
+          <input className="regOrg-input"
+            placeholder="Organisation name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <input className="regOrg-input"
+            placeholder="Address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            required
+            autoComplete="street-address"
+          />
+          <div className="regOrg-button-wrapper">
+            <button disabled={busy}>
+              {busy ? "Creating..." : "Create organisation"}
+            </button>
+          </div>
+        </form>
 
-      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+        {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
 
-      {org && (
-        <p>
-          Created: <strong>{org.name}</strong>
-          <br />
-          Organisation ID: <code>{org._id}</code>
-        </p>
-      )}
+        {org && (
+          <p>
+            Created: <strong>{org.name}</strong>
+            <br />
+            Organisation ID: <code>{org._id}</code>
+          </p>
+        )}
+      </div>
     </div>
+
   );
 }
 

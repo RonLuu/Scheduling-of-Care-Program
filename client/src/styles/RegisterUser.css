@@ -1,0 +1,47 @@
+.register-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 100px;
+    background-color: #fff;
+}
+
+.register-input {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 16px;
+    color: #111827;
+    background-color: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.register-input::placeholder {
+    color: #aaa;
+    font-style: italic;
+}
+
+.register-choose {
+    width: 100%;
+    background: #fff;
+    color: #000;
+    font-family: 'inter';
+    font-weight:bold;
+    border: 5px solid #e5e7eb;
+    margin: 10px 0px 10px 0px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.register-button-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

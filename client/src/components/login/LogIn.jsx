@@ -1,10 +1,20 @@
 import React from "react";
+import "../../styles/LogIn.css"
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../AuthContext"
 
-function LogIn({ onAuthed }) {
+function LogIn() {
+  const navigate = useNavigate();
+  const {setMe} = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  function onAuthed(userWithJwt) {
+    setMe(userWithJwt);
+    localStorage.setItem("jwt", userWithJwt.jwt);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -29,6 +39,7 @@ function LogIn({ onAuthed }) {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
+      navigate("/dashboard");
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {
@@ -37,25 +48,29 @@ function LogIn({ onAuthed }) {
   }
 
   return (
-    <div className="card">
-      <h2>Login</h2>
-      <form onSubmit={submit}>
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-      {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+    <div className="login-wrapper">
+      <div className="card">
+        <h2>Login</h2>
+        <form onSubmit={submit}>
+          <input className="login-input"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            />
+          <input className="login-input"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            />
+          <div className="login-button-wrapper">
+            <button disabled={loading}>
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </div>
+        </form>
+        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+      </div>
     </div>
   );
 }

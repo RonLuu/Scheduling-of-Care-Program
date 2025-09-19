@@ -1,12 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
+import "../../styles/RegisterUser.css"
+import {useAuth} from "../../AuthContext"
+import { useNavigate } from "react-router-dom";
 
-function RegisterUser({ onAuthed }) {
+const RegisterUser = () => {
+  const {setMe} = useAuth();
+  const navigate = useNavigate();
+
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState("Family"); // default
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  function onAuthed(userWithJwt) {
+    setMe(userWithJwt);
+    localStorage.setItem("jwt", userWithJwt.jwt);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -28,7 +39,7 @@ function RegisterUser({ onAuthed }) {
       }
 
       if (!res.ok) {
-        const msg = data?.error || `Registration failed (${res.status})`;
+        const msg = data?.error || `Registration failed (${res.me})`;
         setErr(msg);
         return;
       }
@@ -44,6 +55,8 @@ function RegisterUser({ onAuthed }) {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
+      navigate("/dashboard")
+
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -52,19 +65,19 @@ function RegisterUser({ onAuthed }) {
   }
 
   return (
-    <div className="card">
-      <h2>Register User</h2>
-      <form onSubmit={submit}>
-        <div className="row">
+    <div className="register-wrapper">
+      <div className="card">
+        <h2>Register User</h2>
+        <form onSubmit={submit}>
           <div>
-            <input
+            <input className="register-input"
               placeholder="Full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
             />
-            <input
+            <input className="register-input"
               type="email"
               placeholder="Email"
               value={email}
@@ -72,7 +85,7 @@ function RegisterUser({ onAuthed }) {
               required
               autoComplete="email"
             />
-            <input
+            <input className="register-input"
               type="password"
               placeholder="Password"
               value={password}
@@ -83,22 +96,29 @@ function RegisterUser({ onAuthed }) {
             />
           </div>
           <div>
-            <label>Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="Family">Family</option>
+            <label htmlFor="role" style={{ fontSize: "20px" }}>
+              Choose your role:
+            </label>
+            <select className="register-choose" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="">-- Select a role --</option>
+              <option value="Family">Family Member</option>
               <option value="PoA">PoA</option>
               <option value="Admin">Admin</option>
-              <option value="GeneralCareStaff">GeneralCareStaff</option>
+              <option value="GeneralCareStaff">Caretaker</option>
             </select>
           </div>
-        </div>
-        <button disabled={loading}>
-          {loading ? "Creating…" : "Create account"}
-        </button>
-      </form>
-      {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
-    </div>
+          <div className="register-button-wrapper">
+            <button disabled={loading}>
+              {loading ? "Creating…" : "Create account"}
+            </button>
+          </div>
+        </form>
+        {/* TODO: add route to sign in page*/}
+        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+      </div>
+    </div> 
   );
 }
 
-export default RegisterUser;
+export default RegisterUser
+
