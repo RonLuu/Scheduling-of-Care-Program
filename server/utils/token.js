@@ -20,7 +20,7 @@ export function hashToken(plain) {
 export const TYPE_TO_ROLE = {
   FAMILY_TOKEN: "Family",
   MANAGER_TOKEN: "Admin",
-  STAFF_INVITE: "GeneralCareStaff",
+  STAFF_TOKEN: "GeneralCareStaff",
 };
 
 /**

@@ -1,5 +1,7 @@
 # Node dependencies
 node_modules/
+server/node_modules/
+client/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -15,11 +17,6 @@ server/dist/
 .env.local
 client/.env
 server/.env
-
-# Local databases / dev-only files
-server/care.db
-*.sqlite
-*.sqlite3
 
 # Logs
 logs

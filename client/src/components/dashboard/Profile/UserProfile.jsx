@@ -41,13 +41,11 @@ function UserProfile({ me, onLogout, refreshMe, jwt }) {
         {(me && me.email) || ""}
       </p>
 
-      {me &&
-        (me.role === "Admin" || me.role === "GeneralCareStaff") &&
-        me.organizationId && (
-          <button className="secondary" onClick={handleLeaveOrganization}>
-            Leave organization
-          </button>
-        )}
+      {me && me.organizationId && (
+        <button className="secondary" onClick={handleLeaveOrganization}>
+          Leave organization
+        </button>
+      )}
 
       <button className="secondary" onClick={onLogout}>
         Log out
