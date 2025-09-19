@@ -32,13 +32,13 @@ button {
   margin: 6px 0 12px;
 }
 button {
-  background: #2c3f70;
+  background: #A5231C;
   color: white;
   cursor: pointer;
 }
 button.secondary {
   background: #fff;
-  color: #2c3f70;
+  color: #A5231C;
   border: 1px solid #d1d5db;
 }
 .row {

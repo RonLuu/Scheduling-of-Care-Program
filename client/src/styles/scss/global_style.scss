@@ -1,0 +1,105 @@
+$blueberry: #252E47;
+$strawberry: #A5231C;
+$buttercream: #C8D4E5;
+$violet: #8089D2;
+$meringue: #E8EBED;
+$white: #F6FAFF;
+
+body, input, textarea,button
+{
+    font-family: sans-serif;
+    color: $blueberry;
+    background-color: $white;
+}
+.reset-link
+{
+    text-decoration: none;
+}
+.reset-list
+{
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+.d-flex
+{
+    display: flex;
+}
+.d-block
+{
+    display: block;
+}
+p, h1, h2, h3, h4, h5, h6 
+{
+    margin: 0;
+}
+@mixin respond($breakpoint) {
+  @if $breakpoint == "xl" {
+    @media screen and (max-width: 1200px) {
+      @content;
+    }
+  }
+  @if $breakpoint == "lg" {
+    @media screen and (max-width: 992px) {
+      @content;
+    }
+  }
+  @if $breakpoint == "md" {
+    @media screen and (max-width: 768px) {
+      @content;
+    }
+  }
+  @if $breakpoint == "sm" {
+    @media screen and (max-width: 576px) {
+      @content;
+    }
+  }
+  @if $breakpoint == "xs" {
+    @media screen and (max-width: 400px) {
+      @content;
+    }
+  }
+}
+.nav-bar
+{
+    background-color:$white;
+    color: $blueberry;
+    padding: 10px 20px;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+
+    button {
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    &.secondary{
+      background-color: $buttercream;
+      color:$white;
+      &:hover{
+        background-color: darken($buttercream, 10%);
+      }
+    }
+  #nav-login,
+  #nav-register {
+    background-color: $buttercream;
+    color: $blueberry;
+    &:hover {
+      background-color: darken($buttercream, 10%);
+    }
+  }
+  #nav-dashboard {
+    background-color: $buttercream;
+    color: $white;
+
+    &:hover {
+      background-color: darken($buttercream, 10%);
+    }
+  }
+
+  button:last-child {
+    margin-left: 10px;
+  }
+}
