@@ -76,4 +76,34 @@ router.get("/:id/categories", requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/person-with-needs/:personId/budget
+router.patch("/:personId/budget", requireAuth, async (req, res) => {
+  try {
+    const { amount } = req.body || {};
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value < 0) {
+      return res.status(400).json({ error: "INVALID_AMOUNT" });
+    }
+
+    const person = await PersonWithNeeds.findById(req.params.personId);
+    if (!person) return res.status(404).json({ error: "PERSON_NOT_FOUND" });
+
+    // org boundary
+    if (String(person.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
+
+    person.currentAnnualBudget = value;
+    await person.save();
+
+    res.json({
+      ok: true,
+      personId: String(person._id),
+      currentAnnualBudget: person.currentAnnualBudget,
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 export default router;
