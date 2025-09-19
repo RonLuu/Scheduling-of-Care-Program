@@ -2,7 +2,6 @@ body {
   margin: 0;
   background: #fff;
   font-family: 'inter';
-  /* font-family: 'Courier New', Courier, monospace; */
 }
 header {
   background: #1f2937;
@@ -20,12 +19,12 @@ main {
 
 .card {
   background: #fff;
-  border: 5px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px;
   width: 750px;
   max-width: 1000px;
   box-sizing: border-box;
+  box-shadow: 5px 5px 10px 2px rgb(194, 191, 191);
 }
 /* input,
 select,

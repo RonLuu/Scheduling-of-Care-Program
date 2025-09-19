@@ -1,0 +1,88 @@
+.navigationtab-panel {
+    width: 20%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+.navigationtab-panel.off {
+    transform: translateX(-100%);
+}
+
+.navigationtab-panel.on {
+    background-color: #8189D2;
+    transform: translateX(0);
+}
+
+.navigationtab-button-menu-wrapper {
+    width: 100%;
+    height: 15%;
+    margin-bottom: 3vh;
+}
+.navigationtab-button-menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 300%;
+    padding: 0px 0px 0px 0px;
+    margin: 10% 0px 0px 10%;
+    height: 40%;
+    width: 20%;
+    border-radius: 30%;
+}
+.navigationtab-button-menu.off {
+    background-color: white;
+    color: #2C3F70;
+}
+.navigationtab-button-menu.on {
+    background-color: #8189D2;
+    color: #FFFFFF;
+}
+
+.navigationtab-button-menu:hover {
+    background-color: #a8c6f1;
+    color: #FFFFFF;
+}
+
+.navigationtab-button-link-wrapper {
+    width: 100%;
+    height: 80%;
+    display: flex;
+    flex-direction: column;
+}
+.navigationtab-button-link {
+    font-size: 33px;
+    font-family: 'inter';
+    font-weight: bold;
+    background: none;
+    border: none;
+    color: #FFF;
+    cursor: pointer;
+    padding: 0px 50% 0px 0px;
+    width: 100%;
+    margin: 20px 0px 20px 0px;
+}
+
+.navigationtab-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    font-family: 'inter';
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.5vw;
+    color: #FFF;
+    margin: 0px 0px 5vh 0px;
+}
+
+.navigationtab-icon {
+    margin: 0vw 0.25vw 0vw 2.75vw;
+    font-size: 1.5vw;
+    color: #FFF;
+}
