@@ -7,6 +7,7 @@ function List({ jwt, clients }) {
   const [filesByItem, setFilesByItem] = React.useState({});
   const [cniLoading, setCniLoading] = React.useState(false);
   const [cniErr, setCniErr] = React.useState("");
+  const [categoryOrder, setCategoryOrder] = React.useState([]);
 
   function InlineAttachment({ f }) {
     const isImg = f.fileType && f.fileType.startsWith("image/");
@@ -44,6 +45,24 @@ function List({ jwt, clients }) {
     }
   };
 
+  const loadCategoryOrder = async (personId) => {
+    if (!jwt || !personId) return;
+    try {
+      const r = await fetch(
+        `/api/person-with-needs/${encodeURIComponent(personId)}/categories`,
+        { headers: { Authorization: "Bearer " + jwt } }
+      );
+      const d = await r.json();
+      if (r.ok && Array.isArray(d.categories)) {
+        setCategoryOrder(d.categories);
+      } else {
+        setCategoryOrder([]);
+      }
+    } catch {
+      setCategoryOrder([]);
+    }
+  };
+
   const loadCareNeedItemsFor = React.useCallback(
     async (personId) => {
       try {
@@ -54,28 +73,37 @@ function List({ jwt, clients }) {
         if (!jwt) throw new Error("UNAUTHENTICATED");
         if (!personId) return;
 
+        await loadCategoryOrder(personId);
+
         const r = await fetch(
           `/api/care-need-items?personId=${encodeURIComponent(personId)}`,
-          {
-            headers: { Authorization: "Bearer " + jwt },
-          }
+          { headers: { Authorization: "Bearer " + jwt } }
         );
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Failed to load items");
 
-        // Sort by startDate or name
+        const orderIndex = (cat) => {
+          const idx = categoryOrder.indexOf(cat);
+          return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+        };
+
         d.sort((a, b) => {
-          const as = a.frequency.startDate
+          const ca = orderIndex(a.category || "Other");
+          const cb = orderIndex(b.category || "Other");
+          if (ca !== cb) return ca - cb;
+
+          const as = a.frequency?.startDate
             ? new Date(a.frequency.startDate).getTime()
             : 0;
-          const bs = b.frequency.startDate
+          const bs = b.frequency?.startDate
             ? new Date(b.frequency.startDate).getTime()
             : 0;
-          return as - bs || a.name.localeCompare(b.name);
+          if (as !== bs) return as - bs;
+
+          return (a.name || "").localeCompare(b.name || "");
         });
 
         setCniItems(d);
-        // prefetch attachments
         d.forEach((it) => loadFilesFor(it._id));
       } catch (e) {
         setCniErr(e.message || String(e));
@@ -83,7 +111,7 @@ function List({ jwt, clients }) {
         setCniLoading(false);
       }
     },
-    [jwt]
+    [jwt, categoryOrder]
   );
 
   React.useEffect(() => {
@@ -94,11 +122,22 @@ function List({ jwt, clients }) {
     }
   }, [clients, cniClientId, loadCareNeedItemsFor]);
 
-  const handleClientChange = (e) => {
+  const handleClientChange = async (e) => {
     const v = e.target.value;
     setCniClientId(v);
-    if (v) loadCareNeedItemsFor(v);
+    if (v) {
+      await loadCategoryOrder(v);
+      loadCareNeedItemsFor(v);
+    }
   };
+
+  const renderCategoryDivider = (category) => (
+    <tr key={`div-${category}`}>
+      <td colSpan={8} style={{ padding: "10px 6px", background: "#f9fafb" }}>
+        <strong style={{ fontSize: 13 }}>{category}</strong>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="card">
@@ -137,70 +176,91 @@ function List({ jwt, clients }) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
+              <th style={{ textAlign: "left" }}>Category</th>
               <th style={{ textAlign: "left" }}>Name</th>
               <th style={{ textAlign: "left" }}>Frequency</th>
               <th style={{ textAlign: "left" }}>Budget</th>
               <th style={{ textAlign: "left" }}>Purchase cost</th>
               <th style={{ textAlign: "left" }}>Expected per task</th>
               <th style={{ textAlign: "left" }}>Schedule</th>
-              <th style={{ textAlign: "left" }}>Category</th>
               <th style={{ textAlign: "left" }}>Attachments</th>
             </tr>
           </thead>
           <tbody>
-            {cniItems.map((it) => {
-              const files = filesByItem[it._id] || [];
-              return (
-                <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{it.name}</td>
-                  <td>{formatFrequency(it.frequency)}</td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.budgetCost || 0)}
-                  </td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.purchaseCost || 0)}
-                  </td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.occurrenceCost || 0)}
-                  </td>
-                  <td>
-                    <span className="badge">
-                      {it.scheduleType === "Timed" && it.timeWindow
-                        ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                        : "All-day"}
-                    </span>
-                  </td>
-                  <td>{it.category}</td>
+            {(() => {
+              const rows = [];
+              let lastCat = null;
 
-                  <td>
-                    {files.length === 0 ? (
-                      <span style={{ opacity: 0.6 }}>—</span>
-                    ) : (
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 16,
-                          display: "flex",
-                          gap: 8,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        {files.map((f) => (
-                          <li key={f._id} style={{ listStyle: "none" }}>
-                            <InlineAttachment f={f} />
-                            {f.scope === "Shared" && (
-                              <span className="badge" style={{ marginLeft: 6 }}>
-                                Shared
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+              cniItems.forEach((it) => {
+                const cat = it.category || "Other";
+                if (cat !== lastCat) {
+                  rows.push(renderCategoryDivider(cat));
+                  lastCat = cat;
+                }
+
+                const files = filesByItem[it._id] || [];
+                const isPurchaseOnly =
+                  it.frequency?.intervalType === "JustPurchase";
+
+                rows.push(
+                  <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
+                    {/* <td>{cat}</td> */}
+                    <td> </td>
+                    <td>{it.name}</td>
+                    <td>{formatFrequency(it.frequency)}</td>
+                    <td>{aud.format(it.budgetCost || 0)}</td>
+                    <td>{aud.format(it.purchaseCost || 0)}</td>
+                    <td>
+                      {isPurchaseOnly
+                        ? "—"
+                        : aud.format(it.occurrenceCost || 0)}
+                    </td>
+                    <td>
+                      {isPurchaseOnly ? (
+                        "—"
+                      ) : (
+                        <span className="badge">
+                          {it.scheduleType === "Timed" && it.timeWindow
+                            ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
+                            : "All-day"}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {files.length === 0 ? (
+                        <span style={{ opacity: 0.6 }}>—</span>
+                      ) : (
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: 16,
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {files.map((f) => (
+                            <li key={f._id} style={{ listStyle: "none" }}>
+                              <InlineAttachment f={f} />
+                              {f.scope === "Shared" && (
+                                <span
+                                  className="badge"
+                                  style={{ marginLeft: 6 }}
+                                >
+                                  Shared
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                );
+              });
+
+              return rows;
+            })()}
           </tbody>
         </table>
       )}

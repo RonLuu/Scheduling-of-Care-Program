@@ -41,7 +41,30 @@ function Create({ jwt, clients }) {
   // Attachments
   const [attachMode, setAttachMode] = React.useState("none"); // none | upload | reference
   const [attachFile, setAttachFile] = React.useState(null);
-  const [sharedFileId, setSharedFileId] = React.useState("");
+  //const [sharedFileId, setSharedFileId] = React.useState("");
+
+  // --- Shared receipt reference UI state ---
+  const [refYear, setRefYear] = React.useState(new Date().getFullYear());
+  const [refMonth, setRefMonth] = React.useState(new Date().getMonth() + 1);
+  const [refFiles, setRefFiles] = React.useState([]); // files in the loaded bucket
+  const [refSelectedFileId, setRefSelectedFileId] = React.useState(""); // chosen file
+  const [refLoading, setRefLoading] = React.useState(false);
+  const [refErr, setRefErr] = React.useState("");
+
+  const [refPickDate, setRefPickDate] = React.useState(
+    new Date().toISOString().slice(0, 10) // yyyy-mm-dd
+  );
+  const [refQuery, setRefQuery] = React.useState(""); // filename/date filter
+
+  const pickBucketByDate = () => {
+    if (!refPickDate) return;
+    const d = new Date(refPickDate + "T00:00:00"); // avoid TZ issues
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    setRefYear(y);
+    setRefMonth(m);
+    loadSharedBucket(y, m);
+  };
 
   // Load categories when client is selected
   React.useEffect(() => {
@@ -81,6 +104,47 @@ function Create({ jwt, clients }) {
       .then((d) => setAssignableUsers(Array.isArray(d) ? d : []))
       .catch(() => setAssignableUsers([]));
   }, [ciPersonId, jwt]);
+
+  const loadSharedBucket = async (y, m) => {
+    try {
+      setRefErr("");
+      setRefLoading(true);
+      setRefFiles([]);
+      setRefSelectedFileId("");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+      if (!ciPersonId) throw new Error("Select a client first");
+
+      const r = await fetch(
+        `/api/file-upload/buckets?personId=${encodeURIComponent(
+          ciPersonId
+        )}&year=${y}&month=${m}`,
+        { headers: { Authorization: "Bearer " + jwt } }
+      );
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to load shared receipts");
+      setRefFiles(Array.isArray(d.files) ? d.files : []);
+    } catch (e) {
+      setRefErr(e.message || String(e));
+    } finally {
+      setRefLoading(false);
+    }
+  };
+
+  const quickPickTodayBucket = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    setRefYear(y);
+    setRefMonth(m);
+    loadSharedBucket(y, m);
+  };
+
+  // reset reference UI when client changes
+  React.useEffect(() => {
+    setRefFiles([]);
+    setRefSelectedFileId("");
+    setRefErr("");
+  }, [ciPersonId]);
 
   const submitCareNeedItem = async (e) => {
     e.preventDefault();
@@ -122,26 +186,8 @@ function Create({ jwt, clients }) {
         payload.occurrenceCount = Number(ciOccurrenceCount);
 
       if (attachMode === "reference") {
-        const id = (sharedFileId || "").trim();
-
-        // 1) Basic 24-hex check (client side)
-        const looksLikeObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-        if (!looksLikeObjectId) {
-          throw new Error("Invalid receipt File ID format.");
-        }
-
-        // 2) Check existence & scope === 'Shared'
-        const chk = await fetch(`/api/file-upload/${encodeURIComponent(id)}`, {
-          headers: { Authorization: "Bearer " + jwt },
-        });
-        const fd = await chk.json();
-        if (!chk.ok)
-          throw new Error(fd.error || "Failed to verify receipt File ID");
-
-        if (!fd || fd.scope !== "Shared") {
-          throw new Error(
-            "That File ID is not a shared receipt (bucket) file."
-          );
+        if (!refSelectedFileId) {
+          throw new Error("Please choose a shared receipt to reference.");
         }
       }
 
@@ -192,7 +238,7 @@ function Create({ jwt, clients }) {
         });
         const ud = await up.json();
         if (!up.ok) throw new Error(ud.error || "File upload failed");
-      } else if (attachMode === "reference" && sharedFileId) {
+      } else if (attachMode === "reference" && refSelectedFileId) {
         const ref = await fetch("/api/file-upload/shared/reference", {
           method: "POST",
           headers: {
@@ -201,7 +247,7 @@ function Create({ jwt, clients }) {
           },
           body: JSON.stringify({
             careNeedItemId: item._id,
-            fileId: sharedFileId,
+            fileId: refSelectedFileId,
           }),
         });
         const rd = await ref.json();
@@ -216,14 +262,17 @@ function Create({ jwt, clients }) {
       setCiPurchaseCost(0);
       setCiOccurrenceCost(0);
       setCiBudgetCost(0);
-      setCiIntervalType("Daily");
+      setCiIntervalType("JustPurchase");
       setCiIntervalValue(1);
       setCiEndMode("none");
       setCiEndDate("");
       setCiOccurrenceCount("");
       setAttachMode("none");
       setAttachFile(null);
-      setSharedFileId("");
+      //setSharedFileId("");
+      setRefFiles([]);
+      setRefSelectedFileId("");
+      setRefErr("");
     } catch (err) {
       setCiErr(err.message || String(err));
     } finally {
@@ -233,7 +282,7 @@ function Create({ jwt, clients }) {
 
   return (
     <div className="card">
-      <h3>Create Care Need Item (Sub-element)</h3>
+      <h3>Create Sub-element</h3>
       <form onSubmit={submitCareNeedItem}>
         <label>Client</label>
         <select
@@ -250,16 +299,7 @@ function Create({ jwt, clients }) {
 
         <div className="row">
           <div>
-            <label>Name</label>
-            <input
-              value={ciName}
-              onChange={(e) => setCiName(e.target.value)}
-              placeholder="e.g., Dental visit"
-            />
-          </div>
-
-          <div>
-            <label>Category</label>
+            <label>Category Name</label>
             {!ciUseCustomCat ? (
               <>
                 <select
@@ -303,42 +343,113 @@ function Create({ jwt, clients }) {
               </>
             )}
           </div>
+
+          <div>
+            <label>Sub-element Name</label>
+            <input
+              value={ciName}
+              onChange={(e) => setCiName(e.target.value)}
+              placeholder="e.g., Dental visit"
+            />
+          </div>
         </div>
 
-        <label>Description</label>
+        <label>Description/Comment</label>
         <input
           value={ciDesc}
           onChange={(e) => setCiDesc(e.target.value)}
-          placeholder="Optional notes"
+          placeholder="Optional comment"
         />
 
+        {/* Recurrence / schedule */}
         <div className="row">
           <div>
-            <label>Interval Type</label>
+            <label>Recurrence</label>
             <select
-              value={ciIntervalType}
-              onChange={(e) => setCiIntervalType(e.target.value)}
+              value={
+                ciIntervalType === "JustPurchase"
+                  ? "unscheduled"
+                  : ciIntervalType === "OneTime"
+                  ? "one"
+                  : "repeat"
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "unscheduled") {
+                  setCiIntervalType("JustPurchase");
+                } else if (v === "one") {
+                  setCiIntervalType("OneTime");
+                } else {
+                  // default sensible repeat if switching from non-repeat
+                  if (
+                    ["JustPurchase", "OneTime"].includes(ciIntervalType) ||
+                    !["Daily", "Weekly", "Monthly", "Yearly"].includes(
+                      ciIntervalType
+                    )
+                  ) {
+                    setCiIntervalType("Weekly");
+                  }
+                  if (!ciIntervalValue || ciIntervalValue < 1) {
+                    setCiIntervalValue(1);
+                  }
+                }
+              }}
             >
-              <option value="JustPurchase">Just Purchase</option>
-              <option value="OneTime">One Time</option>
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-              <option value="Monthly">Monthly</option>
-              <option value="Yearly">Yearly</option>
+              <option value="unscheduled">Unscheduled Event</option>
+              <option value="one">One Time</option>
+              <option value="repeat">Repeating</option>
             </select>
+            <p style={{ opacity: 0.6, marginTop: 4 }}>
+              {ciIntervalType === "JustPurchase" &&
+                "No tasks will be scheduled; used for purchases only."}
+              {ciIntervalType === "OneTime" &&
+                "Creates exactly one task on the start date."}
+              {["Daily", "Weekly", "Monthly", "Yearly"].includes(
+                ciIntervalType
+              ) && `Will schedule tasks on a repeating cadence.`}
+            </p>
           </div>
-          {ciIntervalType !== "OneTime" &&
-            ciIntervalType !== "JustPurchase" && (
+
+          {/* Repeat details */}
+          {["Daily", "Weekly", "Monthly", "Yearly"].includes(
+            ciIntervalType
+          ) && (
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
               <div>
-                <label>Every N (interval value)</label>
+                <label>Repeat every</label>
                 <input
                   type="number"
                   min="1"
+                  step="1"
                   value={ciIntervalValue}
-                  onChange={(e) => setCiIntervalValue(e.target.value)}
+                  onChange={(e) =>
+                    setCiIntervalValue(Number(e.target.value) || 1)
+                  }
+                  style={{ width: 100 }}
                 />
               </div>
-            )}
+              <div>
+                <label>&nbsp;</label>
+                <select
+                  value={ciIntervalType}
+                  onChange={(e) => setCiIntervalType(e.target.value)}
+                >
+                  <option value="Daily">
+                    {`Day${ciIntervalValue > 1 ? "s" : ""}`}
+                  </option>
+                  <option value="Weekly">
+                    {`Week${ciIntervalValue > 1 ? "s" : ""}`}
+                  </option>
+                  <option value="Monthly">
+                    {`Month${ciIntervalValue > 1 ? "s" : ""}`}
+                  </option>
+                  <option value="Yearly">
+                    {`Year${ciIntervalValue > 1 ? "s" : ""}`}
+                  </option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {ciIntervalType !== "JustPurchase" && (
@@ -367,32 +478,36 @@ function Create({ jwt, clients }) {
           </div>
         )}
 
-        {ciEndMode === "endDate" && (
-          <div>
-            <label>End date</label>
-            <input
-              type="date"
-              value={ciEndDate}
-              onChange={(e) => setCiEndDate(e.target.value)}
-            />
-          </div>
-        )}
-        {ciEndMode === "count" && (
-          <div>
-            <label>Occurrences</label>
-            <input
-              type="number"
-              min="1"
-              value={ciOccurrenceCount}
-              onChange={(e) => setCiOccurrenceCount(e.target.value)}
-            />
-          </div>
-        )}
+        {ciIntervalType !== "JustPurchase" &&
+          ciIntervalType !== "OneTime" &&
+          ciEndMode === "endDate" && (
+            <div>
+              <label>End date</label>
+              <input
+                type="date"
+                value={ciEndDate}
+                onChange={(e) => setCiEndDate(e.target.value)}
+              />
+            </div>
+          )}
+        {ciIntervalType !== "JustPurchase" &&
+          ciIntervalType !== "OneTime" &&
+          ciEndMode === "count" && (
+            <div>
+              <label>Number of occurrences</label>
+              <input
+                type="number"
+                min="1"
+                value={ciOccurrenceCount}
+                onChange={(e) => setCiOccurrenceCount(e.target.value)}
+              />
+            </div>
+          )}
 
         {ciIntervalType !== "JustPurchase" && (
           <div className="row">
             <div>
-              <label>Schedule type</label>
+              <label>Schedule period</label>
               <select
                 value={ciScheduleType}
                 onChange={(e) => setCiScheduleType(e.target.value)}
@@ -487,7 +602,7 @@ function Create({ jwt, clients }) {
 
         {/* Attach receipt */}
         <hr />
-        <label>Attach receipt</label>
+        <label>Attach Receipt/Record/Photograph</label>
         <select
           value={attachMode}
           onChange={(e) => setAttachMode(e.target.value)}
@@ -507,16 +622,142 @@ function Create({ jwt, clients }) {
         )}
 
         {attachMode === "reference" && (
-          <div style={{ marginTop: 8 }}>
-            <input
-              placeholder="Paste shared receipt File ID"
-              value={sharedFileId}
-              onChange={(e) => setSharedFileId(e.target.value)}
-            />
-            <p style={{ opacity: 0.7, marginTop: -6 }}>
-              Get the File ID from the “Receipt buckets” page for this client &
-              month.
-            </p>
+          <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
+            {/* Quick jumps */}
+            <div className="row" style={{ alignItems: "end", gap: 10 }}>
+              <div>
+                <label>Pick by day</label>
+                <input
+                  type="date"
+                  value={refPickDate}
+                  onChange={(e) => setRefPickDate(e.target.value)}
+                  style={{ width: 180 }}
+                />
+              </div>
+              <div>
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={pickBucketByDate}
+                  disabled={!ciPersonId || refLoading}
+                >
+                  Load day’s month
+                </button>
+              </div>
+
+              <div style={{ marginLeft: 16 }}>
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={quickPickTodayBucket}
+                  disabled={!ciPersonId || refLoading}
+                  title="Jump to this month’s bucket"
+                >
+                  Use today’s bucket
+                </button>
+              </div>
+            </div>
+
+            {/* Manual Y/M load (still available) */}
+            <div className="row" style={{ alignItems: "end", gap: 10 }}>
+              <div>
+                <label>Year</label>
+                <input
+                  type="number"
+                  value={refYear}
+                  onChange={(e) =>
+                    setRefYear(
+                      Number(e.target.value) || new Date().getFullYear()
+                    )
+                  }
+                  style={{ width: 120 }}
+                />
+              </div>
+              <div>
+                <label>Month</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={refMonth}
+                  onChange={(e) => setRefMonth(Number(e.target.value) || 1)}
+                  style={{ width: 120 }}
+                />
+              </div>
+              <div>
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => loadSharedBucket(refYear, refMonth)}
+                  disabled={!ciPersonId || refLoading}
+                >
+                  {refLoading ? "Loading…" : "Load receipts"}
+                </button>
+              </div>
+            </div>
+
+            {refErr && <div style={{ color: "#b91c1c" }}>Error: {refErr}</div>}
+
+            {/* Search within loaded bucket */}
+            <div>
+              <label>Search within this bucket</label>
+              <input
+                placeholder="Type part of the filename or date"
+                value={refQuery}
+                onChange={(e) => setRefQuery(e.target.value)}
+                style={{ minWidth: 360 }}
+              />
+              <p style={{ opacity: 0.7, marginTop: 4 }}>
+                Tip: you can search by filename or paste a date like
+                “2025-03-12”.
+              </p>
+            </div>
+
+            {/* Receipt selector */}
+            <div>
+              <label>Select receipt</label>
+              <select
+                value={refSelectedFileId}
+                onChange={(e) => setRefSelectedFileId(e.target.value)}
+                disabled={refFiles.length === 0}
+                style={{ minWidth: 480 }}
+              >
+                <option value="">
+                  {refFiles.length === 0
+                    ? "— No receipts in this bucket —"
+                    : "— Choose a receipt —"}
+                </option>
+                {refFiles
+                  .filter((f) => {
+                    if (!refQuery.trim()) return true;
+                    const q = refQuery.toLowerCase();
+                    const created = (
+                      f.createdAt
+                        ? new Date(f.createdAt).toISOString().slice(0, 10)
+                        : ""
+                    ).toLowerCase();
+                    return (
+                      (f.filename || "").toLowerCase().includes(q) ||
+                      created.includes(q)
+                    );
+                  })
+                  .map((f) => (
+                    <option key={f._id} value={f._id}>
+                      {`${f.filename}  •  ${new Date(
+                        f.createdAt
+                      ).toLocaleString()}`}
+                    </option>
+                  ))}
+              </select>
+              {refSelectedFileId && (
+                <div style={{ marginTop: 6, opacity: 0.7 }}>
+                  Linked file id: <code>{refSelectedFileId}</code>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
