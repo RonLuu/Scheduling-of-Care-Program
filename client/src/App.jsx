@@ -6,6 +6,7 @@ import LogIn from './components/login/LogIn'
 import RegisterOrganization from './components/register/RegisterOrganization'
 import Dashboard from './components/dashboard/Dashboard'
 import NavigationTab from './components/NavigationTab'
+import UserProfile from './components/dashboard/Profile/UserProfile'
 const App = () => {
   return (
     <Routes>
@@ -14,6 +15,7 @@ const App = () => {
       <Route path='/login' element={<LogIn/>}/>
       <Route path='/registerorganization' element={<RegisterOrganization/>}/>
       <Route path='/dashboard' element={<Dashboard/>}/>
+      {/* TODO: remove this route */}
       <Route path='/navigationtab' element={<NavigationTab/>}/>
     </Routes>
   )

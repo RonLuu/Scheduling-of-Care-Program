@@ -1,7 +1,5 @@
 import React from "react";
 import { useAuth } from "../../AuthContext";
-import UserProfile from "./UserProfile";
-import OrganizationManagement from "./OrganizationManagement";
 import Profile from "./Profile";
 
 import AccessManagement from "./AccessManagement";
@@ -72,7 +70,7 @@ function Dashboard() {
         refreshMe={refreshMe}
         jwt={jwt}
       />
-
+{/* 
       {me && (me.role === "Family" || me.role === "PoA") && (
         <Profile.OrganizationManagement
           me={me}
@@ -118,7 +116,7 @@ function Dashboard() {
 
       <TasksPanel jwt={jwt} clients={clients} />
 
-      <Budget.BudgetReporting jwt={jwt} clients={clients} />
+      <Budget.BudgetReporting jwt={jwt} clients={clients} /> */}
     </>
   );
 }

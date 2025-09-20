@@ -19,7 +19,7 @@ const NavigationTab = () => {
                     showTab ? 
                     (
                         <div className='navigationtab-link-wrapper'>
-                            {/* Add URL to these Link */}
+                            {/* TODO: Add URL to these Link */}
                             <Link to="/faq" className='navigationtab-link'><BiSolidDashboard className='navigationtab-icon'/>FAQ</Link>
                             <Link to="/calendar" className='navigationtab-link'><BiCalendar className='navigationtab-icon'/>Calendar</Link>
                             <Link to="/budgetreport" className='navigationtab-link'><BiGroup className='navigationtab-icon'/>Budget reports</Link>
