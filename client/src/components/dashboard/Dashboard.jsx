@@ -8,9 +8,8 @@ import CareNeedItems from "./CareNeedItems";
 import TasksPanel from "./TasksPanel";
 import Budget from "./Budget";
 
-
 function Dashboard() {
-  const {me, setMe} = useAuth();
+  const { me, setMe } = useAuth();
   const jwt = localStorage.getItem("jwt");
   const organizationId = me?.organizationId;
   const [clients, setClients] = React.useState([]);
@@ -66,11 +65,12 @@ function Dashboard() {
     <>
       <Profile.UserProfile
         me={me}
+        setMe={setMe}
         onLogout={logout}
         refreshMe={refreshMe}
         jwt={jwt}
       />
-{/* 
+      {/* 
       {me && (me.role === "Family" || me.role === "PoA") && (
         <Profile.OrganizationManagement
           me={me}
