@@ -41,30 +41,80 @@ function Create({ jwt, clients }) {
   // Attachments
   const [attachMode, setAttachMode] = React.useState("none"); // none | upload | reference
   const [attachFile, setAttachFile] = React.useState(null);
-  //const [sharedFileId, setSharedFileId] = React.useState("");
 
   // --- Shared receipt reference UI state ---
-  const [refYear, setRefYear] = React.useState(new Date().getFullYear());
-  const [refMonth, setRefMonth] = React.useState(new Date().getMonth() + 1);
-  const [refFiles, setRefFiles] = React.useState([]); // files in the loaded bucket
-  const [refSelectedFileId, setRefSelectedFileId] = React.useState(""); // chosen file
-  const [refLoading, setRefLoading] = React.useState(false);
-  const [refErr, setRefErr] = React.useState("");
-
   const [refPickDate, setRefPickDate] = React.useState(
     new Date().toISOString().slice(0, 10) // yyyy-mm-dd
   );
-  const [refQuery, setRefQuery] = React.useState(""); // filename/date filter
+  const [refMode, setRefMode] = React.useState("month"); // "month" | "day"
+  const [refFiles, setRefFiles] = React.useState([]); // loaded month’s files
+  const [refSelectedFileId, setRefSelectedFileId] = React.useState("");
+  const [refLoading, setRefLoading] = React.useState(false);
+  const [refErr, setRefErr] = React.useState("");
 
-  const pickBucketByDate = () => {
-    if (!refPickDate) return;
-    const d = new Date(refPickDate + "T00:00:00"); // avoid TZ issues
-    const y = d.getFullYear();
-    const m = d.getMonth() + 1;
-    setRefYear(y);
-    setRefMonth(m);
+  const loadSharedBucket = async (y, m) => {
+    try {
+      setRefErr("");
+      setRefLoading(true);
+      setRefFiles([]);
+      setRefSelectedFileId("");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+      if (!ciPersonId) throw new Error("Select a client first");
+
+      const r = await fetch(
+        `/api/file-upload/buckets?personId=${encodeURIComponent(
+          ciPersonId
+        )}&year=${y}&month=${m}`,
+        { headers: { Authorization: "Bearer " + jwt } }
+      );
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to load receipts");
+      setRefFiles(Array.isArray(d.files) ? d.files : []);
+    } catch (e) {
+      setRefErr(e.message || String(e));
+    } finally {
+      setRefLoading(false);
+    }
+  };
+
+  // Jump to this month’s bucket
+  const quickPickTodayBucket = () => {
+    const now = new Date();
+
+    const toLocalYMD = (d) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString(
+        "en-CA"
+      ); // yyyy-mm-dd in local time
+    setRefPickDate(toLocalYMD(now));
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
     loadSharedBucket(y, m);
   };
+
+  // Pick any day -> load that day’s month bucket
+  const pickBucketByDate = () => {
+    if (!refPickDate) return;
+    const d = new Date(`${refPickDate}T00:00:00`);
+    loadSharedBucket(d.getFullYear(), d.getMonth() + 1);
+  };
+
+  // Filter the loaded month to the exact picked day (if refMode === "day")
+  const visibleReceipts = React.useMemo(() => {
+    if (refMode !== "day" || !refPickDate) return refFiles;
+    return refFiles.filter((f) => {
+      const baseDate = f.effectiveDate || f.createdAt;
+      if (!baseDate) return false;
+      const localDay = new Date(baseDate).toLocaleDateString("en-CA"); // yyyy-mm-dd
+      return localDay === refPickDate;
+    });
+  }, [refFiles, refMode, refPickDate]);
+
+  // Reset picker when client changes
+  React.useEffect(() => {
+    setRefFiles([]);
+    setRefSelectedFileId("");
+    setRefErr("");
+  }, [ciPersonId]);
 
   // Load categories when client is selected
   React.useEffect(() => {
@@ -104,47 +154,6 @@ function Create({ jwt, clients }) {
       .then((d) => setAssignableUsers(Array.isArray(d) ? d : []))
       .catch(() => setAssignableUsers([]));
   }, [ciPersonId, jwt]);
-
-  const loadSharedBucket = async (y, m) => {
-    try {
-      setRefErr("");
-      setRefLoading(true);
-      setRefFiles([]);
-      setRefSelectedFileId("");
-      if (!jwt) throw new Error("UNAUTHENTICATED");
-      if (!ciPersonId) throw new Error("Select a client first");
-
-      const r = await fetch(
-        `/api/file-upload/buckets?personId=${encodeURIComponent(
-          ciPersonId
-        )}&year=${y}&month=${m}`,
-        { headers: { Authorization: "Bearer " + jwt } }
-      );
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to load shared receipts");
-      setRefFiles(Array.isArray(d.files) ? d.files : []);
-    } catch (e) {
-      setRefErr(e.message || String(e));
-    } finally {
-      setRefLoading(false);
-    }
-  };
-
-  const quickPickTodayBucket = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    setRefYear(y);
-    setRefMonth(m);
-    loadSharedBucket(y, m);
-  };
-
-  // reset reference UI when client changes
-  React.useEffect(() => {
-    setRefFiles([]);
-    setRefSelectedFileId("");
-    setRefErr("");
-  }, [ciPersonId]);
 
   const submitCareNeedItem = async (e) => {
     e.preventDefault();
@@ -269,7 +278,6 @@ function Create({ jwt, clients }) {
       setCiOccurrenceCount("");
       setAttachMode("none");
       setAttachFile(null);
-      //setSharedFileId("");
       setRefFiles([]);
       setRefSelectedFileId("");
       setRefErr("");
@@ -622,11 +630,10 @@ function Create({ jwt, clients }) {
         )}
 
         {attachMode === "reference" && (
-          <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
-            {/* Quick jumps */}
-            <div className="row" style={{ alignItems: "end", gap: 10 }}>
+          <div style={{ marginTop: 8, display: "grid", gap: 12 }}>
+            <div className="row" style={{ alignItems: "end", gap: 12 }}>
               <div>
-                <label>Pick by day</label>
+                <label>Pick a day</label>
                 <input
                   type="date"
                   value={refPickDate}
@@ -634,87 +641,64 @@ function Create({ jwt, clients }) {
                   style={{ width: 180 }}
                 />
               </div>
+
               <div>
-                <label>&nbsp;</label>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={pickBucketByDate}
-                  disabled={!ciPersonId || refLoading}
-                >
-                  Load day’s month
-                </button>
+                <label>Load scope</label>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <label
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <input
+                      type="radio"
+                      name="refScope"
+                      value="day"
+                      checked={refMode === "day"}
+                      onChange={() => setRefMode("day")}
+                    />
+                    That exact day
+                  </label>
+                  <label
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <input
+                      type="radio"
+                      name="refScope"
+                      value="month"
+                      checked={refMode === "month"}
+                      onChange={() => setRefMode("month")}
+                    />
+                    Whole month (of that day)
+                  </label>
+                </div>
               </div>
 
-              <div style={{ marginLeft: 16 }}>
+              <div>
                 <label>&nbsp;</label>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={quickPickTodayBucket}
-                  disabled={!ciPersonId || refLoading}
-                  title="Jump to this month’s bucket"
-                >
-                  Use today’s bucket
-                </button>
-              </div>
-            </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={pickBucketByDate}
+                    disabled={!ciPersonId || refLoading}
+                    title="Load the bucket for the chosen date"
+                  >
+                    {refLoading ? "Loading…" : "Load"}
+                  </button>
 
-            {/* Manual Y/M load (still available) */}
-            <div className="row" style={{ alignItems: "end", gap: 10 }}>
-              <div>
-                <label>Year</label>
-                <input
-                  type="number"
-                  value={refYear}
-                  onChange={(e) =>
-                    setRefYear(
-                      Number(e.target.value) || new Date().getFullYear()
-                    )
-                  }
-                  style={{ width: 120 }}
-                />
-              </div>
-              <div>
-                <label>Month</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={refMonth}
-                  onChange={(e) => setRefMonth(Number(e.target.value) || 1)}
-                  style={{ width: 120 }}
-                />
-              </div>
-              <div>
-                <label>&nbsp;</label>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => loadSharedBucket(refYear, refMonth)}
-                  disabled={!ciPersonId || refLoading}
-                >
-                  {refLoading ? "Loading…" : "Load receipts"}
-                </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={quickPickTodayBucket}
+                    disabled={!ciPersonId || refLoading}
+                    title="Jump to this month’s bucket"
+                  >
+                    Use today’s bucket
+                  </button>
+                </div>
               </div>
             </div>
 
             {refErr && <div style={{ color: "#b91c1c" }}>Error: {refErr}</div>}
-
-            {/* Search within loaded bucket */}
-            <div>
-              <label>Search within this bucket</label>
-              <input
-                placeholder="Type part of the filename or date"
-                value={refQuery}
-                onChange={(e) => setRefQuery(e.target.value)}
-                style={{ minWidth: 360 }}
-              />
-              <p style={{ opacity: 0.7, marginTop: 4 }}>
-                Tip: you can search by filename or paste a date like
-                “2025-03-12”.
-              </p>
-            </div>
 
             {/* Receipt selector */}
             <div>
@@ -722,41 +706,36 @@ function Create({ jwt, clients }) {
               <select
                 value={refSelectedFileId}
                 onChange={(e) => setRefSelectedFileId(e.target.value)}
-                disabled={refFiles.length === 0}
-                style={{ minWidth: 480 }}
+                disabled={visibleReceipts.length === 0}
+                style={{ minWidth: 520 }}
               >
                 <option value="">
-                  {refFiles.length === 0
-                    ? "— No receipts in this bucket —"
+                  {visibleReceipts.length === 0
+                    ? "— No receipts found —"
                     : "— Choose a receipt —"}
                 </option>
-                {refFiles
-                  .filter((f) => {
-                    if (!refQuery.trim()) return true;
-                    const q = refQuery.toLowerCase();
-                    const created = (
-                      f.createdAt
-                        ? new Date(f.createdAt).toISOString().slice(0, 10)
-                        : ""
-                    ).toLowerCase();
-                    return (
-                      (f.filename || "").toLowerCase().includes(q) ||
-                      created.includes(q)
-                    );
-                  })
-                  .map((f) => (
-                    <option key={f._id} value={f._id}>
-                      {`${f.filename}  •  ${new Date(
-                        f.createdAt
-                      ).toLocaleString()}`}
-                    </option>
-                  ))}
+                {visibleReceipts.map((f) => (
+                  <option key={f._id} value={f._id}>
+                    {`${f.filename}${
+                      f.description ? " • " + f.description : ""
+                    } • ${new Date(
+                      f.effectiveDate || f.createdAt
+                    ).toLocaleDateString()}`}
+                  </option>
+                ))}
               </select>
               {refSelectedFileId && (
                 <div style={{ marginTop: 6, opacity: 0.7 }}>
                   Linked file id: <code>{refSelectedFileId}</code>
                 </div>
               )}
+              {refMode === "day" &&
+                refFiles.length > 0 &&
+                visibleReceipts.length === 0 && (
+                  <div style={{ marginTop: 6, opacity: 0.7 }}>
+                    No receipts on {refPickDate}. Try “Whole month”.
+                  </div>
+                )}
             </div>
           </div>
         )}

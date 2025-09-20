@@ -7,6 +7,8 @@ function ReceiptBuckets({ jwt, clients }) {
   const [file, setFile] = React.useState(null);
   const [bucket, setBucket] = React.useState(null);
   const [files, setFiles] = React.useState([]);
+  const [fileNote, setFileNote] = React.useState("");
+  const [fileDate, setFileDate] = React.useState(""); // optional effective date
   const [err, setErr] = React.useState("");
 
   const load = async () => {
@@ -27,6 +29,8 @@ function ReceiptBuckets({ jwt, clients }) {
       setErr(e.message || String(e));
       setBucket(null);
       setFiles([]);
+      setFileNote("");
+      setFileDate("");
     }
   };
 
@@ -47,6 +51,8 @@ function ReceiptBuckets({ jwt, clients }) {
       fd.append("year", String(year));
       fd.append("month", String(month));
       fd.append("file", file);
+      if (fileNote) fd.append("description", fileNote);
+      if (fileDate) fd.append("effectiveDate", fileDate);
 
       const r = await fetch("/api/file-upload/upload", {
         method: "POST",
@@ -111,6 +117,20 @@ function ReceiptBuckets({ jwt, clients }) {
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />{" "}
+        <input
+          type="text"
+          placeholder='Optional note (e.g. "Pharmacy Receipt for Jan 12")'
+          value={fileNote}
+          onChange={(e) => setFileNote(e.target.value)}
+          style={{ marginLeft: 8, minWidth: 240 }}
+        />
+        <input
+          type="date"
+          value={fileDate}
+          onChange={(e) => setFileDate(e.target.value)}
+          style={{ marginLeft: 8 }}
+          title="Effective date (must be within the chosen bucket’s month)"
         />
         <button
           className="secondary"
@@ -134,44 +154,71 @@ function ReceiptBuckets({ jwt, clients }) {
             <thead>
               <tr>
                 <th style={{ textAlign: "left" }}>File</th>
-                <th style={{ textAlign: "left" }}>File ID (copy)</th>
+                <th style={{ textAlign: "left" }}>Note</th>
+                <th style={{ textAlign: "left" }}>Receipt date</th> {/* NEW */}
               </tr>
             </thead>
             <tbody>
-              {files.map((f) => (
-                <tr key={f._id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      {f.fileType?.startsWith("image/") && (
-                        <a
-                          href={f.urlOrPath}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={f.filename}
-                        >
-                          <img
-                            src={f.urlOrPath}
-                            alt={f.filename}
-                            style={{
-                              height: 40,
-                              width: 60,
-                              objectFit: "cover",
-                              borderRadius: 4,
-                              border: "1px solid #eee",
-                            }}
-                          />
-                        </a>
+              {files.map((f) => {
+                const receiptDate = f.effectiveDate || f.createdAt;
+                return (
+                  <tr key={f._id} style={{ borderTop: "1px solid #eee" }}>
+                    <td>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        {f.fileType?.startsWith("image/") && (
+                          <a
+                            href={f.urlOrPath}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={f.filename}
+                          >
+                            <img
+                              src={f.urlOrPath}
+                              alt={f.filename}
+                              style={{
+                                height: 40,
+                                width: 60,
+                                objectFit: "cover",
+                                borderRadius: 4,
+                                border: "1px solid #eee",
+                              }}
+                            />
+                          </a>
+                        )}
+                        <span>{f.filename}</span>
+                      </div>
+                    </td>
+                    <td>
+                      {f.description ? (
+                        <span>{f.description}</span>
+                      ) : (
+                        <span style={{ opacity: 0.6 }}>—</span>
                       )}
-                      <span>{f.filename}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <code>{f._id}</code>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td
+                      title={
+                        f.createdAt
+                          ? `Uploaded: ${new Date(
+                              f.createdAt
+                            ).toLocaleString()}`
+                          : ""
+                      }
+                    >
+                      {receiptDate ? (
+                        new Date(receiptDate).toLocaleDateString()
+                      ) : (
+                        <span style={{ opacity: 0.6 }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
