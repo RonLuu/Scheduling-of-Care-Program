@@ -171,14 +171,7 @@ export function useTasksData(jwt, clients) {
         alert("Please provide filename and URL/path.");
         return;
       }
-      // const payload = {
-      //   careTaskId: taskId,
-      //   filename: newFile.filename,
-      //   urlOrPath: newFile.urlOrPath,
-      //   fileType: newFile.fileType || undefined,
-      //   size: newFile.size ? Number(newFile.size) : undefined,
-      //   description: newFile.description || undefined,
-      // };
+
       const payload = {
         scope: "CareTask",
         targetId: taskId,

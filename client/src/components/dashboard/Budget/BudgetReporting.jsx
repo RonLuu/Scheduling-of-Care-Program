@@ -14,7 +14,7 @@ function Badge({ level, children }) {
         : level === "medium"
         ? "#fef3c7"
         : level === "light"
-        ? "#e0f2fe"
+        ? "#fef3c7"
         : "#eee",
     color:
       level === "serious"
@@ -22,7 +22,7 @@ function Badge({ level, children }) {
         : level === "medium"
         ? "#92400e"
         : level === "light"
-        ? "#075985"
+        ? "#92400e"
         : "#444",
   };
   return <span style={style}>{children}</span>;
@@ -328,10 +328,14 @@ function BudgetReporting({ jwt, clients }) {
                   <th style={{ textAlign: "left" }}>Annual Budget</th>
                   <th style={{ textAlign: "left" }}>Already Spent</th>
                   <th style={{ textAlign: "left" }}>Current Balance</th>
-                  <th style={{ textAlign: "left" }}>Expected Remaining</th>
-                  <th style={{ textAlign: "left" }}>Expected Balance</th>
-                  <th style={{ textAlign: "left" }}>% Spent</th>
-                  <th style={{ textAlign: "left" }}>% Expected</th>
+                  <th style={{ textAlign: "left" }}>
+                    Expected to Spend (rest of year)
+                  </th>
+                  <th style={{ textAlign: "left" }}>
+                    Expected Balance (year-end)
+                  </th>
+                  {/* <th style={{ textAlign: "left" }}>% Spent</th>
+                  <th style={{ textAlign: "left" }}>% Expected</th> */}
                   <th style={{ textAlign: "left" }}>Details</th>
                 </tr>
               </thead>
@@ -345,8 +349,8 @@ function BudgetReporting({ jwt, clients }) {
                       <td>{aud.format(c.currentBalance || 0)}</td>
                       <td>{aud.format(c.expected || 0)}</td>
                       <td>{aud.format(c.expectedBalanceAtYearEnd || 0)}</td>
-                      <td>{((c.spentPct || 0) * 100).toFixed(1)}%</td>
-                      <td>{((c.expectedPct || 0) * 100).toFixed(1)}%</td>
+                      {/* <td>{((c.spentPct || 0) * 100).toFixed(1)}%</td>
+                      <td>{((c.expectedPct || 0) * 100).toFixed(1)}%</td> */}
                       <td>
                         <button
                           className="secondary"
@@ -389,10 +393,10 @@ function BudgetReporting({ jwt, clients }) {
                                     Current Balance
                                   </th>
                                   <th style={{ textAlign: "left" }}>
-                                    Expected Remaining
+                                    Expected to Spend (rest of year)
                                   </th>
                                   <th style={{ textAlign: "left" }}>
-                                    Expected Balance
+                                    Expected Balance (year-end)
                                   </th>
                                   <th style={{ textAlign: "left" }}>Warning</th>
                                   <th style={{ textAlign: "left" }}>Actions</th>

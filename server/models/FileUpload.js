@@ -29,6 +29,7 @@ const FileUploadSchema = new Schema(
     urlOrPath: { type: String, required: true }, // /uploads/…
     size: { type: Number },
     description: { type: String },
+    effectiveDate: { type: Date },
   },
   { timestamps: true }
 );

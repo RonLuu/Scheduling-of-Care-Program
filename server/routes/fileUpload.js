@@ -140,8 +140,16 @@ router.post("/upload", requireAuth, (req, res) => {
     try {
       if (err) return res.status(400).json({ error: err.message });
 
-      let { scope, targetId, description, bucketId, personId, year, month } =
-        req.body;
+      let {
+        scope,
+        targetId,
+        description,
+        bucketId,
+        personId,
+        year,
+        month,
+        effectiveDate,
+      } = req.body;
 
       if (!scope) return res.status(400).json({ error: "MISSING_SCOPE" });
 
@@ -169,6 +177,16 @@ router.post("/upload", requireAuth, (req, res) => {
             });
           }
           bucketId = String(bucket._id);
+        }
+
+        const d = new Date(effectiveDate);
+        if (
+          d.getFullYear() !== Number(year) ||
+          d.getMonth() + 1 !== Number(month)
+        ) {
+          return res
+            .status(400)
+            .json({ error: "EFFECTIVE_DATE_OUTSIDE_BUCKET" });
         }
         // For Shared, targetId is the bucket id
         targetId = bucketId;
@@ -202,6 +220,7 @@ router.post("/upload", requireAuth, (req, res) => {
         urlOrPath: publicUrl,
         size: req.file.size,
         description: description || undefined,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
       });
 
       if (scope === "CareNeedItem") {
@@ -271,7 +290,7 @@ router.get("/buckets", requireAuth, async (req, res) => {
       targetId: bucket._id,
       bucketId: bucket._id,
     })
-      .sort({ createdAt: -1 })
+      .sort({ effectiveDate: -1, createdAt: -1 })
       .lean();
     res.json({ bucket, files });
   } catch (e) {
@@ -318,7 +337,7 @@ router.get("/by-care-need-item/:id", requireAuth, async (req, res) => {
       : [];
 
     const all = [...direct, ...refs].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
     );
     res.json(all);
   } catch (e) {
