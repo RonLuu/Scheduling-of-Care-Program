@@ -116,7 +116,7 @@ const RegisterUser = () => {
         <div className="register-login-link-wrapper">
           <Link className="register-login-link" to='/login'>Already a user? Login here</Link>
         </div>
-        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+        {err && <p style={{color: "#b91c1c" }}>{err}</p>}
       </div>
     </div> 
   );

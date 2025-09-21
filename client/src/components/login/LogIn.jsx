@@ -61,7 +61,6 @@ function LogIn() {
       <div className = "register-box2">
           <div className="left">
             <h2>Member Login</h2>
-            
             <form onSubmit={submit}>
               <input className="form" 
               placeholder = "Email" value={email} 
@@ -75,10 +74,40 @@ function LogIn() {
                 {loading ? "Logging in…" : "Login"}
               </button>
             </form>
+            {err && <p className = "error">{err}</p>}
         </div>
       </div>
     </div>
   </div>
+
+      
+    // <div className="login-wrapper">
+    //   <div className="card">
+    //     <h2>Login</h2>
+    //     <form onSubmit={submit}>
+    //       <input className="login-input"
+    //         placeholder="Email"
+    //         value={email}
+    //         onChange={(e) => setEmail(e.target.value)}
+    //         />
+    //       <input className="login-input"
+    //         type="password"
+    //         placeholder="Password"
+    //         value={password}
+    //         onChange={(e) => setPassword(e.target.value)}
+    //         />
+    //       <div className="login-button-wrapper">
+    //         <button disabled={loading}>
+    //           {loading ? "Signing in…" : "Sign in"}
+    //         </button>
+    //       </div>
+    //     </form>
+    //     <div className="login-register-link-wrapper">
+    //       <Link className="login-register-link" to='/registeruser'>Don't have an account? Sign up here</Link>
+    //     </div>
+    //     {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+    //   </div>
+    // </div>
   );
 }
 
