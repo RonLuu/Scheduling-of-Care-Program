@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../../styles/RegisterUser.css"
+import "../../css/login_layout.css"
 import {useAuth} from "../../AuthContext"
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -65,7 +65,7 @@ const RegisterUser = () => {
   }
 
   return (
-    <div className="register-wrapper">
+    <div className="bg-wallpaper">
       <div className="card">
         <h2>Register User</h2>
         <form onSubmit={submit}>

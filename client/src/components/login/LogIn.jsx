@@ -1,5 +1,5 @@
 import React from "react";
-import "../../styles/LogIn.css"
+import "../../css/login_layout.css"
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext"
 
@@ -48,33 +48,37 @@ function LogIn() {
   }
 
   return (
-    <div className="login-wrapper">
-      <div className="card">
-        <h2>Login</h2>
-        <form onSubmit={submit}>
-          <input className="login-input"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            />
-          <input className="login-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            />
-          <div className="login-button-wrapper">
-            <button disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-          </div>
-        </form>
-        <div className="login-register-link-wrapper">
-          <Link className="login-register-link" to='/registeruser'>Don't have an account? Sign up here</Link>
+  <div className="bg-wallpaper">
+    <div className="box">
+      <div className = "register-box1">
+        <div className="left">
+          <p >Not a member yet?</p>
+          <Link to='/registeruser'>
+          <button className = "btn">Register</button>
+          </Link>
         </div>
-        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+      </div>
+      <div className = "register-box2">
+          <div className="left">
+            <h2>Member Login</h2>
+            
+            <form onSubmit={submit}>
+              <input className="form" 
+              placeholder = "Email" value={email} 
+              onChange={(e) => setEmail(e.target.value)}>
+              </input>
+              <input className="form" type="password"
+              placeholder = "Password" value={password} 
+              onChange={(e) => setPassword(e.target.value)}>
+              </input>
+              <button className = "btn"  disabled={loading}>
+                {loading ? "Logging in…" : "Login"}
+              </button>
+            </form>
+        </div>
       </div>
     </div>
+  </div>
   );
 }
 
