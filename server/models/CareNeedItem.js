@@ -80,7 +80,7 @@ const CareNeedItemSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["Active", "Suspended", "Deleted"],
+      enum: ["Active", "Returned"],
       default: "Active",
     },
 

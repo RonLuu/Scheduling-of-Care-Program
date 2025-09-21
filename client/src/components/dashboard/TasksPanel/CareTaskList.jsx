@@ -158,12 +158,13 @@ function CareTaskList({
           {/* Files Panel */}
           {openFilesFor === t._id && (
             <TaskFiles
-              taskId={t._id}
+              scope="CareTask"
+              targetId={t._id}
               files={filesByTask[t._id] || []}
               newFile={newFile}
               onNewFileChange={setNewFile}
-              onAddFile={() => addFile(t._id)}
-              onLoadFiles={() => loadFiles(t._id)}
+              onAddFile={() => addFile(t._id)} // your existing JSON add
+              onLoadFiles={() => loadFiles(t._id)} // reload after upload
             />
           )}
         </li>

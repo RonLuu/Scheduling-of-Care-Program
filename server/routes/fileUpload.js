@@ -10,6 +10,7 @@ import { requireAuth, ensureCanWorkOnTask } from "../middleware/authz.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
 
 const router = Router();
 
@@ -73,7 +74,7 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // ============ Link-based upload (JSON) ============
-// Back-compat: your old addFile(taskId) payload with careTaskId is normalized.
+// POST /api/file-upload
 router.post("/", requireAuth, async (req, res) => {
   try {
     let {
@@ -85,24 +86,43 @@ router.post("/", requireAuth, async (req, res) => {
       size,
       description,
 
-      // legacy:
+      // legacy support:
       careTaskId,
     } = req.body;
 
+    // Normalize legacy payload
     if (!scope && careTaskId) {
       scope = "CareTask";
       targetId = careTaskId;
     }
-    if (!scope || !targetId) {
-      return res.status(400).json({ error: "MISSING_SCOPE_OR_TARGET" });
+
+    if (!scope) {
+      return res.status(400).json({ error: "MISSING_SCOPE" });
+    }
+    if (!targetId) {
+      return res.status(400).json({ error: "MISSING_TARGET_ID" });
+    }
+    if (!filename || !urlOrPath) {
+      return res.status(400).json({ error: "MISSING_FILENAME_OR_URL" });
     }
 
-    // Task access check
+    // Guard per scope
     if (scope === "CareTask") {
+      // Make sure targetId is a valid CareTask
       const task = await CareTask.findById(targetId);
       if (!task) return res.status(400).json({ error: "INVALID_TASK" });
       const access = await ensureCanWorkOnTask(req.user, task);
       if (!access.ok) return res.status(403).json({ error: access.code });
+    } else if (scope === "CareNeedItem") {
+      // Optional sanity check so we don’t attach to a non-existent item
+      const item = await CareNeedItem.findById(targetId).select(
+        "_id organizationId"
+      );
+      if (!item)
+        return res.status(400).json({ error: "INVALID_CARE_NEED_ITEM" });
+      if (String(item.organizationId) !== String(req.user.organizationId)) {
+        return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+      }
     }
 
     const doc = await FileUpload.create({
@@ -116,7 +136,6 @@ router.post("/", requireAuth, async (req, res) => {
       description,
     });
 
-    // If attached to a care-need item, also push to item.files
     if (scope === "CareNeedItem") {
       await CareNeedItem.updateOne(
         { _id: targetId },
@@ -363,8 +382,22 @@ router.put("/:fileId", requireAuth, async (req, res) => {
 });
 
 router.delete("/:fileId", requireAuth, async (req, res) => {
-  await FileUpload.deleteOne({ _id: req.params.fileId });
-  res.json({ message: "File deleted" });
+  try {
+    const doc = await FileUpload.findById(req.params.fileId);
+    if (!doc) return res.status(404).json({ error: "Not found" });
+
+    // (Optional) org/permissions checks here if needed
+
+    // delete the physical blob first (best effort)
+    await deleteUploadBlob(doc.urlOrPath);
+
+    // then remove the DB record
+    await FileUpload.deleteOne({ _id: doc._id });
+
+    res.json({ message: "File deleted" });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 export default router;

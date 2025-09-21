@@ -1,6 +1,11 @@
 import { Router } from "express";
 import CareNeedItem from "../models/CareNeedItem.js";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
+import CareTask from "../models/CareTask.js";
+import FileUpload from "../models/FileUpload.js";
+import Comment from "../models/Comment.js";
+import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
+
 import {
   requireAuth,
   requireRole,
@@ -24,12 +29,6 @@ router.put(
   requireAuth,
   requireRole("Admin", "Family", "PoA"),
   updateItem
-);
-router.delete(
-  "/:itemId",
-  requireAuth,
-  requireRole("Admin", "Family", "PoA"),
-  deleteItem
 );
 
 async function listItems(req, res) {
@@ -244,17 +243,6 @@ async function updateItem(req, res) {
   res.json(updated);
 }
 
-async function deleteItem(req, res) {
-  const existing = await CareNeedItem.findById(req.params.itemId);
-  if (!existing) return res.status(404).json({ error: "Not found" });
-
-  const perm = await ensureCanManagePerson(req.user, existing.personId);
-  if (!perm.ok) return res.status(403).json({ error: perm.code });
-
-  await CareNeedItem.deleteOne({ _id: req.params.itemId });
-  res.json({ message: "Item deleted" });
-}
-
 /**
  * PATCH /api/care-need-items/:itemId/budgets/:year
  * Body: { amount: number }
@@ -318,5 +306,90 @@ router.patch(
     }
   }
 );
+
+// Mark item as Returned + cancel all of its tasks
+router.patch("/:id/return", requireAuth, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const item = await CareNeedItem.findById(id);
+    if (!item) return res.status(404).json({ error: "ITEM_NOT_FOUND" });
+    if (String(item.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
+
+    item.status = "Returned";
+    await item.save();
+
+    await CareTask.updateMany(
+      { careNeedItemId: id },
+      { $set: { status: "Cancelled" }, $unset: { cost: "" } } // cost unset => won't count anywhere
+    );
+
+    res.json({ ok: true, itemId: id, status: "Returned" });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Hard delete item + EVERYTHING related to it
+router.delete("/:id", requireAuth, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const item = await CareNeedItem.findById(id);
+    if (!item) return res.status(404).json({ error: "ITEM_NOT_FOUND" });
+    if (String(item.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
+
+    // 1) Find associated tasks
+    const tasks = await CareTask.find({ careNeedItemId: id }).select("_id");
+    const taskIds = tasks.map((t) => t._id);
+
+    // 2) Delete comments for those tasks
+    if (taskIds.length) {
+      await Comment.deleteMany({ careTaskId: { $in: taskIds } });
+    }
+
+    // 3) Delete file uploads attached to those tasks (DB + blob)
+    if (taskIds.length) {
+      const taskFiles = await FileUpload.find({
+        scope: "CareTask",
+        targetId: { $in: taskIds },
+      }).lean();
+
+      // unlink blobs (best effort)
+      await Promise.all(taskFiles.map((f) => deleteUploadBlob(f.urlOrPath)));
+
+      // delete docs
+      await FileUpload.deleteMany({
+        _id: { $in: taskFiles.map((f) => f._id) },
+      });
+    }
+
+    // 4) Delete the tasks themselves
+    await CareTask.deleteMany({ careNeedItemId: id });
+
+    // 5) Delete direct uploads to the item (DB + blob)
+    const itemFiles = await FileUpload.find({
+      scope: "CareNeedItem",
+      targetId: id,
+    }).lean();
+
+    await Promise.all(itemFiles.map((f) => deleteUploadBlob(f.urlOrPath)));
+    await FileUpload.deleteMany({ _id: { $in: itemFiles.map((f) => f._id) } });
+
+    // 6) Delete the associated comments
+    await Comment.deleteMany({ careNeedItemId: id });
+
+    // 6) Finally delete the item
+    await CareNeedItem.deleteOne({ _id: id });
+
+    res.json({ ok: true, deletedItemId: id });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 export default router;

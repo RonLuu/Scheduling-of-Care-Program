@@ -1,139 +1,63 @@
 import React from "react";
-import { aud, formatFrequency } from "../utils/formatters";
+import { aud, formatFrequency } from "../utils/formatters.js";
+import TaskComments from "../TasksPanel/TaskComments.jsx";
+import TaskFiles from "../TasksPanel/TaskFiles.jsx";
+import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
+
+function InlineAttachment({ f }) {
+  const isImg = f.fileType && f.fileType.startsWith("image/");
+  return (
+    <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
+      {isImg ? (
+        <img
+          src={f.urlOrPath}
+          alt={f.filename}
+          style={{
+            maxHeight: 64,
+            maxWidth: 96,
+            objectFit: "cover",
+            borderRadius: 6,
+            border: "1px solid #ddd",
+          }}
+        />
+      ) : (
+        <span style={{ textDecoration: "underline" }}>{f.filename}</span>
+      )}
+    </a>
+  );
+}
 
 function List({ jwt, clients }) {
-  const [cniClientId, setCniClientId] = React.useState("");
-  const [cniItems, setCniItems] = React.useState([]);
-  const [filesByItem, setFilesByItem] = React.useState({});
-  const [cniLoading, setCniLoading] = React.useState(false);
-  const [cniErr, setCniErr] = React.useState("");
-  const [categoryOrder, setCategoryOrder] = React.useState([]);
+  const {
+    cniClientId,
+    items,
+    filesByItem,
+    panelFilesByItem,
+    loading,
+    err,
+    handleClientChange,
+    loadItemsFor,
 
-  function InlineAttachment({ f }) {
-    const isImg = f.fileType && f.fileType.startsWith("image/");
-    return (
-      <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-        {isImg ? (
-          <img
-            src={f.urlOrPath}
-            alt={f.filename}
-            style={{
-              maxHeight: 64,
-              maxWidth: 96,
-              objectFit: "cover",
-              borderRadius: 6,
-              border: "1px solid #ddd",
-            }}
-          />
-        ) : (
-          <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-        )}
-      </a>
-    );
-  }
+    returnItem,
+    deleteItem,
 
-  const loadFilesFor = async (itemId) => {
-    try {
-      const r = await fetch(`/api/file-upload/by-care-need-item/${itemId}`, {
-        headers: { Authorization: "Bearer " + jwt },
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to load files");
-      setFilesByItem((prev) => ({ ...prev, [itemId]: d }));
-    } catch {
-      setFilesByItem((prev) => ({ ...prev, [itemId]: [] }));
-    }
-  };
-
-  const loadCategoryOrder = async (personId) => {
-    if (!jwt || !personId) return;
-    try {
-      const r = await fetch(
-        `/api/person-with-needs/${encodeURIComponent(personId)}/categories`,
-        { headers: { Authorization: "Bearer " + jwt } }
-      );
-      const d = await r.json();
-      if (r.ok && Array.isArray(d.categories)) {
-        setCategoryOrder(d.categories);
-      } else {
-        setCategoryOrder([]);
-      }
-    } catch {
-      setCategoryOrder([]);
-    }
-  };
-
-  const loadCareNeedItemsFor = React.useCallback(
-    async (personId) => {
-      try {
-        setCniLoading(true);
-        setCniErr("");
-        setCniItems([]);
-        setFilesByItem({});
-        if (!jwt) throw new Error("UNAUTHENTICATED");
-        if (!personId) return;
-
-        await loadCategoryOrder(personId);
-
-        const r = await fetch(
-          `/api/care-need-items?personId=${encodeURIComponent(personId)}`,
-          { headers: { Authorization: "Bearer " + jwt } }
-        );
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "Failed to load items");
-
-        const orderIndex = (cat) => {
-          const idx = categoryOrder.indexOf(cat);
-          return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
-        };
-
-        d.sort((a, b) => {
-          const ca = orderIndex(a.category || "Other");
-          const cb = orderIndex(b.category || "Other");
-          if (ca !== cb) return ca - cb;
-
-          const as = a.frequency?.startDate
-            ? new Date(a.frequency.startDate).getTime()
-            : 0;
-          const bs = b.frequency?.startDate
-            ? new Date(b.frequency.startDate).getTime()
-            : 0;
-          if (as !== bs) return as - bs;
-
-          return (a.name || "").localeCompare(b.name || "");
-        });
-
-        setCniItems(d);
-        d.forEach((it) => loadFilesFor(it._id));
-      } catch (e) {
-        setCniErr(e.message || String(e));
-      } finally {
-        setCniLoading(false);
-      }
-    },
-    [jwt, categoryOrder]
-  );
-
-  React.useEffect(() => {
-    if (clients && clients.length > 0 && !cniClientId) {
-      const first = clients[0]._id;
-      setCniClientId(first);
-      loadCareNeedItemsFor(first);
-    }
-  }, [clients, cniClientId, loadCareNeedItemsFor]);
-
-  const handleClientChange = async (e) => {
-    const v = e.target.value;
-    setCniClientId(v);
-    if (v) {
-      await loadCategoryOrder(v);
-      loadCareNeedItemsFor(v);
-    }
-  };
+    openCommentsForItem,
+    openFilesForItem,
+    commentsByItem,
+    newCommentTextItem,
+    setNewCommentTextItem,
+    newFileItem,
+    setNewFileItem,
+    toggleItemComments,
+    toggleItemFiles,
+    addItemComment,
+    addItemFile,
+    loadItemFilesPanel,
+  } = useCareNeedItemsData(jwt, clients);
 
   const renderCategoryDivider = (category) => (
     <tr key={`div-${category}`}>
-      <td colSpan={8} style={{ padding: "10px 6px", background: "#f9fafb" }}>
+      <td colSpan={10} style={{ padding: "10px 6px", background: "#f9fafb" }}>
         <strong style={{ fontSize: 13 }}>{category}</strong>
       </td>
     </tr>
@@ -145,7 +69,10 @@ function List({ jwt, clients }) {
       <div className="row">
         <div>
           <label>Client</label>
-          <select value={cniClientId} onChange={handleClientChange}>
+          <select
+            value={cniClientId}
+            onChange={(e) => handleClientChange(e.target.value)}
+          >
             <option value="">— Select client —</option>
             {clients.map((c) => (
               <option key={c._id} value={c._id}>
@@ -158,21 +85,21 @@ function List({ jwt, clients }) {
           <label>&nbsp;</label>
           <button
             className="secondary"
-            onClick={() => cniClientId && loadCareNeedItemsFor(cniClientId)}
+            onClick={() => cniClientId && loadItemsFor(cniClientId)}
           >
             Refresh
           </button>
         </div>
       </div>
 
-      {cniErr && <p style={{ color: "#b91c1c" }}>Error: {cniErr}</p>}
-      {cniLoading && <p>Loading items…</p>}
+      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+      {loading && <p>Loading items…</p>}
 
-      {!cniLoading && cniItems.length === 0 && (
+      {!loading && items.length === 0 && (
         <p>No care need items for this client.</p>
       )}
 
-      {cniItems.length > 0 && (
+      {items.length > 0 && (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -183,7 +110,9 @@ function List({ jwt, clients }) {
               <th style={{ textAlign: "left" }}>Purchase cost</th>
               <th style={{ textAlign: "left" }}>Expected per task</th>
               <th style={{ textAlign: "left" }}>Schedule</th>
+              <th style={{ textAlign: "left" }}>Returned</th>
               <th style={{ textAlign: "left" }}>Attachments</th>
+              <th style={{ textAlign: "left" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -191,21 +120,27 @@ function List({ jwt, clients }) {
               const rows = [];
               let lastCat = null;
 
-              cniItems.forEach((it) => {
+              items.forEach((it) => {
                 const cat = it.category || "Other";
                 if (cat !== lastCat) {
                   rows.push(renderCategoryDivider(cat));
                   lastCat = cat;
                 }
 
-                const files = filesByItem[it._id] || [];
+                const rowFiles = filesByItem[it._id] || [];
                 const isPurchaseOnly =
                   it.frequency?.intervalType === "JustPurchase";
+                const isReturned = it.status === "Returned";
 
                 rows.push(
-                  <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
-                    {/* <td>{cat}</td> */}
-                    <td> </td>
+                  <tr
+                    key={it._id}
+                    style={{
+                      borderTop: "1px solid #eee",
+                      opacity: isReturned ? 0.75 : 1,
+                    }}
+                  >
+                    <td></td>
                     <td>{it.name}</td>
                     <td>{formatFrequency(it.frequency)}</td>
                     <td>{aud.format(it.budgetCost || 0)}</td>
@@ -227,7 +162,19 @@ function List({ jwt, clients }) {
                       )}
                     </td>
                     <td>
-                      {files.length === 0 ? (
+                      {isReturned ? (
+                        <span
+                          className="badge"
+                          style={{ background: "#fef3c7", color: "#92400e" }}
+                        >
+                          Returned
+                        </span>
+                      ) : (
+                        <span style={{ opacity: 0.4 }}>No</span>
+                      )}
+                    </td>
+                    <td>
+                      {rowFiles.length === 0 ? (
                         <span style={{ opacity: 0.6 }}>—</span>
                       ) : (
                         <ul
@@ -239,7 +186,7 @@ function List({ jwt, clients }) {
                             flexWrap: "wrap",
                           }}
                         >
-                          {files.map((f) => (
+                          {rowFiles.map((f) => (
                             <li key={f._id} style={{ listStyle: "none" }}>
                               <InlineAttachment f={f} />
                               {f.scope === "Shared" && (
@@ -253,6 +200,70 @@ function List({ jwt, clients }) {
                             </li>
                           ))}
                         </ul>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="secondary"
+                          disabled={isReturned}
+                          title={
+                            isReturned ? "Already returned" : "Mark as returned"
+                          }
+                          onClick={() => returnItem(it._id)}
+                        >
+                          Return
+                        </button>
+                        <button
+                          className="danger"
+                          onClick={() => deleteItem(it._id)}
+                          title="Delete item and ALL associated tasks/files/comments"
+                        >
+                          Delete
+                        </button>
+                      </div>
+
+                      {/* Return attachments & comments entry (only when returned) */}
+                      {isReturned && (
+                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              className="secondary"
+                              onClick={() => toggleItemComments(it._id)}
+                            >
+                              Comments
+                            </button>
+                            <button
+                              className="secondary"
+                              onClick={() => toggleItemFiles(it._id)}
+                            >
+                              Files
+                            </button>
+                          </div>
+
+                          {/* Comments panel (item scope) */}
+                          {openCommentsForItem === it._id && (
+                            <TaskComments
+                              comments={commentsByItem[it._id] || []}
+                              newCommentText={newCommentTextItem}
+                              onCommentTextChange={setNewCommentTextItem}
+                              onAddComment={() => addItemComment(it._id)}
+                            />
+                          )}
+
+                          {/* Files panel (item scope, direct uploads for returns) */}
+                          {openFilesForItem === it._id && (
+                            <TaskFiles
+                              scope="CareNeedItem"
+                              targetId={it._id}
+                              files={panelFilesByItem[it._id] || []} // direct uploads (panel)
+                              newFile={newFileItem}
+                              onNewFileChange={setNewFileItem}
+                              onAddFile={() => addItemFile(it._id)} // your JSON add for items
+                              onLoadFiles={() => loadItemFilesPanel(it._id)} // refresh panel list
+                            />
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

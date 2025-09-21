@@ -82,12 +82,12 @@ function Dashboard({ me, onLogout, refreshMe }) {
           <ClientManagement.AccessControl me={me} jwt={jwt} clients={clients} />
         )}
 
+      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
+
       {me &&
         (me.role === "Family" || me.role === "PoA" || me.role === "Admin") && (
           <CareNeedItems.Create jwt={jwt} clients={clients} />
         )}
-
-      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
 
       <CareNeedItems.List jwt={jwt} clients={clients} />
 

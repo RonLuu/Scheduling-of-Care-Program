@@ -39,9 +39,10 @@ export function useTasksData(jwt, clients) {
           )}&sort=dueDate`,
           { headers: { Authorization: "Bearer " + jwt } }
         );
-        const data = await r.json();
+        let data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to load tasks");
 
+        data = data.filter((t) => t.status !== "Cancelled"); // ensure cancelled don’t show
         data.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
         setTasks(data);
 
