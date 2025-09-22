@@ -13,6 +13,7 @@ import authRouter from "./auth.js";
 import reportRouter from "./report.js";
 import userMeRouter from "./users.me.js";
 import accessRequestRouter from "./accessRequest.js";
+import shiftAllocationRouter from "./shiftAllocation.js";
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use("/file-upload", fileUploadRouter);
 router.use("/scheduling", schedulingRouter);
 router.use("/reports", reportRouter);
 router.use("/access-requests", accessRequestRouter);
+router.use("/shift-allocations", shiftAllocationRouter);
 
 export default router;

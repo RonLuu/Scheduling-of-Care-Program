@@ -2,6 +2,7 @@ import React from "react";
 import Profile from "./Profile";
 import AccessManagement from "./AccessManagement";
 import ClientManagement from "./ClientManagement";
+import Shift from "./Shift";
 import CareNeedItems from "./CareNeedItems";
 import CareTasks from "./CareTasks";
 import Budget from "./Budget";
@@ -81,6 +82,12 @@ function Dashboard({ me, onLogout, refreshMe }) {
         (me.role === "Family" || me.role === "PoA" || me.role === "Admin") && (
           <ClientManagement.AccessControl me={me} jwt={jwt} clients={clients} />
         )}
+
+      {me && me.role === "Admin" && (
+        <Shift.ShiftAllocation jwt={jwt} me={me} clients={clients} />
+      )}
+
+      <Shift.ShiftCalendar jwt={jwt} clients={clients} />
 
       <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
 
