@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * Replaces TaskFiles. Works for any scope ("CareTask" | "CareNeedItem").
+ *  Works for any scope ("CareTask" | "CareNeedItem").
  *
  * Props:
  *   scope: "CareTask" | "CareNeedItem"
@@ -11,7 +11,7 @@ import React from "react";
  *   onAddFile: () => void   // caller handles JSON link add
  *   onLoadFiles: () => void // reload callback after upload
  */
-function TaskFiles({
+function FilePanel({
   scope,
   targetId,
   files,
@@ -142,4 +142,4 @@ function TaskFiles({
   );
 }
 
-export default TaskFiles;
+export default FilePanel;

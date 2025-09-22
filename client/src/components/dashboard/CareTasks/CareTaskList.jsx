@@ -1,7 +1,7 @@
 import React from "react";
 import TaskComments from "./TaskComments";
-import TaskFiles from "./TaskFiles";
-import TaskCostEditor from "./TaskCostEditor";
+import FilePanel from "../Panels/FilePanel";
+import CommentPanel from "../Panels/CommentPanel";
 import { formatDate, formatTime } from "../utils/formatters";
 
 function CareTaskList({
@@ -146,7 +146,7 @@ function CareTaskList({
 
           {/* Comments Panel */}
           {openCommentsFor === t._id && (
-            <TaskComments
+            <CommentPanel
               taskId={t._id}
               comments={commentsByTask[t._id] || []}
               newCommentText={newCommentText}
@@ -157,7 +157,7 @@ function CareTaskList({
 
           {/* Files Panel */}
           {openFilesFor === t._id && (
-            <TaskFiles
+            <FilePanel
               scope="CareTask"
               targetId={t._id}
               files={filesByTask[t._id] || []}

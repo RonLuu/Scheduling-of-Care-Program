@@ -1,6 +1,6 @@
 import React from "react";
 
-function TaskComments({
+function CommentPanel({
   comments,
   newCommentText,
   onCommentTextChange,
@@ -46,4 +46,4 @@ function TaskComments({
   );
 }
 
-export default TaskComments;
+export default CommentPanel;

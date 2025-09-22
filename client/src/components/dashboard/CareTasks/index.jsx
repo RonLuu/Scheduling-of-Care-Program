@@ -4,7 +4,7 @@ import CareTaskCalendar from "./CareTaskCalendar";
 import { useTasksData } from "../hooks/useTasksData";
 import { aud, displayUser } from "../utils/formatters";
 
-function TasksPanel({ jwt, clients }) {
+function CareTasks({ jwt, clients }) {
   const [viewMode, setViewMode] = React.useState("list");
   const {
     tasks,
@@ -150,4 +150,4 @@ function TasksPanel({ jwt, clients }) {
   );
 }
 
-export default TasksPanel;
+export default CareTasks;

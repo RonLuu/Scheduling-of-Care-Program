@@ -3,7 +3,7 @@ import Profile from "./Profile";
 import AccessManagement from "./AccessManagement";
 import ClientManagement from "./ClientManagement";
 import CareNeedItems from "./CareNeedItems";
-import TasksPanel from "./TasksPanel";
+import CareTasks from "./CareTasks";
 import Budget from "./Budget";
 
 function Dashboard({ me, onLogout, refreshMe }) {
@@ -91,7 +91,7 @@ function Dashboard({ me, onLogout, refreshMe }) {
 
       <CareNeedItems.List jwt={jwt} clients={clients} />
 
-      <TasksPanel jwt={jwt} clients={clients} />
+      <CareTasks jwt={jwt} clients={clients} />
 
       <Budget.BudgetReporting jwt={jwt} clients={clients} />
     </>

@@ -1,7 +1,7 @@
 import React from "react";
 import { aud, formatFrequency } from "../utils/formatters.js";
-import TaskComments from "../TasksPanel/TaskComments.jsx";
-import TaskFiles from "../TasksPanel/TaskFiles.jsx";
+import CommentPanel from "../Panels/CommentPanel.jsx";
+import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
 
 function InlineAttachment({ f }) {
@@ -109,7 +109,7 @@ function List({ jwt, clients }) {
               <th style={{ textAlign: "left" }}>Budget</th>
               <th style={{ textAlign: "left" }}>Purchase cost</th>
               <th style={{ textAlign: "left" }}>Expected per task</th>
-              <th style={{ textAlign: "left" }}>Schedule</th>
+              <th style={{ textAlign: "left" }}>Schedule Period</th>
               <th style={{ textAlign: "left" }}>Returned</th>
               <th style={{ textAlign: "left" }}>Attachments</th>
               <th style={{ textAlign: "left" }}>Actions</th>
@@ -243,7 +243,7 @@ function List({ jwt, clients }) {
 
                           {/* Comments panel (item scope) */}
                           {openCommentsForItem === it._id && (
-                            <TaskComments
+                            <CommentPanel
                               comments={commentsByItem[it._id] || []}
                               newCommentText={newCommentTextItem}
                               onCommentTextChange={setNewCommentTextItem}
@@ -253,7 +253,7 @@ function List({ jwt, clients }) {
 
                           {/* Files panel (item scope, direct uploads for returns) */}
                           {openFilesForItem === it._id && (
-                            <TaskFiles
+                            <FilePanel
                               scope="CareNeedItem"
                               targetId={it._id}
                               files={panelFilesByItem[it._id] || []} // direct uploads (panel)
