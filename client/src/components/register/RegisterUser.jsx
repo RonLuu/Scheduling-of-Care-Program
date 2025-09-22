@@ -133,6 +133,7 @@ const RegisterUser = () => {
             <Link to='/login'>
             <button className = "btn">Login</button>
             </Link>
+             {err && <p className = "error">{err}</p>}
           </div>
         </div>
       </div>
