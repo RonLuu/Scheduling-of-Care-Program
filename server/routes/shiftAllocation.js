@@ -1,81 +1,186 @@
 import { Router } from "express";
 import ShiftAllocation from "../models/ShiftAllocation.js";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
-import { requireAuth } from "../middleware/authz.js";
+import PersonUserLink from "../models/PersonUserLink.js";
+import User from "../models/User.js";
+import {
+  requireAuth,
+  requireRole,
+  ensureCanManagePerson,
+} from "../middleware/authz.js";
 
 const router = Router();
 
-// List shifts for a person (client)
+/**
+ * GET /api/shift-allocations?personId=...&from=2025-01-01&to=2025-01-31
+ * Anyone linked to the person (or Admin in org) can view.
+ */
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const { personId, start, end } = req.query;
+    const { personId, from, to } = req.query;
     if (!personId) return res.status(400).json({ error: "MISSING_PERSON_ID" });
 
-    const person = await PersonWithNeeds.findById(personId).select(
-      "organizationId"
-    );
+    const person = await PersonWithNeeds.findById(personId).lean();
     if (!person) return res.status(404).json({ error: "PERSON_NOT_FOUND" });
     if (String(person.organizationId) !== String(req.user.organizationId)) {
       return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
     }
 
-    const filter = { personId };
-    if (start && end) {
-      filter.start = { $lt: new Date(end) };
-      filter.end = { $gt: new Date(start) };
+    // If not Admin, must be linked
+    if (req.user.role !== "Admin") {
+      const link = await PersonUserLink.findOne({
+        personId,
+        userId: req.user.id,
+        active: true,
+      }).lean();
+      if (!link) return res.status(403).json({ error: "NOT_LINKED" });
+    }
+
+    const filter = { personId, organizationId: person.organizationId };
+    if (from || to) {
+      filter.$and = [];
+      if (from) filter.$and.push({ end: { $gte: new Date(from) } });
+      if (to) filter.$and.push({ start: { $lte: new Date(to) } });
+      if (!filter.$and.length) delete filter.$and;
     }
 
     const shifts = await ShiftAllocation.find(filter)
       .populate("staffUserId", "name email role")
       .lean();
 
-    res.json(shifts);
+    res.json(
+      shifts.map((s) => ({
+        ...s,
+        staff: s.staffUserId
+          ? {
+              id: s.staffUserId._id,
+              name: s.staffUserId.name,
+              email: s.staffUserId.email,
+            }
+          : null,
+      }))
+    );
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Admin only: create shift
-router.post("/", requireAuth, async (req, res) => {
+/**
+ * POST /api/shift-allocations
+ * Admin only. body: { personId, staffUserId, allDay, start, end, notes }
+ */
+router.post("/", requireAuth, requireRole("Admin"), async (req, res) => {
   try {
-    if (req.user.role !== "Admin") {
-      return res.status(403).json({ error: "ONLY_ADMIN_CAN_ALLOCATE" });
-    }
-
-    const { personId, staffUserId, start, end, notes } = req.body;
+    const { personId, staffUserId, allDay, start, end, notes } = req.body;
     if (!personId || !staffUserId || !start || !end) {
       return res.status(400).json({ error: "MISSING_FIELDS" });
     }
 
-    const person = await PersonWithNeeds.findById(personId);
+    const person = await PersonWithNeeds.findById(personId).lean();
     if (!person) return res.status(404).json({ error: "PERSON_NOT_FOUND" });
     if (String(person.organizationId) !== String(req.user.organizationId)) {
       return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
     }
 
-    const shift = await ShiftAllocation.create({
+    const staff = await User.findById(staffUserId).lean();
+    if (!staff) return res.status(400).json({ error: "STAFF_NOT_FOUND" });
+    if (String(staff.organizationId) !== String(person.organizationId)) {
+      return res.status(400).json({ error: "ASSIGNEE_ORG_MISMATCH" });
+    }
+
+    // Ensure staff is linked to this person
+    const link = await PersonUserLink.findOne({
+      personId,
+      userId: staffUserId,
+      active: true,
+    }).lean();
+    if (
+      !link ||
+      (link.relationshipType !== "GeneralCareStaff" &&
+        link.relationshipType !== "Admin")
+    ) {
+      return res.status(400).json({ error: "STAFF_NOT_LINKED_TO_PERSON" });
+    }
+
+    const doc = await ShiftAllocation.create({
+      organizationId: person.organizationId,
       personId,
       staffUserId,
-      organizationId: person.organizationId,
+      allDay: !!allDay,
       start: new Date(start),
       end: new Date(end),
-      notes,
+      notes: notes || "",
+      createdByUserId: req.user.id,
     });
 
-    res.status(201).json(shift);
+    res.status(201).json(doc);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Admin only: delete shift
-router.delete("/:id", requireAuth, async (req, res) => {
+/**
+ * PUT /api/shift-allocations/:id  (Admin only)
+ */
+router.put("/:id", requireAuth, requireRole("Admin"), async (req, res) => {
   try {
-    if (req.user.role !== "Admin") {
-      return res.status(403).json({ error: "ONLY_ADMIN_CAN_DELETE" });
+    const cur = await ShiftAllocation.findById(req.params.id);
+    if (!cur) return res.status(404).json({ error: "NOT_FOUND" });
+    if (String(cur.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
     }
-    await ShiftAllocation.deleteOne({ _id: req.params.id });
-    res.json({ ok: true });
+
+    const patch = { ...req.body };
+    if (patch.staffUserId) {
+      const u = await User.findById(patch.staffUserId).lean();
+      if (!u || String(u.organizationId) !== String(cur.organizationId)) {
+        return res.status(400).json({ error: "ASSIGNEE_ORG_MISMATCH" });
+      }
+      // also ensure linked to the same person as staff
+      const link = await PersonUserLink.findOne({
+        personId: cur.personId,
+        userId: patch.staffUserId,
+        active: true,
+      }).lean();
+      if (
+        !link ||
+        (link.relationshipType !== "GeneralCareStaff" &&
+          link.relationshipType !== "Admin")
+      ) {
+        return res.status(400).json({ error: "STAFF_NOT_LINKED_TO_PERSON" });
+      }
+    }
+
+    const updated = await ShiftAllocation.findByIdAndUpdate(
+      cur._id,
+      {
+        ...(patch.allDay !== undefined ? { allDay: !!patch.allDay } : {}),
+        ...(patch.start ? { start: new Date(patch.start) } : {}),
+        ...(patch.end ? { end: new Date(patch.end) } : {}),
+        ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+        ...(patch.staffUserId ? { staffUserId: patch.staffUserId } : {}),
+      },
+      { new: true, runValidators: true }
+    ).populate("staffUserId", "name email role");
+
+    res.json(updated);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * DELETE /api/shift-allocations/:id  (Admin only)
+ */
+router.delete("/:id", requireAuth, requireRole("Admin"), async (req, res) => {
+  try {
+    const cur = await ShiftAllocation.findById(req.params.id);
+    if (!cur) return res.status(404).json({ error: "NOT_FOUND" });
+    if (String(cur.organizationId) !== String(req.user.organizationId)) {
+      return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+    }
+    await ShiftAllocation.deleteOne({ _id: cur._id });
+    res.json({ ok: true, deletedId: cur._id });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

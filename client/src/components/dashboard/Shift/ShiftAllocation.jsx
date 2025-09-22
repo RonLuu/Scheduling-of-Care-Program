@@ -1,16 +1,17 @@
 import React from "react";
 
-function ShiftAllocation({ jwt, clients, onShiftCreated }) {
-  const [personId, setPersonId] = React.useState("");
-  const [staff, setStaff] = React.useState([]);
+function ShiftAllocation({ jwt, personId, onCreated }) {
+  const [assignables, setAssignables] = React.useState([]);
   const [staffUserId, setStaffUserId] = React.useState("");
-  const [start, setStart] = React.useState("");
-  const [end, setEnd] = React.useState("");
+  const [mode, setMode] = React.useState("allDay"); // "allDay" | "timed"
+  const [date, setDate] = React.useState(""); // yyyy-mm-dd
+  const [startTime, setStartTime] = React.useState("09:00");
+  const [endTime, setEndTime] = React.useState("17:00");
   const [notes, setNotes] = React.useState("");
   const [err, setErr] = React.useState("");
 
   React.useEffect(() => {
-    const loadStaff = async () => {
+    const load = async () => {
       if (!personId) return;
       const r = await fetch(
         `/api/person-user-links/assignable-users?personId=${personId}`,
@@ -19,91 +20,146 @@ function ShiftAllocation({ jwt, clients, onShiftCreated }) {
         }
       );
       const d = await r.json();
-      setStaff(
-        d.filter((u) => u.role === "GeneralCareStaff" || u.role === "Admin")
+      // only Admin and GeneralCareStaff for shift assignment
+      setAssignables(
+        Array.isArray(d)
+          ? d.filter((u) => u.role === "GeneralCareStaff" || u.role === "Admin")
+          : []
       );
     };
-    loadStaff();
+    load().catch(() => {});
   }, [personId, jwt]);
 
   const submit = async () => {
     try {
-      if (!staffUserId || !personId || !start || !end) {
-        throw new Error("Fill all required fields");
+      setErr("");
+      if (!staffUserId) throw new Error("Choose a staff member.");
+      if (!date) throw new Error("Pick a date.");
+      let start, end, allDay;
+
+      if (mode === "allDay") {
+        allDay = true;
+        const d = new Date(date + "T00:00:00");
+        start = d.toISOString();
+        const e = new Date(date + "T00:00:00");
+        e.setDate(e.getDate() + 1);
+        end = e.toISOString();
+      } else {
+        allDay = false;
+        if (!startTime || !endTime) throw new Error("Provide start/end time.");
+        if (endTime <= startTime)
+          throw new Error("End time must be after start.");
+        start = new Date(`${date}T${startTime}:00`).toISOString();
+        end = new Date(`${date}T${endTime}:00`).toISOString();
       }
+
       const r = await fetch("/api/shift-allocations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer " + jwt,
         },
-        body: JSON.stringify({ personId, staffUserId, start, end, notes }),
+        body: JSON.stringify({
+          personId,
+          staffUserId,
+          allDay,
+          start,
+          end,
+          notes: notes || "",
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to create shift");
+
+      // clear form & refresh calendar
+      setStaffUserId("");
+      setMode("allDay");
+      setDate("");
+      setStartTime("09:00");
+      setEndTime("17:00");
       setNotes("");
-      onShiftCreated?.(d);
+      onCreated?.();
     } catch (e) {
-      setErr(e.message);
+      setErr(e.message || String(e));
     }
   };
 
   return (
-    <div className="card">
-      <h3>Allocate Staff Shift</h3>
-      {err && <p style={{ color: "red" }}>{err}</p>}
+    <div className="card" style={{ marginTop: 12 }}>
+      <h4>Allocate a Shift</h4>
+      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+
       <div className="row">
-        <label>Client</label>
-        <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
-          <option value="">— Select client —</option>
-          {clients.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label>Staff</label>
+          <select
+            value={staffUserId}
+            onChange={(e) => setStaffUserId(e.target.value)}
+          >
+            <option value="">— Select staff —</option>
+            {assignables.map((u) => (
+              <option key={u.userId} value={u.userId}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label>Mode</label>
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            <option value="allDay">All-day</option>
+            <option value="timed">Timed</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+        {mode === "timed" && (
+          <>
+            <div>
+              <label>Start</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div>
+              <label>End</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </>
+        )}
       </div>
-      {personId && (
-        <>
-          <div className="row">
-            <label>Staff</label>
-            <select
-              value={staffUserId}
-              onChange={(e) => setStaffUserId(e.target.value)}
-            >
-              <option value="">— Select staff —</option>
-              {staff.map((s) => (
-                <option key={s.userId} value={s.userId}>
-                  {s.name} ({s.role})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="row">
-            <label>Start</label>
-            <input
-              type="datetime-local"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-            />
-          </div>
-          <div className="row">
-            <label>End</label>
-            <input
-              type="datetime-local"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-            />
-          </div>
-          <div className="row">
-            <label>Notes</label>
-            <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
+
+      <div className="row">
+        <div style={{ flex: 1 }}>
+          <label>Notes</label>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+        <div>
+          <label>&nbsp;</label>
           <button className="primary" onClick={submit}>
-            Allocate
+            Create shift
           </button>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
