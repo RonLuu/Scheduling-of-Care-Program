@@ -216,6 +216,13 @@ async function completeTask(req, res) {
       patch.assignedToUserId = req.body.assignedToUserId;
     }
 
+    if (patch.status === "Scheduled") {
+      const now = new Date();
+      if (task.dueDate && new Date(task.dueDate) < now) {
+        patch.status = "Missed";
+      }
+    }
+
     const updated = await CareTask.findByIdAndUpdate(task._id, patch, {
       new: true,
       runValidators: true,

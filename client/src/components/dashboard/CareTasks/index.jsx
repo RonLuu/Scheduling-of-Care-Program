@@ -32,6 +32,7 @@ function CareTasks({ jwt, clients }) {
     costEditorHiddenByTask,
     setCostEditorHiddenByTask,
     saveTaskCost,
+    assignableUsers,
   } = useTasksData(jwt, clients);
 
   const onChangeTasksClient = (e) => {
@@ -144,6 +145,8 @@ function CareTasks({ jwt, clients }) {
             setNewFile={setNewFile}
             addFile={addFile}
             loadFiles={loadFiles}
+            assignableUsers={assignableUsers}
+            reloadAfterEdit={() => tasksClientId && loadTasksFor(tasksClientId)}
           />
         ))}
     </div>

@@ -1,6 +1,6 @@
 import React from "react";
 
-function RowEditor({ item, onCancel, onSaved, jwt }) {
+function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
   const [name, setName] = React.useState(item.name || "");
 
   // frequency editor mirrors your create form
@@ -337,4 +337,4 @@ function RowEditor({ item, onCancel, onSaved, jwt }) {
   );
 }
 
-export default RowEditor;
+export default CareNeedItemRowEditor;

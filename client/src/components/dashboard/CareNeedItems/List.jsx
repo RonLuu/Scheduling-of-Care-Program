@@ -3,7 +3,7 @@ import { aud, formatFrequency } from "../utils/formatters.js";
 import CommentPanel from "../Panels/CommentPanel.jsx";
 import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
-import RowEditor from "./RowEditor.jsx";
+import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
 
 function InlineAttachment({ f }) {
   const isImg = f.fileType && f.fileType.startsWith("image/");
@@ -81,7 +81,7 @@ function List({ jwt, clients }) {
 
   return (
     <div className="card">
-      <h3>Care Need Items</h3>
+      <h3>Sub-element List</h3>
       <div className="row">
         <div>
           <label>Client</label>
@@ -111,9 +111,7 @@ function List({ jwt, clients }) {
       {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
       {loading && <p>Loading items…</p>}
 
-      {!loading && items.length === 0 && (
-        <p>No care need items for this client.</p>
-      )}
+      {!loading && items.length === 0 && <p>No items for this client.</p>}
 
       {items.length > 0 && (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -310,7 +308,7 @@ function List({ jwt, clients }) {
                   rows.push(
                     <tr key={`${it._id}__editor`}>
                       <td colSpan={10} style={{ paddingTop: 0 }}>
-                        <RowEditor
+                        <CareNeedItemRowEditor
                           item={it}
                           jwt={jwt}
                           onCancel={() => setEditingItemId(null)}

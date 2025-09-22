@@ -1,6 +1,8 @@
 import React from "react";
 import FilePanel from "../Panels/FilePanel";
 import CommentPanel from "../Panels/CommentPanel";
+import CareTaskCostEditor from "./CareTaskCostEditor.jsx";
+import CareTaskRowEditor from "./CareTaskRowEditor.jsx";
 import { formatDate, formatTime } from "../utils/formatters";
 
 function CareTaskList({
@@ -26,7 +28,12 @@ function CareTaskList({
   setNewFile,
   addFile,
   loadFiles,
+  // new
+  assignableUsers,
+  reloadAfterEdit, // pass a function that refreshes current client's tasks
 }) {
+  const [editingTaskId, setEditingTaskId] = React.useState(null);
+
   return (
     <ul>
       {tasks.map((t) => (
@@ -50,6 +57,8 @@ function CareTaskList({
               </span>
               {" · "}
               <span className="badge">{t.status}</span>
+
+              {/* Complete toggle */}
               <input
                 style={{
                   display: "inline",
@@ -65,6 +74,8 @@ function CareTaskList({
                     : "Mark as completed"
                 }
               />
+
+              {/* Assignee info */}
               {t.assignedToUserId ? (
                 <span title="Assigned to">
                   {" · "}Assigned:{" "}
@@ -89,7 +100,7 @@ function CareTaskList({
               )}
             </div>
 
-            {/* Show spent amount (read-only) if present */}
+            {/* Spent (read-only) + change cost control */}
             {t.status === "Completed" &&
               t.cost !== undefined &&
               t.cost !== null && (
@@ -97,11 +108,7 @@ function CareTaskList({
                   {" · "}Spent: <strong>{aud.format(t.cost)}</strong>{" "}
                   <button
                     className="secondary"
-                    style={{
-                      marginTop: 8,
-                      borderRadius: 8,
-                      padding: 10,
-                    }}
+                    style={{ marginTop: 8, borderRadius: 8, padding: 10 }}
                     onClick={() => {
                       setCostEditorHiddenByTask((prev) => ({
                         ...prev,
@@ -117,19 +124,28 @@ function CareTaskList({
                   </button>
                 </React.Fragment>
               )}
-            {" · "}
 
+            {" · "}
             <button className="secondary" onClick={() => toggleComments(t._id)}>
               Comments
             </button>
             <button className="secondary" onClick={() => toggleFiles(t._id)}>
               Files
             </button>
+            {" · "}
+            <button
+              className="secondary"
+              onClick={() =>
+                setEditingTaskId(editingTaskId === t._id ? null : t._id)
+              }
+            >
+              {editingTaskId === t._id ? "Close edit" : "Edit"}
+            </button>
           </div>
 
           {/* Cost Editor */}
           {t.status === "Completed" && !costEditorHiddenByTask[t._id] && (
-            <TaskCostEditor
+            <CareTaskCostEditor
               taskId={t._id}
               currentCost={t.cost}
               draftValue={costDraftByTask[t._id]}
@@ -162,9 +178,24 @@ function CareTaskList({
               files={filesByTask[t._id] || []}
               newFile={newFile}
               onNewFileChange={setNewFile}
-              onAddFile={() => addFile(t._id)} // your existing JSON add
-              onLoadFiles={() => loadFiles(t._id)} // reload after upload
+              onAddFile={() => addFile(t._id)}
+              onLoadFiles={() => loadFiles(t._id)}
             />
+          )}
+
+          {/* Inline editor row */}
+          {editingTaskId === t._id && (
+            <div style={{ marginTop: 10 }}>
+              <CareTaskRowEditor
+                task={t}
+                assignableUsers={assignableUsers}
+                onCancel={() => setEditingTaskId(null)}
+                onSaved={async () => {
+                  setEditingTaskId(null);
+                  await reloadAfterEdit?.();
+                }}
+              />
+            </div>
           )}
         </li>
       ))}
