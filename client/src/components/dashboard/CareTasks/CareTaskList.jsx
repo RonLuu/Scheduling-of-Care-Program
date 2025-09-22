@@ -1,5 +1,4 @@
 import React from "react";
-import TaskComments from "./TaskComments";
 import FilePanel from "../Panels/FilePanel";
 import CommentPanel from "../Panels/CommentPanel";
 import { formatDate, formatTime } from "../utils/formatters";

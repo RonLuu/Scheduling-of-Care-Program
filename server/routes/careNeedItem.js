@@ -5,6 +5,7 @@ import CareTask from "../models/CareTask.js";
 import FileUpload from "../models/FileUpload.js";
 import Comment from "../models/Comment.js";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
+import { expandOccurrences } from "../utils/schedule.js";
 
 import {
   requireAuth,
@@ -219,6 +220,15 @@ async function getItem(req, res) {
   res.json(item);
 }
 
+// Helper: combine date + "HH:mm"
+function combineDateAndTime(dateOnly, hhmm) {
+  if (!dateOnly || !hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(dateOnly);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
 async function updateItem(req, res) {
   const existing = await CareNeedItem.findById(req.params.itemId);
   if (!existing) return res.status(404).json({ error: "Not found" });
@@ -227,7 +237,9 @@ async function updateItem(req, res) {
   const perm = await ensureCanManagePerson(req.user, existing.personId);
   if (!perm.ok) return res.status(403).json({ error: perm.code });
 
+  // Normalize payload
   const patch = { ...req.body };
+
   // If personId changes, re-check permission + org
   if (patch.personId && String(patch.personId) !== String(existing.personId)) {
     const reperm = await ensureCanManagePerson(req.user, patch.personId);
@@ -235,11 +247,163 @@ async function updateItem(req, res) {
     patch.organizationId = reperm.person.organizationId;
   }
 
+  // Validate scheduleType/timeWindow if provided
+  if (patch.scheduleType === "Timed") {
+    const tw = patch.timeWindow || existing.timeWindow;
+    if (!tw || !tw.startTime || !tw.endTime)
+      return res.status(400).json({ error: "TIME_WINDOW_REQUIRED" });
+    const re = /^[0-2]\d:[0-5]\d$/;
+    if (!re.test(tw.startTime) || !re.test(tw.endTime)) {
+      return res.status(400).json({ error: "INVALID_TIME_FORMAT" });
+    }
+    if (tw.endTime <= tw.startTime) {
+      return res
+        .status(400)
+        .json({ error: "END_TIME_MUST_BE_AFTER_START_TIME" });
+    }
+    patch.timeWindow = { startTime: tw.startTime, endTime: tw.endTime };
+  } else if (patch.scheduleType === "AllDay") {
+    // clear timeWindow if switching to AllDay
+    patch.timeWindow = undefined;
+  }
+
+  // Enforce “JustPurchase => occurrenceCost = 0”
+  const nextIntervalType =
+    patch.frequency?.intervalType ?? existing.frequency?.intervalType;
+  if (nextIntervalType === "JustPurchase") {
+    patch.occurrenceCost = 0;
+  }
+
+  // Detect changes that impact schedules (freq and schedule period/name)
+  const scheduleImpact =
+    (patch.name && patch.name !== existing.name) ||
+    (patch.frequency &&
+      JSON.stringify({
+        t: patch.frequency.intervalType ?? existing.frequency?.intervalType,
+        v: Number(
+          (patch.frequency.intervalValue ??
+            existing.frequency?.intervalValue) ||
+            1
+        ),
+        s: patch.frequency.startDate ?? existing.frequency?.startDate,
+      }) !==
+        JSON.stringify({
+          t: existing.frequency?.intervalType,
+          v: Number(existing.frequency?.intervalValue || 1),
+          s: existing.frequency?.startDate,
+        })) ||
+    (patch.endDate && String(patch.endDate) !== String(existing.endDate)) ||
+    (patch.occurrenceCount &&
+      Number(patch.occurrenceCount) !== Number(existing.occurrenceCount)) ||
+    (patch.scheduleType && patch.scheduleType !== existing.scheduleType) ||
+    (patch.timeWindow &&
+      JSON.stringify(patch.timeWindow) !== JSON.stringify(existing.timeWindow));
+
+  // Track if budgetCost changed
+  const budgetCostChanged =
+    Object.prototype.hasOwnProperty.call(patch, "budgetCost") &&
+    Number(patch.budgetCost) !== Number(existing.budgetCost);
+
+  // Save the item first
   const updated = await CareNeedItem.findByIdAndUpdate(
     req.params.itemId,
     patch,
     { new: true, runValidators: true }
   );
+
+  // 1) If budgetCost changed, upsert/update only current year's budgets[] row
+  if (budgetCostChanged) {
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const amt = Number(updated.budgetCost || 0);
+
+    const upd = await CareNeedItem.updateOne(
+      { _id: updated._id, "budgets.year": y },
+      { $set: { "budgets.$.amount": amt } }
+    );
+
+    if (!upd.matchedCount) {
+      // add new current-year row
+      await CareNeedItem.updateOne(
+        { _id: updated._id },
+        { $push: { budgets: { year: y, amount: amt } } }
+      );
+    }
+  }
+
+  // 2) If schedule-impacting fields changed AND item is not JustPurchase, rewrite pending tasks
+  if (
+    scheduleImpact &&
+    (updated.frequency?.intervalType || "") !== "JustPurchase"
+  ) {
+    // Remove pending tasks (Scheduled or Skipped) — do not touch Completed/Missed/Cancelled
+    await CareTask.deleteMany({
+      careNeedItemId: updated._id,
+      status: { $in: ["Scheduled", "Skipped"] },
+    });
+
+    // Rebuild full window (same policy as your /generate-tasks route)
+    const start = updated.frequency?.startDate
+      ? new Date(updated.frequency.startDate)
+      : null;
+    if (start) {
+      const windowStart = start;
+      // end = explicit endDate OR default horizon (start + 2y)
+      let windowEnd;
+      if (updated.endDate) {
+        windowEnd = new Date(updated.endDate);
+      } else {
+        const d = new Date(start);
+        d.setFullYear(d.getFullYear() + 2);
+        windowEnd = d;
+      }
+
+      const dates = expandOccurrences(
+        {
+          intervalType: updated.frequency.intervalType,
+          intervalValue: updated.frequency.intervalValue || 1,
+          startDate: start,
+          endDate: updated.endDate || null,
+          occurrenceCount: updated.occurrenceCount || null,
+        },
+        windowStart,
+        windowEnd
+      );
+
+      // Upsert idempotently; ensure scheduleType/start/end set consistently
+      for (const dueDate of dates) {
+        const query = { careNeedItemId: updated._id, dueDate };
+        const update = {
+          $setOnInsert: {
+            personId: updated.personId,
+            organizationId: updated.organizationId,
+            careNeedItemId: updated._id,
+            title: updated.name,
+            dueDate,
+            status: "Scheduled",
+          },
+          $set: {
+            scheduleType: updated.scheduleType === "Timed" ? "Timed" : "AllDay",
+            startAt: null,
+            endAt: null,
+          },
+        };
+
+        if (updated.scheduleType === "Timed" && updated.timeWindow) {
+          const startAt = combineDateAndTime(
+            dueDate,
+            updated.timeWindow.startTime
+          );
+          const endAt = combineDateAndTime(dueDate, updated.timeWindow.endTime);
+          update.$set.startAt = startAt;
+          update.$set.endAt = endAt;
+        }
+
+        await CareTask.updateOne(query, update, { upsert: true });
+      }
+    }
+  }
+
   res.json(updated);
 }
 

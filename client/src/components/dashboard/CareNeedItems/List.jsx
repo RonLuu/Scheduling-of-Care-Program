@@ -3,6 +3,7 @@ import { aud, formatFrequency } from "../utils/formatters.js";
 import CommentPanel from "../Panels/CommentPanel.jsx";
 import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
+import RowEditor from "./RowEditor.jsx";
 
 function InlineAttachment({ f }) {
   const isImg = f.fileType && f.fileType.startsWith("image/");
@@ -55,6 +56,9 @@ function List({ jwt, clients }) {
     loadItemFilesPanel,
   } = useCareNeedItemsData(jwt, clients);
 
+  // track which item is being edited
+  const [editingItemId, setEditingItemId] = React.useState(null);
+
   const renderCategoryDivider = (category) => (
     <tr key={`div-${category}`}>
       <td colSpan={10} style={{ padding: "10px 6px", background: "#f9fafb" }}>
@@ -62,6 +66,18 @@ function List({ jwt, clients }) {
       </td>
     </tr>
   );
+
+  const closeEditorIfReturned = React.useCallback(() => {
+    if (!editingItemId) return;
+    const edited = items.find((x) => x._id === editingItemId);
+    if (edited && edited.status === "Returned") {
+      setEditingItemId(null);
+    }
+  }, [editingItemId, items]);
+
+  React.useEffect(() => {
+    closeEditorIfReturned();
+  }, [items, closeEditorIfReturned]);
 
   return (
     <div className="card">
@@ -122,16 +138,18 @@ function List({ jwt, clients }) {
 
               items.forEach((it) => {
                 const cat = it.category || "Other";
-                if (cat !== lastCat) {
-                  rows.push(renderCategoryDivider(cat));
-                  lastCat = cat;
-                }
-
                 const rowFiles = filesByItem[it._id] || [];
                 const isPurchaseOnly =
                   it.frequency?.intervalType === "JustPurchase";
                 const isReturned = it.status === "Returned";
 
+                // category divider
+                if (cat !== lastCat) {
+                  rows.push(renderCategoryDivider(cat));
+                  lastCat = cat;
+                }
+
+                // main item row
                 rows.push(
                   <tr
                     key={it._id}
@@ -203,17 +221,33 @@ function List({ jwt, clients }) {
                       )}
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          className="secondary"
-                          disabled={isReturned}
-                          title={
-                            isReturned ? "Already returned" : "Mark as returned"
-                          }
-                          onClick={() => returnItem(it._id)}
-                        >
-                          Return
-                        </button>
+                      <div
+                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                      >
+                        {/* Hide Edit & Return when item is Returned */}
+                        {!isReturned && (
+                          <>
+                            <button
+                              className="secondary"
+                              title="Edit details"
+                              onClick={() =>
+                                setEditingItemId(
+                                  editingItemId === it._id ? null : it._id
+                                )
+                              }
+                            >
+                              {editingItemId === it._id ? "Close edit" : "Edit"}
+                            </button>
+                            <button
+                              className="secondary"
+                              title="Mark as returned"
+                              onClick={() => returnItem(it._id)}
+                            >
+                              Return
+                            </button>
+                          </>
+                        )}
+
                         <button
                           className="danger"
                           onClick={() => deleteItem(it._id)}
@@ -254,13 +288,15 @@ function List({ jwt, clients }) {
                           {/* Files panel (item scope, direct uploads for returns) */}
                           {openFilesForItem === it._id && (
                             <FilePanel
+                              // re-use TaskFiles uploader; server looks at "scope"
+                              taskId={it._id} // not used when scope is CareNeedItem; but TaskFiles expects it—safe to pass
                               scope="CareNeedItem"
                               targetId={it._id}
-                              files={panelFilesByItem[it._id] || []} // direct uploads (panel)
+                              files={panelFilesByItem[it._id] || []}
                               newFile={newFileItem}
                               onNewFileChange={setNewFileItem}
-                              onAddFile={() => addItemFile(it._id)} // your JSON add for items
-                              onLoadFiles={() => loadItemFilesPanel(it._id)} // refresh panel list
+                              onAddFile={() => addItemFile(it._id)}
+                              onLoadFiles={() => loadItemFilesPanel(it._id)}
                             />
                           )}
                         </div>
@@ -268,6 +304,25 @@ function List({ jwt, clients }) {
                     </td>
                   </tr>
                 );
+
+                // editor row (full-width) — only for non-returned items
+                if (!isReturned && editingItemId === it._id) {
+                  rows.push(
+                    <tr key={`${it._id}__editor`}>
+                      <td colSpan={10} style={{ paddingTop: 0 }}>
+                        <RowEditor
+                          item={it}
+                          jwt={jwt}
+                          onCancel={() => setEditingItemId(null)}
+                          onSaved={async () => {
+                            setEditingItemId(null);
+                            if (cniClientId) await loadItemsFor(cniClientId);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                }
               });
 
               return rows;
