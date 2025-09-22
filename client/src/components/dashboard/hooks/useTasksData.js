@@ -1,6 +1,20 @@
 import React from "react";
 
+function decodeUserIdFromJwt(jwt) {
+  try {
+    const payload = JSON.parse(atob(jwt.split(".")[1] || ""));
+    return (
+      payload?.id || payload?._id || payload?.userId || payload?.sub || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function useTasksData(jwt, clients) {
+  const [currentUserId] = React.useState(() =>
+    jwt ? String(decodeUserIdFromJwt(jwt) || "") : ""
+  );
   const [tasksClientId, setTasksClientId] = React.useState("");
   const [tasks, setTasks] = React.useState([]);
   const [tasksLoading, setTasksLoading] = React.useState(false);
@@ -356,5 +370,6 @@ export function useTasksData(jwt, clients) {
     // NEW:
     assignableUsers,
     reloadAfterEdit: reload,
+    currentUserId,
   };
 }

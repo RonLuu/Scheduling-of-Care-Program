@@ -386,12 +386,15 @@ router.delete("/:fileId", requireAuth, async (req, res) => {
     const doc = await FileUpload.findById(req.params.fileId);
     if (!doc) return res.status(404).json({ error: "Not found" });
 
-    // (Optional) org/permissions checks here if needed
+    // Only the uploader or Admin can delete
+    const requesterId = String(req.user.id || req.user._id);
+    const isOwner = String(doc.uploadedByUserId) === requesterId;
+    const isAdmin = req.user.role === "Admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
 
-    // delete the physical blob first (best effort)
-    await deleteUploadBlob(doc.urlOrPath);
-
-    // then remove the DB record
+    await deleteUploadBlob(doc.urlOrPath); // best effort
     await FileUpload.deleteOne({ _id: doc._id });
 
     res.json({ message: "File deleted" });

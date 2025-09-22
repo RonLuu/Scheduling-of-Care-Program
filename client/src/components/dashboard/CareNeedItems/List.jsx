@@ -54,6 +54,7 @@ function List({ jwt, clients }) {
     addItemComment,
     addItemFile,
     loadItemFilesPanel,
+    currentUserId,
   } = useCareNeedItemsData(jwt, clients);
 
   // track which item is being edited
@@ -280,6 +281,7 @@ function List({ jwt, clients }) {
                               newCommentText={newCommentTextItem}
                               onCommentTextChange={setNewCommentTextItem}
                               onAddComment={() => addItemComment(it._id)}
+                              currentUserId={currentUserId}
                             />
                           )}
 
@@ -295,6 +297,11 @@ function List({ jwt, clients }) {
                               onNewFileChange={setNewFileItem}
                               onAddFile={() => addItemFile(it._id)}
                               onLoadFiles={() => loadItemFilesPanel(it._id)}
+                              currentUserId={currentUserId}
+                              onReload={() =>
+                                toggleItemComments(it._id) ||
+                                toggleItemComments(it._id)
+                              } // quick reload
                             />
                           )}
                         </div>

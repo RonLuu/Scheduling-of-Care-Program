@@ -31,6 +31,7 @@ function CareTaskList({
   // new
   assignableUsers,
   reloadAfterEdit, // pass a function that refreshes current client's tasks
+  currentUserId,
 }) {
   const [editingTaskId, setEditingTaskId] = React.useState(null);
 
@@ -167,6 +168,8 @@ function CareTaskList({
               newCommentText={newCommentText}
               onCommentTextChange={setNewCommentText}
               onAddComment={() => addComment(t._id)}
+              currentUserId={currentUserId}
+              onReload={() => toggleComments(t._id) || toggleComments(t._id)} // quick reload
             />
           )}
 
@@ -180,6 +183,7 @@ function CareTaskList({
               onNewFileChange={setNewFile}
               onAddFile={() => addFile(t._id)}
               onLoadFiles={() => loadFiles(t._id)}
+              currentUserId={currentUserId}
             />
           )}
 

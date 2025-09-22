@@ -33,6 +33,7 @@ function CareTasks({ jwt, clients }) {
     setCostEditorHiddenByTask,
     saveTaskCost,
     assignableUsers,
+    currentUserId,
   } = useTasksData(jwt, clients);
 
   const onChangeTasksClient = (e) => {
@@ -95,12 +96,21 @@ function CareTasks({ jwt, clients }) {
 
       <div style={{ margin: "8px 0" }}>
         <button
+          className="secondary"
+          onClick={() => tasksClientId && loadTasksFor(tasksClientId)}
+          title="Reload tasks"
+        >
+          Refresh
+        </button>
+
+        <button
           className={viewMode === "list" ? "" : "secondary"}
           onClick={() => setViewMode("list")}
           style={{ marginRight: 8 }}
         >
           List
         </button>
+
         <button
           className={viewMode === "calendar" ? "" : "secondary"}
           onClick={() => setViewMode("calendar")}
@@ -147,6 +157,7 @@ function CareTasks({ jwt, clients }) {
             loadFiles={loadFiles}
             assignableUsers={assignableUsers}
             reloadAfterEdit={() => tasksClientId && loadTasksFor(tasksClientId)}
+            currentUserId={currentUserId}
           />
         ))}
     </div>

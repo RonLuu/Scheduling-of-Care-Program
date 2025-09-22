@@ -1,6 +1,20 @@
 import React from "react";
 
+function decodeUserIdFromJwt(jwt) {
+  try {
+    const payload = JSON.parse(atob(jwt.split(".")[1] || ""));
+    return (
+      payload?.id || payload?._id || payload?.userId || payload?.sub || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function useCareNeedItemsData(jwt, clients) {
+  const [currentUserId] = React.useState(() =>
+    jwt ? String(decodeUserIdFromJwt(jwt) || "") : ""
+  );
   const [cniClientId, setCniClientId] = React.useState("");
   const [items, setItems] = React.useState([]);
   const [filesByItem, setFilesByItem] = React.useState({});
@@ -320,5 +334,6 @@ export function useCareNeedItemsData(jwt, clients) {
     addItemComment,
     addItemFile,
     loadItemFilesPanel,
+    currentUserId,
   };
 }

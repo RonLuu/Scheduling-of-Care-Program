@@ -19,6 +19,7 @@ function FilePanel({
   onNewFileChange,
   onAddFile,
   onLoadFiles,
+  currentUserId,
 }) {
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -55,6 +56,28 @@ function FilePanel({
     }
   };
 
+  const canDelete = (f) =>
+    currentUserId &&
+    f?.uploadedByUserId &&
+    String(f.uploadedByUserId) === String(currentUserId);
+
+  const deleteFile = async (fileId) => {
+    if (!window.confirm("Delete this file?")) return;
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+      const r = await fetch(`/api/file-upload/${fileId}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Delete failed");
+      await onLoadFiles?.();
+    } catch (err) {
+      alert("Delete failed: " + (err.message || String(err)));
+    }
+  };
+
   return (
     <div
       style={{
@@ -74,6 +97,7 @@ function FilePanel({
           <ul>
             {files.map((f) => (
               <li key={f._id} style={{ marginBottom: 6 }}>
+                {/* preview */}
                 {f.fileType && f.fileType.startsWith("image/") ? (
                   <a href={f.urlOrPath} target="_blank" rel="noreferrer">
                     <img
@@ -98,6 +122,18 @@ function FilePanel({
                 {" · "}
                 {new Date(f.createdAt).toLocaleString()}
                 {f.description ? <div>{f.description}</div> : null}
+
+                {/* Owner delete */}
+                {canDelete(f) && (
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      className="danger"
+                      onClick={() => deleteFile(f._id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
