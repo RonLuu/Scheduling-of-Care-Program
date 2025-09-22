@@ -1,5 +1,5 @@
 import React from "react";
-import { useAuth } from "../../AuthContext";
+import useAuth from "./hooks/useAuth";
 import Profile from "./Profile";
 
 import AccessManagement from "./AccessManagement";

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "../../styles/RegisterUser.css"
-import {useAuth} from "../../AuthContext"
+import useAuth from "../dashboard/hooks/useAuth"
 import { Link, useNavigate } from 'react-router-dom';
 
 const RegisterUser = () => {

@@ -1,8 +1,8 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../AuthContext';
+import useAuth from '../dashboard/hooks/useAuth';
 import "../../styles/Welcome.css"
-// ---- custom hook (define OUTSIDE component) ----
+
 const Welcome = () => {
     // me for whether the user logged in
     const {me} = useAuth();
