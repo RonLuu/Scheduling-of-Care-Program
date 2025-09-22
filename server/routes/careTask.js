@@ -4,6 +4,10 @@ import CareNeedItem from "../models/CareNeedItem.js";
 import Person from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
 import PersonUserLink from "../models/PersonUserLink.js";
+import FileUpload from "../models/FileUpload.js";
+import Comment from "../models/Comment.js";
+import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
+
 import {
   requireAuth,
   requireRole,
@@ -137,14 +141,39 @@ async function updateTask(req, res) {
 }
 
 async function deleteTask(req, res) {
-  const existing = await CareTask.findById(req.params.taskId);
-  if (!existing) return res.status(404).json({ error: "Not found" });
+  try {
+    const existing = await CareTask.findById(req.params.taskId);
+    if (!existing) return res.status(404).json({ error: "Not found" });
 
-  const perm = await ensureCanManagePerson(req.user, existing.personId);
-  if (!perm.ok) return res.status(403).json({ error: perm.code });
+    const perm = await ensureCanManagePerson(req.user, existing.personId);
+    if (!perm.ok) return res.status(403).json({ error: perm.code });
 
-  await CareTask.deleteOne({ _id: req.params.taskId });
-  res.json({ message: "Task deleted" });
+    const taskId = existing._id;
+
+    // 1) Delete comments for this task
+    await Comment.deleteMany({ careTaskId: taskId });
+
+    // 2) Delete file uploads attached to this task (DB + blob)
+    const files = await FileUpload.find({
+      scope: "CareTask",
+      targetId: taskId,
+    }).lean();
+
+    // unlink blobs (best effort)
+    await Promise.all(files.map((f) => deleteUploadBlob(f.urlOrPath)));
+
+    // delete docs
+    if (files.length) {
+      await FileUpload.deleteMany({ _id: { $in: files.map((f) => f._id) } });
+    }
+
+    // 3) Delete the task itself
+    await CareTask.deleteOne({ _id: taskId });
+
+    res.json({ ok: true, deletedTaskId: String(taskId) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 }
 
 // Helper: ensure user can manage this task (same org + linked where applicable)

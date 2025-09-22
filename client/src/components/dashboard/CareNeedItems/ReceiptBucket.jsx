@@ -11,6 +11,55 @@ function ReceiptBuckets({ jwt, clients }) {
   const [fileDate, setFileDate] = React.useState(""); // optional effective date
   const [err, setErr] = React.useState("");
 
+  // reference check + delete helper
+  const deleteSharedReceipt = async (fileId) => {
+    try {
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+
+      // 1) Ask server which items reference this file
+      const r1 = await fetch(`/api/file-upload/${fileId}/references`, {
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d1 = await r1.json();
+      if (!r1.ok) throw new Error(d1.error || "Failed to check references");
+
+      const refs = Array.isArray(d1.items) ? d1.items : [];
+      let proceed = true;
+
+      if (refs.length > 0) {
+        const preview =
+          refs
+            .slice(0, 5)
+            .map(
+              (it) => `• ${it.name} (client ${it.personName || it.personId})`
+            )
+            .join("\n") +
+          (refs.length > 5 ? `\n…and ${refs.length - 5} more` : "");
+
+        proceed = window.confirm(
+          `Warning: this receipt is referenced by ${refs.length} care need item(s).\n\n${preview}\n\nIf you delete this receipt, those references will be removed and the attachments will no longer be visible from those items.\n\nProceed to delete?`
+        );
+      } else {
+        proceed = window.confirm("Delete this receipt? This cannot be undone.");
+      }
+
+      if (!proceed) return;
+
+      // 2) Delete the file
+      const r2 = await fetch(`/api/file-upload/${fileId}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d2 = await r2.json();
+      if (!r2.ok) throw new Error(d2.error || "Delete failed");
+
+      // 3) Refresh
+      await load();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  };
+
   const load = async () => {
     if (!personId) return;
     setErr("");
@@ -155,7 +204,8 @@ function ReceiptBuckets({ jwt, clients }) {
               <tr>
                 <th style={{ textAlign: "left" }}>File</th>
                 <th style={{ textAlign: "left" }}>Note</th>
-                <th style={{ textAlign: "left" }}>Receipt date</th> {/* NEW */}
+                <th style={{ textAlign: "left" }}>Receipt date</th>
+                <th style={{ textAlign: "left" }}>Actions</th> {/* NEW */}
               </tr>
             </thead>
             <tbody>
@@ -215,6 +265,15 @@ function ReceiptBuckets({ jwt, clients }) {
                       ) : (
                         <span style={{ opacity: 0.6 }}>—</span>
                       )}
+                    </td>
+                    <td>
+                      <button
+                        className="danger"
+                        onClick={() => deleteSharedReceipt(f._id)}
+                        title="Delete this receipt"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );

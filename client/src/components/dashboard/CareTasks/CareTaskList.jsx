@@ -35,6 +35,29 @@ function CareTaskList({
 }) {
   const [editingTaskId, setEditingTaskId] = React.useState(null);
 
+  const deleteTaskHard = async (taskId) => {
+    if (
+      !window.confirm(
+        "Delete this task and ALL its files and comments? This cannot be undone."
+      )
+    )
+      return;
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+
+      const r = await fetch(`/api/care-tasks/${taskId}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to delete task");
+      await reloadAfterEdit?.();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  };
+
   return (
     <ul>
       {tasks.map((t) => (
@@ -45,12 +68,12 @@ function CareTaskList({
               {" · "}
               {formatDate(t.dueDate)}
               {t.scheduleType === "Timed" && t.startAt && t.endAt && (
-                <React.Fragment>
+                <>
                   {" · "}
                   {formatTime(t.startAt)}
                   {" – "}
                   {formatTime(t.endAt)}
-                </React.Fragment>
+                </>
               )}
               {" · "}
               <span className="badge">
@@ -61,11 +84,7 @@ function CareTaskList({
 
               {/* Complete toggle */}
               <input
-                style={{
-                  display: "inline",
-                  width: "auto",
-                  marginLeft: 16,
-                }}
+                style={{ display: "inline", width: "auto", marginLeft: 16 }}
                 type="checkbox"
                 checked={t.status === "Completed"}
                 onChange={(e) => toggleTaskComplete(t, e.target.checked)}
@@ -83,21 +102,21 @@ function CareTaskList({
                   <strong>{displayUser(t.assignedToUserId)}</strong>
                 </span>
               ) : (
-                <React.Fragment>
+                <>
                   {" · "}
                   <span className="badge" title="No assignee">
                     Unassigned
                   </span>
-                </React.Fragment>
+                </>
               )}
               {t.completedByUserId && (
-                <React.Fragment>
+                <>
                   {" · "}
                   <span title="Completed by">
                     Completed by:{" "}
                     <strong>{displayUser(t.completedByUserId)}</strong>
                   </span>
-                </React.Fragment>
+                </>
               )}
             </div>
 
@@ -105,7 +124,7 @@ function CareTaskList({
             {t.status === "Completed" &&
               t.cost !== undefined &&
               t.cost !== null && (
-                <React.Fragment>
+                <>
                   {" · "}Spent: <strong>{aud.format(t.cost)}</strong>{" "}
                   <button
                     className="secondary"
@@ -123,15 +142,15 @@ function CareTaskList({
                   >
                     Change cost
                   </button>
-                </React.Fragment>
+                </>
               )}
 
             {" · "}
             <button className="secondary" onClick={() => toggleComments(t._id)}>
-              Comments
+              {openCommentsFor === t._id ? "Close comments" : "Comments"}
             </button>
             <button className="secondary" onClick={() => toggleFiles(t._id)}>
-              Files
+              {openFilesFor === t._id ? "Close files" : "Files"}
             </button>
             {" · "}
             <button
@@ -141,6 +160,11 @@ function CareTaskList({
               }
             >
               {editingTaskId === t._id ? "Close edit" : "Edit"}
+            </button>
+            {" · "}
+
+            <button className="danger" onClick={() => deleteTaskHard(t._id)}>
+              Delete task
             </button>
           </div>
 

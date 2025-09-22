@@ -337,6 +337,43 @@ router.post("/shared/reference", requireAuth, async (req, res) => {
   }
 });
 
+// Returns the list of care-need items that reference the given file
+router.get("/:fileId/references", requireAuth, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+
+    // Only check references for existing file
+    const fileDoc = await FileUpload.findById(fileId).lean();
+    if (!fileDoc) return res.status(404).json({ error: "Not found" });
+
+    // Which items reference this file?
+    const items = await CareNeedItem.find({ fileRefs: fileId })
+      .select("_id name personId")
+      .lean();
+
+    // Optional: populate person names for nicer UI
+    const personIds = [...new Set(items.map((i) => String(i.personId)))];
+    const personsById = {};
+    if (personIds.length) {
+      const ppl = await PersonWithNeeds.find({ _id: { $in: personIds } })
+        .select("_id name")
+        .lean();
+      for (const p of ppl) personsById[String(p._id)] = p.name || "";
+    }
+
+    const payload = items.map((i) => ({
+      _id: i._id,
+      name: i.name,
+      personId: i.personId,
+      personName: personsById[String(i.personId)] || null,
+    }));
+
+    res.json({ count: payload.length, items: payload });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ============ Files for a care-need item (direct + shared refs) ============
 // GET /api/file-upload/by-care-need-item/:id
 router.get("/by-care-need-item/:id", requireAuth, async (req, res) => {
@@ -394,10 +431,23 @@ router.delete("/:fileId", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
-    await deleteUploadBlob(doc.urlOrPath); // best effort
+    // If this is a Shared receipt, remove references from CareNeedItem.fileRefs
+    if (doc.scope === "Shared") {
+      await CareNeedItem.updateMany(
+        { fileRefs: doc._id },
+        { $pull: { fileRefs: doc._id } }
+      );
+    }
+
+    // best effort remove blob
+    await deleteUploadBlob(doc.urlOrPath);
+
     await FileUpload.deleteOne({ _id: doc._id });
 
-    res.json({ message: "File deleted" });
+    res.json({
+      message: "File deleted",
+      removedFromItems: doc.scope === "Shared",
+    });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
