@@ -33,20 +33,20 @@ p, h2, h3, h4, h5, h6, button {
 }
 @media screen {
   .box {
-    width: 1000px;
-    height: 900px;
+    width: 900px;
+    height: 700px;
   }
 }
 @media screen and (max-width: 1200px) {
   .box {
-    width: 700px;
-    height: 600px;
+    width: 600px;
+    height: 800px;
   }
 }
 @media screen and (max-width: 992px) {
   .box {
-    width: 600px;
-    height: 500px;
+    width: 500px;
+    height: 700px;
   }
 }
 @media screen and (max-width: 768px) {
@@ -54,6 +54,32 @@ p, h2, h3, h4, h5, h6, button {
     width: 400px;
     height: 500px;
   }
+}
+
+.h45m40 {
+  height: 45%;
+  margin-bottom: 40px;
+}
+
+.h55 {
+  height: 55%;
+}
+
+.h80m20 {
+  height: 80%;
+  margin-bottom: 20px;
+}
+@media screen and (max-width: 768px) {
+  .h80m20 {
+    height: 90%;
+  }
+  .h80m20 p {
+    font-size: 14px;
+  }
+}
+
+.h20 {
+  height: 20%;
 }
 
 .bg-wallpaper {
@@ -69,7 +95,7 @@ p, h2, h3, h4, h5, h6, button {
 
 .register-box, .register-box2, .register-box1 {
   width: 100%;
-  flex: 4;
+  font-family: "Inria Serif", serif;
   background-size: cover;
   box-shadow: 0 4px 10px 0 #8089D2, 0 -4px 10px 0 #8089D2;
   border-radius: 10px;
@@ -81,7 +107,6 @@ p, h2, h3, h4, h5, h6, button {
 
 .register-box1 {
   background-image: url("../components/img/wallpaper.jpg");
-  margin-bottom: 20px;
 }
 .register-box1 p {
   font-size: 18px;
@@ -91,6 +116,27 @@ p, h2, h3, h4, h5, h6, button {
 .left {
   position: absolute;
   left: 10%;
+}
+
+.top {
+  position: absolute;
+  top: 10%;
+}
+
+.center {
+  position: absolute;
+  top: 50%;
+  transform: translate(0, -50%);
+}
+@media screen and (max-width: 768px) {
+  .center {
+    top: 57%;
+  }
+}
+
+.bottom {
+  position: absolute;
+  bottom: 27%;
 }
 
 .register-box2 {
@@ -125,10 +171,12 @@ p, h2, h3, h4, h5, h6, button {
 }
 
 .form {
-  width: 150%;
+  width: 100%;
+  font-size: 18px;
+  font-family: "Inria Serif", serif;
   border: none;
   background-color: #C8CDED;
-  color: #6E6E6E;
+  color: #000000;
   border-radius: 10px;
   padding: 10px 14px;
   margin-bottom: 10px;
@@ -137,8 +185,76 @@ p, h2, h3, h4, h5, h6, button {
   align-items: flex-start;
   outline: none;
 }
+.form::-moz-placeholder {
+  font-style: italic;
+  color: #6E6E6E;
+}
+.form::placeholder {
+  font-style: italic;
+  color: #6E6E6E;
+}
+@media screen and (max-width: 992px) {
+  .form {
+    font-size: 14px;
+  }
+}
 
 .error {
   color: #ff0000;
   font-size: 14px;
+}
+
+.role {
+  background-color: #8089D2;
+  border-radius: 0px;
+  color: #F6FAFF;
+  border: none;
+  font-style: normal;
+}
+.role.italic {
+  font-style: italic;
+}
+
+.container {
+  width: 200%;
+  box-sizing: border-box;
+}
+@media screen and (max-width: 992px) {
+  .container {
+    width: 175%;
+  }
+}
+@media screen and (max-width: 768px) {
+  .container {
+    width: 125%;
+  }
+}
+@media screen and (max-width: 576px) {
+  .container {
+    width: 100%;
+  }
+}
+
+.select-container {
+  position: relative;
+}
+.select-container select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color: #F6FAFF;
+  padding-right: 40px;
+}
+.select-container .icon {
+  color: #F6FAFF;
+  position: absolute;
+  top: 50%;
+  right: 5%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+  transform: translateY(-50%) rotate(0deg);
+}
+.select-container .icon.open {
+  transform: translateY(-50%) rotate(180deg);
 }/*# sourceMappingURL=login_layout.css.map */

@@ -3,16 +3,16 @@
 .box
 {
     @include respond(xl) {
-        width: 1000px;
-        height: 900px;
+        width: 900px;
+        height: 700px;
     }
     @include respond(lg) {
-        width: 700px;
-        height: 600px;
+        width: 600px;
+        height: 800px;
     }
     @include respond(md) {
-        width: 600px;
-        height: 500px;
+        width: 500px;
+        height: 700px;
     }
     @include respond(sm) {
         width: 400px;
@@ -29,6 +29,30 @@
     padding: 20px;
     margin: 20px auto;
 }
+.h45m40
+{
+    height: 45%;
+    margin-bottom:40px;
+}
+.h55
+{
+    height: 55%;
+}
+.h80m20
+{
+    height: 80%;
+    margin-bottom:20px;
+    @include respond(sm){
+        height: 90%;
+        p 
+        {
+            font-size: 14px;
+        }
+    }
+}
+.h20{
+    height: 20%;
+}
 .bg-wallpaper
 {
     background-image:url("../components/img/wallpaper.jpg");
@@ -42,7 +66,7 @@
 }
 .register-box {
     width: 100%;
-    flex: 4;
+    font-family: 'Inria Serif', serif;
     background-size: cover;
     box-shadow: 0 4px 10px 0 $violet, 0 -4px 10px 0 $violet;
     border-radius: 10px;
@@ -55,7 +79,6 @@
 .register-box1 {
     @extend .register-box;
     background-image: url("../components/img/wallpaper.jpg");
-    margin-bottom: 20px;
     p 
     {
         font-size: 18px;
@@ -65,6 +88,24 @@
 .left{
     position: absolute;
     left: 10%;
+}
+.top{
+    position: absolute;
+    top: 10%;
+}
+.center
+{
+    position: absolute;
+    top: 50%;
+    transform: translate(0, -50%);
+    @include respond(sm){
+        top: 57%;
+    }
+}
+.bottom
+{
+    position: absolute;
+    bottom: 27%;
 }
 .register-box2 {
     @extend .register-box;
@@ -99,12 +140,15 @@
 {
     background-color:  $dark-blueberry;
 }
+
 .form
 {
-    width: 150%;
+    width: 100%;
+    font-size:18px;
+    font-family: 'Inria Serif', serif;
     border:none;
     background-color:$light-violet;
-    color: $grey;
+    color: $black;
     border-radius: 10px;
     padding: 10px 14px;
     margin-bottom: 10px;
@@ -112,9 +156,71 @@
     flex-direction: column;
     align-items: flex-start;
     outline: none;
+    &::placeholder
+    {
+        font-style: italic;
+        color: $grey;
+
+    }
+    @include respond(md){
+        font-size: 14px;
+    }
+    
 }
 .error
 {
     color:$red;
     font-size: 14px;
+}
+.role{
+    background-color: $violet;
+    border-radius: 0px;
+    color: $white;
+    border :none;
+    font-style: normal;
+    
+    &.italic{
+        font-style: italic;
+    }
+}
+.container{
+    width: 200%;
+    box-sizing: border-box;
+    @include respond(md)
+    {
+        width:175%;
+    }
+    @include respond(sm){
+        width: 125%;
+    }
+    @include respond(xs)
+    {
+        width: 100%;
+    }
+
+}
+.select-container {
+    position: relative;
+    select{
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    color: $white;
+    // width: 100%;
+    padding-right: 40px;
+  }
+    .icon {    
+    color: $white;
+    position: absolute;
+    top: 50%;
+    right: 5%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: transform 0.3s ease;
+    transform: translateY(-50%) rotate(0deg);
+
+    &.open {
+        transform: translateY(-50%) rotate(180deg);}   
+    }
+
 }

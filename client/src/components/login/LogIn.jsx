@@ -50,7 +50,7 @@ function LogIn() {
   return (
   <div className="bg-wallpaper">
     <div className="box">
-      <div className = "register-box1">
+      <div className = "register-box1 h45m40">
         <div className="left">
           <p >Not a member yet?</p>
           <Link to='/registeruser'>
@@ -58,7 +58,7 @@ function LogIn() {
           </Link>
         </div>
       </div>
-      <div className = "register-box2">
+      <div className = "register-box2 h55">
           <div className="left">
             <h2>Member Login</h2>
             <form onSubmit={submit}>
