@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
@@ -6,7 +5,6 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [me, setMe] = useState(null);
 
-    // ---- Load JWT and fetch user on first render ----
     useEffect(() => {
         const jwt = localStorage.getItem("jwt");
         if (!jwt) return;
@@ -25,7 +23,6 @@ export const AuthProvider = ({ children }) => {
         })();
     }, []);
 
-    // ---- React to changes in JWT in other tabs/windows ----
     useEffect(() => {
         const refreshFromStorage = async (newJwt) => {
             if (!newJwt) {
@@ -59,5 +56,4 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// ---- custom hook to use anywhere ----
 export const useAuth = () => useContext(AuthContext);

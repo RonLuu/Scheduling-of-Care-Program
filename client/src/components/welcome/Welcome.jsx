@@ -14,7 +14,6 @@ const Welcome = () => {
         }
     }, [me, navigate]);
 
-    // ---- render a React nav  ----
     return (
         <div className='button-wrapper'>
             <Link to='/login'>
