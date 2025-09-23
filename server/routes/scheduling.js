@@ -246,6 +246,7 @@ router.post("/ensure-horizon", requireAuth, async (req, res) => {
     status: "Active",
     endDate: { $in: [null, undefined] },
     $or: [{ occurrenceCount: null }, { occurrenceCount: { $exists: false } }],
+    "frequency.intervalType": { $ne: "JustPurchase" },
   };
 
   // Staff: restrict to persons they are linked to
@@ -268,6 +269,7 @@ router.post("/ensure-horizon", requireAuth, async (req, res) => {
   let extended = 0;
 
   for (const item of items) {
+    if (item?.frequency?.intervalType === "JustPurchase") continue;
     const startDate = item?.frequency?.startDate
       ? new Date(item.frequency.startDate)
       : null;

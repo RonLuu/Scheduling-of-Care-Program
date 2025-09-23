@@ -1,10 +1,27 @@
 import React from "react";
 
+function decodeUserIdFromJwt(jwt) {
+  try {
+    const payload = JSON.parse(atob(jwt.split(".")[1] || ""));
+    return (
+      payload?.id || payload?._id || payload?.userId || payload?.sub || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function useTasksData(jwt, clients) {
+  const [currentUserId] = React.useState(() =>
+    jwt ? String(decodeUserIdFromJwt(jwt) || "") : ""
+  );
   const [tasksClientId, setTasksClientId] = React.useState("");
   const [tasks, setTasks] = React.useState([]);
   const [tasksLoading, setTasksLoading] = React.useState(false);
   const [tasksErr, setTasksErr] = React.useState("");
+
+  // NEW: assignable users (by current client/person)
+  const [assignableUsers, setAssignableUsers] = React.useState([]);
 
   // Comments / Files state
   const [openCommentsFor, setOpenCommentsFor] = React.useState(null);
@@ -26,6 +43,33 @@ export function useTasksData(jwt, clients) {
     {}
   );
 
+  // ---- helpers ----
+  const reload = React.useCallback(async () => {
+    if (tasksClientId) await loadTasksFor(tasksClientId);
+  }, [tasksClientId]);
+
+  const loadAssignable = React.useCallback(
+    async (personId) => {
+      try {
+        if (!jwt || !personId) {
+          setAssignableUsers([]);
+          return;
+        }
+        const r = await fetch(
+          `/api/person-user-links/assignable-users?personId=${encodeURIComponent(
+            personId
+          )}`,
+          { headers: { Authorization: "Bearer " + jwt } }
+        );
+        const d = await r.json();
+        setAssignableUsers(Array.isArray(d) ? d : []);
+      } catch {
+        setAssignableUsers([]);
+      }
+    },
+    [jwt]
+  );
+
   const loadTasksFor = React.useCallback(
     async (personId) => {
       try {
@@ -39,25 +83,28 @@ export function useTasksData(jwt, clients) {
           )}&sort=dueDate`,
           { headers: { Authorization: "Bearer " + jwt } }
         );
-        const data = await r.json();
+        let data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to load tasks");
 
+        data = data.filter((t) => t.status !== "Cancelled");
         data.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
         setTasks(data);
 
-        // Initialize cost editor visibility
+        // cost editor visibility
         const hidden = {};
         const drafts = {};
         for (const t of data) {
-          if (t.status === "Completed") {
-            hidden[t._id] = t.cost !== undefined && t.cost !== null;
-          } else {
-            hidden[t._id] = true;
-          }
+          hidden[t._id] =
+            t.status === "Completed"
+              ? t.cost !== undefined && t.cost !== null
+              : true;
           drafts[t._id] = "";
         }
         setCostEditorHiddenByTask(hidden);
         setCostDraftByTask(drafts);
+
+        // also refresh assignable users for this person
+        await loadAssignable(personId);
       } catch (e) {
         setTasksErr(e.message || String(e));
         setTasks([]);
@@ -65,26 +112,30 @@ export function useTasksData(jwt, clients) {
         setTasksLoading(false);
       }
     },
-    [
-      jwt,
-      setTasksLoading,
-      setTasksErr,
-      setTasks,
-      setCostEditorHiddenByTask,
-      setCostDraftByTask,
-    ]
+    [jwt, loadAssignable]
   );
 
+  // === BUGFIX: when unchecking a completed task that is past-due, return to Missed (not Scheduled) ===
   const toggleTaskComplete = async (task, checked) => {
     try {
-      const body = checked ? { status: "Completed" } : { status: "Scheduled" };
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+
+      let newStatus;
+      if (checked) {
+        newStatus = "Completed";
+      } else {
+        const now = new Date();
+        const due = new Date(task.dueDate);
+        newStatus = due < now ? "Missed" : "Scheduled";
+      }
+
       const r = await fetch(`/api/care-tasks/${task._id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer " + jwt,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ status: newStatus }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Update failed");
@@ -106,9 +157,7 @@ export function useTasksData(jwt, clients) {
     if (!jwt) return;
     const r = await fetch(
       `/api/comments?careTaskId=${encodeURIComponent(taskId)}`,
-      {
-        headers: { Authorization: "Bearer " + jwt },
-      }
+      { headers: { Authorization: "Bearer " + jwt } }
     );
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || "Failed to load comments");
@@ -150,9 +199,7 @@ export function useTasksData(jwt, clients) {
     if (!jwt) return;
     const r = await fetch(
       `/api/file-upload?scope=CareTask&targetId=${encodeURIComponent(taskId)}`,
-      {
-        headers: { Authorization: "Bearer " + jwt },
-      }
+      { headers: { Authorization: "Bearer " + jwt } }
     );
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || "Failed to load files");
@@ -171,14 +218,7 @@ export function useTasksData(jwt, clients) {
         alert("Please provide filename and URL/path.");
         return;
       }
-      // const payload = {
-      //   careTaskId: taskId,
-      //   filename: newFile.filename,
-      //   urlOrPath: newFile.urlOrPath,
-      //   fileType: newFile.fileType || undefined,
-      //   size: newFile.size ? Number(newFile.size) : undefined,
-      //   description: newFile.description || undefined,
-      // };
+
       const payload = {
         scope: "CareTask",
         targetId: taskId,
@@ -236,7 +276,6 @@ export function useTasksData(jwt, clients) {
       const raw = costDraftByTask[taskId];
       const num =
         raw === "" || raw === undefined || raw === null ? 0 : Number(raw);
-
       if (Number.isNaN(num) || num < 0) {
         alert("Please enter a valid non-negative amount.");
         return;
@@ -248,7 +287,7 @@ export function useTasksData(jwt, clients) {
           "Content-Type": "application/json",
           Authorization: "Bearer " + jwt,
         },
-        body: JSON.stringify({ cost: num }),
+        body: JSON.stringify({ status: "Completed", cost: num }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Update failed");
@@ -271,6 +310,7 @@ export function useTasksData(jwt, clients) {
     } else {
       setTasksClientId("");
       setTasks([]);
+      setAssignableUsers([]);
     }
   }, [clients, loadTasksFor]);
 
@@ -326,5 +366,10 @@ export function useTasksData(jwt, clients) {
     costEditorHiddenByTask,
     setCostEditorHiddenByTask,
     saveTaskCost,
+
+    // NEW:
+    assignableUsers,
+    reloadAfterEdit: reload,
+    currentUserId,
   };
 }

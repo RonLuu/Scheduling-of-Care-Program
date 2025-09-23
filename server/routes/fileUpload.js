@@ -10,6 +10,7 @@ import { requireAuth, ensureCanWorkOnTask } from "../middleware/authz.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
 
 const router = Router();
 
@@ -73,7 +74,7 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // ============ Link-based upload (JSON) ============
-// Back-compat: your old addFile(taskId) payload with careTaskId is normalized.
+// POST /api/file-upload
 router.post("/", requireAuth, async (req, res) => {
   try {
     let {
@@ -85,24 +86,43 @@ router.post("/", requireAuth, async (req, res) => {
       size,
       description,
 
-      // legacy:
+      // legacy support:
       careTaskId,
     } = req.body;
 
+    // Normalize legacy payload
     if (!scope && careTaskId) {
       scope = "CareTask";
       targetId = careTaskId;
     }
-    if (!scope || !targetId) {
-      return res.status(400).json({ error: "MISSING_SCOPE_OR_TARGET" });
+
+    if (!scope) {
+      return res.status(400).json({ error: "MISSING_SCOPE" });
+    }
+    if (!targetId) {
+      return res.status(400).json({ error: "MISSING_TARGET_ID" });
+    }
+    if (!filename || !urlOrPath) {
+      return res.status(400).json({ error: "MISSING_FILENAME_OR_URL" });
     }
 
-    // Task access check
+    // Guard per scope
     if (scope === "CareTask") {
+      // Make sure targetId is a valid CareTask
       const task = await CareTask.findById(targetId);
       if (!task) return res.status(400).json({ error: "INVALID_TASK" });
       const access = await ensureCanWorkOnTask(req.user, task);
       if (!access.ok) return res.status(403).json({ error: access.code });
+    } else if (scope === "CareNeedItem") {
+      // Optional sanity check so we don’t attach to a non-existent item
+      const item = await CareNeedItem.findById(targetId).select(
+        "_id organizationId"
+      );
+      if (!item)
+        return res.status(400).json({ error: "INVALID_CARE_NEED_ITEM" });
+      if (String(item.organizationId) !== String(req.user.organizationId)) {
+        return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+      }
     }
 
     const doc = await FileUpload.create({
@@ -116,7 +136,6 @@ router.post("/", requireAuth, async (req, res) => {
       description,
     });
 
-    // If attached to a care-need item, also push to item.files
     if (scope === "CareNeedItem") {
       await CareNeedItem.updateOne(
         { _id: targetId },
@@ -140,8 +159,16 @@ router.post("/upload", requireAuth, (req, res) => {
     try {
       if (err) return res.status(400).json({ error: err.message });
 
-      let { scope, targetId, description, bucketId, personId, year, month } =
-        req.body;
+      let {
+        scope,
+        targetId,
+        description,
+        bucketId,
+        personId,
+        year,
+        month,
+        effectiveDate,
+      } = req.body;
 
       if (!scope) return res.status(400).json({ error: "MISSING_SCOPE" });
 
@@ -169,6 +196,16 @@ router.post("/upload", requireAuth, (req, res) => {
             });
           }
           bucketId = String(bucket._id);
+        }
+
+        const d = new Date(effectiveDate);
+        if (
+          d.getFullYear() !== Number(year) ||
+          d.getMonth() + 1 !== Number(month)
+        ) {
+          return res
+            .status(400)
+            .json({ error: "EFFECTIVE_DATE_OUTSIDE_BUCKET" });
         }
         // For Shared, targetId is the bucket id
         targetId = bucketId;
@@ -202,6 +239,7 @@ router.post("/upload", requireAuth, (req, res) => {
         urlOrPath: publicUrl,
         size: req.file.size,
         description: description || undefined,
+        effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
       });
 
       if (scope === "CareNeedItem") {
@@ -271,7 +309,7 @@ router.get("/buckets", requireAuth, async (req, res) => {
       targetId: bucket._id,
       bucketId: bucket._id,
     })
-      .sort({ createdAt: -1 })
+      .sort({ effectiveDate: -1, createdAt: -1 })
       .lean();
     res.json({ bucket, files });
   } catch (e) {
@@ -299,6 +337,43 @@ router.post("/shared/reference", requireAuth, async (req, res) => {
   }
 });
 
+// Returns the list of care-need items that reference the given file
+router.get("/:fileId/references", requireAuth, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+
+    // Only check references for existing file
+    const fileDoc = await FileUpload.findById(fileId).lean();
+    if (!fileDoc) return res.status(404).json({ error: "Not found" });
+
+    // Which items reference this file?
+    const items = await CareNeedItem.find({ fileRefs: fileId })
+      .select("_id name personId")
+      .lean();
+
+    // Optional: populate person names for nicer UI
+    const personIds = [...new Set(items.map((i) => String(i.personId)))];
+    const personsById = {};
+    if (personIds.length) {
+      const ppl = await PersonWithNeeds.find({ _id: { $in: personIds } })
+        .select("_id name")
+        .lean();
+      for (const p of ppl) personsById[String(p._id)] = p.name || "";
+    }
+
+    const payload = items.map((i) => ({
+      _id: i._id,
+      name: i.name,
+      personId: i.personId,
+      personName: personsById[String(i.personId)] || null,
+    }));
+
+    res.json({ count: payload.length, items: payload });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ============ Files for a care-need item (direct + shared refs) ============
 // GET /api/file-upload/by-care-need-item/:id
 router.get("/by-care-need-item/:id", requireAuth, async (req, res) => {
@@ -318,7 +393,7 @@ router.get("/by-care-need-item/:id", requireAuth, async (req, res) => {
       : [];
 
     const all = [...direct, ...refs].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
     );
     res.json(all);
   } catch (e) {
@@ -344,8 +419,38 @@ router.put("/:fileId", requireAuth, async (req, res) => {
 });
 
 router.delete("/:fileId", requireAuth, async (req, res) => {
-  await FileUpload.deleteOne({ _id: req.params.fileId });
-  res.json({ message: "File deleted" });
+  try {
+    const doc = await FileUpload.findById(req.params.fileId);
+    if (!doc) return res.status(404).json({ error: "Not found" });
+
+    // Only the uploader or Admin can delete
+    const requesterId = String(req.user.id || req.user._id);
+    const isOwner = String(doc.uploadedByUserId) === requesterId;
+    const isAdmin = req.user.role === "Admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
+
+    // If this is a Shared receipt, remove references from CareNeedItem.fileRefs
+    if (doc.scope === "Shared") {
+      await CareNeedItem.updateMany(
+        { fileRefs: doc._id },
+        { $pull: { fileRefs: doc._id } }
+      );
+    }
+
+    // best effort remove blob
+    await deleteUploadBlob(doc.urlOrPath);
+
+    await FileUpload.deleteOne({ _id: doc._id });
+
+    res.json({
+      message: "File deleted",
+      removedFromItems: doc.scope === "Shared",
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 export default router;

@@ -1,6 +1,11 @@
 import React from "react";
 
-function TaskCostEditor({ currentCost, draftValue, onDraftChange, onSave }) {
+function CareTaskCostEditor({
+  currentCost,
+  draftValue,
+  onDraftChange,
+  onSave,
+}) {
   return (
     <div
       style={{
@@ -31,4 +36,4 @@ function TaskCostEditor({ currentCost, draftValue, onDraftChange, onSave }) {
   );
 }
 
-export default TaskCostEditor;
+export default CareTaskCostEditor;

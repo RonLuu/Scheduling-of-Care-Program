@@ -4,8 +4,9 @@ import Profile from "./Profile";
 
 import AccessManagement from "./AccessManagement";
 import ClientManagement from "./ClientManagement";
+import ShiftScheduler from "./Shift/ShiftScheduler";
 import CareNeedItems from "./CareNeedItems";
-import TasksPanel from "./TasksPanel";
+import CareTasks from "./CareTasks";
 import Budget from "./Budget";
 
 function Dashboard() {
@@ -105,16 +106,18 @@ function Dashboard() {
           <ClientManagement.AccessControl me={me} jwt={jwt} clients={clients} />
         )}
 
+      <ShiftScheduler jwt={jwt} me={me} clients={clients} />
+
+      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
+
       {me &&
         (me.role === "Family" || me.role === "PoA" || me.role === "Admin") && (
           <CareNeedItems.Create jwt={jwt} clients={clients} />
         )}
 
-      <CareNeedItems.ReceiptBuckets jwt={jwt} clients={clients} />
-
       <CareNeedItems.List jwt={jwt} clients={clients} />
 
-      <TasksPanel jwt={jwt} clients={clients} />
+      <CareTasks jwt={jwt} clients={clients} />
 
       <Budget.BudgetReporting jwt={jwt} clients={clients} /> */}
     </>

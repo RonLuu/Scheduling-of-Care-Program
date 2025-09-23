@@ -50,6 +50,16 @@ router.get("/budget", requireAuth, async (req, res) => {
           cost: { $ne: null },
         },
       },
+      {
+        $lookup: {
+          from: "careneeditems",
+          localField: "careNeedItemId",
+          foreignField: "_id",
+          as: "item",
+        },
+      },
+      { $unwind: "$item" },
+      { $match: { "item.status": "Active" } },
       { $group: { _id: null, total: { $sum: "$cost" } } },
     ]);
     const completedSpend = completedAgg[0]?.total || 0;
@@ -72,6 +82,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
+      { $match: { "item.status": "Active" } },
       { $group: { _id: null, total: { $sum: "$item.occurrenceCost" } } },
     ]);
     const expectedRemaining = expectedAgg[0]?.total || 0;
@@ -81,6 +92,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         $match: {
           personId: person._id,
           organizationId: person.organizationId,
+          status: "Active",
           "frequency.startDate": { $gte: from, $lt: to },
           purchaseCost: { $gt: 0 },
         },
@@ -111,6 +123,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
+      { $match: { "item.status": "Active" } },
       { $group: { _id: "$item.category", spent: { $sum: "$cost" } } },
     ]);
 
@@ -119,6 +132,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         $match: {
           personId: person._id,
           organizationId: person.organizationId,
+          status: "Active",
           "frequency.startDate": { $gte: from, $lt: to },
           purchaseCost: { $gt: 0 },
         },
@@ -144,6 +158,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
+      { $match: { "item.status": "Active" } },
       {
         $group: {
           _id: "$item.category",
@@ -196,6 +211,16 @@ router.get("/budget", requireAuth, async (req, res) => {
           cost: { $ne: null },
         },
       },
+      {
+        $lookup: {
+          from: "careneeditems",
+          localField: "careNeedItemId",
+          foreignField: "_id",
+          as: "item",
+        },
+      },
+      { $unwind: "$item" },
+      { $match: { "item.status": "Active" } }, // NEW
       { $group: { _id: "$careNeedItemId", completed: { $sum: "$cost" } } },
     ]);
 
@@ -217,6 +242,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
+      { $match: { "item.status": "Active" } },
       {
         $group: {
           _id: "$careNeedItemId",
@@ -230,6 +256,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         $match: {
           personId: person._id,
           organizationId: person.organizationId,
+          status: "Active",
           "frequency.startDate": { $gte: from, $lt: to },
           purchaseCost: { $gt: 0 },
         },
