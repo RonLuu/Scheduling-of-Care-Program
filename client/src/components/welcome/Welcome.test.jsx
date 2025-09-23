@@ -9,19 +9,38 @@ import Welcome from "./Welcome";
 import RegisterUser from "../register/RegisterUser";
 import LogIn from "../login/LogIn";
 import Dashboard from "../dashboard/Dashboard";
+import { AuthProvider } from "../../AuthContext";
 
+// Mock fetch to prevent actual API calls during tests
+global.fetch = vi.fn(() =>
+    Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ user: null }),
+    })
+);
+
+// Mock localStorage
+const localStorageMock = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+};
+global.localStorage = localStorageMock;
 
 describe("Welcome", () => {
     // Render paths before hand
     render(
-        <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-                <Route path="/" element={<Welcome />} />
-                <Route path="/registeruser" element={<RegisterUser />} />
-                <Route path="/login" element={<LogIn />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-            </Routes>
-        </MemoryRouter>
+        <AuthProvider>
+            <MemoryRouter initialEntries={["/"]}>
+                <Routes>
+                    <Route path="/" element={<Welcome />} />
+                    <Route path="/registeruser" element={<RegisterUser />} />
+                    <Route path="/login" element={<LogIn />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                </Routes>
+            </MemoryRouter>
+        </AuthProvider>
     );
 
     // Unit test: if the page contains two buttons
@@ -39,7 +58,7 @@ describe("Welcome", () => {
 
 
     // Unit test: if the login link is correct
-    it("Register button links to /login", () => {
+    it("Login button links to /login", () => {
         const registerLink = screen.getByRole("link", { name: /Login/i });
         expect(registerLink).toHaveAttribute("href", "/login");
     });
