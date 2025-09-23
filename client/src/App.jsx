@@ -32,6 +32,7 @@ const App = () => {
       <Route path='/navigationtab' element={<NavigationTab/>}/>
       <Route path='/header' element={<Header/>}></Route>
       <Route path='/budgetReport' element={<BudgetReport/>}/>
+      <Route path='/userprofile' element={<UserProfile/>}/>
     </Routes>
   )
 }
