@@ -52,7 +52,7 @@ function LogIn() {
     <div className="box">
       <div className = "register-box1 h45m40">
         <div className="left">
-          <p >Not a member yet?</p>
+          <h3 >Not a member yet?</h3>
           <Link to='/registeruser'>
           <button className = "btn">Register</button>
           </Link>

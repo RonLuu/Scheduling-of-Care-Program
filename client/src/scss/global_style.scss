@@ -13,8 +13,11 @@ $red: #ff0000;
 @import url('https://fonts.googleapis.com/css?family=Inria+Serif&display=swap');
 
 p, h2, h3, h4, h5, h6, button {
-    font: 16px 'Inria Serif', serif;
+    font-family: 'Inria Serif', serif;
     color: $black;
+}
+button, h3{
+    font-size:20px;
 }
 
 @mixin respond($breakpoint)

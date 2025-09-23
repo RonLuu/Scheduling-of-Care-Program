@@ -100,8 +100,10 @@ const RegisterUser = () => {
 
               </div>
               <div className = "left center">
-              <p style={{color: "#7E7E7E" }}>Choose your role:</p>
-                <div className="select-container">
+                  <h3 style={{ color: "#8b8b8bff" }}>
+                    Choose your role:
+                  </h3>     
+               <div className="select-container">
                   <select className={` form role ${role === '' ? 'italic' : ''}`} 
                   id="role" value={role} 
                   onChange={(e) => setRole(e.target.value)}
