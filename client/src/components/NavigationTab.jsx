@@ -16,7 +16,7 @@ const NavigationTab = () => {
             {showTab && <div className="navigationtab-overlay" onClick={() => setShowTab(false)}></div>}
             <div className={`navigationtab-panel ${showTab ? "on" : "off"}`}>
                 {
-                    showTab ? 
+                    showTab &&
                     (
                         <div className='navigationtab-link-wrapper'>
                             {/* TODO: Add URL to these Link */}
@@ -27,10 +27,6 @@ const NavigationTab = () => {
                             <Link to="/profile" className='navigationtab-link'><BiUser className='navigationtab-icon'/>Profile</Link>
                             <Link to="/logout" className='navigationtab-link'><BiExit className='navigationtab-icon'/>Logout</Link>
                         </div>
-                    )
-                    :
-                    (
-                        <></>
                     )
                 }
             </div>
