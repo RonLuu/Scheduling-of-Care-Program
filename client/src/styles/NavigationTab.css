@@ -1,7 +1,11 @@
 .navigationtab-wrapper {
   width: 20%;
   height: 100vh;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
 }
 
 .navigationtab-panel {
@@ -17,6 +21,7 @@
   transform: translateX(-100%);
   background-color: #8189d2;
   transition: transform 0.3s ease-in-out;
+  pointer-events: none;
 }
 
 .navigationtab-panel.off {
@@ -25,6 +30,7 @@
 
 .navigationtab-panel.on {
   transform: translateX(0);
+  pointer-events: auto;
 }
 
 .navigationtab-button-menu-wrapper {
@@ -33,6 +39,9 @@
   margin-bottom: 3vh;
   position: absolute;
   z-index: 2;
+  pointer-events: auto;
+  top: 0;
+  left: 0;
 }
 
 .navigationtab-button-menu {

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import "../../styles/RegisterUser.css"
-import useAuth from "../dashboard/hooks/useAuth"
-import { Link, useNavigate } from 'react-router-dom';
+import React from "react";
+import "../../styles/RegisterUser.css";
+import useAuth from "../dashboard/hooks/useAuth";
+import { Link, useNavigate } from "react-router-dom";
 
 const RegisterUser = () => {
-  const {setMe} = useAuth();
+  const { setMe } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = React.useState("");
@@ -55,8 +55,7 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      navigate("/dashboard")
-
+      navigate("/profile");
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -70,14 +69,16 @@ const RegisterUser = () => {
         <h2>Register User</h2>
         <form onSubmit={submit}>
           <div>
-            <input className="register-input"
+            <input
+              className="register-input"
               placeholder="Full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
             />
-            <input className="register-input"
+            <input
+              className="register-input"
               type="email"
               placeholder="Email"
               value={email}
@@ -85,7 +86,8 @@ const RegisterUser = () => {
               required
               autoComplete="email"
             />
-            <input className="register-input"
+            <input
+              className="register-input"
               type="password"
               placeholder="Password"
               value={password}
@@ -99,7 +101,12 @@ const RegisterUser = () => {
             <label htmlFor="role" style={{ fontSize: "20px" }}>
               Choose your role:
             </label>
-            <select className="register-choose" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+            <select
+              className="register-choose"
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
               <option value="">-- Select a role --</option>
               <option value="Family">Family Member</option>
               <option value="PoA">PoA</option>
@@ -114,13 +121,14 @@ const RegisterUser = () => {
           </div>
         </form>
         <div className="register-login-link-wrapper">
-          <Link className="register-login-link" to='/login'>Already a user? Login here</Link>
+          <Link className="register-login-link" to="/login">
+            Already a user? Login here
+          </Link>
         </div>
         {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
       </div>
-    </div> 
+    </div>
   );
-}
+};
 
-export default RegisterUser
-
+export default RegisterUser;

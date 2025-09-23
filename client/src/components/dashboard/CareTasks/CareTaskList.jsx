@@ -145,14 +145,14 @@ function CareTaskList({
                 </>
               )}
 
-            {" · "}
             <button className="secondary" onClick={() => toggleComments(t._id)}>
               {openCommentsFor === t._id ? "Close comments" : "Comments"}
             </button>
+
             <button className="secondary" onClick={() => toggleFiles(t._id)}>
               {openFilesFor === t._id ? "Close files" : "Files"}
             </button>
-            {" · "}
+
             <button
               className="secondary"
               onClick={() =>
@@ -161,7 +161,6 @@ function CareTaskList({
             >
               {editingTaskId === t._id ? "Close edit" : "Edit"}
             </button>
-            {" · "}
 
             <button className="danger" onClick={() => deleteTaskHard(t._id)}>
               Delete task

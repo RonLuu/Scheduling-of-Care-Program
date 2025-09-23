@@ -349,8 +349,6 @@ function BudgetReporting({ jwt, clients }) {
                       <td>{aud.format(c.currentBalance || 0)}</td>
                       <td>{aud.format(c.expected || 0)}</td>
                       <td>{aud.format(c.expectedBalanceAtYearEnd || 0)}</td>
-                      {/* <td>{((c.spentPct || 0) * 100).toFixed(1)}%</td>
-                      <td>{((c.expectedPct || 0) * 100).toFixed(1)}%</td> */}
                       <td>
                         <button
                           className="secondary"

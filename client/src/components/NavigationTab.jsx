@@ -1,18 +1,21 @@
 import React, { useState } from "react";
 import {
   BiMenu,
-  BiSolidDashboard,
-  BiCalendar,
-  BiGroup,
-  BiTask,
+  BiHelpCircle,
   BiUser,
+  BiLockAlt,
+  BiGroup,
+  BiCalendar,
+  BiGitBranch,
+  BiTask,
+  BiBarChartSquare,
   BiExit,
 } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/NavigationTab.css";
+import useAuth from "./dashboard/hooks/useAuth";
 
 const NavItem = ({ to, onClick, children }) => {
-  // If `to` exists, render a Link; otherwise render a <button>
   return to ? (
     <Link to={to} className="navigationtab-link">
       {children}
@@ -28,8 +31,9 @@ const NavItem = ({ to, onClick, children }) => {
   );
 };
 
-const NavigationTab = ({ setMe }) => {
+const NavigationTab = () => {
   const [showTab, setShowTab] = useState(false);
+  const { setMe } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -61,30 +65,42 @@ const NavigationTab = ({ setMe }) => {
         {showTab && (
           <div className="navigationtab-link-wrapper">
             <NavItem to="/faq">
-              <BiSolidDashboard className="navigationtab-icon" />
+              <BiHelpCircle className="navigationtab-icon" />
               FAQ
-            </NavItem>
-            <NavItem to="/calendar">
-              <BiCalendar className="navigationtab-icon" />
-              Calendar
-            </NavItem>
-            <NavItem to="/budgetreport">
-              <BiGroup className="navigationtab-icon" />
-              Budget reports
-            </NavItem>
-            <NavItem to="/tasks">
-              <BiTask className="navigationtab-icon" />
-              Tasks
             </NavItem>
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
               Profile
             </NavItem>
+            <NavItem to="/access">
+              <BiLockAlt className="navigationtab-icon" />
+              Access
+            </NavItem>
+            <NavItem to="/clients">
+              <BiGroup className="navigationtab-icon" />
+              Clients
+            </NavItem>
+            <NavItem to="/shift-allocation">
+              <BiCalendar className="navigationtab-icon" />
+              Shift Allocation
+            </NavItem>
+            <NavItem to="/sub-elements">
+              <BiGitBranch className="navigationtab-icon" />
+              Sub-elements
+            </NavItem>
+            <NavItem to="/tasks">
+              <BiTask className="navigationtab-icon" />
+              Tasks
+            </NavItem>
+            <NavItem to="/budget-reports">
+              <BiBarChartSquare className="navigationtab-icon" />
+              Budget Reports
+            </NavItem>
 
-            {/* Logout as button but styled identically */}
+            {/* Log Out as a button but styled like links */}
             <NavItem onClick={handleLogout}>
               <BiExit className="navigationtab-icon" />
-              Logout
+              Log Out
             </NavItem>
           </div>
         )}
