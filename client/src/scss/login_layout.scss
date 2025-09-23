@@ -85,31 +85,22 @@
         margin:10px 0;
     };
 }
-.left{
-    position: absolute;
-    left: 10%;
+
+.left, .top, .center, .bottom {
+  position: static; /* default */
 }
-.top{
-    position: absolute;
-    top: 10%;
-}
-.center
-{
-    position: absolute;
-    top: 50%;
-    transform: translate(0, -50%);
-    @include respond(sm){
-        top: 57%;
-    }
-}
-.bottom
-{
-    position: absolute;
-    bottom: 27%;
+.left {
+  align-self: flex-start;  /* ensures the section is left-aligned */
+  margin-left: 50px;           /* or 1-2rem if you want a small offset */
 }
 .register-box2 {
     @extend .register-box;
     background-color: $white;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* aligns children to the left */
+//   padding-left: 2rem;      /* optional: nudge all content right a bit */
+  gap: 1.5rem;             
     h2 
     {
         font-size: 30px;
@@ -183,22 +174,7 @@
         font-style: italic;
     }
 }
-.container{
-    width: 200%;
-    box-sizing: border-box;
-    @include respond(md)
-    {
-        width:175%;
-    }
-    @include respond(sm){
-        width: 125%;
-    }
-    @include respond(xs)
-    {
-        width: 100%;
-    }
 
-}
 .select-container {
     position: relative;
     select{

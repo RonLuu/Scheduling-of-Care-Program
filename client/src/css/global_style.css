@@ -18,4 +18,16 @@ p, h2, h3, h4, h5, h6, button {
   .container {
     width: 95%;
   }
+}
+
+.header {
+  background-color: #E8EBED;
+  color: #2C3F70;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  height: 40px;
 }/*# sourceMappingURL=global_style.css.map */

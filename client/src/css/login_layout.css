@@ -20,6 +20,18 @@ p, h2, h3, h4, h5, h6, button {
   }
 }
 
+.header {
+  background-color: #E8EBED;
+  color: #2C3F70;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  height: 40px;
+}
+
 .box {
   background-color: #F6FAFF;
   border-radius: 10px;
@@ -113,34 +125,21 @@ p, h2, h3, h4, h5, h6, button {
   margin: 10px 0;
 }
 
+.left, .top, .center, .bottom {
+  position: static; /* default */
+}
+
 .left {
-  position: absolute;
-  left: 10%;
-}
-
-.top {
-  position: absolute;
-  top: 10%;
-}
-
-.center {
-  position: absolute;
-  top: 50%;
-  transform: translate(0, -50%);
-}
-@media screen and (max-width: 768px) {
-  .center {
-    top: 57%;
-  }
-}
-
-.bottom {
-  position: absolute;
-  bottom: 27%;
+  align-self: flex-start; /* ensures the section is left-aligned */
+  margin-left: 50px; /* or 1-2rem if you want a small offset */
 }
 
 .register-box2 {
   background-color: #F6FAFF;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* aligns children to the left */
+  gap: 1.5rem;
 }
 .register-box2 h2 {
   font-size: 30px;
@@ -213,26 +212,6 @@ p, h2, h3, h4, h5, h6, button {
 }
 .role.italic {
   font-style: italic;
-}
-
-.container {
-  width: 200%;
-  box-sizing: border-box;
-}
-@media screen and (max-width: 992px) {
-  .container {
-    width: 175%;
-  }
-}
-@media screen and (max-width: 768px) {
-  .container {
-    width: 125%;
-  }
-}
-@media screen and (max-width: 576px) {
-  .container {
-    width: 100%;
-  }
 }
 
 .select-container {

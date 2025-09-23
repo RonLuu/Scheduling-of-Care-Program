@@ -70,3 +70,16 @@ p, h2, h3, h4, h5, h6, button {
     }
 }
 
+.header
+{
+    background-color: $meringue;
+    color: $blueberry;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 18px;
+    height: 40px;
+}
+

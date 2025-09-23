@@ -7,6 +7,8 @@ import RegisterOrganization from './components/register/RegisterOrganization'
 import Dashboard from './components/dashboard/Dashboard'
 import NavigationTab from './components/NavigationTab'
 import UserProfile from './components/dashboard/Profile/UserProfile'
+import BudgetReport from './components/dashboard/Budget/BudgetReporting'
+import Header from './components/Header'
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -28,6 +30,8 @@ const App = () => {
       <Route path='/dashboard' element={<Dashboard/>}/>
       {/* TODO: remove this route */}
       <Route path='/navigationtab' element={<NavigationTab/>}/>
+      <Route path='/header' element={<Header/>}></Route>
+      <Route path='/budgetReport' element={<BudgetReport/>}/>
     </Routes>
   )
 }

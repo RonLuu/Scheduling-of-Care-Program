@@ -70,62 +70,61 @@ const RegisterUser = () => {
     <div className="bg-wallpaper">
       <div className = "box">
         <div className = "register-box2 h80m20">
-          <div className="left top">
-            <h2>Register User</h2>
-            <form onSubmit={submit}>
-            <div className = "container">
-            <input className="form"
-              placeholder="Full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoComplete="name"
-            />
-            <input className="form"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-            <input className="form"
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              minLength={6}
-            />
-          </div>
+            <form onSubmit={submit} >
+              <div className="left top">
+                <h2 >Register User</h2>
+                <input className="form"
+                  placeholder="Full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                />
+                <input className="form"
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+                <input className="form"
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+
+              </div>
+              <div className = "left center">
+              <p style={{color: "#7E7E7E" }}>Choose your role:</p>
+                <div className="select-container">
+                  <select className={` form role ${role === '' ? 'italic' : ''}`} 
+                  id="role" value={role} 
+                  onChange={(e) => setRole(e.target.value)}
+                  onBlur={() => setIsOpen(false)} onClick={() => setIsOpen(!isOpen)} >
+                    <option style={{ fontStyle: 'italic' }} value="">-- Select a role --</option>
+                    <option className = "role"value="Family">Family Member</option>
+                    <option className = "role" value="PoA">PoA</option> 
+                    <option className = "role" value="Admin">Admin</option>
+                    <option className = "role" value="GeneralCareStaff">Caretaker</option>
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} 
+                  className={`icon ${isOpen ? 'open' : 'close'}`} />
+                </div>
+               
+              </div>
+              <div className = "left bottom">
+                <button className = "btn" type='submit' disabled={loading}>
+                    {loading ? "Registering..." : "Register"}
+                </button>
+              </div>
             </form>
           </div>
-          <div className=" left center">
-            <p style={{color: "#7E7E7E" }}>Choose your role:</p>
-            <div className="container">
-              <div className="select-container">
-                <select className={` form role ${role === '' ? 'italic' : ''}`} 
-                id="role" value={role} 
-                onChange={(e) => setRole(e.target.value)}
-                onBlur={() => setIsOpen(false)} onClick={() => setIsOpen(!isOpen)} >
-                  <option style={{ fontStyle: 'italic' }} value="">-- Select a role --</option>
-                  <option className = "role"value="Family">Family Member</option>
-                  <option className = "role" value="PoA">PoA</option> 
-                  <option className = "role" value="Admin">Admin</option>
-                  <option className = "role" value="GeneralCareStaff">Caretaker</option>
-                </select>
-                <FontAwesomeIcon icon={faChevronDown} 
-                className={`icon ${isOpen ? 'open' : 'close'}`} />
-                </div>
-              </div>
-          </div>
-          <div className="left bottom">
-            <button className = "btn"  disabled={loading}>
-                {loading ? "Registering..." : "Register"}
-            </button>
-          </div>
-        </div>
+          
 
         <div className = "register-box1 h20">
           <div className="left">
@@ -133,8 +132,8 @@ const RegisterUser = () => {
             <Link to='/login'>
             <button className = "btn">Login</button>
             </Link>
-             {err && <p className = "error">{err}</p>}
           </div>
+           {err && <p className = "error">{err}</p>}
         </div>
       </div>
     </div> 
