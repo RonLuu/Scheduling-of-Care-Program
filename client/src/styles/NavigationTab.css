@@ -1,99 +1,116 @@
 .navigationtab-wrapper {
-    width: 20%;
-    height: 100vh;
-    position: relative;
+  width: 20%;
+  height: 20vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
 }
 
 .navigationtab-panel {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    left: 0;
-    transform: translateX(-100%);
-    background-color: #8189D2;
-    transition: transform 0.3s ease-in-out;
+  width: 20%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-color: #8189d2;
+  transition: transform 0.3s ease-in-out;
+  pointer-events: none;
 }
 
-
 .navigationtab-panel.off {
-    transform: translateX(-100%);
+  transform: translateX(-100%);
 }
 
 .navigationtab-panel.on {
-    transform: translateX(0);
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .navigationtab-button-menu-wrapper {
-    width: 100%;
-    height: 15%;
-    margin-bottom: 3vh;
-    position: absolute;
-    z-index: 2;
+  width: 100%;
+  height: 15%;
+  margin-bottom: 3vh;
+  position: fixed;
+  z-index: 1001;
+  pointer-events: auto;
+  top: 0;
+  left: 0;
 }
 
 .navigationtab-button-menu {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 300%;
-    padding: 0px 0px 0px 0px;
-    margin: 10% 0px 0px 10%;
-    height: 40%;
-    width: 20%;
-    border-radius: 30%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 300%;
+  padding: 0px 0px 0px 0px;
+  margin: 25px 0 0 20px;
+  height: 40%;
+  width: 5%;
+  border-radius: 30%;
+  border: none; /* Added to remove default button border */
+  cursor: pointer;
 }
 
 .navigationtab-button-menu.off {
-    background-color: white;
-    color: #2C3F70;
+  background-color: white;
+  color: #2c3f70;
 }
 
 .navigationtab-button-menu.on {
-    background-color: #8189D2;
-    color: #FFFFFF;
+  background-color: #8189d2;
+  color: #ffffff;
 }
 
 .navigationtab-button-menu:hover {
-    background-color: #a8c6f1;
-    color: #FFFFFF;
+  background-color: #a8c6f1;
+  color: #ffffff;
 }
-
 
 .navigationtab-link-wrapper {
-    margin-top: auto;
-    width: 100%;
-    height: 80%;
-    display: flex;
-    flex-direction: column;
+  margin-top: auto;
+  width: 100%;
+  height: 80%;
+  display: flex;
+  flex-direction: column;
 }
 
-.navigationtab-link {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    font-family: 'inter';
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1.5vw;
-    color: #FFF;
-    margin: 0px 0px 5vh 0px;
+.navigationtab-link,
+.navigationtab-link.as-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-decoration: none;
+  font-family: "inter";
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1.5vw;
+  color: #fff;
+  margin: 0 0 5vh 0;
+
+  /* reset button defaults /
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0; / keep spacing handled by margins & icon /
+  text-align: left; / make text align like a link */
+}
+
+.navigationtab-link:hover,
+.navigationtab-link.as-button:hover,
+.navigationtab-link:focus-visible,
+.navigationtab-link.as-button:focus-visible {
+  background-color: rgba(44, 63, 112, 0.4); /* subtle bar highlight */
 }
 
 .navigationtab-icon {
-    margin: 0vw 0.25vw 0vw 2.75vw;
-    font-size: 1.5vw;
-    color: #FFF;
-}
-
-.navigationtab-overlay {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.1);
-    z-index: 0;
+  margin: 0 0.25vw 0 2.75vw;
+  font-size: 1.5vw;
+  color: #fff;
 }

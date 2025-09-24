@@ -1,7 +1,8 @@
 import React from "react";
-import TaskComments from "./TaskComments";
-import TaskFiles from "./TaskFiles";
-import TaskCostEditor from "./TaskCostEditor";
+import FilePanel from "../Panels/FilePanel";
+import CommentPanel from "../Panels/CommentPanel";
+import CareTaskCostEditor from "./CareTaskCostEditor.jsx";
+import CareTaskRowEditor from "./CareTaskRowEditor.jsx";
 import { formatDate, formatTime } from "../utils/formatters";
 
 function CareTaskList({
@@ -27,7 +28,36 @@ function CareTaskList({
   setNewFile,
   addFile,
   loadFiles,
+  // new
+  assignableUsers,
+  reloadAfterEdit, // pass a function that refreshes current client's tasks
+  currentUserId,
 }) {
+  const [editingTaskId, setEditingTaskId] = React.useState(null);
+
+  const deleteTaskHard = async (taskId) => {
+    if (
+      !window.confirm(
+        "Delete this task and ALL its files and comments? This cannot be undone."
+      )
+    )
+      return;
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+
+      const r = await fetch(`/api/care-tasks/${taskId}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to delete task");
+      await reloadAfterEdit?.();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  };
+
   return (
     <ul>
       {tasks.map((t) => (
@@ -38,12 +68,12 @@ function CareTaskList({
               {" · "}
               {formatDate(t.dueDate)}
               {t.scheduleType === "Timed" && t.startAt && t.endAt && (
-                <React.Fragment>
+                <>
                   {" · "}
                   {formatTime(t.startAt)}
                   {" – "}
                   {formatTime(t.endAt)}
-                </React.Fragment>
+                </>
               )}
               {" · "}
               <span className="badge">
@@ -51,12 +81,10 @@ function CareTaskList({
               </span>
               {" · "}
               <span className="badge">{t.status}</span>
+
+              {/* Complete toggle */}
               <input
-                style={{
-                  display: "inline",
-                  width: "auto",
-                  marginLeft: 16,
-                }}
+                style={{ display: "inline", width: "auto", marginLeft: 16 }}
                 type="checkbox"
                 checked={t.status === "Completed"}
                 onChange={(e) => toggleTaskComplete(t, e.target.checked)}
@@ -66,43 +94,41 @@ function CareTaskList({
                     : "Mark as completed"
                 }
               />
+
+              {/* Assignee info */}
               {t.assignedToUserId ? (
                 <span title="Assigned to">
                   {" · "}Assigned:{" "}
                   <strong>{displayUser(t.assignedToUserId)}</strong>
                 </span>
               ) : (
-                <React.Fragment>
+                <>
                   {" · "}
                   <span className="badge" title="No assignee">
                     Unassigned
                   </span>
-                </React.Fragment>
+                </>
               )}
               {t.completedByUserId && (
-                <React.Fragment>
+                <>
                   {" · "}
                   <span title="Completed by">
                     Completed by:{" "}
                     <strong>{displayUser(t.completedByUserId)}</strong>
                   </span>
-                </React.Fragment>
+                </>
               )}
             </div>
 
-            {/* Show spent amount (read-only) if present */}
+            {/* Spent (read-only) + change cost control */}
             {t.status === "Completed" &&
               t.cost !== undefined &&
               t.cost !== null && (
-                <React.Fragment>
+                <>
                   {" · "}Spent: <strong>{aud.format(t.cost)}</strong>{" "}
                   <button
                     className="secondary"
-                    style={{
-                      marginTop: 8,
-                      borderRadius: 8,
-                      padding: 10,
-                    }}
+                    style={{ marginTop: 8, borderRadius: 8, padding: 10 }}
                     onClick={() => {
                       setCostEditorHiddenByTask((prev) => ({
                         ...prev,
@@ -116,21 +142,34 @@ function CareTaskList({
                   >
                     Change cost
                   </button>
-                </React.Fragment>
+                </>
               )}
-            {" · "}
 
             <button className="secondary" onClick={() => toggleComments(t._id)}>
-              Comments
+              {openCommentsFor === t._id ? "Close comments" : "Comments"}
             </button>
+
             <button className="secondary" onClick={() => toggleFiles(t._id)}>
-              Files
+              {openFilesFor === t._id ? "Close files" : "Files"}
+            </button>
+
+            <button
+              className="secondary"
+              onClick={() =>
+                setEditingTaskId(editingTaskId === t._id ? null : t._id)
+              }
+            >
+              {editingTaskId === t._id ? "Close edit" : "Edit"}
+            </button>
+
+            <button className="danger" onClick={() => deleteTaskHard(t._id)}>
+              Delete task
             </button>
           </div>
 
           {/* Cost Editor */}
           {t.status === "Completed" && !costEditorHiddenByTask[t._id] && (
-            <TaskCostEditor
+            <CareTaskCostEditor
               taskId={t._id}
               currentCost={t.cost}
               draftValue={costDraftByTask[t._id]}
@@ -146,25 +185,44 @@ function CareTaskList({
 
           {/* Comments Panel */}
           {openCommentsFor === t._id && (
-            <TaskComments
+            <CommentPanel
               taskId={t._id}
               comments={commentsByTask[t._id] || []}
               newCommentText={newCommentText}
               onCommentTextChange={setNewCommentText}
               onAddComment={() => addComment(t._id)}
+              currentUserId={currentUserId}
+              onReload={() => toggleComments(t._id) || toggleComments(t._id)} // quick reload
             />
           )}
 
           {/* Files Panel */}
           {openFilesFor === t._id && (
-            <TaskFiles
-              taskId={t._id}
+            <FilePanel
+              scope="CareTask"
+              targetId={t._id}
               files={filesByTask[t._id] || []}
               newFile={newFile}
               onNewFileChange={setNewFile}
               onAddFile={() => addFile(t._id)}
               onLoadFiles={() => loadFiles(t._id)}
+              currentUserId={currentUserId}
             />
+          )}
+
+          {/* Inline editor row */}
+          {editingTaskId === t._id && (
+            <div style={{ marginTop: 10 }}>
+              <CareTaskRowEditor
+                task={t}
+                assignableUsers={assignableUsers}
+                onCancel={() => setEditingTaskId(null)}
+                onSaved={async () => {
+                  setEditingTaskId(null);
+                  await reloadAfterEdit?.();
+                }}
+              />
+            </div>
           )}
         </li>
       ))}

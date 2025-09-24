@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import "../../css/login_layout.css"
-import {useAuth} from "../../AuthContext"
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import { data, Link, useNavigate } from 'react-router-dom';
+//import "../../styles/RegisterUser.css"
+import "../../css/login_layout.css";
+import useAuth from "../dashboard/hooks/useAuth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { data, Link, useNavigate } from "react-router-dom";
 
 const RegisterUser = () => {
-  const {setMe} = useAuth();
+  const { setMe } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = React.useState("");
@@ -57,8 +58,7 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      navigate("/dashboard")
-
+      navigate("/profile");
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -68,79 +68,92 @@ const RegisterUser = () => {
 
   return (
     <div className="bg-wallpaper">
-      <div className = "box">
-        <div className = "register-box2 h80m20">
-            <form onSubmit={submit} >
-              <div className="left top">
-                <h2 >Register User</h2>
-                <input className="form"
-                  placeholder="Full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-                <input className="form"
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-                <input className="form"
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  minLength={6}
-                />
-
-              </div>
-              <div className = "left center">
-                  <h3 style={{ color: "#8b8b8bff" }}>
-                    Choose your role:
-                  </h3>     
-               <div className="select-container">
-                  <select className={` form role ${role === '' ? 'italic' : ''}`} 
-                  id="role" value={role} 
+      <div className="box">
+        <div className="register-box2 h80m20">
+          <form onSubmit={submit}>
+            <div className="left top">
+              <h2>Register User</h2>
+              <input
+                className="form"
+                placeholder="Full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+              />
+              <input
+                className="form"
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+              <input
+                className="form"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={6}
+              />
+            </div>
+            <div className="left center">
+              <h3 style={{ color: "#8b8b8bff" }}>Choose your role:</h3>
+              <div className="select-container">
+                <select
+                  className={` form role ${role === "" ? "italic" : ""}`}
+                  id="role"
+                  value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  onBlur={() => setIsOpen(false)} onClick={() => setIsOpen(!isOpen)} >
-                    <option style={{ fontStyle: 'italic' }} value="">-- Select a role --</option>
-                    <option className = "role"value="Family">Family Member</option>
-                    <option className = "role" value="PoA">PoA</option> 
-                    <option className = "role" value="Admin">Admin</option>
-                    <option className = "role" value="GeneralCareStaff">Caretaker</option>
-                  </select>
-                  <FontAwesomeIcon icon={faChevronDown} 
-                  className={`icon ${isOpen ? 'open' : 'close'}`} />
-                </div>
-               
+                  onBlur={() => setIsOpen(false)}
+                  onClick={() => setIsOpen(!isOpen)}
+                >
+                  <option style={{ fontStyle: "italic" }} value="">
+                    -- Select a role --
+                  </option>
+                  <option className="role" value="Family">
+                    Family Member
+                  </option>
+                  <option className="role" value="PoA">
+                    PoA
+                  </option>
+                  <option className="role" value="Admin">
+                    Admin
+                  </option>
+                  <option className="role" value="GeneralCareStaff">
+                    Caretaker
+                  </option>
+                </select>
+                <FontAwesomeIcon
+                  icon={faChevronDown}
+                  className={`icon ${isOpen ? "open" : "close"}`}
+                />
               </div>
-              <div className = "left bottom">
-                <button className = "btn" type='submit' disabled={loading}>
-                    {loading ? "Registering..." : "Register"}
-                </button>
-              </div>
-            </form>
-          </div>
-          
+            </div>
+            <div className="left bottom">
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? "Registering..." : "Register"}
+              </button>
+            </div>
+          </form>
+        </div>
 
-        <div className = "register-box1 h20">
+        <div className="register-box1 h20">
           <div className="left">
-            <p >Already a member?</p>
-            <Link to='/login'>
-            <button className = "btn">Login</button>
+            <p>Already a member?</p>
+            <Link to="/login">
+              <button className="btn">Login</button>
             </Link>
           </div>
-           {err && <p className = "error">{err}</p>}
+          {err && <p className="error">{err}</p>}
         </div>
       </div>
-    </div> 
+    </div>
   );
-}
+};
 
-export default RegisterUser
-
+export default RegisterUser;

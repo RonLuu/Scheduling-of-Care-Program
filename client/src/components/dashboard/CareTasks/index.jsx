@@ -4,7 +4,7 @@ import CareTaskCalendar from "./CareTaskCalendar";
 import { useTasksData } from "../hooks/useTasksData";
 import { aud, displayUser } from "../utils/formatters";
 
-function TasksPanel({ jwt, clients }) {
+function CareTasks({ jwt, clients }) {
   const [viewMode, setViewMode] = React.useState("list");
   const {
     tasks,
@@ -32,6 +32,8 @@ function TasksPanel({ jwt, clients }) {
     costEditorHiddenByTask,
     setCostEditorHiddenByTask,
     saveTaskCost,
+    assignableUsers,
+    currentUserId,
   } = useTasksData(jwt, clients);
 
   const onChangeTasksClient = (e) => {
@@ -55,20 +57,19 @@ function TasksPanel({ jwt, clients }) {
       .catch(() => {});
   }, [tasksClientId, loadTasksFor]); // re-run when switching client to keep list fresh
 
-  // Ensure rolling horizon for no-end items (org scoped / linked-scope for staff)
+  // Ensure annual horizon up to Dec 31 of the current year (auto-renews each year)
   React.useEffect(() => {
     const jwtNow = localStorage.getItem("jwt");
     if (!jwtNow) return;
-    fetch("/api/scheduling/ensure-horizon?horizonDays=730", {
+    fetch("/api/scheduling/ensure-annual", {
       method: "POST",
       headers: { Authorization: "Bearer " + jwtNow },
     })
       .then(() => {
-        // reload current client's tasks after extending horizon
         if (tasksClientId) loadTasksFor(tasksClientId);
       })
       .catch(() => {});
-  }, [tasksClientId, loadTasksFor]); // re-run when switching client to keep list fresh
+  }, [tasksClientId, loadTasksFor]);
 
   return (
     <div className="card">
@@ -94,12 +95,21 @@ function TasksPanel({ jwt, clients }) {
 
       <div style={{ margin: "8px 0" }}>
         <button
+          className="secondary"
+          onClick={() => tasksClientId && loadTasksFor(tasksClientId)}
+          title="Reload tasks"
+        >
+          Refresh
+        </button>
+
+        <button
           className={viewMode === "list" ? "" : "secondary"}
           onClick={() => setViewMode("list")}
           style={{ marginRight: 8 }}
         >
           List
         </button>
+
         <button
           className={viewMode === "calendar" ? "" : "secondary"}
           onClick={() => setViewMode("calendar")}
@@ -144,10 +154,13 @@ function TasksPanel({ jwt, clients }) {
             setNewFile={setNewFile}
             addFile={addFile}
             loadFiles={loadFiles}
+            assignableUsers={assignableUsers}
+            reloadAfterEdit={() => tasksClientId && loadTasksFor(tasksClientId)}
+            currentUserId={currentUserId}
           />
         ))}
     </div>
   );
 }
 
-export default TasksPanel;
+export default CareTasks;

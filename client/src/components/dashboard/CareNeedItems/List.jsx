@@ -1,112 +1,95 @@
 import React from "react";
-import { aud, formatFrequency } from "../utils/formatters";
+import { aud, formatFrequency } from "../utils/formatters.js";
+import CommentPanel from "../Panels/CommentPanel.jsx";
+import FilePanel from "../Panels/FilePanel.jsx";
+import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
+import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
+
+function InlineAttachment({ f }) {
+  const isImg = f.fileType && f.fileType.startsWith("image/");
+  return (
+    <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
+      {isImg ? (
+        <img
+          src={f.urlOrPath}
+          alt={f.filename}
+          style={{
+            maxHeight: 64,
+            maxWidth: 96,
+            objectFit: "cover",
+            borderRadius: 6,
+            border: "1px solid #ddd",
+          }}
+        />
+      ) : (
+        <span style={{ textDecoration: "underline" }}>{f.filename}</span>
+      )}
+    </a>
+  );
+}
 
 function List({ jwt, clients }) {
-  const [cniClientId, setCniClientId] = React.useState("");
-  const [cniItems, setCniItems] = React.useState([]);
-  const [filesByItem, setFilesByItem] = React.useState({});
-  const [cniLoading, setCniLoading] = React.useState(false);
-  const [cniErr, setCniErr] = React.useState("");
+  const {
+    cniClientId,
+    items,
+    filesByItem,
+    panelFilesByItem,
+    loading,
+    err,
+    handleClientChange,
+    loadItemsFor,
 
-  function InlineAttachment({ f }) {
-    const isImg = f.fileType && f.fileType.startsWith("image/");
-    return (
-      <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-        {isImg ? (
-          <img
-            src={f.urlOrPath}
-            alt={f.filename}
-            style={{
-              maxHeight: 64,
-              maxWidth: 96,
-              objectFit: "cover",
-              borderRadius: 6,
-              border: "1px solid #ddd",
-            }}
-          />
-        ) : (
-          <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-        )}
-      </a>
-    );
-  }
+    returnItem,
+    deleteItem,
 
-  const loadFilesFor = async (itemId) => {
-    try {
-      const r = await fetch(`/api/file-upload/by-care-need-item/${itemId}`, {
-        headers: { Authorization: "Bearer " + jwt },
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to load files");
-      setFilesByItem((prev) => ({ ...prev, [itemId]: d }));
-    } catch {
-      setFilesByItem((prev) => ({ ...prev, [itemId]: [] }));
-    }
-  };
+    openCommentsForItem,
+    openFilesForItem,
+    commentsByItem,
+    newCommentTextItem,
+    setNewCommentTextItem,
+    newFileItem,
+    setNewFileItem,
+    toggleItemComments,
+    toggleItemFiles,
+    addItemComment,
+    addItemFile,
+    loadItemFilesPanel,
+    currentUserId,
+  } = useCareNeedItemsData(jwt, clients);
 
-  const loadCareNeedItemsFor = React.useCallback(
-    async (personId) => {
-      try {
-        setCniLoading(true);
-        setCniErr("");
-        setCniItems([]);
-        setFilesByItem({});
-        if (!jwt) throw new Error("UNAUTHENTICATED");
-        if (!personId) return;
+  // track which item is being edited
+  const [editingItemId, setEditingItemId] = React.useState(null);
 
-        const r = await fetch(
-          `/api/care-need-items?personId=${encodeURIComponent(personId)}`,
-          {
-            headers: { Authorization: "Bearer " + jwt },
-          }
-        );
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "Failed to load items");
-
-        // Sort by startDate or name
-        d.sort((a, b) => {
-          const as = a.frequency.startDate
-            ? new Date(a.frequency.startDate).getTime()
-            : 0;
-          const bs = b.frequency.startDate
-            ? new Date(b.frequency.startDate).getTime()
-            : 0;
-          return as - bs || a.name.localeCompare(b.name);
-        });
-
-        setCniItems(d);
-        // prefetch attachments
-        d.forEach((it) => loadFilesFor(it._id));
-      } catch (e) {
-        setCniErr(e.message || String(e));
-      } finally {
-        setCniLoading(false);
-      }
-    },
-    [jwt]
+  const renderCategoryDivider = (category) => (
+    <tr key={`div-${category}`}>
+      <td colSpan={10} style={{ padding: "10px 6px", background: "#f9fafb" }}>
+        <strong style={{ fontSize: 13 }}>{category}</strong>
+      </td>
+    </tr>
   );
 
-  React.useEffect(() => {
-    if (clients && clients.length > 0 && !cniClientId) {
-      const first = clients[0]._id;
-      setCniClientId(first);
-      loadCareNeedItemsFor(first);
+  const closeEditorIfReturned = React.useCallback(() => {
+    if (!editingItemId) return;
+    const edited = items.find((x) => x._id === editingItemId);
+    if (edited && edited.status === "Returned") {
+      setEditingItemId(null);
     }
-  }, [clients, cniClientId, loadCareNeedItemsFor]);
+  }, [editingItemId, items]);
 
-  const handleClientChange = (e) => {
-    const v = e.target.value;
-    setCniClientId(v);
-    if (v) loadCareNeedItemsFor(v);
-  };
+  React.useEffect(() => {
+    closeEditorIfReturned();
+  }, [items, closeEditorIfReturned]);
 
   return (
     <div className="card">
-      <h3>Care Need Items</h3>
+      <h3>Sub-element List</h3>
       <div className="row">
         <div>
           <label>Client</label>
-          <select value={cniClientId} onChange={handleClientChange}>
+          <select
+            value={cniClientId}
+            onChange={(e) => handleClientChange(e.target.value)}
+          >
             <option value="">— Select client —</option>
             {clients.map((c) => (
               <option key={c._id} value={c._id}>
@@ -119,88 +102,236 @@ function List({ jwt, clients }) {
           <label>&nbsp;</label>
           <button
             className="secondary"
-            onClick={() => cniClientId && loadCareNeedItemsFor(cniClientId)}
+            onClick={() => cniClientId && loadItemsFor(cniClientId)}
           >
             Refresh
           </button>
         </div>
       </div>
 
-      {cniErr && <p style={{ color: "#b91c1c" }}>Error: {cniErr}</p>}
-      {cniLoading && <p>Loading items…</p>}
+      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+      {loading && <p>Loading items…</p>}
 
-      {!cniLoading && cniItems.length === 0 && (
-        <p>No care need items for this client.</p>
-      )}
+      {!loading && items.length === 0 && <p>No items for this client.</p>}
 
-      {cniItems.length > 0 && (
+      {items.length > 0 && (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
+              <th style={{ textAlign: "left" }}>Category</th>
               <th style={{ textAlign: "left" }}>Name</th>
               <th style={{ textAlign: "left" }}>Frequency</th>
               <th style={{ textAlign: "left" }}>Budget</th>
               <th style={{ textAlign: "left" }}>Purchase cost</th>
               <th style={{ textAlign: "left" }}>Expected per task</th>
-              <th style={{ textAlign: "left" }}>Schedule</th>
-              <th style={{ textAlign: "left" }}>Category</th>
+              <th style={{ textAlign: "left" }}>Schedule Period</th>
+              <th style={{ textAlign: "left" }}>Returned</th>
               <th style={{ textAlign: "left" }}>Attachments</th>
+              <th style={{ textAlign: "left" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {cniItems.map((it) => {
-              const files = filesByItem[it._id] || [];
-              return (
-                <tr key={it._id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{it.name}</td>
-                  <td>{formatFrequency(it.frequency)}</td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.budgetCost || 0)}
-                  </td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.purchaseCost || 0)}
-                  </td>
-                  <td style={{ textAlign: "left" }}>
-                    {aud.format(it.occurrenceCost || 0)}
-                  </td>
-                  <td>
-                    <span className="badge">
-                      {it.scheduleType === "Timed" && it.timeWindow
-                        ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                        : "All-day"}
-                    </span>
-                  </td>
-                  <td>{it.category}</td>
+            {(() => {
+              const rows = [];
+              let lastCat = null;
 
-                  <td>
-                    {files.length === 0 ? (
-                      <span style={{ opacity: 0.6 }}>—</span>
-                    ) : (
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 16,
-                          display: "flex",
-                          gap: 8,
-                          flexWrap: "wrap",
-                        }}
+              items.forEach((it) => {
+                const cat = it.category || "Other";
+                const rowFiles = filesByItem[it._id] || [];
+                const isPurchaseOnly =
+                  it.frequency?.intervalType === "JustPurchase";
+                const isReturned = it.status === "Returned";
+
+                // category divider
+                if (cat !== lastCat) {
+                  rows.push(renderCategoryDivider(cat));
+                  lastCat = cat;
+                }
+
+                // main item row
+                rows.push(
+                  <tr
+                    key={it._id}
+                    style={{
+                      borderTop: "1px solid #eee",
+                      opacity: isReturned ? 0.75 : 1,
+                    }}
+                  >
+                    <td></td>
+                    <td>{it.name}</td>
+                    <td>{formatFrequency(it.frequency)}</td>
+                    <td>{aud.format(it.budgetCost || 0)}</td>
+                    <td>{aud.format(it.purchaseCost || 0)}</td>
+                    <td>
+                      {isPurchaseOnly
+                        ? "—"
+                        : aud.format(it.occurrenceCost || 0)}
+                    </td>
+                    <td>
+                      {isPurchaseOnly ? (
+                        "—"
+                      ) : (
+                        <span className="badge">
+                          {it.scheduleType === "Timed" && it.timeWindow
+                            ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
+                            : "All-day"}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {isReturned ? (
+                        <span
+                          className="badge"
+                          style={{ background: "#fef3c7", color: "#92400e" }}
+                        >
+                          Returned
+                        </span>
+                      ) : (
+                        <span style={{ opacity: 0.4 }}>No</span>
+                      )}
+                    </td>
+                    <td>
+                      {rowFiles.length === 0 ? (
+                        <span style={{ opacity: 0.6 }}>—</span>
+                      ) : (
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: 16,
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {rowFiles.map((f) => (
+                            <li key={f._id} style={{ listStyle: "none" }}>
+                              <InlineAttachment f={f} />
+                              {f.scope === "Shared" && (
+                                <span
+                                  className="badge"
+                                  style={{ marginLeft: 6 }}
+                                >
+                                  Shared
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    <td>
+                      <div
+                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
                       >
-                        {files.map((f) => (
-                          <li key={f._id} style={{ listStyle: "none" }}>
-                            <InlineAttachment f={f} />
-                            {f.scope === "Shared" && (
-                              <span className="badge" style={{ marginLeft: 6 }}>
-                                Shared
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                        {/* Hide Edit & Return when item is Returned */}
+                        {!isReturned && (
+                          <>
+                            <button
+                              className="secondary"
+                              title="Edit details"
+                              onClick={() =>
+                                setEditingItemId(
+                                  editingItemId === it._id ? null : it._id
+                                )
+                              }
+                            >
+                              {editingItemId === it._id ? "Close edit" : "Edit"}
+                            </button>
+                            <button
+                              className="secondary"
+                              title="Mark as returned"
+                              onClick={() => returnItem(it._id)}
+                            >
+                              Return
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          className="danger"
+                          onClick={() => deleteItem(it._id)}
+                          title="Delete item and ALL associated tasks/files/comments"
+                        >
+                          Delete
+                        </button>
+                      </div>
+
+                      {/* Return attachments & comments entry (only when returned) */}
+                      {isReturned && (
+                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              className="secondary"
+                              onClick={() => toggleItemComments(it._id)}
+                            >
+                              Comments
+                            </button>
+                            <button
+                              className="secondary"
+                              onClick={() => toggleItemFiles(it._id)}
+                            >
+                              Files
+                            </button>
+                          </div>
+
+                          {/* Comments panel (item scope) */}
+                          {openCommentsForItem === it._id && (
+                            <CommentPanel
+                              comments={commentsByItem[it._id] || []}
+                              newCommentText={newCommentTextItem}
+                              onCommentTextChange={setNewCommentTextItem}
+                              onAddComment={() => addItemComment(it._id)}
+                              currentUserId={currentUserId}
+                            />
+                          )}
+
+                          {/* Files panel (item scope, direct uploads for returns) */}
+                          {openFilesForItem === it._id && (
+                            <FilePanel
+                              // re-use TaskFiles uploader; server looks at "scope"
+                              taskId={it._id} // not used when scope is CareNeedItem; but TaskFiles expects it—safe to pass
+                              scope="CareNeedItem"
+                              targetId={it._id}
+                              files={panelFilesByItem[it._id] || []}
+                              newFile={newFileItem}
+                              onNewFileChange={setNewFileItem}
+                              onAddFile={() => addItemFile(it._id)}
+                              onLoadFiles={() => loadItemFilesPanel(it._id)}
+                              currentUserId={currentUserId}
+                              onReload={() =>
+                                toggleItemComments(it._id) ||
+                                toggleItemComments(it._id)
+                              } // quick reload
+                            />
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+
+                // editor row (full-width) — only for non-returned items
+                if (!isReturned && editingItemId === it._id) {
+                  rows.push(
+                    <tr key={`${it._id}__editor`}>
+                      <td colSpan={10} style={{ paddingTop: 0 }}>
+                        <CareNeedItemRowEditor
+                          item={it}
+                          jwt={jwt}
+                          onCancel={() => setEditingItemId(null)}
+                          onSaved={async () => {
+                            setEditingItemId(null);
+                            if (cniClientId) await loadItemsFor(cniClientId);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                }
+              });
+
+              return rows;
+            })()}
           </tbody>
         </table>
       )}

@@ -10,9 +10,10 @@ import commentRouter from "./comment.js";
 import fileUploadRouter from "./fileUpload.js";
 import schedulingRouter from "./scheduling.js";
 import authRouter from "./auth.js";
-import reportsRouter from "./reports.js";
+import reportRouter from "./report.js";
 import userMeRouter from "./users.me.js";
 import accessRequestRouter from "./accessRequest.js";
+import shiftAllocationRouter from "./shiftAllocation.js";
 
 const router = Router();
 
@@ -28,7 +29,8 @@ router.use("/care-tasks", careTaskRouter);
 router.use("/comments", commentRouter);
 router.use("/file-upload", fileUploadRouter);
 router.use("/scheduling", schedulingRouter);
-router.use("/reports", reportsRouter);
+router.use("/reports", reportRouter);
 router.use("/access-requests", accessRequestRouter);
+router.use("/shift-allocations", shiftAllocationRouter);
 
 export default router;

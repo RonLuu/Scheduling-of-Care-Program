@@ -1,7 +1,7 @@
 body {
   margin: 0;
   background: #fff;
-  font-family: 'inter';
+  font-family: "inter";
 }
 header {
   background: #1f2937;
@@ -9,7 +9,6 @@ header {
   padding: 12px 16px;
   display: flex;
   justify-content: space-between;
-
 }
 main {
   max-width: 900px;
@@ -36,9 +35,9 @@ button {
   margin: 6px 0 12px;
 } */
 button {
-  background-color: #2C3F70;
+  background-color: #2c3f70;
   color: white;
-  font-family: 'inria serif';
+  font-family: "inria serif";
   padding: 15px 32px;
   margin: 0px 50px 0px 50px;
   border: none;
@@ -75,4 +74,89 @@ code {
   background: #f3f4f6;
   padding: 2px 6px;
   border-radius: 6px;
+}
+
+p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Grid shell: left = nav (20%), right = content */
+.page {
+  display: grid;
+  grid-template-columns: 20% 1fr;
+  min-height: 100vh;
+}
+
+/* Main column content: centered stack */
+.page-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 16px;
+  grid-column: 1 / -1; /* span both columns */
+  width: 100%;
+  max-width: none; /* override the generic main { max-width: 900px } */
+}
+
+/* Keep cards centered without changing your existing .card sizing */
+.page-main .card {
+  margin: 0 auto;
+}
+
+.page-main button {
+  color: white;
+  width: 100%;
+  font-family: "inria serif";
+  padding: 10px 20px; /* was 15px 32px */
+  margin: 8px auto; /* center horizontally */
+  border: none;
+  font-size: 18px; /* was 25px */
+  line-height: 1.2;
+  display: block; /* allows auto margins to center */
+  transition-duration: 0.4s;
+}
+
+.page-main button.secondary {
+  background: #fff;
+  color: #2c3f70;
+  border: 1px solid #d1d5db;
+}
+
+/* Nice max width for long content blocks if you use plain divs */
+.section {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Form controls inside cards, scoped so we don't touch global styles */
+.card input,
+.card select,
+.card textarea {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 12px;
+}
+
+/* Optional: center headings within the main column only */
+.page-main h2,
+.page-main h3 {
+  text-align: center;
+}
+
+.page-main .card {
+  width: 1000px;
+  max-width: 1200px;
+}
+
+/* Responsive: on narrow screens, stack nav above content */
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
 }

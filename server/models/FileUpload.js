@@ -29,10 +29,12 @@ const FileUploadSchema = new Schema(
     urlOrPath: { type: String, required: true }, // /uploads/…
     size: { type: Number },
     description: { type: String },
+    effectiveDate: { type: Date },
   },
   { timestamps: true }
 );
 
 FileUploadSchema.index({ scope: 1, targetId: 1, createdAt: 1 });
+FileUploadSchema.index({ scope: 1, bucketId: 1, effectiveDate: -1 });
 
 export default model("FileUpload", FileUploadSchema);
