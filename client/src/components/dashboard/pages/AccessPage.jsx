@@ -20,12 +20,7 @@ function AccessPage() {
           me?.role === "Family" ||
           me?.role === "PoA") && (
           <>
-            <AccessManagement.CreateToken
-              me={me}
-              jwt={jwt}
-              clients={clients}
-              organizationId={me.organizationId}
-            />
+            <AccessManagement.CreateToken me={me} jwt={jwt} clients={clients} />
             <AccessManagement.IncomingRequests jwt={jwt} />
           </>
         )}
