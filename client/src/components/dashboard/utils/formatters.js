@@ -13,7 +13,7 @@ export const formatFrequency = (freq) => {
   if (!freq || !freq.intervalType) return "";
 
   if (freq.intervalType === "JustPurchase") {
-    return "Unscheduled Event (no recurrence)";
+    return "Unscheduled Event";
   }
 
   if (freq.intervalType === "OneTime") {
