@@ -75,7 +75,7 @@ button, h3{
 
 .header
 {
-    background-color: $meringue;
+    background-color: $white;
     color: $blueberry;
     padding: 10px 20px;
     display: flex;
@@ -84,5 +84,17 @@ button, h3{
     align-items: center;
     font-size: 18px;
     height: 40px;
+    .navigation-tab {
+    position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;   /* or 100% */
+  width: 60px;    
+    }
+    .link {
+        a {
+            text-decoration: none;
+            color: inherit; // optional to match text color
+        }
+    }
 }
-

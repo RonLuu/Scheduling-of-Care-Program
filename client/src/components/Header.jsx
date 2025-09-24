@@ -1,17 +1,21 @@
-import React, { useState } from 'react'
-import '../css/global_style.css'
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import "../css/global_style.css";
+import { Link } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
-function Header({me}) {
-    const navigate = useNavigate();
-    return (
-        <header className='header'>
-            <div>Menu</div>
-            <p>hello</p>
+function Header() {
+  const { me } = useAuth();
 
-            <Link to='/dashboard'>{me.name}</Link>
-        </header>
-    )
+  return (
+    <header className="header">
+      {me && (
+        <span className="link">
+            Hello,&nbsp;
+            <Link to="/dashboard">{me?.name || "Testing2"}</Link>
+        </span>
+      )}
+    </header>
+  );
 }
 
-export default Header
+export default Header;

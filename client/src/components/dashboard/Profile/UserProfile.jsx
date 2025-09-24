@@ -40,7 +40,7 @@ function UserProfile({ me, onLogout, refreshMe, jwt }) {
             </div>
           )}
         </div>
-        <NavigationTab className="navigationtab"/>
+        <div><NavigationTab className="navigationtab"/></div>
         {/* TODO: add a user icon */}
         <div className="userprofile-detail">
           <div className="userprofile-detail1">

@@ -4,7 +4,7 @@ p, h2, h3, h4, h5, h6, button {
   color: #000000;
 }
 
-h3 {
+button, h3 {
   font-size: 20px;
 }
 
@@ -25,7 +25,7 @@ h3 {
 }
 
 .header {
-  background-color: #E8EBED;
+  background-color: #F6FAFF;
   color: #2C3F70;
   padding: 10px 20px;
   display: flex;
@@ -34,6 +34,17 @@ h3 {
   align-items: center;
   font-size: 18px;
   height: 40px;
+}
+.header .navigation-tab {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh; /* or 100% */
+  width: 60px;
+}
+.header .link a {
+  text-decoration: none;
+  color: inherit;
 }
 
 .box {
@@ -111,6 +122,7 @@ h3 {
 
 .register-box, .register-box2, .register-box1 {
   width: 100%;
+  border: none;
   font-family: "Inria Serif", serif;
   background-size: cover;
   box-shadow: 0 4px 10px 0 #8089D2, 0 -4px 10px 0 #8089D2;

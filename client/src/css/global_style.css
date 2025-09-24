@@ -25,7 +25,7 @@ button, h3 {
 }
 
 .header {
-  background-color: #E8EBED;
+  background-color: #F6FAFF;
   color: #2C3F70;
   padding: 10px 20px;
   display: flex;
@@ -34,4 +34,15 @@ button, h3 {
   align-items: center;
   font-size: 18px;
   height: 40px;
+}
+.header .navigation-tab {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh; /* or 100% */
+  width: 60px;
+}
+.header .link a {
+  text-decoration: none;
+  color: inherit;
 }/*# sourceMappingURL=global_style.css.map */

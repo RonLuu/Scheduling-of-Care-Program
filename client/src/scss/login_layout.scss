@@ -66,6 +66,7 @@
 }
 .register-box {
     width: 100%;
+    border:none;
     font-family: 'Inria Serif', serif;
     background-size: cover;
     box-shadow: 0 4px 10px 0 $violet, 0 -4px 10px 0 $violet;
@@ -96,9 +97,9 @@
 .register-box2 {
     @extend .register-box;
     background-color: $white;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* aligns children to the left */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* aligns children to the left */
 //   padding-left: 2rem;      /* optional: nudge all content right a bit */
   gap: 1.5rem;             
     h2 
@@ -183,7 +184,7 @@
     color: $white;
     // width: 100%;
     padding-right: 40px;
-  }
+    }
     .icon {    
     color: $white;
     position: absolute;
