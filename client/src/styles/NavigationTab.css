@@ -34,7 +34,7 @@
 }
 
 .navigationtab-button-menu-wrapper {
-  width: 100%;
+  width: 15%;
   height: 15%;
   margin-bottom: 3vh;
   position: fixed;
@@ -50,9 +50,9 @@
   align-items: center;
   font-size: 300%;
   padding: 0px 0px 0px 0px;
-  margin: 25px 0 0 20px;
+  margin: 25px 0 0 30px;
   height: 40%;
-  width: 5%;
+  width: 30%;
   border-radius: 30%;
   border: none; /* Added to remove default button border */
   cursor: pointer;
