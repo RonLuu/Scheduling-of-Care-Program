@@ -189,10 +189,22 @@ function Create({ jwt, clients }) {
       if (ciScheduleType === "Timed") {
         payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
       }
-      if (ciEndMode === "endDate" && ciEndDate)
+
+      if (ciEndMode === "yearEnd") {
+        // explicitly null to signal open-ended (annual horizon will cap it)
+        payload.endDate = null;
+        payload.occurrenceCount = null;
+      } else if (ciEndMode === "endDate" && ciEndDate) {
         payload.endDate = new Date(ciEndDate).toISOString();
-      if (ciEndMode === "count" && ciOccurrenceCount)
+        payload.occurrenceCount = null;
+      } else if (ciEndMode === "count" && ciOccurrenceCount) {
         payload.occurrenceCount = Number(ciOccurrenceCount);
+        payload.endDate = null;
+      } else {
+        // safety: if none of the above, do not leak previous values
+        payload.endDate = null;
+        payload.occurrenceCount = null;
+      }
 
       if (attachMode === "reference") {
         if (!refSelectedFileId) {
@@ -475,11 +487,21 @@ function Create({ jwt, clients }) {
                 <label>End condition</label>
                 <select
                   value={ciEndMode}
-                  onChange={(e) => setCiEndMode(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCiEndMode(v);
+                    // when choosing yearEnd, force-clear other end fields in UI state
+                    if (v === "yearEnd") {
+                      setCiEndDate("");
+                      setCiOccurrenceCount("");
+                    }
+                  }}
                 >
-                  <option value="none">No end</option>
+                  <option value="yearEnd">
+                    Until end of this year (auto-renews for new year)
+                  </option>
                   <option value="endDate">End by date</option>
-                  <option value="count">End after N occurrences</option>
+                  <option value="count">End after some occurrences</option>
                 </select>
               </div>
             )}
