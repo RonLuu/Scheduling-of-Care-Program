@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+
 import NavigationTab from "../../NavigationTab"
 import EditInfo from "./EditInfo";
+
 import { BiUser } from "react-icons/bi";
-import "../../../styles/UserProfile.css"
-function UserProfile({ me, onLogout, refreshMe, jwt }) {
-  const [showEdit, setShowEdit] = useState(false)
+import "../../../styles/UserProfile.css";
+function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
+  const [showEdit, setShowEdit] = useState(false);
   const handleLeaveOrganization = async () => {
     try {
       const r = await fetch("/api/users/me/leave-organization", {
@@ -31,6 +33,7 @@ function UserProfile({ me, onLogout, refreshMe, jwt }) {
   };
 
   return (
+
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
       {showEdit &&
         (
@@ -38,11 +41,13 @@ function UserProfile({ me, onLogout, refreshMe, jwt }) {
         )}
 
       <NavigationTab className="navigationtab" />
+
       {/* TODO: add a user icon */}
       <div className="userprofile-detail">
         <div className="userprofile-detail1">
           <div className="userprofile-image-wrapper">
             <BiUser className="userprofile-image"></BiUser>
+
           </div>
           <div className="userprofile-detail1-general-wrapper">
             <p className="userprofile-detail1-general">{me?.name || "Testing"}</p>
@@ -62,6 +67,7 @@ function UserProfile({ me, onLogout, refreshMe, jwt }) {
             <p className="userprofile-detail2-detailed"><strong>Phone number:</strong> 04XXXXXXX</p>
             <p className="userprofile-detail2-detailed"><strong>Email address:</strong> {me?.email || "Testing"}</p>
             <p className="userprofile-detail2-detailed"><strong>Address:</strong> XXXXXX</p>
+
           </div>
         </div>
       </div>

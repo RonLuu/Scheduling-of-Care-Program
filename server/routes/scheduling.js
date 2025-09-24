@@ -13,6 +13,12 @@ import PersonUserLink from "../models/PersonUserLink.js";
 
 const router = Router();
 
+function endOfYearUTC(year) {
+  // 00:00 of Jan 1 next year minus 1 ms = 23:59:59.999 of Dec 31 this year
+  const startNextYear = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0));
+  return new Date(startNextYear.getTime() - 1);
+}
+
 /**
  * POST /care-need-items/:itemId/generate-tasks?from=2025-01-01&to=2025-12-31
  * Body (optional): { assignToUserId? }
@@ -55,7 +61,7 @@ async function generateTasksForItem(req, res) {
 
   // If no query window given, derive full window:
   // - from = start
-  // - to   = item.endDate OR start + 2 years (default)
+  // - to   = item.endDate OR end-of-current-year (default for open-ended)
   let windowStart = from ? new Date(from) : start;
   let windowEnd;
   if (to) {
@@ -63,9 +69,8 @@ async function generateTasksForItem(req, res) {
   } else if (item.endDate) {
     windowEnd = new Date(item.endDate);
   } else {
-    const d = new Date(start);
-    d.setFullYear(d.getFullYear() + 2); // default horizon when “no end”
-    windowEnd = d;
+    const now = new Date();
+    windowEnd = endOfYearUTC(now.getUTCFullYear());
   }
 
   const dates = expandOccurrences(
@@ -236,19 +241,20 @@ function combineDateAndTime(dateOnly, hhmm) {
   return d;
 }
 
-router.post("/ensure-horizon", requireAuth, async (req, res) => {
-  const horizonDays = Number(req.query.horizonDays || 730); // default ~2y
-  const horizonEnd = addDays(new Date(), horizonDays);
+router.post("/ensure-annual", requireAuth, async (req, res) => {
+  const now = new Date();
+  const targetYearEnd = endOfYearUTC(now.getUTCFullYear());
 
-  // 1) Find candidate CareNeedItems (Active, no end condition) in org / scope
   const itemFilter = {
     organizationId: req.user.organizationId,
     status: "Active",
-    endDate: { $in: [null, undefined] },
+    // Treat "no end" and "open occurrenceCount" as auto-renewing annually
+    $or: [{ endDate: null }, { endDate: { $exists: false } }],
     $or: [{ occurrenceCount: null }, { occurrenceCount: { $exists: false } }],
+    "frequency.intervalType": { $ne: "JustPurchase" },
   };
 
-  // Staff: restrict to persons they are linked to
+  // Staff scope
   if (req.user.role === "GeneralCareStaff") {
     const links = await PersonUserLink.find({
       userId: req.user.id,
@@ -264,7 +270,6 @@ router.post("/ensure-horizon", requireAuth, async (req, res) => {
   const items = await CareNeedItem.find(itemFilter).lean();
   if (items.length === 0) return res.json({ checked: 0, extended: 0 });
 
-  // 2) For each item, see how far its tasks already go; extend only missing range
   let extended = 0;
 
   for (const item of items) {
@@ -273,34 +278,33 @@ router.post("/ensure-horizon", requireAuth, async (req, res) => {
       : null;
     if (!startDate) continue;
 
-    // Find the latest dueDate we already have for this item
+    // Find the latest dueDate we already have
     const last = await CareTask.findOne({ careNeedItemId: item._id })
       .sort({ dueDate: -1 })
       .select("dueDate")
       .lean();
 
-    // If nothing yet, we start at the item start; else from the next occurrence after 'last.dueDate'
+    // Where do we start generating?
     const fromDate = last
       ? nextStepAfter(item.frequency, new Date(last.dueDate))
       : startDate;
 
-    // If we already cover the horizon, skip
-    if (last && last.dueDate && new Date(last.dueDate) >= horizonEnd) continue;
+    // If we already cover this year's end, skip
+    if (last && new Date(last.dueDate) >= targetYearEnd) continue;
 
-    // Generate missing occurrences from 'fromDate' to 'horizonEnd'
+    // Generate from 'fromDate' to Dec 31 of current year
     const dates = expandOccurrences(
       {
         intervalType: item.frequency.intervalType,
         intervalValue: item.frequency.intervalValue || 1,
         startDate: startDate,
-        endDate: null, // no hard end
+        endDate: null, // logical "open", but we cap by window
         occurrenceCount: null,
       },
       fromDate,
-      horizonEnd
+      targetYearEnd
     );
 
-    // Upsert (idempotent), include Timed fields if applicable
     for (const dueDate of dates) {
       const query = { careNeedItemId: item._id, dueDate };
       const update = {
@@ -326,8 +330,8 @@ router.post("/ensure-horizon", requireAuth, async (req, res) => {
         update.$set.endAt = endAt;
       }
 
-      await CareTask.updateOne(query, update, { upsert: true });
-      extended++;
+      const resUp = await CareTask.updateOne(query, update, { upsert: true });
+      if (resUp.upsertedCount === 1) extended++;
     }
   }
 

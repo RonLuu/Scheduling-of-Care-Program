@@ -1,11 +1,11 @@
 import React from "react";
-import "../../styles/LogIn.css"
+import "../../css/login_layout.css";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../AuthContext"
+import useAuth from "../dashboard/hooks/useAuth";
 
 function LogIn() {
   const navigate = useNavigate();
-  const {setMe} = useAuth();
+  const { setMe } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [err, setErr] = React.useState("");
@@ -39,7 +39,7 @@ function LogIn() {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
-      navigate("/dashboard");
+      navigate("/profile");
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {
@@ -48,31 +48,40 @@ function LogIn() {
   }
 
   return (
-    <div className="login-wrapper">
-      <div className="card">
-        <h2>Login</h2>
-        <form onSubmit={submit}>
-          <input className="login-input"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            />
-          <input className="login-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            />
-          <div className="login-button-wrapper">
-            <button disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
+    <div className="bg-wallpaper">
+      <div className="box">
+        <div className="register-box1 h45m40">
+          <div className="left">
+            <h3>Not a member yet?</h3>
+            <Link to="/registeruser">
+              <button className="btn">Register</button>
+            </Link>
           </div>
-        </form>
-        <div className="login-register-link-wrapper">
-          <Link className="login-register-link" to='/registeruser'>Don't have an account? Sign up here</Link>
         </div>
-        {err && <p style={{ color: "#b91c1c" }}>{err}</p>}
+        <div className="register-box2 h55">
+          <div className="left">
+            <h2>Member Login</h2>
+            <form onSubmit={submit}>
+              <input
+                className="form"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              ></input>
+              <input
+                className="form"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              ></input>
+              <button className="btn" disabled={loading}>
+                {loading ? "Logging in…" : "Login"}
+              </button>
+            </form>
+            {err && <p className="error">{err}</p>}
+          </div>
+        </div>
       </div>
     </div>
   );

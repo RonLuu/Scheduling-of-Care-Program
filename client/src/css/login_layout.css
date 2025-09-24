@@ -1,0 +1,255 @@
+@import url("https://fonts.googleapis.com/css?family=Inria+Serif&display=swap");
+p, h2, h3, h4, h5, h6, button {
+  font-family: "Inria Serif", serif;
+  color: #000000;
+}
+
+button, h3 {
+  font-size: 20px;
+}
+
+.container {
+  position: relative;
+  width: 80%;
+  margin: auto;
+}
+@media screen {
+  .container {
+    width: 90%;
+  }
+}
+@media screen and (max-width: 768px) {
+  .container {
+    width: 95%;
+  }
+}
+
+.header {
+  background-color: #F6FAFF;
+  color: #2C3F70;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  height: 40px;
+}
+.header .navigation-tab {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh; /* or 100% */
+  width: 60px;
+}
+.header .link a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.box {
+  background-color: #F6FAFF;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding: 20px;
+  margin: 20px auto;
+}
+@media screen {
+  .box {
+    width: 900px;
+    height: 700px;
+  }
+}
+@media screen and (max-width: 1200px) {
+  .box {
+    width: 600px;
+    height: 800px;
+  }
+}
+@media screen and (max-width: 992px) {
+  .box {
+    width: 500px;
+    height: 700px;
+  }
+}
+@media screen and (max-width: 768px) {
+  .box {
+    width: 400px;
+    height: 500px;
+  }
+}
+
+.h45m40 {
+  height: 45%;
+  margin-bottom: 40px;
+}
+
+.h55 {
+  height: 55%;
+}
+
+.h80m20 {
+  height: 80%;
+  margin-bottom: 20px;
+}
+@media screen and (max-width: 768px) {
+  .h80m20 {
+    height: 90%;
+  }
+  .h80m20 p {
+    font-size: 14px;
+  }
+}
+
+.h20 {
+  height: 20%;
+}
+
+.bg-wallpaper {
+  background-image: url("../components/img/wallpaper.jpg");
+  background-size: auto;
+  background-repeat: repeat;
+  background-position: top;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.register-box, .register-box2, .register-box1 {
+  width: 100%;
+  border: none;
+  font-family: "Inria Serif", serif;
+  background-size: cover;
+  box-shadow: 0 4px 10px 0 #8089D2, 0 -4px 10px 0 #8089D2;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.register-box1 {
+  background-image: url("../components/img/wallpaper.jpg");
+}
+.register-box1 p {
+  font-size: 18px;
+  margin: 10px 0;
+}
+
+.left, .top, .center, .bottom {
+  position: static; /* default */
+}
+
+.left {
+  align-self: flex-start; /* ensures the section is left-aligned */
+  margin-left: 50px; /* or 1-2rem if you want a small offset */
+}
+
+.register-box2 {
+  background-color: #F6FAFF;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* aligns children to the left */
+  gap: 1.5rem;
+}
+.register-box2 h2 {
+  font-size: 30px;
+  font-weight: bold;
+}
+@media screen and (max-width: 992px) {
+  .register-box2 h2 {
+    font-size: 25px;
+  }
+}
+.register-box2 button {
+  margin-top: 20px;
+}
+
+.btn {
+  width: 120px;
+  background-color: #2C3F70;
+  color: #F6FAFF;
+  border-radius: 8px;
+  border: none;
+  padding: 5px 20px;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #252E47;
+}
+
+.form {
+  width: 100%;
+  font-size: 18px;
+  font-family: "Inria Serif", serif;
+  border: none;
+  background-color: #C8CDED;
+  color: #000000;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  outline: none;
+}
+.form::-moz-placeholder {
+  font-style: italic;
+  color: #6E6E6E;
+}
+.form::placeholder {
+  font-style: italic;
+  color: #6E6E6E;
+}
+@media screen and (max-width: 992px) {
+  .form {
+    font-size: 14px;
+  }
+}
+
+.error {
+  color: #ff0000;
+  font-size: 14px;
+}
+
+.role {
+  background-color: #8089D2;
+  border-radius: 0px;
+  color: #F6FAFF;
+  border: none;
+  font-style: normal;
+}
+.role.italic {
+  font-style: italic;
+}
+
+.select-container {
+  position: relative;
+}
+.select-container select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color: #F6FAFF;
+  padding-right: 40px;
+}
+.select-container .icon {
+  color: #F6FAFF;
+  position: absolute;
+  top: 50%;
+  right: 5%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+  transform: translateY(-50%) rotate(0deg);
+}
+.select-container .icon.open {
+  transform: translateY(-50%) rotate(180deg);
+}/*# sourceMappingURL=login_layout.css.map */

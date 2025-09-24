@@ -1,0 +1,100 @@
+$blueberry: #2C3F70;
+$dark-blueberry: #252E47;
+$strawberry: #A5231C;
+$buttercream: hsl(215, 36%, 84%);
+$violet: #8089D2;
+$light-violet: #C8CDED;
+$meringue: #E8EBED;
+$grey: #6E6E6E;
+$white: #F6FAFF;
+$black: #000000;
+$red: #ff0000;
+
+@import url('https://fonts.googleapis.com/css?family=Inria+Serif&display=swap');
+
+p, h2, h3, h4, h5, h6, button {
+    font-family: 'Inria Serif', serif;
+    color: $black;
+}
+button, h3{
+    font-size:20px;
+}
+
+@mixin respond($breakpoint)
+{
+    @if $breakpoint=="xl" and (min-width: 1201px)
+    {
+        @media screen 
+        {
+            @content;
+        }
+    }
+    @if $breakpoint=="lg"
+    {
+        @media screen and (max-width: 1200px)
+        {
+            @content;
+        }
+    }
+    @if $breakpoint=="md"
+    {
+        @media screen and (max-width: 992px)
+        {
+            @content;
+        }
+    }
+    @if $breakpoint=="sm"
+    {
+        @media screen and (max-width: 768px)
+        {
+            @content;
+        }
+    }
+    @if $breakpoint=="xs"
+    {
+        @media screen and (max-width: 576px)
+        {
+            @content;
+        }
+    }
+}
+.container
+{
+    position:relative;
+    width: 80%;
+    margin: auto;
+    @include respond(xl)
+    {
+        width: 90%;
+    }
+    @include respond(sm)
+    {
+        width: 95%;
+    }
+}
+
+.header
+{
+    background-color: $white;
+    color: $blueberry;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 18px;
+    height: 40px;
+    .navigation-tab {
+    position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;   /* or 100% */
+  width: 60px;    
+    }
+    .link {
+        a {
+            text-decoration: none;
+            color: inherit; // optional to match text color
+        }
+    }
+}
