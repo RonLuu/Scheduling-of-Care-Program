@@ -25,6 +25,9 @@ const UserSchema = new Schema(
       index: true,
     },
 
+    mobile: { type: String, trim: true, default: null },
+    address: { type: String, trim: true, default: null },
+
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
   },

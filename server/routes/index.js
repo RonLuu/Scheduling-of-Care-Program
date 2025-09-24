@@ -19,8 +19,8 @@ const router = Router();
 
 router.use("/auth", authRouter);
 router.use("/organizations", organizationsRouter);
-router.use("/users", usersRouter);
 router.use("/users", userMeRouter);
+router.use("/users", usersRouter);
 router.use("/person-with-needs", personWithNeedsRouter);
 router.use("/person-user-links", personUserLinkRouter);
 router.use("/tokens", tokenRouter);
