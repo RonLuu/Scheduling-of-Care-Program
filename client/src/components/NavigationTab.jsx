@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BiMenu,
   BiHelpCircle,
@@ -35,12 +35,34 @@ const NavigationTab = () => {
   const [showTab, setShowTab] = useState(false);
   const { setMe } = useAuth();
   const navigate = useNavigate();
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem("jwt");
     setMe(null);
     navigate("/");
   };
+
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showTab &&
+        panelRef.current &&
+        !panelRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        setShowTab(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTab]);
 
   return (
     <div className="navigationtab-wrapper">

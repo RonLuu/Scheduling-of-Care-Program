@@ -314,32 +314,6 @@ export function useTasksData(jwt, clients) {
     }
   }, [clients, loadTasksFor]);
 
-  // Sweep overdue tasks on mount
-  React.useEffect(() => {
-    if (!jwt) return;
-    fetch("/api/care-tasks/sweep-overdue", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + jwt },
-    })
-      .then(() => {
-        if (tasksClientId) loadTasksFor(tasksClientId);
-      })
-      .catch(() => {});
-  }, [jwt, tasksClientId, loadTasksFor]);
-
-  // Ensure rolling horizon
-  React.useEffect(() => {
-    if (!jwt) return;
-    fetch("/api/scheduling/ensure-horizon?horizonDays=730", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + jwt },
-    })
-      .then(() => {
-        if (tasksClientId) loadTasksFor(tasksClientId);
-      })
-      .catch(() => {});
-  }, [jwt, tasksClientId, loadTasksFor]);
-
   return {
     tasks,
     tasksLoading,
