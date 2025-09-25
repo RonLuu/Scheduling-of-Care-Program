@@ -1,16 +1,16 @@
 import React from "react";
 import NavigationTab from "../../NavigationTab";
-
+import Dropdown from "./dropdown";
+import "../../../styles/FAQPage.css"
 function FAQPage() {
   return (
-    <div className="page">
+    <div className>
       <NavigationTab />
-      <div className="page-main">
-        <h2>Frequently Asked Questions (FAQ)</h2>
-        <p>This is a placeholder FAQ page. Content will be added here later.</p>
-
-        <ul>
-          <li>
+      <div className="FAQ-wrapper">
+        <h2 style={{ color: "#2C3F70", fontSize:"50px", marginTop:"5%"}}>Frequently Asked Questions</h2>
+        <div className="FAQ-questions-answers">
+          <Dropdown question={"How do I log out?"} answer={"Use the log out button in the navigation tab"}/>
+          {/* <li>
             <strong>Q:</strong> How do I log out? <br />
             <strong>A:</strong> Use the <em>Log Out</em> button in the
             navigation tab.
@@ -24,8 +24,8 @@ function FAQPage() {
             <strong>Q:</strong> Where can I see budget reports? <br />
             <strong>A:</strong> Go to the <em>Budget Reports</em> section from
             the navigation tab.
-          </li>
-        </ul>
+          </li> */}
+        </div>
 
         <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
           More FAQs coming soon...
