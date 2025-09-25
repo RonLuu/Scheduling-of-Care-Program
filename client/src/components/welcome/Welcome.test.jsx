@@ -8,8 +8,22 @@ import "@testing-library/jest-dom/vitest"
 import Welcome from "./Welcome";
 import RegisterUser from "../register/RegisterUser";
 import LogIn from "../login/LogIn";
-import Dashboard from "../dashboard/Dashboard";
-import { AuthProvider } from "../../AuthContext";
+import { AuthContext } from "../dashboard/auth/authContext";
+
+// Create a test AuthProvider that matches the structure expected by useAuth
+const TestAuthProvider = ({ children, mockUser = null }) => {
+  const authValue = {
+    me: mockUser,
+    setMe: vi.fn(),
+    isReady: true,
+  };
+
+  return (
+    <AuthContext.Provider value={authValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 // Mock fetch to prevent actual API calls during tests
 global.fetch = vi.fn(() =>
@@ -31,16 +45,15 @@ global.localStorage = localStorageMock;
 describe("Welcome", () => {
     // Render paths before hand
     render(
-        <AuthProvider>
+        <TestAuthProvider>
             <MemoryRouter initialEntries={["/"]}>
                 <Routes>
                     <Route path="/" element={<Welcome />} />
                     <Route path="/registeruser" element={<RegisterUser />} />
                     <Route path="/login" element={<LogIn />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
                 </Routes>
             </MemoryRouter>
-        </AuthProvider>
+        </TestAuthProvider>
     );
 
     // Unit test: if the page contains two buttons
