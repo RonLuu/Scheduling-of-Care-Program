@@ -40,13 +40,7 @@ function ProfilePage() {
         jwt={jwt}
       />
 
-      {me && (me.role === "Family" || me.role === "PoA") && (
-        <Profile.OrganizationManagement
-          me={me}
-          jwt={jwt}
-          refreshMe={refreshMe}
-        />
-      )}
+      
     </>
   );
 }
