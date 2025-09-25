@@ -1,7 +1,7 @@
 import React from "react";
 import "../css/global_style.css";
 import { Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import useAuth from "./dashboard/hooks/useAuth";
 
 function Header() {
   const { me } = useAuth();
@@ -10,8 +10,8 @@ function Header() {
     <header className="header">
       {me && (
         <span className="link">
-            Hello,&nbsp;
-            <Link to="/dashboard">{me?.name || "Testing2"}</Link>
+          Hello,&nbsp;
+          {me?.name || "Testing2"}
         </span>
       )}
     </header>

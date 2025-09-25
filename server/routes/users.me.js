@@ -191,4 +191,24 @@ router.patch("/me/leave-organization", requireAuth, async (req, res) => {
   }
 });
 
+router.patch("/me", requireAuth, async (req, res) => {
+  // whitelist: only allow these fields to be updated by self
+  const allowed = ["name", "mobile", "address"];
+  const updates = {};
+  for (const k of allowed) {
+    if (k in req.body) updates[k] = req.body[k];
+  }
+
+  try {
+    const updated = await User.findByIdAndUpdate(req.user.id, updates, {
+      new: true,
+      runValidators: true,
+    }).lean();
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json(updated);
+  } catch (e) {
+    res.status(400).json({ error: e.message || "Failed to update profile" });
+  }
+});
+
 export default router;

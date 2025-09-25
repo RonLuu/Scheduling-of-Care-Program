@@ -2,6 +2,7 @@ import React from "react";
 import useAuth from "../hooks/useAuth";
 import Profile from "../Profile";
 import NavigationTab from "../../NavigationTab";
+import Header from "../../Header";
 
 function ProfilePage() {
   const { me, setMe } = useAuth();
@@ -30,6 +31,7 @@ function ProfilePage() {
   return (
     <>
       <NavigationTab setMe={setMe} />
+
       <Profile.UserProfile
         me={me}
         setMe={setMe}

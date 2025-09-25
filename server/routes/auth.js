@@ -64,6 +64,13 @@ router.post("/login", requireLocal, (req, res) => {
 });
 
 // GET /api/auth/me
-router.get("/me", requireJwt, (req, res) => res.json({ user: req.user }));
+router.get("/me", requireJwt, async (req, res) => {
+  const userId = req.user.id || req.user._id || req.user.sub;
+  const user = await User.findById(userId)
+    .select("name email role organizationId mobile address")
+    .lean();
+  if (!user) return res.status(404).json({ error: "USER_NOT_FOUND" });
+  res.json({ user }); // <-- wrapped
+});
 
 export default router;
