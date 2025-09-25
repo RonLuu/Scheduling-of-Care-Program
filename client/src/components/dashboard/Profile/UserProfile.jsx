@@ -1,14 +1,16 @@
 import React, { useState } from "react";
+import { BiUser } from "react-icons/bi";
 
+import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab"
 import EditInfo from "./EditInfo";
-
-import { BiUser } from "react-icons/bi";
-import "../../../styles/UserProfile.css";
 import OrganizationManagement from "./OrganizationManagement";
-function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
+import "../../../styles/UserProfile.css";
+function UserProfile() {
   const [showEdit, setShowEdit] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const { me, setMe } = useAuth();
+  const jwt = localStorage.getItem("jwt");
   const handleLeaveOrganization = async () => {
     try {
       const r = await fetch("/api/users/me/leave-organization", {
@@ -34,6 +36,25 @@ function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
     }
   };
 
+  const logout = () => {
+    localStorage.removeItem("jwt");
+    setMe(null);
+  };
+
+  const refreshMe = async () => {
+    const jwt = localStorage.getItem("jwt");
+    if (!jwt) return setMe(null);
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMe(data.user ?? null);
+    } catch {
+      setMe(null);
+    }
+  };
   return (
 
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
@@ -42,7 +63,7 @@ function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
           <EditInfo showEdit = {showEdit} setShowEdit = {setShowEdit}/>
         )}
 
-      {showAdd &&
+      {showAdd && (me.role === "Family" || me.role === "PoA") &&
         (
           <OrganizationManagement
             me={me}
@@ -64,11 +85,25 @@ function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
           </div>
           <div className="userprofile-detail1-general-wrapper">
             <p className="userprofile-detail1-general">{me?.name || "Testing"}</p>
-            {!me?.organizationId ?
-              (<button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>Add Organization ID</button>):
-              (<button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>Change Organization ID</button>)
-            }
-            <button className="userprofile-detail1-edit-button" onClick={() => setShowEdit(!showEdit)}>Edit</button>
+            {(me?.role === "Family" || me?.role === "PoA") && (
+              <>
+                {!me?.organizationId ? 
+                  (
+                    <button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>
+                      Add Organization ID
+                    </button>
+                  ) : 
+                  (
+                    <button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>
+                      Change Organization ID
+                    </button>
+                  )
+                }
+                <button className="userprofile-detail1-edit-button" onClick={() => setShowEdit(!showEdit)}>
+                  Edit
+                </button>
+              </>
+            )}
           </div>
           <div className="userprofile-detail1-remove-button-wrapper">
             <button className="userprofile-detail1-remove-button" onClick={() => handleLeaveOrganization()}>Leave Organization</button>
