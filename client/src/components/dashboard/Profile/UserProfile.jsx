@@ -5,8 +5,10 @@ import EditInfo from "./EditInfo";
 
 import { BiUser } from "react-icons/bi";
 import "../../../styles/UserProfile.css";
+import OrganizationManagement from "./OrganizationManagement";
 function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const handleLeaveOrganization = async () => {
     try {
       const r = await fetch("/api/users/me/leave-organization", {
@@ -40,6 +42,17 @@ function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
           <EditInfo showEdit = {showEdit} setShowEdit = {setShowEdit}/>
         )}
 
+      {showAdd &&
+        (
+          <OrganizationManagement
+            me={me}
+            jwt={jwt}
+            refreshMe={refreshMe}
+            showAdd = {showAdd}
+            setShowAdd = {setShowAdd}
+          />
+        )}
+
       <NavigationTab className="navigationtab" />
 
       {/* TODO: add a user icon */}
@@ -51,8 +64,10 @@ function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
           </div>
           <div className="userprofile-detail1-general-wrapper">
             <p className="userprofile-detail1-general">{me?.name || "Testing"}</p>
-            <p className="userprofile-detail1-general">{me?.organizationId || "No organization ID yet"}</p>
-            {/* TODO: edit profile name */}
+            {!me?.organizationId ?
+              (<button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>Add Organization ID</button>):
+              (<button className="userprofile-detail1-add-button" onClick={() => setShowAdd(!showAdd)}>Change Organization ID</button>)
+            }
             <button className="userprofile-detail1-edit-button" onClick={() => setShowEdit(!showEdit)}>Edit</button>
           </div>
           <div className="userprofile-detail1-remove-button-wrapper">
