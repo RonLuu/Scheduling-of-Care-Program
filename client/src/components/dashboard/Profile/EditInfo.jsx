@@ -73,7 +73,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
           <input
             className="userprofile-input"
-            placeholder={me?.address ? "" : "Please provide your address..."}
+            placeholder={me?.address ? "" : "Please provide your address."}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />

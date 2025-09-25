@@ -37,19 +37,29 @@ export function useClients(me, jwt) {
 
   const load = React.useCallback(
     async (signal) => {
-      if (!me || !jwt) return;
+      // Fix: Use me._id or me.id (check which one is correct)
+      const userId = me?._id || me?.id;
+
+      if (!userId || !jwt) {
+        setClients([]); // Clear clients if no user
+        return;
+      }
+
       setLoading(true);
       setError("");
       try {
-        const persons = await fetchClientsForUser(me.id, jwt, { signal });
+        const persons = await fetchClientsForUser(userId, jwt, { signal });
         setClients(persons);
       } catch (e) {
-        if (e.name !== "AbortError") setError(e.message || String(e));
+        if (e.name !== "AbortError") {
+          setError(e.message || String(e));
+          setClients([]); // Clear on error
+        }
       } finally {
         setLoading(false);
       }
     },
-    [me, jwt]
+    [me?._id, me?.id, jwt] // Include both possible ID fields
   );
 
   React.useEffect(() => {

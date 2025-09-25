@@ -6,6 +6,20 @@ import User from "../models/User.js";
 
 const router = Router();
 
+function sanitizeUser(user) {
+  const u = user.toObject ? user.toObject() : user;
+  return {
+    id: u._id, // Always include 'id' field
+    _id: u._id, // Keep _id for compatibility
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    organizationId: u.organizationId || null,
+    mobile: u.mobile || null,
+    address: u.address || null,
+  };
+}
+
 // POST /api/auth/register { name, email, password, role }
 router.post("/register", async (req, res) => {
   try {
@@ -31,10 +45,13 @@ router.post("/register", async (req, res) => {
     res.status(201).json({
       user: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         organizationId: user.organizationId || null,
+        mobile: user.mobile || null,
+        address: user.address || null,
       },
       session: { jwt: jwtToken, expiresIn: 3600 },
     });
@@ -51,26 +68,20 @@ router.post("/login", requireLocal, (req, res) => {
     process.env.JWT_SECRET,
     { expiresIn: "1h" }
   );
+
   res.json({
     session: { jwt: jwtToken, expiresIn: 3600 },
-    user: {
-      id: u._id,
-      role: u.role,
-      organizationId: u.organizationId,
-      email: u.email,
-      name: u.name,
-    },
+    user: sanitizeUser(u),
   });
 });
 
-// GET /api/auth/me
+// GET api/auth/me
 router.get("/me", requireJwt, async (req, res) => {
   const userId = req.user.id || req.user._id || req.user.sub;
-  const user = await User.findById(userId)
-    .select("name email role organizationId mobile address")
-    .lean();
+  const user = await User.findById(userId);
   if (!user) return res.status(404).json({ error: "USER_NOT_FOUND" });
-  res.json({ user }); // <-- wrapped
+
+  res.json({ user: sanitizeUser(user) });
 });
 
 export default router;
