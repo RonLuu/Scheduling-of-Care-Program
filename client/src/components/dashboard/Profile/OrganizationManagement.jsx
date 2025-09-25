@@ -3,10 +3,10 @@ import React from "react";
 
 function OrganizationManagement({ me, jwt, refreshMe }) {
   const [pendingOrgId, setPendingOrgId] = React.useState(
-    me.organizationId || ""
+    me?.organizationId || ""
   );
   const [orgSaveMsg, setOrgSaveMsg] = React.useState("");
-  const [editing, setEditing] = React.useState(!me.organizationId);
+  const [editing, setEditing] = React.useState(!me?.organizationId);
   // editing is true if org not set, false otherwise
 
   const handleSaveOrganization = async () => {
@@ -18,7 +18,7 @@ function OrganizationManagement({ me, jwt, refreshMe }) {
       }
 
       let migrateClients = false;
-      if (me.role === "Family" || me.role === "PoA") {
+      if (me?.role === "Family" || me?.role === "PoA") {
         migrateClients = window.confirm(
           "Also move ALL your clients to the new organisation, move other Family/PoA linked to those clients, update all items/tasks, and revoke all staff/admin access on those clients?\n\nClick OK to proceed."
         );
@@ -86,7 +86,7 @@ function OrganizationManagement({ me, jwt, refreshMe }) {
 
       {orgSaveMsg && <p>{orgSaveMsg}</p>}
 
-      {!me.organizationId && (
+      {!me?.organizationId && (
         <p style={{ color: "#92400e" }}>
           You must set your organisation before adding a client.
         </p>
@@ -99,7 +99,7 @@ function OrgBadge({ me }) {
   return (
     <p>
       Org:{" "}
-      {me.organizationId ? <code>{me.organizationId}</code> : <em>none set</em>}
+      {me?.organizationId ? <code>{me.organizationId}</code> : <em>none set</em>}
     </p>
   );
 }

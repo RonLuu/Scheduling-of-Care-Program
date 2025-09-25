@@ -4,7 +4,7 @@ import EditInfo from "./EditInfo";
 import { BiUser } from "react-icons/bi";
 import "../../../styles/UserProfile.css";
 
-function UserProfile() {
+function UserProfile({ me, setMe, onLogout, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
 
   const handleLeaveOrganization = async () => {
