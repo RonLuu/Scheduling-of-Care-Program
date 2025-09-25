@@ -1,11 +1,10 @@
 import React from "react";
 
-function CreateToken({ me, jwt, clients, organizationId }) {
+function CreateToken({ me, jwt, clients }) {
   const initialType =
     me && me.role === "Admin" ? "STAFF_TOKEN" : "MANAGER_TOKEN";
   const [type, setType] = React.useState(initialType);
   const [expiresInDays, setExpiresInDays] = React.useState(7);
-  const [maxUses, setMaxUses] = React.useState(1);
   const [selectedPersonId, setSelectedPersonId] = React.useState("");
   const [tokenResult, setTokenResult] = React.useState(null);
 
@@ -34,10 +33,10 @@ function CreateToken({ me, jwt, clients, organizationId }) {
       },
       body: JSON.stringify({
         type,
-        organizationId,
+        organizationId: me.organizationId,
         personIds: [selectedPersonId],
         expiresInDays: Number(expiresInDays),
-        maxUses: Number(maxUses),
+        maxUses: 1, // 🔒 always 1
       }),
     });
     const d = await r.json();
@@ -47,6 +46,7 @@ function CreateToken({ me, jwt, clients, organizationId }) {
   return (
     <div className="card">
       <h3>Create invite token</h3>
+
       <label>Type</label>
       <select value={type} onChange={(e) => setType(e.target.value)}>
         {allowedTypesFor(me.role).map(([v, label]) => (
@@ -56,23 +56,23 @@ function CreateToken({ me, jwt, clients, organizationId }) {
         ))}
       </select>
 
-      <label>Organization ID</label>
-      <input value={organizationId} disabled />
-
-      <label>Client (required)</label>
-      <select
-        value={selectedPersonId}
-        onChange={(e) => setSelectedPersonId(e.target.value)}
-      >
-        <option value="">— Select a client —</option>
-        {clients.map((c) => (
-          <option key={c._id} value={c._id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-
+      {/* Client + Expires in (days) on the same row */}
       <div className="row">
+        <div>
+          <label>Client (required)</label>
+          <select
+            value={selectedPersonId}
+            onChange={(e) => setSelectedPersonId(e.target.value)}
+          >
+            <option value="">— Select a client —</option>
+            {clients.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label>Expires in (days)</label>
           <input
@@ -82,21 +82,12 @@ function CreateToken({ me, jwt, clients, organizationId }) {
             onChange={(e) => setExpiresInDays(e.target.value)}
           />
         </div>
-        <div>
-          <label>Max uses</label>
-          <input
-            type="number"
-            min="1"
-            max="15"
-            value={maxUses}
-            onChange={(e) => setMaxUses(e.target.value)}
-          />
-        </div>
       </div>
 
       <button onClick={createToken} disabled={!selectedPersonId}>
         Create token
       </button>
+
       {tokenResult &&
         (tokenResult.token ? (
           <p>

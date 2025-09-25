@@ -1,0 +1,24 @@
+.FAQ-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100vh;   
+}
+
+.FAQ-questions-answers {
+    width: 40%;
+    height: 60%;
+    display: flex;
+    flex-direction: column;
+    font-size: 25px;
+}
+
+.FAQ-question {
+    border: 1px solid black;
+    height: 7%;
+    background-color: red;
+    display: flex;
+    align-items: center;
+    box-shadow: ;
+}

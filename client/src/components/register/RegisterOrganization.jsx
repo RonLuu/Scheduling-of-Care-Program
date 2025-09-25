@@ -60,13 +60,13 @@ function RegisterOrganization() {
       <div className="card">
         <h2>Register Organization</h2>
         <form onSubmit={submit}>
-          <input className="regOrg-input"
+          <input className="form"
             placeholder="Organisation name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
-          <input className="regOrg-input"
+          <input className="form"
             placeholder="Address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -74,7 +74,7 @@ function RegisterOrganization() {
             autoComplete="street-address"
           />
           <div className="regOrg-button-wrapper">
-            <button disabled={busy}>
+            <button disabled={busy} className= "btn">
               {busy ? "Creating..." : "Create organisation"}
             </button>
           </div>

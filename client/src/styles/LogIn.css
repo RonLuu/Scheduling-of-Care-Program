@@ -1,3 +1,6 @@
+@import "../css/global_style.css";
+
+
 .login-wrapper {
     display: flex;
     justify-content: center;

@@ -1,12 +1,25 @@
 import React from "react";
 
-function TaskFiles({
-  taskId,
+/**
+ *  Works for any scope ("CareTask" | "CareNeedItem").
+ *
+ * Props:
+ *   scope: "CareTask" | "CareNeedItem"
+ *   targetId: string (taskId or careNeedItemId)
+ *   files: existing files to list
+ *   newFile, onNewFileChange: state for "add by link"
+ *   onAddFile: () => void   // caller handles JSON link add
+ *   onLoadFiles: () => void // reload callback after upload
+ */
+function FilePanel({
+  scope,
+  targetId,
   files,
   newFile,
   onNewFileChange,
   onAddFile,
   onLoadFiles,
+  currentUserId,
 }) {
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -15,18 +28,18 @@ function TaskFiles({
     try {
       const jwt = localStorage.getItem("jwt");
       if (!jwt) throw new Error("UNAUTHENTICATED");
+      if (!targetId) throw new Error("Missing target id");
 
       const fd = new FormData();
-      fd.append("scope", "CareTask");
-      fd.append("targetId", taskId);
-      fd.append("description", form.description.value);
+      fd.append("scope", scope); // <-- use the provided scope
+      fd.append("targetId", targetId); // <-- correct id for this scope
+      fd.append("description", form.description.value || "");
+      if (!form.file.files?.[0]) throw new Error("Choose a file");
       fd.append("file", form.file.files[0]);
 
       const r = await fetch("/api/file-upload/upload", {
         method: "POST",
-        headers: {
-          Authorization: "Bearer " + jwt,
-        },
+        headers: { Authorization: "Bearer " + jwt },
         body: fd,
       });
 
@@ -34,13 +47,34 @@ function TaskFiles({
         .get("content-type")
         ?.includes("application/json");
       const data = isJson ? await r.json() : { error: await r.text() };
-
       if (!r.ok) throw new Error(data.error || "Upload failed");
 
       form.reset();
-      await onLoadFiles();
+      await onLoadFiles?.();
     } catch (err) {
       alert("Upload failed: " + (err.message || String(err)));
+    }
+  };
+
+  const canDelete = (f) =>
+    currentUserId &&
+    f?.uploadedByUserId &&
+    String(f.uploadedByUserId) === String(currentUserId);
+
+  const deleteFile = async (fileId) => {
+    if (!window.confirm("Delete this file?")) return;
+    try {
+      const jwt = localStorage.getItem("jwt");
+      if (!jwt) throw new Error("UNAUTHENTICATED");
+      const r = await fetch(`/api/file-upload/${fileId}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Delete failed");
+      await onLoadFiles?.();
+    } catch (err) {
+      alert("Delete failed: " + (err.message || String(err)));
     }
   };
 
@@ -63,6 +97,7 @@ function TaskFiles({
           <ul>
             {files.map((f) => (
               <li key={f._id} style={{ marginBottom: 6 }}>
+                {/* preview */}
                 {f.fileType && f.fileType.startsWith("image/") ? (
                   <a href={f.urlOrPath} target="_blank" rel="noreferrer">
                     <img
@@ -87,50 +122,52 @@ function TaskFiles({
                 {" · "}
                 {new Date(f.createdAt).toLocaleString()}
                 {f.description ? <div>{f.description}</div> : null}
+
+                {/* Owner delete */}
+                {canDelete(f) && (
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      className="danger"
+                      onClick={() => deleteFile(f._id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {/* Add by link */}
+      {/* Add by link (handled by caller via /api/file-upload JSON route) */}
       <h5>Add by link</h5>
       <div className="row">
         <input
-          placeholder="Filename (e.g., Pyjamas photo)"
+          placeholder="Filename (e.g., Refund receipt)"
           value={newFile.filename}
           onChange={(e) =>
-            onNewFileChange((prev) => ({
-              ...prev,
-              filename: e.target.value,
-            }))
+            onNewFileChange((prev) => ({ ...prev, filename: e.target.value }))
           }
         />
         <input
           placeholder="URL or path (https://…)"
           value={newFile.urlOrPath}
           onChange={(e) =>
-            onNewFileChange((prev) => ({
-              ...prev,
-              urlOrPath: e.target.value,
-            }))
+            onNewFileChange((prev) => ({ ...prev, urlOrPath: e.target.value }))
           }
         />
       </div>
-
       <input
         placeholder="Description (optional)"
         value={newFile.description}
         onChange={(e) =>
-          onNewFileChange((prev) => ({
-            ...prev,
-            description: e.target.value,
-          }))
+          onNewFileChange((prev) => ({ ...prev, description: e.target.value }))
         }
       />
       <button onClick={onAddFile}>Add file (link)</button>
 
-      {/* Real file upload */}
+      {/* Binary upload */}
       <h5 style={{ marginTop: 12 }}>Upload a file</h5>
       <form onSubmit={handleUpload}>
         <input type="file" name="file" required />
@@ -141,4 +178,4 @@ function TaskFiles({
   );
 }
 
-export default TaskFiles;
+export default FilePanel;

@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css?family=Inria+Serif&display=swap");
+p, h2, h3, h4, h5, h6, button {
+  font-family: "Inria Serif", serif;
+  color: #000000;
+}
+
+button, h3 {
+  font-size: 20px;
+}
+
+.container {
+  position: relative;
+  width: 80%;
+  margin: auto;
+}
+@media screen {
+  .container {
+    width: 90%;
+  }
+}
+@media screen and (max-width: 768px) {
+  .container {
+    width: 95%;
+  }
+}
+
+.header {
+  background-color: #F6FAFF;
+  color: #2C3F70;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  height: 40px;
+}
+.header .navigation-tab {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh; /* or 100% */
+  width: 60px;
+}
+.header .link a {
+  text-decoration: none;
+  color: inherit;
+}/*# sourceMappingURL=global_style.css.map */
