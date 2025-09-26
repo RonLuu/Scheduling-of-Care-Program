@@ -299,7 +299,7 @@ function ShiftEditDrawer({
           alignItems: "center",
         }}
       >
-        <h4 style={{ margin: 0 }}>Edit shift</h4>
+        {isAdmin && <h4 style={{ margin: 0 }}>Edit shift</h4>}
         <button className="secondary" onClick={onClose}>
           Close
         </button>
