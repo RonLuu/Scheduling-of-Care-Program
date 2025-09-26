@@ -9,7 +9,7 @@ function TasksPage() {
   const jwt =
     typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
 
-  const { clients, loading, error /*, refresh */ } = useClients(me, jwt);
+  const { clients, loading, error } = useClients(me, jwt);
 
   return (
     <div className="page">

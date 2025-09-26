@@ -57,20 +57,6 @@ function CareTasks({ jwt, clients }) {
       .catch(() => {});
   }, [tasksClientId, loadTasksFor]); // re-run when switching client to keep list fresh
 
-  // Ensure annual horizon up to Dec 31 of the current year (auto-renews each year)
-  React.useEffect(() => {
-    const jwtNow = localStorage.getItem("jwt");
-    if (!jwtNow) return;
-    fetch("/api/scheduling/ensure-annual", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + jwtNow },
-    })
-      .then(() => {
-        if (tasksClientId) loadTasksFor(tasksClientId);
-      })
-      .catch(() => {});
-  }, [tasksClientId, loadTasksFor]);
-
   return (
     <div className="card">
       <h3>My Tasks</h3>

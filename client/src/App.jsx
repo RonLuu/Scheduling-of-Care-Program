@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import useAuth from "./components/dashboard/hooks/useAuth";
 
 // Public pages
@@ -18,6 +18,8 @@ import TasksPage from "./components/dashboard/pages/TasksPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
 import FAQPage from "./components/dashboard/pages/FAQPage";
 
+import PrintButton from "./components/PrintButton";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
 
@@ -30,109 +32,133 @@ library.add(fas, far, fab);
 
 const App = () => {
   const { me, isReady } = useAuth();
+
+  const location = useLocation();
+  // Don't show print button on login/register pages
+  const shouldShowPrintButton =
+    me &&
+    !["/login", "/registeruser", "/registerorganization"].includes(
+      location.pathname
+    );
+
   const RequireAuth = ({ children }) => {
     if (!isReady) return null; // or a spinner component
     return me ? children : <Navigate to="/login" replace />;
   };
   return (
-    <Routes>
-      {/* Root route */}
-      <Route
-        path="/"
-        element={
-          me ? (
-            <Navigate to="/profile" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+    <>
+      <div id="app-content">
+        <Routes>
+          {/* Root route */}
+          <Route
+            path="/"
+            element={
+              me ? (
+                <Navigate to="/profile" replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
 
-      {/* Public routes */}
-      <Route path="/registeruser" element={<RegisterUser />} />
-      <Route path="/registerorganization" element={<RegisterOrganization />} />
-      <Route path="/login" element={<LogIn />} />
+          {/* Public routes */}
+          <Route path="/registeruser" element={<RegisterUser />} />
+          <Route
+            path="/registerorganization"
+            element={<RegisterOrganization />}
+          />
+          <Route path="/login" element={<LogIn />} />
 
-      {/* Authenticated app routes */}
-      <Route
-        path="/profile"
-        element={
-          <RequireAuth>
-            <ProfilePage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/access"
-        element={
-          <RequireAuth>
-            <AccessPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/clients"
-        element={
-          <RequireAuth>
-            <ClientsPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/shift-allocation"
-        element={
-          <RequireAuth>
-            <ShiftPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/sub-elements"
-        element={
-          <RequireAuth>
-            <SubElementsPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/tasks"
-        element={
-          <RequireAuth>
-            <TasksPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/budget-reports"
-        element={
-          <RequireAuth>
-            <BudgetPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/faq"
-        element={
-          <RequireAuth>
-            <FAQPage />
-          </RequireAuth>
-        }
-      />
-      <Route path="/faq" element={<FAQPage />} />
+          {/* Authenticated app routes */}
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/access"
+            element={
+              <RequireAuth>
+                <AccessPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clients"
+            element={
+              <RequireAuth>
+                <ClientsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/shift-allocation"
+            element={
+              <RequireAuth>
+                <ShiftPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/sub-elements"
+            element={
+              <RequireAuth>
+                <SubElementsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <RequireAuth>
+                <TasksPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/budget-reports"
+            element={
+              <RequireAuth>
+                <BudgetPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/faq"
+            element={
+              <RequireAuth>
+                <FAQPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/faq" element={<FAQPage />} />
 
-      {/* Redirects */}
-      {/* If logged in and they hit root again, push to /profile */}
-      <Route
-        path="*"
-        element={
-          me ? (
-            <Navigate to="/profile" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-    </Routes>
+          {/* Redirects */}
+          {/* If logged in and they hit root again, push to /profile */}
+          <Route
+            path="*"
+            element={
+              me ? (
+                <Navigate to="/profile" replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+        </Routes>
+      </div>
+
+      {/* Global print button */}
+      {shouldShowPrintButton && (
+        <PrintButton
+          targetId="app-content"
+          fileName={`${location.pathname.slice(1) || "page"}-capture`}
+        />
+      )}
+    </>
   );
 };
 

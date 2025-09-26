@@ -1,0 +1,27 @@
+/* Hide elements during print/capture */
+.no-print {
+  display: block;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure proper page breaks */
+  .page-break {
+    page-break-after: always;
+  }
+
+  /* Optimize for print */
+  body {
+    font-size: 12pt;
+    color: black;
+    background: white;
+  }
+}
+
+/* For html2canvas capture - hide certain elements */
+.capturing .no-capture {
+  display: none !important;
+}
