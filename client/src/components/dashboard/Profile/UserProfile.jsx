@@ -1,12 +1,13 @@
 import React, { useState } from "react";
+import { BiUser } from "react-icons/bi";
+
 import NavigationTab from "../../NavigationTab";
 import EditInfo from "./EditInfo";
-import { BiUser } from "react-icons/bi";
+import OrganizationManagement from "./OrganizationManagement";
 import "../../../styles/UserProfile.css";
-
-function UserProfile({me,setMe,onLogout,refreshMe,jwt}) {
+function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
-
+  const [showAdd, setShowAdd] = useState(false);
   const handleLeaveOrganization = async () => {
     try {
       const r = await fetch("/api/users/me/leave-organization", {
@@ -31,7 +32,6 @@ function UserProfile({me,setMe,onLogout,refreshMe,jwt}) {
       alert("Error leaving organisation: " + (e.message || e));
     }
   };
-
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
       {showEdit && (
@@ -41,6 +41,26 @@ function UserProfile({me,setMe,onLogout,refreshMe,jwt}) {
           refreshMe={refreshMe}
           showEdit={showEdit}
           setShowEdit={setShowEdit}
+        />
+      )}
+
+      {showAdd && (me.role === "Family" || me.role === "PoA") && (
+        <OrganizationManagement
+          me={me}
+          jwt={jwt}
+          refreshMe={refreshMe}
+          showAdd={showAdd}
+          setShowAdd={setShowAdd}
+        />
+      )}
+
+      {showAdd && (me.role === "Family" || me.role === "PoA") && (
+        <OrganizationManagement
+          me={me}
+          jwt={jwt}
+          refreshMe={refreshMe}
+          showAdd={showAdd}
+          setShowAdd={setShowAdd}
         />
       )}
 
@@ -54,17 +74,33 @@ function UserProfile({me,setMe,onLogout,refreshMe,jwt}) {
 
           <div className="userprofile-detail1-general-wrapper">
             <p className="userprofile-detail1-general">
-              {me?.name || "Please provide your full name..."}
+              {me?.name || "Testing"}
             </p>
-            <p className="userprofile-detail1-general">
-              {me?.organizationId || "No organization ID yet"}
-            </p>
-            <button
-              className="userprofile-detail1-edit-button"
-              onClick={() => setShowEdit(!showEdit)}
-            >
-              Edit
-            </button>
+            {(me?.role === "Family" || me?.role === "PoA") && (
+              <>
+                {!me?.organizationId ? (
+                  <button
+                    className="userprofile-detail1-add-button"
+                    onClick={() => setShowAdd(!showAdd)}
+                  >
+                    Add Organization ID
+                  </button>
+                ) : (
+                  <button
+                    className="userprofile-detail1-add-button"
+                    onClick={() => setShowAdd(!showAdd)}
+                  >
+                    Change Organization ID
+                  </button>
+                )}
+                <button
+                  className="userprofile-detail1-edit-button"
+                  onClick={() => setShowEdit(!showEdit)}
+                >
+                  Edit
+                </button>
+              </>
+            )}
           </div>
 
           <div className="userprofile-detail1-remove-button-wrapper">

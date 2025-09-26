@@ -9,6 +9,7 @@ import LogIn from "./components/login/LogIn";
 import RegisterOrganization from "./components/register/RegisterOrganization";
 
 // Authenticated route pages (create these as shown earlier)
+// import ProfilePage from "./components/dashboard/pages/ProfilePage";
 import ProfilePage from "./components/dashboard/pages/ProfilePage";
 import AccessPage from "./components/dashboard/pages/AccessPage";
 import ClientsPage from "./components/dashboard/pages/ClientsPage";
