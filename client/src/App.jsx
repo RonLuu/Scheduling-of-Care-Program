@@ -101,24 +101,18 @@ const App = () => {
           </RequireAuth>
         }
       />
-      {/* <Route
+      <Route
         path="/faq"
         element={
           <RequireAuth>
             <FAQPage />
           </RequireAuth>
         }
-      /> */}
-      <Route
-        path="/faq"
-        element={
-            <FAQPage />
-        }
       />
 
       {/* Redirects */}
       {/* If logged in and they hit root again, push to /profile */}
-      {/* <Route
+      <Route
         path="*"
         element={
           me ? (
@@ -127,7 +121,7 @@ const App = () => {
             <Navigate to="/login" replace />
           )
         }
-      /> */}
+      />
     </Routes>
   );
 };
