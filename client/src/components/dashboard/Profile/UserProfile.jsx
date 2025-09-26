@@ -8,6 +8,7 @@ import "../../../styles/UserProfile.css";
 function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+
   const handleLeaveOrganization = async () => {
     try {
       const r = await fetch("/api/users/me/leave-organization", {
@@ -54,16 +55,6 @@ function UserProfile({ me, refreshMe, jwt }) {
         />
       )}
 
-      {showAdd && (me.role === "Family" || me.role === "PoA") && (
-        <OrganizationManagement
-          me={me}
-          jwt={jwt}
-          refreshMe={refreshMe}
-          showAdd={showAdd}
-          setShowAdd={setShowAdd}
-        />
-      )}
-
       <NavigationTab className="navigationtab" />
 
       <div className="userprofile-detail">
@@ -78,21 +69,14 @@ function UserProfile({ me, refreshMe, jwt }) {
             </p>
             {(me?.role === "Family" || me?.role === "PoA") && (
               <>
-                {!me?.organizationId ? (
-                  <button
-                    className="userprofile-detail1-add-button"
-                    onClick={() => setShowAdd(!showAdd)}
-                  >
-                    Add Organization ID
-                  </button>
-                ) : (
-                  <button
-                    className="userprofile-detail1-add-button"
-                    onClick={() => setShowAdd(!showAdd)}
-                  >
-                    Change Organization ID
-                  </button>
-                )}
+                <button
+                  className="userprofile-detail1-add-button"
+                  onClick={() => setShowAdd(!showAdd)}
+                >
+                  {me?.organizationId
+                    ? "Change Organization"
+                    : "Add Organization"}
+                </button>
                 <button
                   className="userprofile-detail1-edit-button"
                   onClick={() => setShowEdit(!showEdit)}
@@ -103,14 +87,16 @@ function UserProfile({ me, refreshMe, jwt }) {
             )}
           </div>
 
-          <div className="userprofile-detail1-remove-button-wrapper">
-            <button
-              className="userprofile-detail1-remove-button"
-              onClick={handleLeaveOrganization}
-            >
-              Leave Organization
-            </button>
-          </div>
+          {me?.organizationId && (
+            <div className="userprofile-detail1-remove-button-wrapper">
+              <button
+                className="userprofile-detail1-remove-button"
+                onClick={handleLeaveOrganization}
+              >
+                Leave Organization
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="userprofile-detail2" style={{ color: "#252E47" }}>
