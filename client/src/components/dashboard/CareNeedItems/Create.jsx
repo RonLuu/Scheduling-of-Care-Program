@@ -498,11 +498,19 @@ function Create({ jwt, clients }) {
                   }}
                 >
                   <option value="yearEnd">
-                    Until end of this year (auto-renews for new year)
+                    Until end of current year (can be copied to next year)
                   </option>
                   <option value="endDate">End by date</option>
                   <option value="count">End after some occurrences</option>
                 </select>
+
+                {ciEndMode === "yearEnd" && (
+                  <p style={{ opacity: 0.7, marginTop: 4, fontSize: "0.9em" }}>
+                    Tasks will be generated until Dec 31 of the current year. To
+                    generate tasks for next year, use the "Generate next year"
+                    button in the Sub-elements list after creation.
+                  </p>
+                )}
               </div>
             )}
           </div>

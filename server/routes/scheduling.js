@@ -69,6 +69,8 @@ async function generateTasksForItem(req, res) {
   } else if (item.endDate) {
     windowEnd = new Date(item.endDate);
   } else {
+    // For yearEnd items (no endDate, no occurrenceCount),
+    // only generate up to end of CURRENT year
     const now = new Date();
     windowEnd = endOfYearUTC(now.getUTCFullYear());
   }
@@ -241,103 +243,6 @@ function combineDateAndTime(dateOnly, hhmm) {
   return d;
 }
 
-router.post("/ensure-annual", requireAuth, async (req, res) => {
-  const now = new Date();
-  const targetYearEnd = endOfYearUTC(now.getUTCFullYear());
-
-  const itemFilter = {
-    organizationId: req.user.organizationId,
-    status: "Active",
-    // Treat "no end" and "open occurrenceCount" as auto-renewing annually
-    $or: [{ endDate: null }, { endDate: { $exists: false } }],
-    $or: [{ occurrenceCount: null }, { occurrenceCount: { $exists: false } }],
-    "frequency.intervalType": { $ne: "JustPurchase" },
-  };
-
-  // Staff scope
-  if (req.user.role === "GeneralCareStaff") {
-    const links = await PersonUserLink.find({
-      userId: req.user.id,
-      active: true,
-    })
-      .select("personId")
-      .lean();
-    const personIds = links.map((l) => l.personId);
-    if (personIds.length === 0) return res.json({ checked: 0, extended: 0 });
-    itemFilter.personId = { $in: personIds };
-  }
-
-  const items = await CareNeedItem.find(itemFilter).lean();
-  if (items.length === 0) return res.json({ checked: 0, extended: 0 });
-
-  let extended = 0;
-
-  for (const item of items) {
-    const startDate = item?.frequency?.startDate
-      ? new Date(item.frequency.startDate)
-      : null;
-    if (!startDate) continue;
-
-    // Find the latest dueDate we already have
-    const last = await CareTask.findOne({ careNeedItemId: item._id })
-      .sort({ dueDate: -1 })
-      .select("dueDate")
-      .lean();
-
-    // Where do we start generating?
-    const fromDate = last
-      ? nextStepAfter(item.frequency, new Date(last.dueDate))
-      : startDate;
-
-    // If we already cover this year's end, skip
-    if (last && new Date(last.dueDate) >= targetYearEnd) continue;
-
-    // Generate from 'fromDate' to Dec 31 of current year
-    const dates = expandOccurrences(
-      {
-        intervalType: item.frequency.intervalType,
-        intervalValue: item.frequency.intervalValue || 1,
-        startDate: startDate,
-        endDate: null, // logical "open", but we cap by window
-        occurrenceCount: null,
-      },
-      fromDate,
-      targetYearEnd
-    );
-
-    for (const dueDate of dates) {
-      const query = { careNeedItemId: item._id, dueDate };
-      const update = {
-        $setOnInsert: {
-          personId: item.personId,
-          organizationId: item.organizationId,
-          careNeedItemId: item._id,
-          title: item.name,
-          dueDate,
-          status: "Scheduled",
-        },
-        $set: {
-          scheduleType: item.scheduleType === "Timed" ? "Timed" : "AllDay",
-          startAt: null,
-          endAt: null,
-        },
-      };
-
-      if (item.scheduleType === "Timed" && item.timeWindow) {
-        const startAt = combineDateAndTime(dueDate, item.timeWindow.startTime);
-        const endAt = combineDateAndTime(dueDate, item.timeWindow.endTime);
-        update.$set.startAt = startAt;
-        update.$set.endAt = endAt;
-      }
-
-      const resUp = await CareTask.updateOne(query, update, { upsert: true });
-      if (resUp.upsertedCount === 1) extended++;
-    }
-  }
-
-  res.json({ checked: items.length, extended });
-});
-
 // helpers
 function addDays(d, n) {
   const x = new Date(d);
@@ -356,5 +261,117 @@ function nextStepAfter(freq, fromDate) {
   if (t === "Yearly") nd.setFullYear(nd.getFullYear() + iv);
   return nd;
 }
+
+/**
+ * POST /api/scheduling/care-need-items/:itemId/generate-next-year
+ * Generates all tasks for the entire next year, replacing any existing ones
+ */
+router.post(
+  "/care-need-items/:itemId/generate-next-year",
+  requireAuth,
+  requireRole("Admin", "Family", "PoA"),
+  async (req, res) => {
+    try {
+      const { itemId } = req.params;
+
+      // Load the item
+      const item = await CareNeedItem.findById(itemId);
+      if (!item) return res.status(404).json({ error: "ITEM_NOT_FOUND" });
+
+      // Verify org boundary
+      if (String(item.organizationId) !== String(req.user.organizationId)) {
+        return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+      }
+
+      // Check this is a "yearEnd" item (no explicit endDate, no occurrenceCount)
+      if (item.endDate || item.occurrenceCount) {
+        return res.status(400).json({
+          error: "This action is only for open-ended (year-end) items",
+        });
+      }
+
+      // Skip if JustPurchase
+      if (item.frequency?.intervalType === "JustPurchase") {
+        return res.json({
+          deleted: 0,
+          created: 0,
+          note: "JustPurchase items have no scheduled tasks",
+        });
+      }
+
+      const start = item.frequency?.startDate
+        ? new Date(item.frequency.startDate)
+        : null;
+      if (!start) {
+        return res.status(400).json({ error: "Item has no start date" });
+      }
+
+      // Calculate next year's date range
+      const now = new Date();
+      const nextYear = now.getUTCFullYear() + 1;
+      const nextYearStart = new Date(Date.UTC(nextYear, 0, 1, 0, 0, 0));
+      const nextYearEnd = new Date(Date.UTC(nextYear, 11, 31, 23, 59, 59, 999));
+
+      // 1. Delete all existing tasks for next year
+      const deleteResult = await CareTask.deleteMany({
+        careNeedItemId: item._id,
+        dueDate: {
+          $gte: nextYearStart,
+          $lte: nextYearEnd,
+        },
+        status: { $in: ["Scheduled", "Skipped"] }, // Only delete pending tasks
+      });
+
+      // 2. Generate new tasks for the entire next year
+      const dates = expandOccurrences(
+        {
+          intervalType: item.frequency.intervalType,
+          intervalValue: item.frequency.intervalValue || 1,
+          startDate: start,
+          endDate: null, // treat as open-ended
+          occurrenceCount: null,
+        },
+        nextYearStart,
+        nextYearEnd
+      );
+
+      // 3. Create the new tasks
+      let created = 0;
+      for (const dueDate of dates) {
+        const taskDoc = {
+          personId: item.personId,
+          organizationId: item.organizationId,
+          careNeedItemId: item._id,
+          title: item.name,
+          dueDate,
+          status: "Scheduled",
+          scheduleType: item.scheduleType === "Timed" ? "Timed" : "AllDay",
+        };
+
+        // Add time windows if Timed
+        if (item.scheduleType === "Timed" && item.timeWindow) {
+          taskDoc.startAt = combineDateAndTime(
+            dueDate,
+            item.timeWindow.startTime
+          );
+          taskDoc.endAt = combineDateAndTime(dueDate, item.timeWindow.endTime);
+        }
+
+        await CareTask.create(taskDoc);
+        created++;
+      }
+
+      res.json({
+        deleted: deleteResult.deletedCount,
+        created,
+        year: nextYear,
+        itemName: item.name,
+      });
+    } catch (err) {
+      console.error("Error generating next year tasks:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 export default router;

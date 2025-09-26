@@ -89,6 +89,41 @@ function List({ jwt, clients }) {
     closeEditorIfReturned();
   }, [items, closeEditorIfReturned]);
 
+  const generateNextYearTasks = async (itemId) => {
+    if (
+      !window.confirm(
+        "This will replace ALL tasks for next year with newly generated ones. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/scheduling/care-need-items/${itemId}/generate-next-year`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate tasks");
+
+      alert(
+        `Successfully generated ${data.created} tasks for next year (deleted ${data.deleted} existing).`
+      );
+
+      // Optionally refresh the list
+      if (cniClientId) await loadItemsFor(cniClientId);
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   return (
     <div className="card">
       <h3>Sub-element List</h3>
@@ -262,6 +297,26 @@ function List({ jwt, clients }) {
                                 </button>
                               </>
                             )}
+
+                            {/* Only show for yearEnd items that are not returned */}
+
+                            {!isReturned &&
+                              it.frequency?.intervalType !== "JustPurchase" &&
+                              it.frequency?.intervalType !== "OneTime" &&
+                              it.endDate === null &&
+                              it.occurrenceCount === null && (
+                                <button
+                                  className="secondary"
+                                  title="Generate all tasks for next year"
+                                  onClick={() => generateNextYearTasks(it._id)}
+                                  style={{
+                                    backgroundColor: "#10b981",
+                                    color: "white",
+                                  }}
+                                >
+                                  Generate next year
+                                </button>
+                              )}
 
                             <button
                               className="danger"
