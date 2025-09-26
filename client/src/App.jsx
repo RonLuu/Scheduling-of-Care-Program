@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import useAuth from "./components/dashboard/hooks/useAuth";
 
 // Public pages
-import Welcome from "./components/welcome/Welcome";
 import RegisterUser from "./components/register/RegisterUser";
 import LogIn from "./components/login/LogIn";
 import RegisterOrganization from "./components/register/RegisterOrganization";
@@ -37,8 +36,19 @@ const App = () => {
   };
   return (
     <Routes>
+      {/* Root route */}
+      <Route
+        path="/"
+        element={
+          me ? (
+            <Navigate to="/profile" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
       {/* Public routes */}
-      <Route path="/" element={<Welcome />} />
       <Route path="/registeruser" element={<RegisterUser />} />
       <Route path="/registerorganization" element={<RegisterOrganization />} />
       <Route path="/login" element={<LogIn />} />
