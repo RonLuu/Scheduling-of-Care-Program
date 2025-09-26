@@ -220,7 +220,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
-      { $match: { "item.status": "Active" } }, // NEW
+      { $match: { "item.status": "Active" } },
       { $group: { _id: "$careNeedItemId", completed: { $sum: "$cost" } } },
     ]);
 
@@ -274,9 +274,10 @@ router.get("/budget", requireAuth, async (req, res) => {
 
     let itemsMeta = {};
     if (itemIdsFromReport.length) {
+      // UPDATED: Also fetch budgetCost for fallback
       const metas = await CareNeedItem.find(
         { _id: { $in: itemIdsFromReport } },
-        { _id: 1, name: 1, category: 1, budgets: 1 }
+        { _id: 1, name: 1, category: 1, budgets: 1, budgetCost: 1 }
       ).lean();
       itemsMeta = Object.fromEntries(metas.map((m) => [String(m._id), m]));
     }
@@ -292,10 +293,18 @@ router.get("/budget", requireAuth, async (req, res) => {
       return acc;
     }, {});
 
+    // UPDATED: Modified function to use budgetCost as fallback
     function budgetForYear(metaDoc, yearNumber) {
       const arr = metaDoc?.budgets || [];
       const hit = arr.find((b) => Number(b.year) === Number(yearNumber));
-      return hit ? Number(hit.amount || 0) : 0;
+
+      // If specific year budget exists, use it
+      if (hit) {
+        return Number(hit.amount || 0);
+      }
+
+      // Otherwise, fallback to budgetCost (the default annual budget)
+      return Number(metaDoc?.budgetCost || 0);
     }
 
     const warnFor = (budget, spent, expected) => {
@@ -341,6 +350,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         name: "(Unknown item)",
         category: "Other",
         budgets: [],
+        budgetCost: 0,
       };
       const category = meta.category || "Other";
       const annualBudgetItem = budgetForYear(meta, y);
@@ -421,7 +431,7 @@ router.get("/budget", requireAuth, async (req, res) => {
     const expectedBalanceAtYearEnd =
       reportAnnualBudget - totalSpent - expectedRemaining;
 
-    // ---------- NEW: top-level warnings ----------
+    // ---------- top-level warnings ----------
     const warnings = {
       budgetVsPredefined: null,
       spentVsReportBudget: null,
