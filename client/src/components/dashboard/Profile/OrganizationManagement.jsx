@@ -75,8 +75,10 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
       }
 
       let migrateClients = false;
+
       if (me.role === "Family" || me.role === "PoA") {
         const ok = window.confirm(
+
           "Also move ALL your clients to the new organisation, move other Family/PoA linked to those clients, update all items/tasks, and revoke all staff/admin access on those clients?\n\nClick OK to proceed."
         );
         if (!ok) {
@@ -143,16 +145,19 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
           />
         </div>
 
+
         <div className="organizationmanagement-ID" style={{ height: "10%" }}>
           Org:&nbsp;
           {me?.organizationId ? (
             <code>{currentOrgName}</code>
+
           ) : (
             <em>none set</em>
           )}
         </div>
 
         {editing ? (
+
           <div
             className="organizationmanagement-edit"
             style={{ display: "grid", gap: 8 }}
@@ -192,6 +197,7 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
               className="organizationmanagement-edit-button"
               onClick={handleSaveOrganization}
               disabled={loadingOrgs || !pendingOrgId}
+
             >
               Save
             </button>
