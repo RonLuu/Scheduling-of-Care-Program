@@ -106,7 +106,7 @@ function AccessControl({ me, jwt, clients }) {
 
     if (isSelf) {
       return (
-        <button className="secondary" disabled>
+        <button className="secondary" style={{ border: "none" }} disabled>
           You
         </button>
       );
@@ -121,7 +121,7 @@ function AccessControl({ me, jwt, clients }) {
     }
 
     return (
-      <button className="secondary" disabled>
+      <button className="secondary" style={{ border: "none" }} disabled>
         Cannot revoke
       </button>
     );
@@ -160,7 +160,7 @@ function AccessControl({ me, jwt, clients }) {
               <th align="left">Name</th>
               <th align="left">Email</th>
               <th align="left">Role</th>
-              <th>Action</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>

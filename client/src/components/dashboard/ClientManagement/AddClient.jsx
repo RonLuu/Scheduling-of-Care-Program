@@ -155,10 +155,6 @@ function AddClient({ me, jwt, setClients }) {
 
         <button disabled={adding}>{adding ? "Adding..." : "Add client"}</button>
         {addErr && <p style={{ color: "#b91c1c" }}>Error: {addErr}</p>}
-        <p className="badge">
-          Org derived from your account:{" "}
-          <code>{(me && me.organizationId) || ""}</code>
-        </p>
       </form>
     </div>
   );
