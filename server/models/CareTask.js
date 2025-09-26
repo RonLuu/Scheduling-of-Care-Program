@@ -59,6 +59,5 @@ const CareTaskSchema = new Schema(
 CareTaskSchema.index({ organizationId: 1, status: 1, dueDate: 1 });
 CareTaskSchema.index({ assignedToUserId: 1, dueDate: 1 });
 CareTaskSchema.index({ careNeedItemId: 1, dueDate: 1 }, { unique: true });
-CareTaskSchema.index({ careNeedItemId: 1 });
 
 export default model("CareTask", CareTaskSchema);
