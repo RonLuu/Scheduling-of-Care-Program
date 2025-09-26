@@ -10,7 +10,7 @@ import RegisterOrganization from "./components/register/RegisterOrganization";
 
 // Authenticated route pages (create these as shown earlier)
 // import ProfilePage from "./components/dashboard/pages/ProfilePage";
-import UserProfile from "./components/dashboard/Profile/UserProfile";
+import ProfilePage from "./components/dashboard/pages/ProfilePage";
 import AccessPage from "./components/dashboard/pages/AccessPage";
 import ClientsPage from "./components/dashboard/pages/ClientsPage";
 import ShiftPage from "./components/dashboard/pages/ShiftPage";
@@ -29,14 +29,12 @@ import { fab } from "@fortawesome/free-brands-svg-icons";
 
 library.add(fas, far, fab);
 
-const RequireAuth = ({ children }) => {
-  const { me, isReady } = useAuth();
-  if (!isReady) return null; // or a spinner component
-  return me ? children : <Navigate to="/login" replace />;
-};
 const App = () => {
-  const { me } = useAuth();
-
+  const { me, isReady } = useAuth();
+  const RequireAuth = ({ children }) => {
+    if (!isReady) return null; // or a spinner component
+    return me ? children : <Navigate to="/login" replace />;
+  };
   return (
     <Routes>
       {/* Public routes */}
@@ -50,7 +48,7 @@ const App = () => {
         path="/profile"
         element={
           <RequireAuth>
-            <UserProfile />
+            <ProfilePage />
           </RequireAuth>
         }
       />
@@ -110,6 +108,7 @@ const App = () => {
           </RequireAuth>
         }
       />
+      <Route path="/faq" element={<FAQPage />} />
 
       {/* Redirects */}
       {/* If logged in and they hit root again, push to /profile */}

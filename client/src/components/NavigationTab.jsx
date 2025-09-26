@@ -32,7 +32,6 @@ const NavItem = ({ to, onClick, children }) => {
 };
 
 const NavigationTab = () => {
-
   const [showTab, setShowTab] = useState(false);
   const { setMe } = useAuth();
   const navigate = useNavigate();
@@ -133,4 +132,3 @@ const NavigationTab = () => {
 };
 
 export default NavigationTab;
-
