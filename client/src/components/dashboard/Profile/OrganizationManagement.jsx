@@ -1,6 +1,6 @@
 // dashboard/OrganizationManagement.jsx
 import React from "react";
-import { BiX } from "react-icons/bi"
+import { BiX } from "react-icons/bi";
 
 function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
   const [pendingOrgId, setPendingOrgId] = React.useState(
@@ -19,7 +19,7 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
       }
 
       let migrateClients = false;
-      if (me.role === "Family" || me.role === "PoA") {
+      if (me?.role === "Family" || me?.role === "PoA") {
         migrateClients = window.confirm(
           "Also move ALL your clients to the new organisation, move other Family/PoA linked to those clients, update all items/tasks, and revoke all staff/admin access on those clients?\n\nClick OK to proceed."
         );
@@ -60,35 +60,50 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
   };
 
   return (
-    <div className={`organizationmanagement-wrapper ${showAdd ? "on" : "off"}`} onClick={()=>setShowAdd(false)}>
-      <div className={`organizationmanagement ${showAdd ? "on" : "off"}`} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`organizationmanagement-wrapper ${showAdd ? "on" : "off"}`}
+      onClick={() => setShowAdd(false)}
+    >
+      <div
+        className={`organizationmanagement ${showAdd ? "on" : "off"}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="organizationmanagement-header">
           <h3>Your organisation</h3>
-          <BiX style={{ fontSize: "250%" }}onClick={()=>setShowAdd(!showAdd)}/>
+          <BiX
+            style={{ fontSize: "250%" }}
+            onClick={() => setShowAdd(!showAdd)}
+          />
         </div>
-        <div className="organizationmanagement-ID" style={{height:"10%"}}>
+        <div className="organizationmanagement-ID" style={{ height: "10%" }}>
           Org:{" "}
-          {
-            me?.organizationId ?
-              <code>{me?.organizationId}</code>
-              :
-              <em>none set</em>
-          }
+          {me?.organizationId ? (
+            <code>{me?.organizationId}</code>
+          ) : (
+            <em>none set</em>
+          )}
         </div>
         {editing ? (
-            <div className="organizationmanagement-edit">
-              <input className="organizationmanagement-edit-input"
-                placeholder="Organisation ID"
-                value={pendingOrgId}
-                onChange={(e) => setPendingOrgId(e.target.value)}
-              />
-              <button className="organizationmanagement-edit-button" onClick={handleSaveOrganization}>
-                Save
-              </button>
-            </div>
+          <div className="organizationmanagement-edit">
+            <input
+              className="organizationmanagement-edit-input"
+              placeholder="Organisation ID"
+              value={pendingOrgId}
+              onChange={(e) => setPendingOrgId(e.target.value)}
+            />
+            <button
+              className="organizationmanagement-edit-button"
+              onClick={handleSaveOrganization}
+            >
+              Save
+            </button>
+          </div>
         ) : (
           <div className="organizationmanagement-change">
-            <button className="organizationmanagement-change-button" onClick={() => setEditing(true)}>
+            <button
+              className="organizationmanagement-change-button"
+              onClick={() => setEditing(true)}
+            >
               Change organization
             </button>
           </div>
@@ -103,7 +118,6 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
         )}
       </div>
     </div>
-    
   );
 }
 
