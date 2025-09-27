@@ -12,8 +12,8 @@ import {
   BiExit,
 } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
-import "../styles/NavigationTab.css";
-import useAuth from "./dashboard/hooks/useAuth";
+import "../../styles/NavigationTab.css";
+import useAuth from "../dashboard/hooks/useAuth";
 
 const NavItem = ({ to, onClick, children }) => {
   return to ? (

@@ -1,7 +1,7 @@
 import React from "react";
 import useAuth from "../hooks/useAuth";
 import Profile from "../Profile";
-import NavigationTab from "../../NavigationTab";
+import NavigationTab from "../../NavigationTab/NavigationTab";
 import Header from "../../Header";
 
 function ProfilePage() {

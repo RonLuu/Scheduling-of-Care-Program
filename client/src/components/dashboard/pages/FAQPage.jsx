@@ -1,5 +1,5 @@
 import React from "react";
-import NavigationTab from "../../NavigationTab";
+import NavigationTab from "../../NavigationTab/NavigationTab";
 import Dropdown from "./dropdown";
 import "../../../styles/FAQPage.css"
 function FAQPage() {

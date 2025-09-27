@@ -1,6 +1,6 @@
 import React from "react";
 import useAuth from "../hooks/useAuth";
-import NavigationTab from "../../NavigationTab";
+import NavigationTab from "../../NavigationTab/NavigationTab";
 import CareTasks from "../CareTasks";
 import { useClients } from "../hooks/useClients";
 

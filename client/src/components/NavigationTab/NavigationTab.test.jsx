@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
 import NavigationTab from "./NavigationTab";
-import { AuthContext } from "./dashboard/auth/authContext";
+import { AuthContext } from "../dashboard/auth/authContext";
 
 // Create a test AuthProvider that matches the structure expected by useAuth
 const TestAuthProvider = ({ children }) => {
