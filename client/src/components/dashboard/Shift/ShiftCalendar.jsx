@@ -92,7 +92,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           title: (s.staff?.name || "Unknown") + shiftLabel,
           start: s.start,
           end: s.end,
-          allDay: false,
           backgroundColor: color,
           borderColor: color,
           extendedProps: {
@@ -415,7 +414,6 @@ function ShiftEditDrawer({
       const payload = {
         staffUserId,
         notes,
-        allDay: false,
         start,
         end,
         shiftType: shiftType === "predefined" ? predefinedShift : "custom",

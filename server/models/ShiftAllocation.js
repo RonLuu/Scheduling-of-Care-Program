@@ -28,9 +28,6 @@ const ShiftAllocationSchema = new Schema(
       default: "custom",
     },
 
-    // Always false
-    allDay: { type: Boolean, default: false },
-
     // Start and end times (can span multiple days for custom shifts)
     start: { type: Date, required: true },
     end: { type: Date, required: true },

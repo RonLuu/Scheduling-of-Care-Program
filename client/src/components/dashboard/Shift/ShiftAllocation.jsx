@@ -157,7 +157,6 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
         body: JSON.stringify({
           personId,
           staffUserId,
-          allDay: false, // Always false now - we don't use all-day anymore
           start,
           end,
           notes: notes || "",
