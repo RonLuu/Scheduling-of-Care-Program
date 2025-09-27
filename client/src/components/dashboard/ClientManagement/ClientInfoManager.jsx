@@ -177,14 +177,14 @@ function ClientInfoManager({ me, jwt, clients }) {
   return (
     <div className="client-info-manager">
       <div className="card">
-        <h2>Family Member Information</h2>
+        <h2>Client Information</h2>
 
         <div className="client-selector">
           <label>
-            Select a family member to view details and manage access
+            Select a client (person with special needs) to view details
           </label>
           <select value={selectedClientId} onChange={handleClientChange}>
-            <option value="">— Choose a family member—</option>
+            <option value="">— Choose a client—</option>
             {clients.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name} {c.status !== "Active" ? `(${c.status})` : ""}
