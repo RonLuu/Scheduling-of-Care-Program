@@ -1,0 +1,76 @@
+.calendar {
+    width: 100%;
+}
+
+/* .heading {
+    font-size: clamp(4rem, 3.8cqi, 7rem);
+    letter-spacing: 0.3;
+    background-color: red;
+} */
+
+.navigate-date {
+    display: flex;
+    align-items: center;
+    column-gap: 5%;
+    margin: 8% 10%;
+}
+.buttons {
+    display: flex;
+    column-gap: 1rem;
+    margin-left: auto;
+}
+
+.buttons .arrow{
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background-color: #A5231C;
+    cursor: pointer;
+}
+
+.buttons .arrow .icon  {
+    font-size: 120%;
+    color: #fff;
+}
+
+.month-view {
+    padding-left: 7%;
+    padding-right: 10%;
+}
+
+.weekdays {
+    width: 100%;
+    display: flex;
+    margin: 5% 0;
+}
+
+.weekdays span{
+    width: calc(100%/7);
+    font-size: clamp(1rem,0.8cqi, 1.3rem);
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+}
+
+.days {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.days span {
+    font-size: clamp(1.2rem,1cqi, 1.6rem);
+    width: calc(100%/7);
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.current-day {
+    background-color:#A5231C;
+    border-radius: 50%;
+}

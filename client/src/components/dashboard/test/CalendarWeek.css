@@ -1,0 +1,41 @@
+/* CalendarWeek.css */
+.calendarweek {
+  width: 99%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* force equal width distribution */
+}
+
+/* Sticky header
+.calendarweek thead th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  border: 1px solid red;
+} */
+
+.calendarweek th,
+.calendarweek td {
+  border: 3px solid #DBE6F6;
+  text-align: center;
+}
+
+.calendarweek th.time-col,
+.calendarweek td.time-col {
+  width: 10%;
+}
+
+.calendarweek th.day-col,
+.calendarweek td.day-col {
+  width: auto; 
+}
+
+.event {
+    background: lightblue;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 2px 6px;
+    color: white;
+    background: #8189D2;
+}
