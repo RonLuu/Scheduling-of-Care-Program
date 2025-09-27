@@ -1,38 +1,12 @@
 import React, { useState } from "react";
 import { BiUser } from "react-icons/bi";
-
 import NavigationTab from "../../NavigationTab";
 import EditInfo from "./EditInfo";
-import OrganizationManagement from "./OrganizationManagement";
+
 import "../../../styles/UserProfile.css";
 function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
 
-  const handleLeaveOrganization = async () => {
-    try {
-      const r = await fetch("/api/users/me/leave-organization", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + jwt,
-        },
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed");
-
-      alert("You left the organisation successfully.");
-
-      const rr = await fetch("/api/auth/me", {
-        headers: { Authorization: "Bearer " + jwt },
-      });
-      if (rr.ok) {
-        refreshMe();
-      }
-    } catch (e) {
-      alert("Error leaving organisation: " + (e.message || e));
-    }
-  };
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
       {showEdit && (
@@ -42,16 +16,6 @@ function UserProfile({ me, refreshMe, jwt }) {
           refreshMe={refreshMe}
           showEdit={showEdit}
           setShowEdit={setShowEdit}
-        />
-      )}
-
-      {showAdd && (me.role === "Family" || me.role === "PoA") && (
-        <OrganizationManagement
-          me={me}
-          jwt={jwt}
-          refreshMe={refreshMe}
-          showAdd={showAdd}
-          setShowAdd={setShowAdd}
         />
       )}
 
@@ -67,36 +31,14 @@ function UserProfile({ me, refreshMe, jwt }) {
             <p className="userprofile-detail1-general">
               {me?.name || "Testing"}
             </p>
-            {(me?.role === "Family" || me?.role === "PoA") && (
-              <>
-                <button
-                  className="userprofile-detail1-add-button"
-                  onClick={() => setShowAdd(!showAdd)}
-                >
-                  {me?.organizationId
-                    ? "Change Organization"
-                    : "Add Organization"}
-                </button>
-                <button
-                  className="userprofile-detail1-edit-button"
-                  onClick={() => setShowEdit(!showEdit)}
-                >
-                  Edit
-                </button>
-              </>
-            )}
-          </div>
 
-          {me?.organizationId && (
-            <div className="userprofile-detail1-remove-button-wrapper">
-              <button
-                className="userprofile-detail1-remove-button"
-                onClick={handleLeaveOrganization}
-              >
-                Leave Organization
-              </button>
-            </div>
-          )}
+            <button
+              className="userprofile-detail1-edit-button"
+              onClick={() => setShowEdit(!showEdit)}
+            >
+              Edit
+            </button>
+          </div>
         </div>
 
         <div className="userprofile-detail2" style={{ color: "#252E47" }}>
