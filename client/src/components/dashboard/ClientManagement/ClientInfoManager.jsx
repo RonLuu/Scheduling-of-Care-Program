@@ -1,0 +1,648 @@
+import React from "react";
+
+function ClientInfoManager({ me, jwt, clients }) {
+  const [selectedClientId, setSelectedClientId] = React.useState("");
+  const [accessLinks, setAccessLinks] = React.useState([]);
+  const [accessErr, setAccessErr] = React.useState("");
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Get the selected client object
+  const selectedClient = clients.find((c) => c._id === selectedClientId);
+
+  // Load access links when client changes
+  const loadAccessLinks = async (pid) => {
+    setIsLoading(true);
+    try {
+      setAccessErr("");
+      const r = await fetch(`/api/person-user-links/by-person/${pid}`, {
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to load access list");
+      setAccessLinks(d);
+    } catch (e) {
+      setAccessErr(e.message || String(e));
+      setAccessLinks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClientChange = (e) => {
+    const value = e.target.value;
+    setSelectedClientId(value);
+    if (value) loadAccessLinks(value);
+  };
+
+  // Client display helper functions
+  const getMedicalInfoDisplay = (medicalInfo) => {
+    if (!medicalInfo || typeof medicalInfo !== "object") return null;
+    const info = [];
+    if (medicalInfo.problems)
+      info.push({ label: "Medical Problems", value: medicalInfo.problems });
+    if (medicalInfo.allergies)
+      info.push({ label: "Allergies", value: medicalInfo.allergies });
+    if (medicalInfo.medications)
+      info.push({ label: "Medications", value: medicalInfo.medications });
+    if (medicalInfo.mobilityNeeds)
+      info.push({ label: "Mobility Needs", value: medicalInfo.mobilityNeeds });
+    if (medicalInfo.communicationNeeds)
+      info.push({
+        label: "Communication",
+        value: medicalInfo.communicationNeeds,
+      });
+    if (medicalInfo.dietaryRequirements)
+      info.push({ label: "Dietary", value: medicalInfo.dietaryRequirements });
+    return info;
+  };
+
+  const getAddressDisplay = (address) => {
+    if (!address || typeof address !== "object") return "No address provided";
+    const parts = [
+      address.street,
+      address.suburb,
+      address.state,
+      address.postcode,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : "No address provided";
+  };
+
+  const getEmergencyContactDisplay = (contact) => {
+    if (!contact || typeof contact !== "object") return "No emergency contact";
+    if (contact.name && contact.phone) {
+      return `${contact.name} - ${contact.phone}`;
+    } else if (contact.name) {
+      return contact.name;
+    } else if (contact.phone) {
+      return contact.phone;
+    }
+    return "No emergency contact";
+  };
+
+  const calculateAge = (dob) => {
+    if (!dob) return null;
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  };
+
+  // Access control functions
+  const shouldShowUser = () => {
+    if (!me) return false;
+    return me.role === "Admin" || me.role === "Family" || me.role === "PoA";
+  };
+
+  const canRevoke = (userLink) => {
+    const u = userLink.userId;
+    if (!u) return false;
+
+    // Never allow revoking yourself
+    if (String(u._id) === String(me.id)) return false;
+
+    if (me.role === "Family" || me.role === "PoA") {
+      // Family/PoA can revoke anyone except themselves
+      return true;
+    }
+
+    if (me.role === "Admin") {
+      // Admin can only revoke staff
+      return u.role === "GeneralCareStaff";
+    }
+
+    return false;
+  };
+
+  const confirmText = (link) => {
+    const target = link?.userId || {};
+    const targetLabel = [target.role, target.name || target.email]
+      .filter(Boolean)
+      .join(" ");
+    const isFamily = me.role === "Family" || me.role === "PoA";
+
+    if (isFamily && target.role === "Admin") {
+      return `You're about to revoke ${targetLabel}'s access to this client.\n\nThis will ALSO revoke ALL GeneralCareStaff for this client.\n\nContinue?`;
+    }
+    return `Revoke access for ${targetLabel}?`;
+  };
+
+  const revokeAccess = async (link) => {
+    const ok = window.confirm(confirmText(link));
+    if (!ok) return;
+
+    try {
+      const r = await fetch(`/api/person-user-links/${link._id}/revoke`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + jwt,
+        },
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to revoke");
+
+      let msg = "Access revoked successfully.";
+      if (d.cascade && typeof d.cascade.staffRevoked === "number") {
+        msg += ` Also revoked ${d.cascade.staffRevoked} staff member access.`;
+      }
+      alert(msg);
+
+      if (selectedClientId) await loadAccessLinks(selectedClientId);
+    } catch (e) {
+      alert("Error: " + (e.message || e));
+    }
+  };
+
+  const getActionStatus = (link) => {
+    const u = link.userId;
+    const isSelf = String(u._id) === String(me.id);
+    const allowed = canRevoke(link);
+
+    if (isSelf) {
+      return { text: "Current User (You)", type: "self", canAct: false };
+    }
+    if (allowed) {
+      return { text: "Revoke Access", type: "revokable", canAct: true };
+    }
+    return { text: "Protected User", type: "protected", canAct: false };
+  };
+
+  return (
+    <div className="client-info-manager">
+      <div className="card">
+        <h2>Client Information</h2>
+
+        <div className="client-selector">
+          <label>
+            Select a client (person with special needs) to view details
+          </label>
+          <select value={selectedClientId} onChange={handleClientChange}>
+            <option value="">— Choose a client—</option>
+            {clients.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name} {c.status !== "Active" ? `(${c.status})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!selectedClientId && (
+          <div className="empty-state">
+            <p>
+              Please select a client from the dropdown above to view their
+              information and manage access.
+            </p>
+          </div>
+        )}
+
+        {selectedClient && (
+          <>
+            {/* Client Information Display */}
+            <div className="client-info-section">
+              <div className="section-header">
+                <h3>{selectedClient.name}</h3>
+                {/* <span
+                  className={`status-badge status-${
+                    selectedClient.status?.toLowerCase() || "active"
+                  }`}
+                >
+                  {selectedClient.status || "Active"}
+                </span> */}
+              </div>
+
+              <div className="info-grid">
+                {/* Basic Information */}
+                <div className="info-block">
+                  <h4>Basic Information</h4>
+                  {selectedClient.dateOfBirth && (
+                    <div className="info-row">
+                      <span className="label">Age:</span>
+                      <span className="value">
+                        {calculateAge(selectedClient.dateOfBirth)} years old
+                      </span>
+                    </div>
+                  )}
+                  {selectedClient.mobilePhone && (
+                    <div className="info-row">
+                      <span className="label">Phone:</span>
+                      <span className="value">
+                        {selectedClient.mobilePhone}
+                      </span>
+                    </div>
+                  )}
+                  <div className="info-row">
+                    <span className="label">Address:</span>
+                    <span className="value">
+                      {getAddressDisplay(selectedClient.address)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                <div className="info-block">
+                  <h4>Emergency Contact</h4>
+                  <div className="info-row">
+                    <span className="value">
+                      {getEmergencyContactDisplay(
+                        selectedClient.emergencyContact
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Medical Information */}
+                {getMedicalInfoDisplay(selectedClient.medicalInfo)?.length >
+                  0 && (
+                  <div className="info-block full-width">
+                    <h4>Medical Information</h4>
+                    {getMedicalInfoDisplay(selectedClient.medicalInfo).map(
+                      (item, index) => (
+                        <div key={index} className="info-row">
+                          <span className="label">{item.label}:</span>
+                          <span className="value">{item.value}</span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* Custom Fields */}
+                {selectedClient.customFields &&
+                  selectedClient.customFields.length > 0 && (
+                    <div className="info-block full-width">
+                      <h4>Additional Information</h4>
+                      {selectedClient.customFields.map((field, index) => (
+                        <div key={index} className="info-row">
+                          <span className="label">{field.title}:</span>
+                          <span className="value">{field.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </div>
+            </div>
+
+            {/* Access Management Section */}
+            <div className="access-section">
+              <h3>Access Management</h3>
+
+              {accessErr && (
+                <div className="error-message">
+                  <p>Error: {accessErr}</p>
+                </div>
+              )}
+
+              {isLoading && (
+                <p className="loading">Loading access information...</p>
+              )}
+
+              {!isLoading && accessLinks.length > 0 && (
+                <div className="access-table-wrapper">
+                  <table className="access-table">
+                    <thead>
+                      <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Email</th>
+                        <th align="left">Role</th>
+                        {/* <th align="center">Access Status</th> */}
+                        <th align="center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accessLinks.filter(shouldShowUser).map((l) => {
+                        const u = l.userId;
+                        const actionStatus = getActionStatus(l);
+                        return (
+                          <tr key={l._id}>
+                            <td>{u.name || "—"}</td>
+                            <td>{u.email}</td>
+                            <td>
+                              <span
+                                className={`role-badge role-${u.role.toLowerCase()}`}
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            {/* <td align="center">
+                              <span
+                                className={`access-status ${actionStatus.type}`}
+                              >
+                                {actionStatus.text}
+                              </span>
+                            </td> */}
+                            <td align="center">
+                              {actionStatus.canAct ? (
+                                <button
+                                  className="revoke-btn"
+                                  onClick={() => revokeAccess(l)}
+                                >
+                                  Revoke
+                                </button>
+                              ) : (
+                                <span className="no-action">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!isLoading && accessLinks.length === 0 && (
+                <p className="no-users">
+                  No users have access to this client yet.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      <style jsx>{`
+        .client-info-manager {
+          width: 100%;
+        }
+
+        .card {
+          background: white;
+          border-radius: 0.5rem;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          margin-bottom: 1rem;
+        }
+
+        h2 {
+          margin: 0 0 1.5rem 0;
+          color: #111827;
+          font-size: 1.5rem;
+        }
+
+        .client-selector {
+          margin-bottom: 1.5rem;
+        }
+
+        .client-selector label {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: #4b5563;
+          font-size: 0.875rem;
+        }
+
+        .client-selector select {
+          width: 100%;
+          padding: 0.625rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          background: white;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 2rem;
+          color: #6b7280;
+        }
+
+        .client-info-section {
+          background: #f9fafb;
+          padding: 1.5rem;
+          border-radius: 0.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
+          border-bottom: 2px solid #e5e7eb;
+        }
+
+        .section-header h3 {
+          margin: 0;
+          color: #111827;
+          font-size: 1.25rem;
+        }
+
+        .status-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .status-active {
+          background: #d1fae5;
+          color: #065f46;
+        }
+
+        .status-inactive {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+
+        .status-transferred {
+          background: #fef3c7;
+          color: #92400e;
+        }
+
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .info-block {
+          background: white;
+          padding: 1rem;
+          border-radius: 0.375rem;
+        }
+
+        .info-block.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .info-block h4 {
+          margin: 0 0 0.75rem 0;
+          color: #4b5563;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .info-row {
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: flex-start;
+        }
+
+        .info-row:last-child {
+          margin-bottom: 0;
+        }
+
+        .info-row .label {
+          font-weight: 500;
+          color: #6b7280;
+          margin-right: 0.5rem;
+          min-width: 120px;
+          font-size: 0.875rem;
+        }
+
+        .info-row .value {
+          color: #111827;
+          font-size: 0.875rem;
+          flex: 1;
+        }
+
+        .access-section {
+          border-top: 2px solid #e5e7eb;
+          padding-top: 1.5rem;
+        }
+
+        .access-section h3 {
+          margin: 0 0 1rem 0;
+          color: #111827;
+          font-size: 1.125rem;
+        }
+
+        .error-message {
+          background: #fee2e2;
+          color: #991b1b;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          margin-bottom: 1rem;
+        }
+
+        .loading {
+          color: #6b7280;
+          font-style: italic;
+        }
+
+        .access-table-wrapper {
+          overflow-x: auto;
+        }
+
+        .access-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .access-table th {
+          padding: 0.75rem;
+          background: #f3f4f6;
+          border-bottom: 2px solid #e5e7eb;
+          font-weight: 600;
+          font-size: 0.875rem;
+          color: #374151;
+        }
+
+        .access-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid #e5e7eb;
+          font-size: 0.875rem;
+        }
+
+        .access-table tr:hover {
+          background: #f9fafb;
+        }
+
+        .role-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .role-admin {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+
+        .role-family,
+        .role-poa {
+          background: #fce7f3;
+          color: #a21caf;
+        }
+
+        .role-generalcarestaff {
+          background: #e0e7ff;
+          color: #4338ca;
+        }
+
+        .access-status {
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .access-status.self {
+          color: #059669;
+        }
+
+        .access-status.protected {
+          color: #6b7280;
+        }
+
+        .access-status.revokable {
+          color: #dc2626;
+        }
+
+        .revoke-btn {
+          padding: 0.375rem 0.75rem;
+          background: #fee2e2;
+          color: #991b1b;
+          border: 1px solid #fecaca;
+          border-radius: 0.25rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .revoke-btn:hover {
+          background: #fecaca;
+          color: #7f1d1d;
+        }
+
+        .no-action {
+          color: #d1d5db;
+        }
+
+        .no-users {
+          text-align: center;
+          color: #6b7280;
+          padding: 1.5rem;
+          font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+          .info-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .access-table {
+            font-size: 0.75rem;
+          }
+
+          .access-table th,
+          .access-table td {
+            padding: 0.5rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default ClientInfoManager;
