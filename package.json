@@ -7,11 +7,13 @@
     "npm": "9.x"
   },
   "scripts": {
-    "start": "cd server && npm install && node index.js",
-    "dev": "concurrently \"cd client && npm install && npm run build\" \"cd server && npm install && npm run dev\"",
-    "heroku-postbuild": "cd client && npm install && npm run build && cd ../server && npm install"
+    "start": "node server/index.js",
+    "dev": "concurrently \"cd client && npm i && npm run build\" \"cd server && npm i && npm run dev\"",
+    "heroku-postbuild": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci"
   },
   "dependencies": {
-    "concurrently": "^7.6.0"
+    "cloudinary": "^1.41.3",
+    "concurrently": "^7.6.0",
+    "multer-storage-cloudinary": "^4.0.0"
   }
 }
