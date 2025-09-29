@@ -178,8 +178,6 @@ function List({ jwt, clients }) {
 
                 {group.map((it) => {
                   const rowFiles = filesByItem[it._id] || [];
-                  const isPurchaseOnly =
-                    it.frequency?.intervalType === "JustPurchase";
                   const isReturned = it.status === "Returned";
 
                   return (
