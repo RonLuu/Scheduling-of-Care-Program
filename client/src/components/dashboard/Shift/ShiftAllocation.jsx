@@ -4,8 +4,7 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
   const [assignables, setAssignables] = React.useState([]);
   const [shiftSettings, setShiftSettings] = React.useState(null);
   const [staffUserId, setStaffUserId] = React.useState("");
-  const [shiftType, setShiftType] = React.useState("predefined"); // "predefined" | "custom"
-  const [predefinedShift, setPredefinedShift] = React.useState("morning"); // "morning" | "afternoon" | "evening"
+  const [shiftSelection, setShiftSelection] = React.useState("morning"); // "morning" | "afternoon" | "evening" | "custom"
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [startTime, setStartTime] = React.useState("09:00");
@@ -60,9 +59,9 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
         const d = await r.json();
         setShiftSettings(d.shiftSettings);
 
-        // Update the time inputs when predefined shift changes
-        if (d.shiftSettings && predefinedShift && shiftType === "predefined") {
-          const shift = d.shiftSettings[predefinedShift];
+        // Update the time inputs for predefined shifts
+        if (d.shiftSettings && shiftSelection !== "custom") {
+          const shift = d.shiftSettings[shiftSelection];
           if (shift) {
             setStartTime(shift.startTime);
             setEndTime(shift.endTime);
@@ -73,28 +72,33 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
       }
     };
     loadShiftSettings();
-  }, [jwt, getOrgId, predefinedShift, shiftType]);
+  }, [jwt, getOrgId, shiftSelection]);
 
-  // Update times when predefined shift selection changes
+  // Update times when shift selection changes
   React.useEffect(() => {
     if (
-      shiftType === "predefined" &&
+      shiftSelection !== "custom" &&
       shiftSettings &&
-      shiftSettings[predefinedShift]
+      shiftSettings[shiftSelection]
     ) {
-      const shift = shiftSettings[predefinedShift];
+      const shift = shiftSettings[shiftSelection];
       setStartTime(shift.startTime);
       setEndTime(shift.endTime);
+    } else if (shiftSelection === "custom") {
+      // Reset to default custom times
+      setStartTime("09:00");
+      setEndTime("17:00");
     }
-  }, [predefinedShift, shiftSettings, shiftType]);
+  }, [shiftSelection, shiftSettings]);
 
   const calculateShiftDates = () => {
     if (!startDate) throw new Error("Please select a date.");
 
     let start, end;
 
-    if (shiftType === "predefined" && shiftSettings) {
-      const shift = shiftSettings[predefinedShift];
+    if (shiftSelection !== "custom" && shiftSettings) {
+      // Predefined shift (morning, afternoon, or evening)
+      const shift = shiftSettings[shiftSelection];
       if (!shift) throw new Error("Invalid shift configuration.");
 
       start = new Date(`${startDate}T${shift.startTime}:00`);
@@ -102,7 +106,7 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
       // Handle overnight shifts
       if (
         shift.isOvernight ||
-        (predefinedShift === "evening" && shift.endTime < shift.startTime)
+        (shiftSelection === "evening" && shift.endTime < shift.startTime)
       ) {
         const nextDay = new Date(startDate);
         nextDay.setDate(nextDay.getDate() + 1);
@@ -160,7 +164,7 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
           start,
           end,
           notes: notes || "",
-          shiftType: shiftType === "predefined" ? predefinedShift : "custom",
+          shiftType: shiftSelection === "custom" ? "custom" : shiftSelection,
         }),
       });
 
@@ -169,8 +173,7 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
 
       // Clear form & refresh calendar
       setStaffUserId("");
-      setShiftType("predefined");
-      setPredefinedShift("morning");
+      setShiftSelection("morning");
       setStartDate("");
       setEndDate("");
       setStartTime("09:00");
@@ -184,13 +187,20 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
     }
   };
 
-  const getPredefinedShiftLabel = (type) => {
-    if (!shiftSettings || !shiftSettings[type]) return type;
+  const getShiftOptionLabel = (type) => {
+    if (type === "custom") return "Custom Hours";
+
+    if (!shiftSettings || !shiftSettings[type]) {
+      return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+
     const shift = shiftSettings[type];
     return `${type.charAt(0).toUpperCase() + type.slice(1)} (${
       shift.startTime
-    } - ${shift.endTime}${shift.isOvernight ? " (the next day)" : ""})`;
+    } - ${shift.endTime}${shift.isOvernight ? " next day" : ""})`;
   };
+
+  const isCustomShift = shiftSelection === "custom";
 
   return (
     <div className="shift-allocation-card">
@@ -216,46 +226,35 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
           </div>
 
           <div className="form-group">
-            <label>Shift Type</label>
+            <label>Shift</label>
             <select
-              value={shiftType}
-              onChange={(e) => setShiftType(e.target.value)}
+              value={shiftSelection}
+              onChange={(e) => setShiftSelection(e.target.value)}
               disabled={loading}
             >
-              <option value="predefined">Predefined Shift</option>
-              <option value="custom">Custom Hours</option>
+              {shiftSettings?.morning?.enabled !== false && (
+                <option value="morning">
+                  {getShiftOptionLabel("morning")}
+                </option>
+              )}
+              {shiftSettings?.afternoon?.enabled !== false && (
+                <option value="afternoon">
+                  {getShiftOptionLabel("afternoon")}
+                </option>
+              )}
+              {shiftSettings?.evening?.enabled !== false && (
+                <option value="evening">
+                  {getShiftOptionLabel("evening")}
+                </option>
+              )}
+              <option value="custom">{getShiftOptionLabel("custom")}</option>
             </select>
           </div>
         </div>
 
-        {shiftType === "predefined" && (
+        {/* For predefined shifts - only show date */}
+        {!isCustomShift && (
           <div className="form-row">
-            <div className="form-group">
-              <label>Select Shift</label>
-              <select
-                value={predefinedShift}
-                onChange={(e) => setPredefinedShift(e.target.value)}
-                disabled={loading}
-              >
-                {shiftSettings && shiftSettings.morning?.enabled !== false && (
-                  <option value="morning">
-                    {getPredefinedShiftLabel("morning")}
-                  </option>
-                )}
-                {shiftSettings &&
-                  shiftSettings.afternoon?.enabled !== false && (
-                    <option value="afternoon">
-                      {getPredefinedShiftLabel("afternoon")}
-                    </option>
-                  )}
-                {shiftSettings && shiftSettings.evening?.enabled !== false && (
-                  <option value="evening">
-                    {getPredefinedShiftLabel("evening")}
-                  </option>
-                )}
-              </select>
-            </div>
-
             <div className="form-group">
               <label>Date</label>
               <input
@@ -265,10 +264,14 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
                 disabled={loading}
               />
             </div>
+            <div className="form-group">
+              {/* Empty space to maintain grid layout */}
+            </div>
           </div>
         )}
 
-        {shiftType === "custom" && (
+        {/* For custom shifts - show full date/time controls */}
+        {isCustomShift && (
           <>
             <div className="form-row">
               <div className="form-group">
@@ -294,14 +297,18 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
 
             <div className="form-row">
               <div className="form-group">
-                <label>End Date (optional - leave blank for same day)</label>
+                <label>
+                  End Date{" "}
+                  <span className="optional-label">
+                    (leave blank for same day)
+                  </span>
+                </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   min={startDate}
                   disabled={loading}
-                  placeholder="Same as start date if blank"
                 />
               </div>
 
@@ -320,7 +327,9 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
 
         <div className="form-row">
           <div className="form-group full-width">
-            <label>Notes (optional)</label>
+            <label>
+              Notes <span className="optional-label">(optional)</span>
+            </label>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -392,6 +401,12 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
           color: #374151;
         }
 
+        .optional-label {
+          font-weight: 400;
+          color: #6b7280;
+          font-size: 0.813rem;
+        }
+
         .form-group select,
         .form-group input {
           padding: 0.5rem;
@@ -399,6 +414,13 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
           border-radius: 0.375rem;
           font-size: 0.875rem;
           background: white;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .form-group select:disabled,

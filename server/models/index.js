@@ -2,13 +2,17 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 
 dotenv.config();
-const { MONGODB_URI } = process.env;
+
+const mongoUri =
+  process.env.NODE_ENV === "production"
+    ? process.env.MONGODB_URI
+    : process.env.MONGODB_URI_LOCAL || process.env.MONGODB_URI;
 
 export const connectDB = async () => {
-  if (!MONGODB_URI) {
-    throw new Error("MONGODB_URI is not set in .env");
+  if (!mongoUri) {
+    throw new Error("MongoDB connection string is not set");
   }
-  await mongoose.connect(MONGODB_URI);
+  await mongoose.connect(mongoUri);
   console.log("MongoDB connected successfully");
 };
 
