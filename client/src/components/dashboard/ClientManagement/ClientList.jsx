@@ -11,9 +11,9 @@ function ClientList({ clients }) {
         <ul>
           {clients.map((c) => (
             <li key={c._id}>
-              <strong>{c.name}</strong> ({c.relationshipType})
+              <strong>{c.name}</strong>
               {c.dateOfBirth && <span> · DOB {formatDate(c.dateOfBirth)}</span>}
-              {c.status && <span> · Status {c.status}</span>}
+              {c.medicalInfo && <span> · {c.medicalInfo}</span>}
             </li>
           ))}
         </ul>

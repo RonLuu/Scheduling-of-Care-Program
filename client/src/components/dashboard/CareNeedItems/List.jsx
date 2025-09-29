@@ -60,14 +60,7 @@ function List({ jwt, clients }) {
   // track which item is being edited
   const [editingItemId, setEditingItemId] = React.useState(null);
 
-  const renderCategoryDivider = (category) => (
-    <tr key={`div-${category}`}>
-      <td colSpan={10} style={{ padding: "10px 6px", background: "#f9fafb" }}>
-        <strong style={{ fontSize: 13 }}>{category}</strong>
-      </td>
-    </tr>
-  );
-
+  // auto-close editor if the item being edited is marked returned
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
     const edited = items.find((x) => x._id === editingItemId);
@@ -76,9 +69,60 @@ function List({ jwt, clients }) {
     }
   }, [editingItemId, items]);
 
+  const groupedByCategory = React.useMemo(() => {
+    const map = new Map();
+    for (const it of items) {
+      const cat = it.category || "Other";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(it);
+    }
+    // optional: sort categories and their items by name
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([cat, arr]) => [
+        cat,
+        arr.sort((x, y) => (x.name || "").localeCompare(y.name || "")),
+      ]);
+  }, [items]);
+
   React.useEffect(() => {
     closeEditorIfReturned();
   }, [items, closeEditorIfReturned]);
+
+  const generateNextYearTasks = async (itemId) => {
+    if (
+      !window.confirm(
+        "This will replace ALL tasks for next year with newly generated ones. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/scheduling/care-need-items/${itemId}/generate-next-year`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate tasks");
+
+      alert(
+        `Successfully generated ${data.created} tasks for next year (deleted ${data.deleted} existing).`
+      );
+
+      // Optionally refresh the list
+      if (cniClientId) await loadItemsFor(cniClientId);
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
 
   return (
     <div className="card">
@@ -118,7 +162,6 @@ function List({ jwt, clients }) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left" }}>Category</th>
               <th style={{ textAlign: "left" }}>Name</th>
               <th style={{ textAlign: "left" }}>Frequency</th>
               <th style={{ textAlign: "left" }}>Budget</th>
@@ -131,207 +174,233 @@ function List({ jwt, clients }) {
             </tr>
           </thead>
           <tbody>
-            {(() => {
-              const rows = [];
-              let lastCat = null;
-
-              items.forEach((it) => {
-                const cat = it.category || "Other";
-                const rowFiles = filesByItem[it._id] || [];
-                const isPurchaseOnly =
-                  it.frequency?.intervalType === "JustPurchase";
-                const isReturned = it.status === "Returned";
-
-                // category divider
-                if (cat !== lastCat) {
-                  rows.push(renderCategoryDivider(cat));
-                  lastCat = cat;
-                }
-
-                // main item row
-                rows.push(
-                  <tr
-                    key={it._id}
-                    style={{
-                      borderTop: "1px solid #eee",
-                      opacity: isReturned ? 0.75 : 1,
-                    }}
+            {groupedByCategory.map(([category, group]) => (
+              <React.Fragment key={category}>
+                {/* Category divider (appears once) */}
+                <tr>
+                  <td
+                    colSpan={9}
+                    style={{ padding: "10px 6px", background: "#f9fafb" }}
                   >
-                    <td></td>
-                    <td>{it.name}</td>
-                    <td>{formatFrequency(it.frequency)}</td>
-                    <td>{aud.format(it.budgetCost || 0)}</td>
-                    <td>{aud.format(it.purchaseCost || 0)}</td>
-                    <td>
-                      {isPurchaseOnly
-                        ? "—"
-                        : aud.format(it.occurrenceCost || 0)}
-                    </td>
-                    <td>
-                      {isPurchaseOnly ? (
-                        "—"
-                      ) : (
-                        <span className="badge">
-                          {it.scheduleType === "Timed" && it.timeWindow
-                            ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                            : "All-day"}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {isReturned ? (
-                        <span
-                          className="badge"
-                          style={{ background: "#fef3c7", color: "#92400e" }}
-                        >
-                          Returned
-                        </span>
-                      ) : (
-                        <span style={{ opacity: 0.4 }}>No</span>
-                      )}
-                    </td>
-                    <td>
-                      {rowFiles.length === 0 ? (
-                        <span style={{ opacity: 0.6 }}>—</span>
-                      ) : (
-                        <ul
-                          style={{
-                            margin: 0,
-                            paddingLeft: 16,
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {rowFiles.map((f) => (
-                            <li key={f._id} style={{ listStyle: "none" }}>
-                              <InlineAttachment f={f} />
-                              {f.scope === "Shared" && (
-                                <span
-                                  className="badge"
-                                  style={{ marginLeft: 6 }}
-                                >
-                                  Shared
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </td>
-                    <td>
-                      <div
-                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                    <strong style={{ fontSize: 13 }}>{category}</strong>
+                  </td>
+                </tr>
+
+                {/* Items in this category */}
+                {group.map((it) => {
+                  const rowFiles = filesByItem[it._id] || [];
+                  const isPurchaseOnly =
+                    it.frequency?.intervalType === "JustPurchase";
+                  const isReturned = it.status === "Returned";
+
+                  return (
+                    <React.Fragment key={it._id}>
+                      <tr
+                        style={{
+                          borderTop: "1px solid #eee",
+                          opacity: isReturned ? 0.75 : 1,
+                        }}
                       >
-                        {/* Hide Edit & Return when item is Returned */}
-                        {!isReturned && (
-                          <>
-                            <button
-                              className="secondary"
-                              title="Edit details"
-                              onClick={() =>
-                                setEditingItemId(
-                                  editingItemId === it._id ? null : it._id
-                                )
-                              }
+                        <td>{it.name}</td>
+                        <td>{formatFrequency(it.frequency)}</td>
+                        <td>{aud.format(it.budgetCost || 0)}</td>
+                        <td>{aud.format(it.purchaseCost || 0)}</td>
+                        <td>
+                          {isPurchaseOnly
+                            ? "—"
+                            : aud.format(it.occurrenceCost || 0)}
+                        </td>
+                        <td>
+                          {isPurchaseOnly ? (
+                            "—"
+                          ) : (
+                            <span className="badge">
+                              {it.scheduleType === "Timed" && it.timeWindow
+                                ? `${it.timeWindow.startTime}–${it.timeWindow.endTime}`
+                                : "All-day"}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {isReturned ? (
+                            <span
+                              className="badge"
+                              style={{
+                                background: "#fef3c7",
+                                color: "#92400e",
+                              }}
                             >
-                              {editingItemId === it._id ? "Close edit" : "Edit"}
-                            </button>
-                            <button
-                              className="secondary"
-                              title="Mark as returned"
-                              onClick={() => returnItem(it._id)}
+                              Returned
+                            </span>
+                          ) : (
+                            <span style={{ opacity: 0.4 }}>No</span>
+                          )}
+                        </td>
+                        <td>
+                          {rowFiles.length === 0 ? (
+                            <span style={{ opacity: 0.6 }}>—</span>
+                          ) : (
+                            <ul
+                              style={{
+                                margin: 0,
+                                paddingLeft: 16,
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
                             >
-                              Return
-                            </button>
-                          </>
-                        )}
+                              {rowFiles.map((f) => (
+                                <li key={f._id} style={{ listStyle: "none" }}>
+                                  <InlineAttachment f={f} />
+                                  {f.scope === "Shared" && (
+                                    <span
+                                      className="badge"
+                                      style={{ marginLeft: 6 }}
+                                    >
+                                      Shared
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                        <td>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {!isReturned && (
+                              <>
+                                <button
+                                  className="secondary"
+                                  title="Edit details"
+                                  onClick={() =>
+                                    setEditingItemId(
+                                      editingItemId === it._id ? null : it._id
+                                    )
+                                  }
+                                >
+                                  {editingItemId === it._id
+                                    ? "Close edit"
+                                    : "Edit"}
+                                </button>
+                                <button
+                                  className="secondary"
+                                  title="Mark as returned"
+                                  onClick={() => returnItem(it._id)}
+                                >
+                                  Return
+                                </button>
+                              </>
+                            )}
 
-                        <button
-                          className="danger"
-                          onClick={() => deleteItem(it._id)}
-                          title="Delete item and ALL associated tasks/files/comments"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                            {/* Only show for yearEnd items that are not returned */}
 
-                      {/* Return attachments & comments entry (only when returned) */}
-                      {isReturned && (
-                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                          <div style={{ display: "flex", gap: 8 }}>
+                            {!isReturned &&
+                              it.frequency?.intervalType !== "JustPurchase" &&
+                              it.frequency?.intervalType !== "OneTime" &&
+                              it.endDate === null &&
+                              it.occurrenceCount === null && (
+                                <button
+                                  className="secondary"
+                                  title="Generate all tasks for next year"
+                                  onClick={() => generateNextYearTasks(it._id)}
+                                  style={{
+                                    backgroundColor: "#10b981",
+                                    color: "white",
+                                  }}
+                                >
+                                  Generate next year
+                                </button>
+                              )}
+
                             <button
-                              className="secondary"
-                              onClick={() => toggleItemComments(it._id)}
+                              className="danger"
+                              onClick={() => deleteItem(it._id)}
+                              title="Delete item and ALL associated tasks/files/comments"
                             >
-                              Comments
-                            </button>
-                            <button
-                              className="secondary"
-                              onClick={() => toggleItemFiles(it._id)}
-                            >
-                              Files
+                              Delete
                             </button>
                           </div>
 
-                          {/* Comments panel (item scope) */}
-                          {openCommentsForItem === it._id && (
-                            <CommentPanel
-                              comments={commentsByItem[it._id] || []}
-                              newCommentText={newCommentTextItem}
-                              onCommentTextChange={setNewCommentTextItem}
-                              onAddComment={() => addItemComment(it._id)}
-                              currentUserId={currentUserId}
-                            />
-                          )}
+                          {/* Returned: comments/files panels */}
+                          {isReturned && (
+                            <div
+                              style={{ marginTop: 8, display: "grid", gap: 8 }}
+                            >
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  className="secondary"
+                                  onClick={() => toggleItemComments(it._id)}
+                                >
+                                  Comments
+                                </button>
+                                <button
+                                  className="secondary"
+                                  onClick={() => toggleItemFiles(it._id)}
+                                >
+                                  Files
+                                </button>
+                              </div>
 
-                          {/* Files panel (item scope, direct uploads for returns) */}
-                          {openFilesForItem === it._id && (
-                            <FilePanel
-                              // re-use TaskFiles uploader; server looks at "scope"
-                              taskId={it._id} // not used when scope is CareNeedItem; but TaskFiles expects it—safe to pass
-                              scope="CareNeedItem"
-                              targetId={it._id}
-                              files={panelFilesByItem[it._id] || []}
-                              newFile={newFileItem}
-                              onNewFileChange={setNewFileItem}
-                              onAddFile={() => addItemFile(it._id)}
-                              onLoadFiles={() => loadItemFilesPanel(it._id)}
-                              currentUserId={currentUserId}
-                              onReload={() =>
-                                toggleItemComments(it._id) ||
-                                toggleItemComments(it._id)
-                              } // quick reload
-                            />
+                              {openCommentsForItem === it._id && (
+                                <CommentPanel
+                                  comments={commentsByItem[it._id] || []}
+                                  newCommentText={newCommentTextItem}
+                                  onCommentTextChange={setNewCommentTextItem}
+                                  onAddComment={() => addItemComment(it._id)}
+                                  currentUserId={currentUserId}
+                                />
+                              )}
+
+                              {openFilesForItem === it._id && (
+                                <FilePanel
+                                  taskId={it._id}
+                                  scope="CareNeedItem"
+                                  targetId={it._id}
+                                  files={panelFilesByItem[it._id] || []}
+                                  newFile={newFileItem}
+                                  onNewFileChange={setNewFileItem}
+                                  onAddFile={() => addItemFile(it._id)}
+                                  onLoadFiles={() => loadItemFilesPanel(it._id)}
+                                  currentUserId={currentUserId}
+                                  onReload={() =>
+                                    toggleItemComments(it._id) ||
+                                    toggleItemComments(it._id)
+                                  }
+                                />
+                              )}
+                            </div>
                           )}
-                        </div>
+                        </td>
+                      </tr>
+
+                      {/* Inline editor row (only when not returned) */}
+                      {!isReturned && editingItemId === it._id && (
+                        <tr key={`${it._id}__editor`}>
+                          <td colSpan={9} style={{ paddingTop: 0 }}>
+                            <CareNeedItemRowEditor
+                              item={it}
+                              jwt={jwt}
+                              onCancel={() => setEditingItemId(null)}
+                              onSaved={async () => {
+                                setEditingItemId(null);
+                                if (cniClientId)
+                                  await loadItemsFor(cniClientId);
+                              }}
+                            />
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                );
-
-                // editor row (full-width) — only for non-returned items
-                if (!isReturned && editingItemId === it._id) {
-                  rows.push(
-                    <tr key={`${it._id}__editor`}>
-                      <td colSpan={10} style={{ paddingTop: 0 }}>
-                        <CareNeedItemRowEditor
-                          item={it}
-                          jwt={jwt}
-                          onCancel={() => setEditingItemId(null)}
-                          onSaved={async () => {
-                            setEditingItemId(null);
-                            if (cniClientId) await loadItemsFor(cniClientId);
-                          }}
-                        />
-                      </td>
-                    </tr>
+                    </React.Fragment>
                   );
-                }
-              });
-
-              return rows;
-            })()}
+                })}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       )}

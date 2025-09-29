@@ -1,261 +1,267 @@
 .userprofile-wrapper {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
 }
 
-.userprofile-wrapper.showEditOn{
-    background: rgba(0, 0, 0, 0.1);
+.userprofile-wrapper.showEditOn {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .userprofile-edit-wrapper {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .userprofile-edit {
-    background-color: #FFF;
-    width: 60vw;
-    height: 70vh;
-    position: absolute;
-    z-index: 3;
-    border-radius: 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  background-color: #fff;
+  width: 60vw;
+  height: 70vh;
+  position: absolute;
+  z-index: 3;
+  border-radius: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .userprofile-edit-cancel-wrapper {
-    height: 15%;
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
+  height: 15%;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .userprofile-edit-cancel-icon {
-    font-size: 300%;
-    margin-top: 3%;
-    margin-right: 4%;
+  font-size: 300%;
+  margin-top: 3%;
+  margin-right: 4%;
 }
 
 .userprofile-edit-input {
-    height: 100%;
-    width: 80%;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    padding-top: 7%;
+  height: 100%;
+  width: 80%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding-top: 7%;
 }
 
 .userprofile-input {
-    width: 100%;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 16px;
-    color: #111827;
-    background-color: #ffffff;
-    outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 16px;
+  color: #111827;
+  background-color: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .organizationmanagement-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    position: absolute;
-    z-index: 3;
-    background-color: red;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  z-index: 3;
+  background-color: red;
 }
 
 .organizationmanagement-wrapper.on {
-    background-color: #ffffff9e;
+  background-color: #ffffff9e;
 }
 
 .organizationmanagement {
-    margin-top: 5%;
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px;
-    width: 40%;
-    height: 40%;
-    box-sizing: border-box;
-    box-shadow: 5px 5px 10px 2px rgb(194, 191, 191);
-    display: flex;
-    flex-direction: column;
-    position: absolute;
-    z-index:4;
-    transform: translateX(-100%);
-    transition: transform 1s ease;
+  margin-top: 5%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  width: 40%;
+  height: 40%;
+  box-sizing: border-box;
+  box-shadow: 5px 5px 10px 2px rgb(194, 191, 191);
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  z-index: 4;
+  transform: translateX(-100%);
+  transition: transform 1s ease;
 }
 
 .organizationmanagement.on {
-    transform: translateX(0);
+  transform: translateX(0);
 }
 
 .organizationmanagement-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 10%;
 }
 
-
 .organizationmanagement-edit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-evenly;
-    height: 60%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  height: 60%;
 }
 
 .organizationmanagement-edit-input {
-    width: 95%;
-    height: 25%;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 16px;
-    color: #111827;
-    background-color: #ffffff;
-    outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.2s, box-shadow 0.2s;
+  width: 95%;
+  height: 25%;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 16px;
+  color: #111827;
+  background-color: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .organizationmanagement-edit-button {
-    border-radius: 50px;
-    font-size: 150%;
+  border-radius: 50px;
+  font-size: 150%;
 }
 
 .organizationmanagement-change {
-    display: flex;
-    justify-content: center;
-    height: 60%;
-    align-items: center;
+  display: flex;
+  justify-content: center;
+  height: 60%;
+  align-items: center;
 }
 .organizationmanagement-change-button {
-    border-radius: 50px;
-    font-size: 150%;
-    width: 60%;
-    height: 40%;
+  border-radius: 50px;
+  font-size: 150%;
+  width: 60%;
+  height: 40%;
+}
+
+.organizationmanagement-select {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #111827; /* ensure text visible */
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .navigationtab-wrapper {
-    position: absolute;
-    z-index: 2;
+  position: absolute;
+  z-index: 2;
 }
 
 .userprofile-detail {
-    position: absolute;
-    z-index: 1;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .userprofile-detail1 {
-    margin-top: 5%;
-    width: 75%;
-    height: 25%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+  margin-top: 5%;
+  width: 75%;
+  height: 25%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 .userprofile-image-wrapper {
-    height: 100%;
-    aspect-ratio: 1 / 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 100%;
-    background-color: #E7EBEE;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100%;
+  background-color: #e7ebee;
 }
 
 .userprofile-image {
-    width: 90%;
-    height: 90%;
-    color: rgb(116, 107, 107);
+  width: 90%;
+  height: 90%;
+  color: rgb(116, 107, 107);
 }
 
 .userprofile-detail1-general-wrapper {
-    margin-left: 2%;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content:space-evenly;
+  margin-left: 2%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
 }
 
 .userprofile-detail1-general {
-    font-size: 300%;
-    font-weight: bold;
-    margin: 0%;
+  font-size: 300%;
+  font-weight: bold;
+  margin: 0%;
 }
 
 .userprofile-detail1-add-button {
-    border-radius: 50px;
-    margin: 0%;
-    width: clamp(120px, 20vw, 250px);
-    height: clamp(10%, 50%, 20%);
-    padding: 0.6em 1em;
-    font-size: clamp(14px, 1.2vw, 18px);
+  border-radius: 50px;
+  margin: 0%;
+  width: clamp(120px, 20vw, 250px);
+  height: clamp(10%, 50%, 20%);
+  padding: 0.6em 1em;
+  font-size: clamp(14px, 1.2vw, 18px);
 }
 
 .userprofile-detail1-edit-button {
-    border-radius: 50px;
-    margin: 0%;
-    width: clamp(100px, 20vw, 150px);
-    height: clamp(10%, 50%, 20%);
-    padding: 0.6em 1em;
-    font-size: clamp(14px, 1.2vw, 18px);
+  border-radius: 50px;
+  margin: 0%;
+  width: clamp(100px, 20vw, 150px);
+  height: clamp(10%, 50%, 20%);
+  padding: 0.6em 1em;
+  font-size: clamp(14px, 1.2vw, 18px);
 }
 
-
 .userprofile-detail1-remove-button-wrapper {
-    height: 100%;
+  height: 100%;
 }
 
 .userprofile-detail1-remove-button {
-    border-radius: 50px;
-    font-size: 100%;
+  border-radius: 50px;
+  font-size: 100%;
 }
 
 .userprofile-detail1-remove-button:hover {
-    background-color: white;
-    color: red;
-    border: 1px solid #2C3F70;
+  background-color: white;
+  color: red;
+  border: 1px solid #2c3f70;
 }
-
 
 .userprofile-detail2 {
-    width: 75%;
-    height: 50%;
+  width: 75%;
+  height: 50%;
 }
 
-
 .userprofile-detail2-detailed-wrapper {
-    background-color: #E7EBEE;
-    width: 100%;
-    height: 90%;
-    border-radius: 50px;
-    padding: 2% 0% 0% 3%;
-    
+  background-color: #e7ebee;
+  width: 100%;
+  height: 90%;
+  border-radius: 50px;
+  padding: 2% 0% 0% 3%;
 }
 
 .userprofile-detail2-detailed {
-    margin-bottom: 2.75%;
-    font-size: 170%;
+  margin-bottom: 2.75%;
+  font-size: 170%;
 }

@@ -12,14 +12,16 @@ import path from "path";
 import fs from "fs";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
 
+// Cloudinary import
+import { configureCloudinary } from "../utils/cloudinary.js";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+
 const router = Router();
 
-// storage root
+// storage root for DEV/local uploads
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOAD_DIR = path.join(__dirname, "..", "public", "uploads");
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-console.log("[UPLOAD] Root folder:", UPLOAD_DIR);
 
 // ---- helpers ----
 const folderForScope = (scope) => {
@@ -29,23 +31,59 @@ const folderForScope = (scope) => {
   return "General";
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const scope = req.body.scope || "General";
-    const dir = path.join(UPLOAD_DIR, folderForScope(scope));
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const safeBase = path
-      .basename(file.originalname)
-      .replace(/[^a-zA-Z0-9._-]/g, "_");
-    const unique = `${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}-${safeBase}`;
-    cb(null, unique);
-  },
-});
+const isProd = process.env.NODE_ENV === "production";
+
+// Build a storage engine depending on environment
+let storage;
+
+if (isProd) {
+  // --- PRODUCTION (Heroku) -> Cloudinary ---
+  const cloudinary = configureCloudinary();
+
+  storage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => {
+      const scope = req.body?.scope || "General";
+      const folder = `scheduling-of-care/${folderForScope(scope)}`;
+
+      // limit types similar to your original filter (images + pdf)
+      const allowed = /^(image\/|application\/pdf)/.test(file.mimetype);
+      if (!allowed) {
+        throw new Error("UNSUPPORTED_FILE_TYPE");
+      }
+
+      // Set resource_type=auto to support images + pdf seamlessly
+      return {
+        folder,
+        resource_type: "auto",
+        format: undefined, // let Cloudinary infer
+        public_id: undefined, // auto-generate
+      };
+    },
+  });
+} else {
+  // --- DEVELOPMENT -> local disk ---
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  console.log("[UPLOAD] Root folder:", UPLOAD_DIR);
+
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const scope = req.body.scope || "General";
+      const dir = path.join(UPLOAD_DIR, folderForScope(scope));
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const safeBase = path
+        .basename(file.originalname)
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+      const unique = `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}-${safeBase}`;
+      cb(null, unique);
+    },
+  });
+}
 
 const upload = multer({
   storage,
@@ -224,9 +262,10 @@ router.post("/upload", requireAuth, (req, res) => {
         if (!access.ok) return res.status(403).json({ error: access.code });
       }
 
-      const publicUrl = `/uploads/${folderForScope(scope)}/${
-        req.file.filename
-      }`;
+      const publicUrl = isProd
+        ? req.file.path // Cloudinary secure URL
+        : `/uploads/${folderForScope(scope)}/${req.file.filename}`;
+
       console.log("[UPLOAD] Saved:", req.file.path, "->", publicUrl);
 
       const doc = await FileUpload.create({
