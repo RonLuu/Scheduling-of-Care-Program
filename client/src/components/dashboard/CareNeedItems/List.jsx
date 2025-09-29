@@ -245,46 +245,46 @@ function List({ jwt, clients }) {
                             }}
                           >
                             {!isReturned && (
-                              <>
-                                <button
-                                  className="secondary"
-                                  title="Edit details"
-                                  onClick={() =>
-                                    setEditingItemId(
-                                      editingItemId === it._id ? null : it._id
-                                    )
-                                  }
-                                >
-                                  {editingItemId === it._id
-                                    ? "Close edit"
-                                    : "Edit"}
-                                </button>
-                                <button
-                                  className="secondary"
-                                  title="View/add comments"
-                                  onClick={() => toggleItemComments(it._id)}
-                                >
-                                  {openCommentsForItem === it._id
-                                    ? "Hide comments"
-                                    : "Comments"}
-                                </button>
-                                <button
-                                  className="secondary"
-                                  title="View/add files"
-                                  onClick={() => toggleItemFiles(it._id)}
-                                >
-                                  {openFilesForItem === it._id
-                                    ? "Hide files"
-                                    : "Files"}
-                                </button>
-                                <button
-                                  className="secondary"
-                                  title="Mark as returned"
-                                  onClick={() => returnItem(it._id)}
-                                >
-                                  Return
-                                </button>
-                              </>
+                              <button
+                                className="secondary"
+                                title="Edit details"
+                                onClick={() =>
+                                  setEditingItemId(
+                                    editingItemId === it._id ? null : it._id
+                                  )
+                                }
+                              >
+                                {editingItemId === it._id
+                                  ? "Close edit"
+                                  : "Edit"}
+                              </button>
+                            )}
+                            <button
+                              className="secondary"
+                              title="View/add comments"
+                              onClick={() => toggleItemComments(it._id)}
+                            >
+                              {openCommentsForItem === it._id
+                                ? "Hide comments"
+                                : "Show comments"}
+                            </button>
+                            <button
+                              className="secondary"
+                              title="View/add files"
+                              onClick={() => toggleItemFiles(it._id)}
+                            >
+                              {openFilesForItem === it._id
+                                ? "Hide files"
+                                : "Show files"}
+                            </button>
+                            {!isReturned && (
+                              <button
+                                className="secondary"
+                                title="Mark as returned"
+                                onClick={() => returnItem(it._id)}
+                              >
+                                Return
+                              </button>
                             )}
 
                             {!isReturned &&

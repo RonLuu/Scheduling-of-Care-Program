@@ -4,7 +4,6 @@ function Create({ jwt, clients }) {
   // Form state
   const [ciPersonId, setCiPersonId] = React.useState("");
   const [ciName, setCiName] = React.useState("");
-  const [ciDesc, setCiDesc] = React.useState("");
   const [ciCategory, setCiCategory] = React.useState("HygieneProducts");
   const [ciCategories, setCiCategories] = React.useState([
     "HygieneProducts",
@@ -148,7 +147,6 @@ function Create({ jwt, clients }) {
       const payload = {
         personId: ciPersonId,
         name: ciName,
-        description: ciDesc,
         ...(ciUseCustomCat
           ? { newCategoryName: ciCustomCat, category: ciCustomCat || "Other" }
           : { category: ciCategory }),
@@ -250,7 +248,6 @@ function Create({ jwt, clients }) {
 
       // Reset (keep client & category selection)
       setCiName("");
-      setCiDesc("");
       setCiUseCustomCat(false);
       setCiCustomCat("");
       setCiPurchaseCost(0);
@@ -345,13 +342,6 @@ function Create({ jwt, clients }) {
             />
           </div>
         </div>
-
-        <label>Description/Comment</label>
-        <input
-          value={ciDesc}
-          onChange={(e) => setCiDesc(e.target.value)}
-          placeholder="Optional comment"
-        />
 
         {/* Recurrence */}
         <div className="row">
