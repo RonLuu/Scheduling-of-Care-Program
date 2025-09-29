@@ -1,6 +1,6 @@
 import React from "react";
 
-function ReceiptBuckets({ jwt, clients }) {
+function ReceiptBucket({ jwt, clients }) {
   const [personId, setPersonId] = React.useState("");
   const [year, setYear] = React.useState(new Date().getFullYear());
   const [month, setMonth] = React.useState(new Date().getMonth() + 1);
@@ -8,8 +8,20 @@ function ReceiptBuckets({ jwt, clients }) {
   const [bucket, setBucket] = React.useState(null);
   const [files, setFiles] = React.useState([]);
   const [fileNote, setFileNote] = React.useState("");
-  const [fileDate, setFileDate] = React.useState(""); // optional effective date
+  const [fileDate, setFileDate] = React.useState(""); // effective date
   const [err, setErr] = React.useState("");
+
+  // NEW: collapsible "add receipt" form state
+  const [showAdd, setShowAdd] = React.useState(false);
+
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+
+  // NEW: auto-select first client (if any) on first mount
+  React.useEffect(() => {
+    if (!personId && Array.isArray(clients) && clients.length > 0) {
+      setPersonId(clients[0]._id);
+    }
+  }, [clients, personId]);
 
   // reference check + delete helper
   const deleteSharedReceipt = async (fileId) => {
@@ -85,7 +97,20 @@ function ReceiptBuckets({ jwt, clients }) {
 
   React.useEffect(() => {
     load();
-  }, [personId, year, month]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personId, year, month]); // load when selection changes
+
+  // NEW: when opening the form, prefill date to today
+  const handleOpenAdd = () => {
+    setShowAdd(true);
+    setFileDate(todayISO());
+  };
+
+  const handleCloseAdd = () => {
+    setShowAdd(false);
+    // optional: keep what the user typed if they collapse; or reset:
+    // setFile(null); setFileNote(""); setFileDate("");
+  };
 
   const uploadToBucket = async () => {
     setErr("");
@@ -97,10 +122,11 @@ function ReceiptBuckets({ jwt, clients }) {
       const fd = new FormData();
       fd.append("scope", "Shared");
       fd.append("personId", personId);
-      fd.append("year", String(year));
-      fd.append("month", String(month));
+      fd.append("year", String(year)); // bucket resolution still uses current selection
+      fd.append("month", String(month)); // (date independence is enforced server-side)
       fd.append("file", file);
       if (fileNote) fd.append("description", fileNote);
+      // Always send an effective date; defaults to today when form opened
       if (fileDate) fd.append("effectiveDate", fileDate);
 
       const r = await fetch("/api/file-upload/upload", {
@@ -110,7 +136,24 @@ function ReceiptBuckets({ jwt, clients }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Upload failed");
+
+      // Reset file chooser
       setFile(null);
+
+      // If user picked an effective date, switch the UI to that month/year so they see it immediately
+      if (fileDate) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fileDate);
+        if (m) {
+          const yEff = Number(m[1]);
+          const mEff = Number(m[2]);
+          if (yEff && mEff && (yEff !== year || mEff !== month)) {
+            setYear(yEff);
+            setMonth(mEff);
+            // load() will be triggered by the useEffect on [personId, year, month]
+            return;
+          }
+        }
+      }
       await load();
     } catch (e) {
       setErr(e.message || String(e));
@@ -129,7 +172,7 @@ function ReceiptBuckets({ jwt, clients }) {
             onChange={(e) => setPersonId(e.target.value)}
           >
             <option value="">— Select client —</option>
-            {clients.map((c) => (
+            {(clients || []).map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
               </option>
@@ -162,35 +205,8 @@ function ReceiptBuckets({ jwt, clients }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 10 }}>
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />{" "}
-        <input
-          type="text"
-          placeholder='Optional note (e.g. "Pharmacy Receipt for Jan 12")'
-          value={fileNote}
-          onChange={(e) => setFileNote(e.target.value)}
-          style={{ marginLeft: 8, minWidth: 240 }}
-        />
-        <input
-          type="date"
-          value={fileDate}
-          onChange={(e) => setFileDate(e.target.value)}
-          style={{ marginLeft: 8 }}
-          title="Effective date (must be within the chosen bucket’s month)"
-        />
-        <button
-          className="secondary"
-          onClick={uploadToBucket}
-          disabled={!file || !personId}
-        >
-          Upload to bucket
-        </button>
-      </div>
+      {err && <p style={{ color: "#b91c1c", marginTop: 8 }}>Error: {err}</p>}
 
-      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
       <div style={{ marginTop: 12 }}>
         <p>
           <strong>Bucket:</strong>{" "}
@@ -205,7 +221,7 @@ function ReceiptBuckets({ jwt, clients }) {
                 <th style={{ textAlign: "left" }}>File</th>
                 <th style={{ textAlign: "left" }}>Note</th>
                 <th style={{ textAlign: "left" }}>Receipt date</th>
-                <th style={{ textAlign: "left" }}>Actions</th> {/* NEW */}
+                <th style={{ textAlign: "left" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -221,7 +237,7 @@ function ReceiptBuckets({ jwt, clients }) {
                           gap: 8,
                         }}
                       >
-                        {f.fileType?.startsWith("image/") && (
+                        {f.fileType?.startsWith("image/") && f.urlOrPath && (
                           <a
                             href={f.urlOrPath}
                             target="_blank"
@@ -261,7 +277,11 @@ function ReceiptBuckets({ jwt, clients }) {
                       }
                     >
                       {receiptDate ? (
-                        new Date(receiptDate).toLocaleDateString()
+                        isNaN(new Date(receiptDate)) ? (
+                          <span style={{ opacity: 0.6 }}>—</span>
+                        ) : (
+                          new Date(receiptDate).toLocaleDateString()
+                        )
                       ) : (
                         <span style={{ opacity: 0.6 }}>—</span>
                       )}
@@ -282,8 +302,64 @@ function ReceiptBuckets({ jwt, clients }) {
           </table>
         )}
       </div>
+
+      {/*  Add receipt area  */}
+      <div style={{ marginTop: 12 }}>
+        {!showAdd ? (
+          <div>
+            <button className="secondary" onClick={handleOpenAdd}>
+              + Add receipt
+            </button>
+          </div>
+        ) : (
+          <div
+            className="collapsible"
+            style={{
+              overflow: "hidden",
+              transition: "max-height 240ms ease, opacity 240ms ease",
+              maxHeight: showAdd ? 300 : 0,
+              opacity: showAdd ? 1 : 0,
+              border: "1px solid #eee",
+              borderRadius: 8,
+              padding: 12,
+              marginTop: 8,
+              background: "#fafafa",
+            }}
+            aria-expanded={showAdd}
+          >
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <input
+                type="text"
+                placeholder='Optional note (e.g. "Pharmacy Receipt for Jan 12")'
+                value={fileNote}
+                onChange={(e) => setFileNote(e.target.value)}
+                style={{ minWidth: 260, flex: "1 1 260px" }}
+              />
+              <input
+                type="date"
+                value={fileDate}
+                onChange={(e) => setFileDate(e.target.value)}
+                title="Effective date (independent of the selected bucket’s month)"
+              />
+              <button
+                className="secondary"
+                onClick={uploadToBucket}
+                disabled={!file || !personId}
+                title={personId ? "" : "Select a client first"}
+              >
+                Upload to bucket
+              </button>
+              <button onClick={handleCloseAdd}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export default ReceiptBuckets;
+export default ReceiptBucket;
