@@ -32,6 +32,12 @@ router.put(
   updateItem
 );
 
+function endOfYearUTC(year) {
+  // 23:59:59.999 UTC on Dec 31 of `year`
+  const startNext = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0));
+  return new Date(startNext.getTime() - 1);
+}
+
 async function listItems(req, res) {
   const { personId, organizationId, status } = req.query;
   const filter = {};
@@ -240,6 +246,25 @@ async function updateItem(req, res) {
   // Normalize payload
   const patch = { ...req.body };
 
+  // Preserve frequency.startDate unless explicitly provided
+  if (patch.frequency) {
+    const next = {
+      intervalType:
+        patch.frequency.intervalType ?? existing.frequency?.intervalType,
+      intervalValue: Number(
+        patch.frequency.intervalValue ?? existing.frequency?.intervalValue ?? 1
+      ),
+      startDate: patch.frequency.startDate ?? existing.frequency?.startDate, // ← keep it
+    };
+    // Replace the nested-object write with dot-notation so we don't nuke keys
+    patch["frequency.intervalType"] = next.intervalType;
+    patch["frequency.intervalValue"] = next.intervalValue;
+    patch["frequency.startDate"] = next.startDate
+      ? new Date(next.startDate)
+      : undefined;
+    delete patch.frequency;
+  }
+
   // If personId changes, re-check permission + org
   if (patch.personId && String(patch.personId) !== String(existing.personId)) {
     const reperm = await ensureCanManagePerson(req.user, patch.personId);
@@ -269,7 +294,7 @@ async function updateItem(req, res) {
 
   // Enforce “JustPurchase => occurrenceCost = 0”
   const nextIntervalType =
-    patch.frequency?.intervalType ?? existing.frequency?.intervalType;
+    patch["frequency.intervalType"] ?? existing.frequency?.intervalType;
   if (nextIntervalType === "JustPurchase") {
     patch.occurrenceCost = 0;
   }
@@ -277,24 +302,14 @@ async function updateItem(req, res) {
   // Detect changes that impact schedules (freq and schedule period/name)
   const scheduleImpact =
     (patch.name && patch.name !== existing.name) ||
-    (patch.frequency &&
-      JSON.stringify({
-        t: patch.frequency.intervalType ?? existing.frequency?.intervalType,
-        v: Number(
-          (patch.frequency.intervalValue ??
-            existing.frequency?.intervalValue) ||
-            1
-        ),
-        s: patch.frequency.startDate ?? existing.frequency?.startDate,
-      }) !==
-        JSON.stringify({
-          t: existing.frequency?.intervalType,
-          v: Number(existing.frequency?.intervalValue || 1),
-          s: existing.frequency?.startDate,
-        })) ||
-    (patch.endDate && String(patch.endDate) !== String(existing.endDate)) ||
-    (patch.occurrenceCount &&
-      Number(patch.occurrenceCount) !== Number(existing.occurrenceCount)) ||
+    "frequency.intervalType" in patch ||
+    "frequency.intervalValue" in patch ||
+    "frequency.startDate" in patch ||
+    (Object.prototype.hasOwnProperty.call(patch, "endDate") &&
+      String(patch.endDate) !== String(existing.endDate)) ||
+    (Object.prototype.hasOwnProperty.call(patch, "occurrenceCount") &&
+      Number(patch.occurrenceCount ?? null) !==
+        Number(existing.occurrenceCount ?? null)) ||
     (patch.scheduleType && patch.scheduleType !== existing.scheduleType) ||
     (patch.timeWindow &&
       JSON.stringify(patch.timeWindow) !== JSON.stringify(existing.timeWindow));
@@ -348,14 +363,24 @@ async function updateItem(req, res) {
       : null;
     if (start) {
       const windowStart = start;
-      // end = explicit endDate OR default horizon (start + 2y)
+      // end = (a) explicit endDate, (b) last date from occurrenceCount, or
+      //       (c) end of the CURRENT year for “year end” items
       let windowEnd;
       if (updated.endDate) {
         windowEnd = new Date(updated.endDate);
-      } else {
+      } else if (updated.occurrenceCount) {
+        const steps = Math.max(Number(updated.occurrenceCount) - 1, 0);
+        const t = updated.frequency.intervalType;
+        const iv = Number(updated.frequency.intervalValue) || 1;
         const d = new Date(start);
-        d.setFullYear(d.getFullYear() + 2);
+        if (t === "Daily") d.setDate(d.getDate() + iv * steps);
+        if (t === "Weekly") d.setDate(d.getDate() + 7 * iv * steps);
+        if (t === "Monthly") d.setMonth(d.getMonth() + iv * steps);
+        if (t === "Yearly") d.setFullYear(d.getFullYear() + iv * steps);
         windowEnd = d;
+      } else {
+        const now = new Date();
+        windowEnd = endOfYearUTC(now.getUTCFullYear());
       }
 
       const dates = expandOccurrences(

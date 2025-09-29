@@ -19,6 +19,19 @@ function endOfYearUTC(year) {
   return new Date(startNextYear.getTime() - 1);
 }
 
+function lastDateByCount(start, intervalType, intervalValue, occurrenceCount) {
+  if (!start || !occurrenceCount) return start;
+  const steps = Math.max(Number(occurrenceCount) - 1, 0);
+  const iv = Math.max(Number(intervalValue) || 1, 1);
+  const d = new Date(start);
+  if (intervalType === "Daily") d.setDate(d.getDate() + iv * steps);
+  else if (intervalType === "Weekly") d.setDate(d.getDate() + 7 * iv * steps);
+  else if (intervalType === "Monthly") d.setMonth(d.getMonth() + iv * steps);
+  else if (intervalType === "Yearly")
+    d.setFullYear(d.getFullYear() + iv * steps);
+  return d;
+}
+
 /**
  * POST /care-need-items/:itemId/generate-tasks?from=2025-01-01&to=2025-12-31
  * Body (optional): { assignToUserId? }
@@ -59,18 +72,26 @@ async function generateTasksForItem(req, res) {
     : null;
   if (!start) return res.status(400).json({ error: "ITEM_HAS_NO_START" });
 
+  let windowStart = from ? new Date(from) : start;
+
   // If no query window given, derive full window:
   // - from = start
   // - to   = item.endDate OR end-of-current-year (default for open-ended)
-  let windowStart = from ? new Date(from) : start;
   let windowEnd;
   if (to) {
     windowEnd = new Date(to);
   } else if (item.endDate) {
     windowEnd = new Date(item.endDate);
+  } else if (item.occurrenceCount) {
+    // Count-based end: compute the last expected occurrence
+    windowEnd = lastDateByCount(
+      start,
+      item.frequency.intervalType,
+      item.frequency.intervalValue || 1,
+      item.occurrenceCount
+    );
   } else {
-    // For yearEnd items (no endDate, no occurrenceCount),
-    // only generate up to end of CURRENT year
+    // Open-ended (year-end pattern): cap at end of current year
     const now = new Date();
     windowEnd = endOfYearUTC(now.getUTCFullYear());
   }

@@ -16,23 +16,18 @@ function Create({ jwt, clients }) {
   const [ciUseCustomCat, setCiUseCustomCat] = React.useState(false);
   const [ciCustomCat, setCiCustomCat] = React.useState("");
 
+  // Recurrence: JustPurchase (unscheduled) or repeating (Daily/Weekly/Monthly/Yearly)
   const [ciIntervalType, setCiIntervalType] = React.useState("JustPurchase");
   const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
-  const [ciStartDate, setCiStartDate] = React.useState("");
-  const [ciEndMode, setCiEndMode] = React.useState("none");
+
+  // End conditions for repeating only
+  const [ciEndMode, setCiEndMode] = React.useState("endDate"); // endDate | count | yearEnd
   const [ciEndDate, setCiEndDate] = React.useState("");
   const [ciOccurrenceCount, setCiOccurrenceCount] = React.useState("");
 
+  // Costs (annual budget + purchase only)
   const [ciBudgetCost, setCiBudgetCost] = React.useState(0);
   const [ciPurchaseCost, setCiPurchaseCost] = React.useState(0);
-  const [ciOccurrenceCost, setCiOccurrenceCost] = React.useState(0);
-
-  const [ciScheduleType, setCiScheduleType] = React.useState("AllDay");
-  const [ciStartTime, setCiStartTime] = React.useState("09:00");
-  const [ciEndTime, setCiEndTime] = React.useState("10:00");
-
-  const [assignableUsers, setAssignableUsers] = React.useState([]);
-  const [ciAssignedTo, setCiAssignedTo] = React.useState("");
 
   const [ciBusy, setCiBusy] = React.useState(false);
   const [ciErr, setCiErr] = React.useState("");
@@ -80,11 +75,10 @@ function Create({ jwt, clients }) {
   // Jump to this month’s bucket
   const quickPickTodayBucket = () => {
     const now = new Date();
-
     const toLocalYMD = (d) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString(
         "en-CA"
-      ); // yyyy-mm-dd in local time
+      );
     setRefPickDate(toLocalYMD(now));
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
@@ -98,13 +92,12 @@ function Create({ jwt, clients }) {
     loadSharedBucket(d.getFullYear(), d.getMonth() + 1);
   };
 
-  // Filter the loaded month to the exact picked day (if refMode === "day")
   const visibleReceipts = React.useMemo(() => {
     if (refMode !== "day" || !refPickDate) return refFiles;
     return refFiles.filter((f) => {
       const baseDate = f.effectiveDate || f.createdAt;
       if (!baseDate) return false;
-      const localDay = new Date(baseDate).toLocaleDateString("en-CA"); // yyyy-mm-dd
+      const localDay = new Date(baseDate).toLocaleDateString("en-CA");
       return localDay === refPickDate;
     });
   }, [refFiles, refMode, refPickDate]);
@@ -134,27 +127,6 @@ function Create({ jwt, clients }) {
       .catch(() => {});
   }, [ciPersonId, jwt, ciCategory]);
 
-  // Load assignable users when client is selected
-  React.useEffect(() => {
-    if (!jwt || !ciPersonId) {
-      setAssignableUsers([]);
-      setCiAssignedTo("");
-      return;
-    }
-
-    fetch(
-      `/api/person-user-links/assignable-users?personId=${encodeURIComponent(
-        ciPersonId
-      )}`,
-      {
-        headers: { Authorization: "Bearer " + jwt },
-      }
-    )
-      .then((r) => r.json())
-      .then((d) => setAssignableUsers(Array.isArray(d) ? d : []))
-      .catch(() => setAssignableUsers([]));
-  }, [ciPersonId, jwt]);
-
   const submitCareNeedItem = async (e) => {
     e.preventDefault();
     setCiErr("");
@@ -165,8 +137,13 @@ function Create({ jwt, clients }) {
       if (!ciPersonId) throw new Error("Please select a client.");
       if (!ciName) throw new Error("Name is required.");
 
-      const startDate =
-        ciIntervalType === "JustPurchase" ? new Date() : new Date(ciStartDate);
+      const todayISO = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        new Date().getDate()
+      ).toISOString(); // 00:00 local -> ISO
+
+      const isUnscheduled = ciIntervalType === "JustPurchase";
 
       const payload = {
         personId: ciPersonId,
@@ -175,41 +152,39 @@ function Create({ jwt, clients }) {
         ...(ciUseCustomCat
           ? { newCategoryName: ciCustomCat, category: ciCustomCat || "Other" }
           : { category: ciCategory }),
+        // frequency: startDate defaults to today; only for repeating items we care about cadence
         frequency: {
-          intervalType: ciIntervalType,
-          intervalValue: Number(ciIntervalValue),
-          startDate: startDate.toISOString(),
+          intervalType: ciIntervalType, // JustPurchase or one of Daily/Weekly/Monthly/Yearly
+          intervalValue: isUnscheduled ? 1 : Number(ciIntervalValue) || 1,
+          startDate: todayISO,
         },
-        scheduleType: ciScheduleType,
+        // costs
         budgetCost: Number(ciBudgetCost) || 0,
         purchaseCost: Number(ciPurchaseCost) || 0,
-        occurrenceCost: Number(ciOccurrenceCost) || 0,
+        // removed: occurrenceCost, scheduleType, timeWindow, assignees
       };
 
-      if (ciScheduleType === "Timed") {
-        payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
-      }
-
-      if (ciEndMode === "yearEnd") {
-        // explicitly null to signal open-ended (annual horizon will cap it)
-        payload.endDate = null;
-        payload.occurrenceCount = null;
-      } else if (ciEndMode === "endDate" && ciEndDate) {
-        payload.endDate = new Date(ciEndDate).toISOString();
-        payload.occurrenceCount = null;
-      } else if (ciEndMode === "count" && ciOccurrenceCount) {
-        payload.occurrenceCount = Number(ciOccurrenceCount);
-        payload.endDate = null;
-      } else {
-        // safety: if none of the above, do not leak previous values
-        payload.endDate = null;
-        payload.occurrenceCount = null;
-      }
-
-      if (attachMode === "reference") {
-        if (!refSelectedFileId) {
-          throw new Error("Please choose a shared receipt to reference.");
+      // End conditions (only if repeating)
+      if (
+        !isUnscheduled &&
+        ["Daily", "Weekly", "Monthly", "Yearly"].includes(ciIntervalType)
+      ) {
+        if (ciEndMode === "yearEnd") {
+          payload.endDate = null;
+          payload.occurrenceCount = null;
+        } else if (ciEndMode === "endDate" && ciEndDate) {
+          payload.endDate = new Date(ciEndDate).toISOString();
+          payload.occurrenceCount = null;
+        } else if (ciEndMode === "count" && ciOccurrenceCount) {
+          payload.occurrenceCount = Number(ciOccurrenceCount);
+          payload.endDate = null;
+        } else {
+          payload.endDate = null;
+          payload.occurrenceCount = null;
         }
+      } else {
+        payload.endDate = undefined;
+        payload.occurrenceCount = undefined;
       }
 
       // 1) Create CareNeedItem
@@ -224,8 +199,8 @@ function Create({ jwt, clients }) {
       const item = await r1.json();
       if (!r1.ok) throw new Error(item.error || "Failed to create item");
 
-      // 2) Generate tasks unless JustPurchase
-      if (ciIntervalType !== "JustPurchase") {
+      // 2) Generate tasks only if repeating (server should ignore time/assignee)
+      if (!isUnscheduled) {
         const r2 = await fetch(
           `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
           {
@@ -234,16 +209,14 @@ function Create({ jwt, clients }) {
               "Content-Type": "application/json",
               Authorization: "Bearer " + jwt,
             },
-            body: JSON.stringify(
-              ciAssignedTo ? { assignToUserId: ciAssignedTo } : {}
-            ),
+            body: JSON.stringify({}), // no assignment, no times
           }
         );
         const gen = await r2.json();
         if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
         setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
       } else {
-        setCiSuccess(`Created purchase-only care need item (no tasks).`);
+        setCiSuccess(`Created unscheduled care need item (no tasks).`);
       }
 
       // 3) Attach (optional)
@@ -275,17 +248,16 @@ function Create({ jwt, clients }) {
         if (!ref.ok) throw new Error(rd.error || "Failed to reference receipt");
       }
 
-      // Reset
+      // Reset (keep client & category selection)
       setCiName("");
       setCiDesc("");
       setCiUseCustomCat(false);
       setCiCustomCat("");
       setCiPurchaseCost(0);
-      setCiOccurrenceCost(0);
       setCiBudgetCost(0);
       setCiIntervalType("JustPurchase");
       setCiIntervalValue(1);
-      setCiEndMode("none");
+      setCiEndMode("endDate");
       setCiEndDate("");
       setCiOccurrenceCount("");
       setAttachMode("none");
@@ -381,59 +353,41 @@ function Create({ jwt, clients }) {
           placeholder="Optional comment"
         />
 
-        {/* Recurrence / schedule */}
+        {/* Recurrence */}
         <div className="row">
           <div>
             <label>Recurrence</label>
             <select
               value={
-                ciIntervalType === "JustPurchase"
-                  ? "unscheduled"
-                  : ciIntervalType === "OneTime"
-                  ? "one"
-                  : "repeat"
+                ciIntervalType === "JustPurchase" ? "unscheduled" : "repeat"
               }
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "unscheduled") {
                   setCiIntervalType("JustPurchase");
-                } else if (v === "one") {
-                  setCiIntervalType("OneTime");
                 } else {
-                  // default sensible repeat if switching from non-repeat
                   if (
-                    ["JustPurchase", "OneTime"].includes(ciIntervalType) ||
                     !["Daily", "Weekly", "Monthly", "Yearly"].includes(
                       ciIntervalType
                     )
                   ) {
                     setCiIntervalType("Weekly");
-                  }
-                  if (!ciIntervalValue || ciIntervalValue < 1) {
                     setCiIntervalValue(1);
                   }
-                }
-                if (v === "repeat") {
                   setCiEndMode("endDate");
                 }
               }}
             >
-              <option value="unscheduled">Unscheduled Event</option>
-              <option value="one">One Time</option>
+              <option value="unscheduled">Unscheduled</option>
               <option value="repeat">Repeating</option>
             </select>
             <p style={{ opacity: 0.6, marginTop: 4 }}>
-              {ciIntervalType === "JustPurchase" &&
-                "No tasks will be scheduled; used for purchases only."}
-              {ciIntervalType === "OneTime" &&
-                "Creates exactly one task on the start date."}
-              {["Daily", "Weekly", "Monthly", "Yearly"].includes(
-                ciIntervalType
-              ) && `Will schedule tasks on a repeating cadence.`}
+              {ciIntervalType === "JustPurchase"
+                ? "No tasks will be generated; purchase-only item."
+                : "Repeating tasks will be generated on a cadence. Start date defaults to today."}
             </p>
           </div>
 
-          {/* Repeat details */}
           {["Daily", "Weekly", "Monthly", "Yearly"].includes(
             ciIntervalType
           ) && (
@@ -475,17 +429,10 @@ function Create({ jwt, clients }) {
           )}
         </div>
 
-        {ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Start date</label>
-              <input
-                type="date"
-                value={ciStartDate}
-                onChange={(e) => setCiStartDate(e.target.value)}
-              />
-            </div>
-            {ciIntervalType !== "OneTime" && (
+        {/* End conditions (repeating only) */}
+        {["Daily", "Weekly", "Monthly", "Yearly"].includes(ciIntervalType) && (
+          <>
+            <div className="row">
               <div>
                 <label>End condition</label>
                 <select
@@ -493,7 +440,6 @@ function Create({ jwt, clients }) {
                   onChange={(e) => {
                     const v = e.target.value;
                     setCiEndMode(v);
-                    // when choosing yearEnd, force-clear other end fields in UI state
                     if (v === "yearEnd") {
                       setCiEndDate("");
                       setCiOccurrenceCount("");
@@ -503,79 +449,35 @@ function Create({ jwt, clients }) {
                   <option value="endDate">End by date</option>
                   <option value="count">End after some occurrences</option>
                   <option value="yearEnd">
-                    Until end of current year (can be copied to next year)
+                    Until end of current year (copy next year later)
                   </option>
                 </select>
-
-                {ciEndMode === "yearEnd" && (
-                  <p style={{ opacity: 0.7, marginTop: 4, fontSize: "0.9em" }}>
-                    Tasks will be generated until Dec 31 of the current year. To
-                    generate tasks for next year, use the "Generate next year"
-                    button in the Sub-elements list after creation.
-                  </p>
-                )}
               </div>
-            )}
-          </div>
-        )}
-
-        {ciIntervalType !== "JustPurchase" &&
-          ciIntervalType !== "OneTime" &&
-          ciEndMode === "endDate" && (
-            <div>
-              <label>End date</label>
-              <input
-                type="date"
-                value={ciEndDate}
-                onChange={(e) => setCiEndDate(e.target.value)}
-              />
-            </div>
-          )}
-        {ciIntervalType !== "JustPurchase" &&
-          ciIntervalType !== "OneTime" &&
-          ciEndMode === "count" && (
-            <div>
-              <label>Number of occurrences</label>
-              <input
-                type="number"
-                min="1"
-                value={ciOccurrenceCount}
-                onChange={(e) => setCiOccurrenceCount(e.target.value)}
-              />
-            </div>
-          )}
-
-        {ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Schedule period</label>
-              <select
-                value={ciScheduleType}
-                onChange={(e) => setCiScheduleType(e.target.value)}
-              >
-                <option value="AllDay">All-day</option>
-                <option value="Timed">Scheduled (start/end)</option>
-              </select>
             </div>
 
-            {ciScheduleType === "Timed" && (
+            {ciEndMode === "endDate" && (
               <div>
-                <label>Start time / End time</label>
-                <div className="row">
-                  <input
-                    type="time"
-                    value={ciStartTime}
-                    onChange={(e) => setCiStartTime(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    value={ciEndTime}
-                    onChange={(e) => setCiEndTime(e.target.value)}
-                  />
-                </div>
+                <label>End date</label>
+                <input
+                  type="date"
+                  value={ciEndDate}
+                  onChange={(e) => setCiEndDate(e.target.value)}
+                />
               </div>
             )}
-          </div>
+
+            {ciEndMode === "count" && (
+              <div>
+                <label>Number of occurrences</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={ciOccurrenceCount}
+                  onChange={(e) => setCiOccurrenceCount(e.target.value)}
+                />
+              </div>
+            )}
+          </>
         )}
 
         <div className="row">
@@ -590,9 +492,6 @@ function Create({ jwt, clients }) {
               placeholder="0.00"
             />
           </div>
-        </div>
-
-        <div className="row">
           <div>
             <label>Purchase cost (AUD)</label>
             <input
@@ -604,42 +503,7 @@ function Create({ jwt, clients }) {
               placeholder="0.00"
             />
           </div>
-          {ciIntervalType !== "JustPurchase" && (
-            <div>
-              <label>Expected occurrence cost per task (AUD)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={ciOccurrenceCost !== 0 ? String(ciOccurrenceCost) : ""}
-                onChange={(e) => setCiOccurrenceCost(Number(e.target.value))}
-                placeholder="0.00"
-              />
-            </div>
-          )}
         </div>
-
-        {ciPersonId && ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Assign to (optional)</label>
-              <select
-                value={ciAssignedTo}
-                onChange={(e) => setCiAssignedTo(e.target.value)}
-              >
-                <option value="">— Unassigned —</option>
-                {assignableUsers.map((u) => (
-                  <option key={u.userId} value={u.userId}>
-                    {u.name} ({u.role})
-                  </option>
-                ))}
-              </select>
-              <p style={{ opacity: 0.7, marginTop: -6 }}>
-                Admins and staff linked to this client
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Attach receipt */}
         <hr />
@@ -733,7 +597,6 @@ function Create({ jwt, clients }) {
 
             {refErr && <div style={{ color: "#b91c1c" }}>Error: {refErr}</div>}
 
-            {/* Receipt selector */}
             <div>
               <label>Select receipt</label>
               <select
@@ -757,11 +620,6 @@ function Create({ jwt, clients }) {
                   </option>
                 ))}
               </select>
-              {refSelectedFileId && (
-                <div style={{ marginTop: 6, opacity: 0.7 }}>
-                  Linked file id: <code>{refSelectedFileId}</code>
-                </div>
-              )}
               {refMode === "day" &&
                 refFiles.length > 0 &&
                 visibleReceipts.length === 0 && (

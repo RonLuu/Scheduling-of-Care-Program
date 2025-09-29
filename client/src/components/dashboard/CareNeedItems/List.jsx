@@ -57,10 +57,8 @@ function List({ jwt, clients }) {
     currentUserId,
   } = useCareNeedItemsData(jwt, clients);
 
-  // track which item is being edited
   const [editingItemId, setEditingItemId] = React.useState(null);
 
-  // auto-close editor if the item being edited is marked returned
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
     const edited = items.find((x) => x._id === editingItemId);
@@ -76,7 +74,6 @@ function List({ jwt, clients }) {
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat).push(it);
     }
-    // optional: sort categories and their items by name
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([cat, arr]) => [
@@ -97,7 +94,6 @@ function List({ jwt, clients }) {
     ) {
       return;
     }
-
     try {
       const res = await fetch(
         `/api/scheduling/care-need-items/${itemId}/generate-next-year`,
@@ -109,15 +105,12 @@ function List({ jwt, clients }) {
           },
         }
       );
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate tasks");
 
       alert(
         `Successfully generated ${data.created} tasks for next year (deleted ${data.deleted} existing).`
       );
-
-      // Optionally refresh the list
       if (cniClientId) await loadItemsFor(cniClientId);
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -155,7 +148,6 @@ function List({ jwt, clients }) {
 
       {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
       {loading && <p>Loading items…</p>}
-
       {!loading && items.length === 0 && <p>No items for this client.</p>}
 
       {items.length > 0 && (
@@ -166,8 +158,6 @@ function List({ jwt, clients }) {
               <th style={{ textAlign: "left" }}>Frequency</th>
               <th style={{ textAlign: "left" }}>Budget</th>
               <th style={{ textAlign: "left" }}>Purchase cost</th>
-              <th style={{ textAlign: "left" }}>Expected per task</th>
-              <th style={{ textAlign: "left" }}>Schedule Period</th>
               <th style={{ textAlign: "left" }}>Returned</th>
               <th style={{ textAlign: "left" }}>Attachments</th>
               <th style={{ textAlign: "left" }}>Actions</th>
@@ -176,17 +166,15 @@ function List({ jwt, clients }) {
           <tbody>
             {groupedByCategory.map(([category, group]) => (
               <React.Fragment key={category}>
-                {/* Category divider (appears once) */}
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={7}
                     style={{ padding: "10px 6px", background: "#f9fafb" }}
                   >
                     <strong style={{ fontSize: 13 }}>{category}</strong>
                   </td>
                 </tr>
 
-                {/* Items in this category */}
                 {group.map((it) => {
                   const rowFiles = filesByItem[it._id] || [];
                   const isPurchaseOnly =
@@ -205,22 +193,6 @@ function List({ jwt, clients }) {
                         <td>{formatFrequency(it.frequency)}</td>
                         <td>{aud.format(it.budgetCost || 0)}</td>
                         <td>{aud.format(it.purchaseCost || 0)}</td>
-                        <td>
-                          {isPurchaseOnly
-                            ? "—"
-                            : aud.format(it.occurrenceCost || 0)}
-                        </td>
-                        <td>
-                          {isPurchaseOnly ? (
-                            "—"
-                          ) : (
-                            <span className="badge">
-                              {it.scheduleType === "Timed" && it.timeWindow
-                                ? `${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                                : "All-day"}
-                            </span>
-                          )}
-                        </td>
                         <td>
                           {isReturned ? (
                             <span
@@ -298,11 +270,8 @@ function List({ jwt, clients }) {
                               </>
                             )}
 
-                            {/* Only show for yearEnd items that are not returned */}
-
                             {!isReturned &&
                               it.frequency?.intervalType !== "JustPurchase" &&
-                              it.frequency?.intervalType !== "OneTime" &&
                               it.endDate === null &&
                               it.occurrenceCount === null && (
                                 <button
@@ -326,63 +295,12 @@ function List({ jwt, clients }) {
                               Delete
                             </button>
                           </div>
-
-                          {/* Returned: comments/files panels */}
-                          {isReturned && (
-                            <div
-                              style={{ marginTop: 8, display: "grid", gap: 8 }}
-                            >
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                  className="secondary"
-                                  onClick={() => toggleItemComments(it._id)}
-                                >
-                                  Comments
-                                </button>
-                                <button
-                                  className="secondary"
-                                  onClick={() => toggleItemFiles(it._id)}
-                                >
-                                  Files
-                                </button>
-                              </div>
-
-                              {openCommentsForItem === it._id && (
-                                <CommentPanel
-                                  comments={commentsByItem[it._id] || []}
-                                  newCommentText={newCommentTextItem}
-                                  onCommentTextChange={setNewCommentTextItem}
-                                  onAddComment={() => addItemComment(it._id)}
-                                  currentUserId={currentUserId}
-                                />
-                              )}
-
-                              {openFilesForItem === it._id && (
-                                <FilePanel
-                                  taskId={it._id}
-                                  scope="CareNeedItem"
-                                  targetId={it._id}
-                                  files={panelFilesByItem[it._id] || []}
-                                  newFile={newFileItem}
-                                  onNewFileChange={setNewFileItem}
-                                  onAddFile={() => addItemFile(it._id)}
-                                  onLoadFiles={() => loadItemFilesPanel(it._id)}
-                                  currentUserId={currentUserId}
-                                  onReload={() =>
-                                    toggleItemComments(it._id) ||
-                                    toggleItemComments(it._id)
-                                  }
-                                />
-                              )}
-                            </div>
-                          )}
                         </td>
                       </tr>
 
-                      {/* Inline editor row (only when not returned) */}
                       {!isReturned && editingItemId === it._id && (
                         <tr key={`${it._id}__editor`}>
-                          <td colSpan={9} style={{ paddingTop: 0 }}>
+                          <td colSpan={7} style={{ paddingTop: 0 }}>
                             <CareNeedItemRowEditor
                               item={it}
                               jwt={jwt}
