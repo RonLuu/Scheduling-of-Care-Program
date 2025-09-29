@@ -37,11 +37,6 @@ function ShiftScheduler({ jwt, me, clients }) {
         </div>
       </div>
 
-      {/* Admin-only shift settings management */}
-      {me?.role === "Admin" && me?.organizationId && (
-        <ShiftSettingsManager jwt={jwt} organizationId={me.organizationId} />
-      )}
-
       {/* Admin-only shift allocator */}
       {me?.role === "Admin" && personId && (
         <ShiftAllocation jwt={jwt} personId={personId} onCreated={bump} />
@@ -55,6 +50,11 @@ function ShiftScheduler({ jwt, me, clients }) {
           isAdmin={me?.role === "Admin"}
           refreshKey={refreshKey}
         />
+      )}
+
+      {/* Admin-only shift settings management */}
+      {me?.role === "Admin" && me?.organizationId && (
+        <ShiftSettingsManager jwt={jwt} organizationId={me.organizationId} />
       )}
 
       <style jsx>{`
