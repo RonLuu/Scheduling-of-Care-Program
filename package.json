@@ -8,7 +8,9 @@
   },
   "scripts": {
     "start": "node server/index.js",
+
     "dev": "concurrently \"cd client && npm i && npm run build\" \"cd server && npm i && npm run dev\"",
+
     "heroku-postbuild": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci"
   },
   "dependencies": {
