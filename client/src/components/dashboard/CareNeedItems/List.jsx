@@ -152,33 +152,50 @@ function List({ jwt, clients }) {
       {!loading && items.length === 0 && <p>No items for this client.</p>}
 
       {items.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            tableLayout: "fixed", // evenly distribute column widths
+          }}
+        >
+          {/* 5 columns, evenly spaced */}
+          <colgroup>
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+          </colgroup>
+
           <thead>
             <tr>
-              <th style={{ textAlign: "middle" }}>Name</th>
-              <th style={{ textAlign: "middle" }}>Frequency</th>
-              <th style={{ textAlign: "middle" }}>Purchase cost</th>
-              <th style={{ textAlign: "middle" }}>Returned</th>
-              {/* <th style={{ textAlign: "left" }}>Attachments</th> */}
-              <th style={{ textAlign: "middle" }}>Actions</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Name</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Frequency</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Purchase cost</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Returned</th>
+              <th style={{ textAlign: "center", padding: 8 }}>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {groupedByCategory.map(([category, group]) => (
               <React.Fragment key={category}>
                 <tr>
                   <td
-                    colSpan={6}
-                    style={{ padding: "10px 6px", background: "#f9fafb" }}
+                    colSpan={5} // <-- fix colSpan
+                    style={{
+                      padding: "8px", // match body cell padding
+                      background: "#f9fafb",
+                      textAlign: "left", // <-- only this row is left-aligned
+                    }}
                   >
                     <strong style={{ fontSize: 13 }}>{category}</strong>
                   </td>
                 </tr>
 
                 {group.map((it) => {
-                  // const rowFiles = filesByItem[it._id] || [];
                   const isReturned = it.status === "Returned";
-
                   return (
                     <React.Fragment key={it._id}>
                       <tr
@@ -187,10 +204,16 @@ function List({ jwt, clients }) {
                           opacity: isReturned ? 0.75 : 1,
                         }}
                       >
-                        <td>{it.name}</td>
-                        <td>{formatFrequency(it.frequency)}</td>
-                        <td>{aud.format(it.purchaseCost || 0)}</td>
-                        <td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {it.name}
+                        </td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {formatFrequency(it.frequency)}
+                        </td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {aud.format(it.purchaseCost || 0)}
+                        </td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
                           {isReturned ? (
                             <span
                               className="badge"
@@ -205,12 +228,16 @@ function List({ jwt, clients }) {
                             <span style={{ opacity: 0.4 }}>No</span>
                           )}
                         </td>
-                        <td>
+
+                        {/* Compact, centered actions that wrap */}
+                        <td style={{ textAlign: "center", padding: 8 }}>
                           <div
                             style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fit, minmax(110px, 1fr))",
+                              gap: 6,
+                              justifyItems: "center",
                             }}
                           >
                             {!isReturned && (
@@ -222,35 +249,42 @@ function List({ jwt, clients }) {
                                     editingItemId === it._id ? null : it._id
                                   )
                                 }
+                                style={{ padding: "4px 8px", fontSize: 12 }}
                               >
                                 {editingItemId === it._id
                                   ? "Close edit"
                                   : "Edit"}
                               </button>
                             )}
+
                             <button
                               className="secondary"
                               title="View/add comments"
                               onClick={() => toggleItemComments(it._id)}
+                              style={{ padding: "4px 8px", fontSize: 12 }}
                             >
                               {openCommentsForItem === it._id
                                 ? "Hide comments"
                                 : "Show comments"}
                             </button>
+
                             <button
                               className="secondary"
                               title="View/add files"
                               onClick={() => toggleItemFiles(it._id)}
+                              style={{ padding: "4px 8px", fontSize: 12 }}
                             >
                               {openFilesForItem === it._id
                                 ? "Hide files"
                                 : "Show files"}
                             </button>
+
                             {!isReturned && (
                               <button
                                 className="secondary"
                                 title="Mark as returned"
                                 onClick={() => returnItem(it._id)}
+                                style={{ padding: "4px 8px", fontSize: 12 }}
                               >
                                 Return
                               </button>
@@ -265,11 +299,13 @@ function List({ jwt, clients }) {
                                   title="Generate all tasks for next year"
                                   onClick={() => generateNextYearTasks(it._id)}
                                   style={{
+                                    padding: "4px 8px",
+                                    fontSize: 12,
                                     backgroundColor: "#10b981",
                                     color: "white",
                                   }}
                                 >
-                                  Generate next year
+                                  Next year
                                 </button>
                               )}
 
@@ -277,6 +313,7 @@ function List({ jwt, clients }) {
                               className="danger"
                               onClick={() => deleteItem(it._id)}
                               title="Delete item and ALL associated tasks/files/comments"
+                              style={{ padding: "4px 8px", fontSize: 12 }}
                             >
                               Delete
                             </button>
@@ -287,8 +324,7 @@ function List({ jwt, clients }) {
                       {(openCommentsForItem === it._id ||
                         openFilesForItem === it._id) && (
                         <tr key={`${it._id}__panels`}>
-                          <td colSpan={6} style={{ paddingTop: 0 }}>
-                            {/* Comments panel */}
+                          <td colSpan={5} style={{ paddingTop: 0 }}>
                             {openCommentsForItem === it._id && (
                               <CommentPanel
                                 comments={commentsByItem[it._id] || []}
@@ -300,7 +336,6 @@ function List({ jwt, clients }) {
                               />
                             )}
 
-                            {/* Files panel */}
                             {openFilesForItem === it._id && (
                               <FilePanel
                                 scope="CareNeedItem"
@@ -319,7 +354,7 @@ function List({ jwt, clients }) {
 
                       {!isReturned && editingItemId === it._id && (
                         <tr key={`${it._id}__editor`}>
-                          <td colSpan={6} style={{ paddingTop: 0 }}>
+                          <td colSpan={5} style={{ paddingTop: 0 }}>
                             <CareNeedItemRowEditor
                               item={it}
                               jwt={jwt}
