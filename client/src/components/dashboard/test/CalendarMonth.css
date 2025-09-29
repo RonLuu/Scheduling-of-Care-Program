@@ -2,12 +2,6 @@
     width: 100%;
 }
 
-/* .heading {
-    font-size: clamp(4rem, 3.8cqi, 7rem);
-    letter-spacing: 0.3;
-    background-color: red;
-} */
-
 .navigate-date {
     display: flex;
     align-items: center;
@@ -73,4 +67,5 @@
 .current-day {
     background-color:#A5231C;
     border-radius: 50%;
+    color: white;
 }

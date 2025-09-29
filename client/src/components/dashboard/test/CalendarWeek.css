@@ -1,41 +1,84 @@
-/* CalendarWeek.css */
-.calendarweek {
+.calendarweek-container {
   width: 99%;
   height: 100%;
+  box-sizing: border-box;
+}
+.calendarweek-title {
+  height: 22.3%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+}
+
+.calendarweek-title-button {
+  height: 13%;
+  aspect-ratio: 1;
+  margin: 0 0% 2.5% 1%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: #A5231C;
+}
+
+.calendarweek-title-icon {
+  color: white;
+  font-size: 95%;
+  aspect-ratio: 1;
+}
+
+.calendarweek-content-wrapper {
+  width: 100%;
+  height: 75%;
+  overflow-y: scroll;
+  border-top: 3px solid #DBE6F6;
+  border-left: 3px solid #DBE6F6;
+  border-bottom: 3px solid #DBE6F6;
+  
+}
+.calendarweek-content {
+  width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; /* force equal width distribution */
+  table-layout: fixed; 
 }
 
-/* Sticky header
-.calendarweek thead th {
+.calendarweek-header-row-day,
+.calendarweek-header-row-time {
   position: sticky;
-  top: 0;
-  background: white;
-  z-index: 2;
-  border: 1px solid red;
-} */
+  top: 0px;
+  background-color:#F6FAFF;
+}
 
-.calendarweek th,
-.calendarweek td {
-  border: 3px solid #DBE6F6;
+.calendarweek-header-row-time,
+.calendarweek-header-row-day,
+.calendarweek-body-row-time,
+.calendarweek-body-row-day {
   text-align: center;
+  border-bottom: 3px solid #DBE6F6;
+  border-right: 3px solid #DBE6F6;
 }
 
-.calendarweek th.time-col,
-.calendarweek td.time-col {
-  width: 10%;
-}
-
-.calendarweek th.day-col,
-.calendarweek td.day-col {
-  width: auto; 
+.calendarweek-body-row {
+  height: 40px;
 }
 
 .event {
-    background: lightblue;
-    border-radius: 4px;
-    font-size: 12px;
-    padding: 2px 6px;
-    color: white;
-    background: #8189D2;
+  background: lightblue;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 18px;
+  color: white;
+  background: #8189D2;
+  height:100%;
+  padding: 4% 4%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* TODO: add event details */
+.event:hover {
+  background: #6b72c4;
 }
