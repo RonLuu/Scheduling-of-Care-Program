@@ -335,5 +335,6 @@ export function useCareNeedItemsData(jwt, clients) {
     addItemFile,
     loadItemFilesPanel,
     currentUserId,
+    loadItemComments,
   };
 }

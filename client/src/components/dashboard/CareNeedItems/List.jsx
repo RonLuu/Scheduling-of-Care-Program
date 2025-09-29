@@ -55,6 +55,7 @@ function List({ jwt, clients }) {
     addItemFile,
     loadItemFilesPanel,
     currentUserId,
+    loadItemComments,
   } = useCareNeedItemsData(jwt, clients);
 
   const [editingItemId, setEditingItemId] = React.useState(null);
@@ -262,6 +263,24 @@ function List({ jwt, clients }) {
                                 </button>
                                 <button
                                   className="secondary"
+                                  title="View/add comments"
+                                  onClick={() => toggleItemComments(it._id)}
+                                >
+                                  {openCommentsForItem === it._id
+                                    ? "Hide comments"
+                                    : "Comments"}
+                                </button>
+                                <button
+                                  className="secondary"
+                                  title="View/add files"
+                                  onClick={() => toggleItemFiles(it._id)}
+                                >
+                                  {openFilesForItem === it._id
+                                    ? "Hide files"
+                                    : "Files"}
+                                </button>
+                                <button
+                                  className="secondary"
                                   title="Mark as returned"
                                   onClick={() => returnItem(it._id)}
                                 >
@@ -297,6 +316,39 @@ function List({ jwt, clients }) {
                           </div>
                         </td>
                       </tr>
+
+                      {(openCommentsForItem === it._id ||
+                        openFilesForItem === it._id) && (
+                        <tr key={`${it._id}__panels`}>
+                          <td colSpan={7} style={{ paddingTop: 0 }}>
+                            {/* Comments panel */}
+                            {openCommentsForItem === it._id && (
+                              <CommentPanel
+                                comments={commentsByItem[it._id] || []}
+                                newCommentText={newCommentTextItem}
+                                onCommentTextChange={setNewCommentTextItem}
+                                onAddComment={() => addItemComment(it._id)}
+                                currentUserId={currentUserId}
+                                onReload={() => loadItemComments(it._id)}
+                              />
+                            )}
+
+                            {/* Files panel */}
+                            {openFilesForItem === it._id && (
+                              <FilePanel
+                                scope="CareNeedItem"
+                                targetId={it._id}
+                                files={panelFilesByItem[it._id] || []}
+                                newFile={newFileItem}
+                                onNewFileChange={setNewFileItem}
+                                onAddFile={() => addItemFile(it._id)}
+                                onLoadFiles={() => loadItemFilesPanel(it._id)}
+                                currentUserId={currentUserId}
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      )}
 
                       {!isReturned && editingItemId === it._id && (
                         <tr key={`${it._id}__editor`}>

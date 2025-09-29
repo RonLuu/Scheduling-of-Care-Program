@@ -383,7 +383,7 @@ function Create({ jwt, clients }) {
             </select>
             <p style={{ opacity: 0.6, marginTop: 4 }}>
               {ciIntervalType === "JustPurchase"
-                ? "No tasks will be generated; purchase-only item."
+                ? "Only happens today (no tasks will be scheduled)."
                 : "Repeating tasks will be generated on a cadence. Start date defaults to today."}
             </p>
           </div>
