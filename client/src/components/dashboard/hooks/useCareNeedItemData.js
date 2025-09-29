@@ -225,12 +225,10 @@ export function useCareNeedItemsData(jwt, clients) {
   // ------ Files (item scope) for the panel (direct uploads only) ------
   const loadItemFilesPanel = async (itemId) => {
     if (!jwt) return;
-    const r = await fetch(
-      `/api/file-upload?scope=CareNeedItem&targetId=${encodeURIComponent(
-        itemId
-      )}`,
-      { headers: { Authorization: "Bearer " + jwt } }
-    );
+    // unified endpoint returns direct uploads AND shared references
+    const r = await fetch(`/api/file-upload/by-care-need-item/${itemId}`, {
+      headers: { Authorization: "Bearer " + jwt },
+    });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || "Failed to load files");
     setPanelFilesByItem((prev) => ({

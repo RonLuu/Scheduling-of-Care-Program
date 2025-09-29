@@ -56,10 +56,15 @@ function FilePanel({
     }
   };
 
-  const canDelete = (f) =>
-    currentUserId &&
-    f?.uploadedByUserId &&
-    String(f.uploadedByUserId) === String(currentUserId);
+  // Allow owners to delete uploads; allow anyone to remove a Shared reference.
+  const canDelete = (f) => {
+    if (f?.scope === "Shared") return false; // now allowed de-reference
+    return (
+      currentUserId &&
+      f?.uploadedByUserId &&
+      String(f.uploadedByUserId) === String(currentUserId)
+    );
+  };
 
   const deleteFile = async (fileId) => {
     if (!window.confirm("Delete this file?")) return;

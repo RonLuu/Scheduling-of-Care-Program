@@ -5,34 +5,34 @@ import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
 import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
 
-function InlineAttachment({ f }) {
-  const isImg = f.fileType && f.fileType.startsWith("image/");
-  return (
-    <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-      {isImg ? (
-        <img
-          src={f.urlOrPath}
-          alt={f.filename}
-          style={{
-            maxHeight: 64,
-            maxWidth: 96,
-            objectFit: "cover",
-            borderRadius: 6,
-            border: "1px solid #ddd",
-          }}
-        />
-      ) : (
-        <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-      )}
-    </a>
-  );
-}
+// function InlineAttachment({ f }) {
+//   const isImg = f.fileType && f.fileType.startsWith("image/");
+//   return (
+//     <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
+//       {isImg ? (
+//         <img
+//           src={f.urlOrPath}
+//           alt={f.filename}
+//           style={{
+//             maxHeight: 64,
+//             maxWidth: 96,
+//             objectFit: "cover",
+//             borderRadius: 6,
+//             border: "1px solid #ddd",
+//           }}
+//         />
+//       ) : (
+//         <span style={{ textDecoration: "underline" }}>{f.filename}</span>
+//       )}
+//     </a>
+//   );
+// }
 
 function List({ jwt, clients }) {
   const {
     cniClientId,
     items,
-    filesByItem,
+    // filesByItem,
     panelFilesByItem,
     loading,
     err,
@@ -155,13 +155,12 @@ function List({ jwt, clients }) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left" }}>Name</th>
-              <th style={{ textAlign: "left" }}>Frequency</th>
-              <th style={{ textAlign: "left" }}>Budget</th>
-              <th style={{ textAlign: "left" }}>Purchase cost</th>
-              <th style={{ textAlign: "left" }}>Returned</th>
-              <th style={{ textAlign: "left" }}>Attachments</th>
-              <th style={{ textAlign: "left" }}>Actions</th>
+              <th style={{ textAlign: "middle" }}>Name</th>
+              <th style={{ textAlign: "middle" }}>Frequency</th>
+              <th style={{ textAlign: "middle" }}>Purchase cost</th>
+              <th style={{ textAlign: "middle" }}>Returned</th>
+              {/* <th style={{ textAlign: "left" }}>Attachments</th> */}
+              <th style={{ textAlign: "middle" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -169,7 +168,7 @@ function List({ jwt, clients }) {
               <React.Fragment key={category}>
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     style={{ padding: "10px 6px", background: "#f9fafb" }}
                   >
                     <strong style={{ fontSize: 13 }}>{category}</strong>
@@ -177,7 +176,7 @@ function List({ jwt, clients }) {
                 </tr>
 
                 {group.map((it) => {
-                  const rowFiles = filesByItem[it._id] || [];
+                  // const rowFiles = filesByItem[it._id] || [];
                   const isReturned = it.status === "Returned";
 
                   return (
@@ -190,7 +189,6 @@ function List({ jwt, clients }) {
                       >
                         <td>{it.name}</td>
                         <td>{formatFrequency(it.frequency)}</td>
-                        <td>{aud.format(it.budgetCost || 0)}</td>
                         <td>{aud.format(it.purchaseCost || 0)}</td>
                         <td>
                           {isReturned ? (
@@ -205,35 +203,6 @@ function List({ jwt, clients }) {
                             </span>
                           ) : (
                             <span style={{ opacity: 0.4 }}>No</span>
-                          )}
-                        </td>
-                        <td>
-                          {rowFiles.length === 0 ? (
-                            <span style={{ opacity: 0.6 }}>—</span>
-                          ) : (
-                            <ul
-                              style={{
-                                margin: 0,
-                                paddingLeft: 16,
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              {rowFiles.map((f) => (
-                                <li key={f._id} style={{ listStyle: "none" }}>
-                                  <InlineAttachment f={f} />
-                                  {f.scope === "Shared" && (
-                                    <span
-                                      className="badge"
-                                      style={{ marginLeft: 6 }}
-                                    >
-                                      Shared
-                                    </span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
                           )}
                         </td>
                         <td>
@@ -318,7 +287,7 @@ function List({ jwt, clients }) {
                       {(openCommentsForItem === it._id ||
                         openFilesForItem === it._id) && (
                         <tr key={`${it._id}__panels`}>
-                          <td colSpan={7} style={{ paddingTop: 0 }}>
+                          <td colSpan={6} style={{ paddingTop: 0 }}>
                             {/* Comments panel */}
                             {openCommentsForItem === it._id && (
                               <CommentPanel
@@ -350,7 +319,7 @@ function List({ jwt, clients }) {
 
                       {!isReturned && editingItemId === it._id && (
                         <tr key={`${it._id}__editor`}>
-                          <td colSpan={7} style={{ paddingTop: 0 }}>
+                          <td colSpan={6} style={{ paddingTop: 0 }}>
                             <CareNeedItemRowEditor
                               item={it}
                               jwt={jwt}
