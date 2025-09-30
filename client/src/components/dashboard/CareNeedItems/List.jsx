@@ -5,34 +5,34 @@ import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
 import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
 
-function InlineAttachment({ f }) {
-  const isImg = f.fileType && f.fileType.startsWith("image/");
-  return (
-    <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-      {isImg ? (
-        <img
-          src={f.urlOrPath}
-          alt={f.filename}
-          style={{
-            maxHeight: 64,
-            maxWidth: 96,
-            objectFit: "cover",
-            borderRadius: 6,
-            border: "1px solid #ddd",
-          }}
-        />
-      ) : (
-        <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-      )}
-    </a>
-  );
-}
+// function InlineAttachment({ f }) {
+//   const isImg = f.fileType && f.fileType.startsWith("image/");
+//   return (
+//     <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
+//       {isImg ? (
+//         <img
+//           src={f.urlOrPath}
+//           alt={f.filename}
+//           style={{
+//             maxHeight: 64,
+//             maxWidth: 96,
+//             objectFit: "cover",
+//             borderRadius: 6,
+//             border: "1px solid #ddd",
+//           }}
+//         />
+//       ) : (
+//         <span style={{ textDecoration: "underline" }}>{f.filename}</span>
+//       )}
+//     </a>
+//   );
+// }
 
 function List({ jwt, clients }) {
   const {
     cniClientId,
     items,
-    filesByItem,
+    // filesByItem,
     panelFilesByItem,
     loading,
     err,
@@ -55,12 +55,11 @@ function List({ jwt, clients }) {
     addItemFile,
     loadItemFilesPanel,
     currentUserId,
+    loadItemComments,
   } = useCareNeedItemsData(jwt, clients);
 
-  // track which item is being edited
   const [editingItemId, setEditingItemId] = React.useState(null);
 
-  // auto-close editor if the item being edited is marked returned
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
     const edited = items.find((x) => x._id === editingItemId);
@@ -76,7 +75,6 @@ function List({ jwt, clients }) {
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat).push(it);
     }
-    // optional: sort categories and their items by name
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([cat, arr]) => [
@@ -97,7 +95,6 @@ function List({ jwt, clients }) {
     ) {
       return;
     }
-
     try {
       const res = await fetch(
         `/api/scheduling/care-need-items/${itemId}/generate-next-year`,
@@ -109,15 +106,12 @@ function List({ jwt, clients }) {
           },
         }
       );
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate tasks");
 
       alert(
         `Successfully generated ${data.created} tasks for next year (deleted ${data.deleted} existing).`
       );
-
-      // Optionally refresh the list
       if (cniClientId) await loadItemsFor(cniClientId);
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -155,44 +149,53 @@ function List({ jwt, clients }) {
 
       {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
       {loading && <p>Loading items…</p>}
-
       {!loading && items.length === 0 && <p>No items for this client.</p>}
 
       {items.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            tableLayout: "fixed", // evenly distribute column widths
+          }}
+        >
+          {/* 5 columns, evenly spaced */}
+          <colgroup>
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+          </colgroup>
+
           <thead>
             <tr>
-              <th style={{ textAlign: "left" }}>Name</th>
-              <th style={{ textAlign: "left" }}>Frequency</th>
-              <th style={{ textAlign: "left" }}>Budget</th>
-              <th style={{ textAlign: "left" }}>Purchase cost</th>
-              <th style={{ textAlign: "left" }}>Expected per task</th>
-              <th style={{ textAlign: "left" }}>Schedule Period</th>
-              <th style={{ textAlign: "left" }}>Returned</th>
-              <th style={{ textAlign: "left" }}>Attachments</th>
-              <th style={{ textAlign: "left" }}>Actions</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Name</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Frequency</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Purchase cost</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Returned</th>
+              <th style={{ textAlign: "center", padding: 8 }}>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {groupedByCategory.map(([category, group]) => (
               <React.Fragment key={category}>
-                {/* Category divider (appears once) */}
                 <tr>
                   <td
-                    colSpan={9}
-                    style={{ padding: "10px 6px", background: "#f9fafb" }}
+                    colSpan={5} // <-- fix colSpan
+                    style={{
+                      padding: "8px", // match body cell padding
+                      background: "#f9fafb",
+                      textAlign: "left", // <-- only this row is left-aligned
+                    }}
                   >
                     <strong style={{ fontSize: 13 }}>{category}</strong>
                   </td>
                 </tr>
 
-                {/* Items in this category */}
                 {group.map((it) => {
-                  const rowFiles = filesByItem[it._id] || [];
-                  const isPurchaseOnly =
-                    it.frequency?.intervalType === "JustPurchase";
                   const isReturned = it.status === "Returned";
-
                   return (
                     <React.Fragment key={it._id}>
                       <tr
@@ -201,27 +204,16 @@ function List({ jwt, clients }) {
                           opacity: isReturned ? 0.75 : 1,
                         }}
                       >
-                        <td>{it.name}</td>
-                        <td>{formatFrequency(it.frequency)}</td>
-                        <td>{aud.format(it.budgetCost || 0)}</td>
-                        <td>{aud.format(it.purchaseCost || 0)}</td>
-                        <td>
-                          {isPurchaseOnly
-                            ? "—"
-                            : aud.format(it.occurrenceCost || 0)}
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {it.name}
                         </td>
-                        <td>
-                          {isPurchaseOnly ? (
-                            "—"
-                          ) : (
-                            <span className="badge">
-                              {it.scheduleType === "Timed" && it.timeWindow
-                                ? `${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                                : "All-day"}
-                            </span>
-                          )}
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {formatFrequency(it.frequency)}
                         </td>
-                        <td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
+                          {aud.format(it.purchaseCost || 0)}
+                        </td>
+                        <td style={{ textAlign: "left", padding: 8 }}>
                           {isReturned ? (
                             <span
                               className="badge"
@@ -236,73 +228,70 @@ function List({ jwt, clients }) {
                             <span style={{ opacity: 0.4 }}>No</span>
                           )}
                         </td>
-                        <td>
-                          {rowFiles.length === 0 ? (
-                            <span style={{ opacity: 0.6 }}>—</span>
-                          ) : (
-                            <ul
-                              style={{
-                                margin: 0,
-                                paddingLeft: 16,
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              {rowFiles.map((f) => (
-                                <li key={f._id} style={{ listStyle: "none" }}>
-                                  <InlineAttachment f={f} />
-                                  {f.scope === "Shared" && (
-                                    <span
-                                      className="badge"
-                                      style={{ marginLeft: 6 }}
-                                    >
-                                      Shared
-                                    </span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </td>
-                        <td>
+
+                        {/* Compact, centered actions that wrap */}
+                        <td style={{ textAlign: "center", padding: 8 }}>
                           <div
                             style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fit, minmax(110px, 1fr))",
+                              gap: 6,
+                              justifyItems: "center",
                             }}
                           >
                             {!isReturned && (
-                              <>
-                                <button
-                                  className="secondary"
-                                  title="Edit details"
-                                  onClick={() =>
-                                    setEditingItemId(
-                                      editingItemId === it._id ? null : it._id
-                                    )
-                                  }
-                                >
-                                  {editingItemId === it._id
-                                    ? "Close edit"
-                                    : "Edit"}
-                                </button>
-                                <button
-                                  className="secondary"
-                                  title="Mark as returned"
-                                  onClick={() => returnItem(it._id)}
-                                >
-                                  Return
-                                </button>
-                              </>
+                              <button
+                                className="secondary"
+                                title="Edit details"
+                                onClick={() =>
+                                  setEditingItemId(
+                                    editingItemId === it._id ? null : it._id
+                                  )
+                                }
+                                style={{ padding: "4px 8px", fontSize: 12 }}
+                              >
+                                {editingItemId === it._id
+                                  ? "Close edit"
+                                  : "Edit"}
+                              </button>
                             )}
 
-                            {/* Only show for yearEnd items that are not returned */}
+                            <button
+                              className="secondary"
+                              title="View/add comments"
+                              onClick={() => toggleItemComments(it._id)}
+                              style={{ padding: "4px 8px", fontSize: 12 }}
+                            >
+                              {openCommentsForItem === it._id
+                                ? "Hide comments"
+                                : "Show comments"}
+                            </button>
+
+                            <button
+                              className="secondary"
+                              title="View/add files"
+                              onClick={() => toggleItemFiles(it._id)}
+                              style={{ padding: "4px 8px", fontSize: 12 }}
+                            >
+                              {openFilesForItem === it._id
+                                ? "Hide files"
+                                : "Show files"}
+                            </button>
+
+                            {!isReturned && (
+                              <button
+                                className="secondary"
+                                title="Mark as returned"
+                                onClick={() => returnItem(it._id)}
+                                style={{ padding: "4px 8px", fontSize: 12 }}
+                              >
+                                Return
+                              </button>
+                            )}
 
                             {!isReturned &&
                               it.frequency?.intervalType !== "JustPurchase" &&
-                              it.frequency?.intervalType !== "OneTime" &&
                               it.endDate === null &&
                               it.occurrenceCount === null && (
                                 <button
@@ -310,11 +299,13 @@ function List({ jwt, clients }) {
                                   title="Generate all tasks for next year"
                                   onClick={() => generateNextYearTasks(it._id)}
                                   style={{
+                                    padding: "4px 8px",
+                                    fontSize: 12,
                                     backgroundColor: "#10b981",
                                     color: "white",
                                   }}
                                 >
-                                  Generate next year
+                                  Copy over next year
                                 </button>
                               )}
 
@@ -322,67 +313,48 @@ function List({ jwt, clients }) {
                               className="danger"
                               onClick={() => deleteItem(it._id)}
                               title="Delete item and ALL associated tasks/files/comments"
+                              style={{ padding: "4px 8px", fontSize: 12 }}
                             >
                               Delete
                             </button>
                           </div>
-
-                          {/* Returned: comments/files panels */}
-                          {isReturned && (
-                            <div
-                              style={{ marginTop: 8, display: "grid", gap: 8 }}
-                            >
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                  className="secondary"
-                                  onClick={() => toggleItemComments(it._id)}
-                                >
-                                  Comments
-                                </button>
-                                <button
-                                  className="secondary"
-                                  onClick={() => toggleItemFiles(it._id)}
-                                >
-                                  Files
-                                </button>
-                              </div>
-
-                              {openCommentsForItem === it._id && (
-                                <CommentPanel
-                                  comments={commentsByItem[it._id] || []}
-                                  newCommentText={newCommentTextItem}
-                                  onCommentTextChange={setNewCommentTextItem}
-                                  onAddComment={() => addItemComment(it._id)}
-                                  currentUserId={currentUserId}
-                                />
-                              )}
-
-                              {openFilesForItem === it._id && (
-                                <FilePanel
-                                  taskId={it._id}
-                                  scope="CareNeedItem"
-                                  targetId={it._id}
-                                  files={panelFilesByItem[it._id] || []}
-                                  newFile={newFileItem}
-                                  onNewFileChange={setNewFileItem}
-                                  onAddFile={() => addItemFile(it._id)}
-                                  onLoadFiles={() => loadItemFilesPanel(it._id)}
-                                  currentUserId={currentUserId}
-                                  onReload={() =>
-                                    toggleItemComments(it._id) ||
-                                    toggleItemComments(it._id)
-                                  }
-                                />
-                              )}
-                            </div>
-                          )}
                         </td>
                       </tr>
 
-                      {/* Inline editor row (only when not returned) */}
+                      {(openCommentsForItem === it._id ||
+                        openFilesForItem === it._id) && (
+                        <tr key={`${it._id}__panels`}>
+                          <td colSpan={5} style={{ paddingTop: 0 }}>
+                            {openCommentsForItem === it._id && (
+                              <CommentPanel
+                                comments={commentsByItem[it._id] || []}
+                                newCommentText={newCommentTextItem}
+                                onCommentTextChange={setNewCommentTextItem}
+                                onAddComment={() => addItemComment(it._id)}
+                                currentUserId={currentUserId}
+                                onReload={() => loadItemComments(it._id)}
+                              />
+                            )}
+
+                            {openFilesForItem === it._id && (
+                              <FilePanel
+                                scope="CareNeedItem"
+                                targetId={it._id}
+                                files={panelFilesByItem[it._id] || []}
+                                newFile={newFileItem}
+                                onNewFileChange={setNewFileItem}
+                                onAddFile={() => addItemFile(it._id)}
+                                onLoadFiles={() => loadItemFilesPanel(it._id)}
+                                currentUserId={currentUserId}
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      )}
+
                       {!isReturned && editingItemId === it._id && (
                         <tr key={`${it._id}__editor`}>
-                          <td colSpan={9} style={{ paddingTop: 0 }}>
+                          <td colSpan={5} style={{ paddingTop: 0 }}>
                             <CareNeedItemRowEditor
                               item={it}
                               jwt={jwt}

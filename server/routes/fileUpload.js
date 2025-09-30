@@ -197,6 +197,17 @@ router.post("/upload", requireAuth, (req, res) => {
     try {
       if (err) return res.status(400).json({ error: err.message });
 
+      const parseYMD = (s) => {
+        if (!s || typeof s !== "string") return null;
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+        if (!m) return null;
+        const y = Number(m[1]),
+          mo = Number(m[2]),
+          d = Number(m[3]);
+        if (!y || !mo || !d) return null;
+        return { y, mo, d };
+      };
+
       let {
         scope,
         targetId,
@@ -213,38 +224,39 @@ router.post("/upload", requireAuth, (req, res) => {
       // Resolve bucket if Shared
       if (scope === "Shared") {
         if (!bucketId) {
-          if (!personId || !year || !month) {
+          if (!personId) {
             return res.status(400).json({ error: "MISSING_BUCKET_PARAMS" });
           }
+          // Prefer bucket derived from effectiveDate if provided
+          const ymd = parseYMD(effectiveDate);
+          const targetYear = ymd?.y ?? Number(year);
+          const targetMonth = ymd?.mo ?? Number(month);
+          if (!targetYear || !targetMonth) {
+            return res.status(400).json({ error: "MISSING_BUCKET_PARAMS" });
+          }
+
           let bucket = await ReceiptBucket.findOne({
             personId,
-            year: Number(year),
-            month: Number(month),
+            year: targetYear,
+            month: targetMonth,
           });
+
           if (!bucket) {
-            const label = new Date(
-              Number(year),
-              Number(month) - 1
-            ).toLocaleString("en-AU", { month: "long", year: "numeric" });
+            const label = new Date(targetYear, targetMonth - 1).toLocaleString(
+              "en-AU",
+              { month: "long", year: "numeric" }
+            );
             bucket = await ReceiptBucket.create({
               personId,
-              year: Number(year),
-              month: Number(month),
+              year: targetYear,
+              month: targetMonth,
               title: `Receipts ${label}`,
             });
           }
+
           bucketId = String(bucket._id);
         }
 
-        const d = new Date(effectiveDate);
-        if (
-          d.getFullYear() !== Number(year) ||
-          d.getMonth() + 1 !== Number(month)
-        ) {
-          return res
-            .status(400)
-            .json({ error: "EFFECTIVE_DATE_OUTSIDE_BUCKET" });
-        }
         // For Shared, targetId is the bucket id
         targetId = bucketId;
       }

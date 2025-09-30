@@ -3,12 +3,11 @@ import FilePanel from "../Panels/FilePanel";
 import CommentPanel from "../Panels/CommentPanel";
 import CareTaskCostEditor from "./CareTaskCostEditor.jsx";
 import CareTaskRowEditor from "./CareTaskRowEditor.jsx";
-import { formatDate, formatTime } from "../utils/formatters";
+import { formatDate } from "../utils/formatters";
 
 function CareTaskList({
   tasks,
   toggleTaskComplete,
-  displayUser,
   aud,
   costEditorHiddenByTask,
   setCostEditorHiddenByTask,
@@ -28,9 +27,7 @@ function CareTaskList({
   setNewFile,
   addFile,
   loadFiles,
-  // new
-  assignableUsers,
-  reloadAfterEdit, // pass a function that refreshes current client's tasks
+  reloadAfterEdit,
   currentUserId,
 }) {
   const [editingTaskId, setEditingTaskId] = React.useState(null);
@@ -67,18 +64,6 @@ function CareTaskList({
               <strong>{t.title}</strong>
               {" · "}
               {formatDate(t.dueDate)}
-              {t.scheduleType === "Timed" && t.startAt && t.endAt && (
-                <>
-                  {" · "}
-                  {formatTime(t.startAt)}
-                  {" – "}
-                  {formatTime(t.endAt)}
-                </>
-              )}
-              {" · "}
-              <span className="badge">
-                {t.scheduleType === "AllDay" ? "All-day" : "Timed"}
-              </span>
               {" · "}
               <span className="badge">{t.status}</span>
 
@@ -94,33 +79,9 @@ function CareTaskList({
                     : "Mark as completed"
                 }
               />
-
-              {/* Assignee info */}
-              {t.assignedToUserId ? (
-                <span title="Assigned to">
-                  {" · "}Assigned:{" "}
-                  <strong>{displayUser(t.assignedToUserId)}</strong>
-                </span>
-              ) : (
-                <>
-                  {" · "}
-                  <span className="badge" title="No assignee">
-                    Unassigned
-                  </span>
-                </>
-              )}
-              {t.completedByUserId && (
-                <>
-                  {" · "}
-                  <span title="Completed by">
-                    Completed by:{" "}
-                    <strong>{displayUser(t.completedByUserId)}</strong>
-                  </span>
-                </>
-              )}
             </div>
 
-            {/* Spent (read-only) + change cost control */}
+            {/* Spent + change cost */}
             {t.status === "Completed" &&
               t.cost !== undefined &&
               t.cost !== null && (
@@ -192,7 +153,7 @@ function CareTaskList({
               onCommentTextChange={setNewCommentText}
               onAddComment={() => addComment(t._id)}
               currentUserId={currentUserId}
-              onReload={() => toggleComments(t._id) || toggleComments(t._id)} // quick reload
+              onReload={() => toggleComments(t._id) || toggleComments(t._id)}
             />
           )}
 
@@ -210,12 +171,11 @@ function CareTaskList({
             />
           )}
 
-          {/* Inline editor row */}
+          {/* Inline editor */}
           {editingTaskId === t._id && (
             <div style={{ marginTop: 10 }}>
               <CareTaskRowEditor
                 task={t}
-                assignableUsers={assignableUsers}
                 onCancel={() => setEditingTaskId(null)}
                 onSaved={async () => {
                   setEditingTaskId(null);

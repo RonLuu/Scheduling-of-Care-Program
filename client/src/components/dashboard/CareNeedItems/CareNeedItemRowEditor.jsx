@@ -3,55 +3,49 @@ import React from "react";
 function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
   const [name, setName] = React.useState(item.name || "");
 
-  // frequency editor mirrors your create form
+  // Only unscheduled (JustPurchase) or repeating (Daily/Weekly/Monthly/Yearly)
   const [intervalType, setIntervalType] = React.useState(
-    item.frequency?.intervalType || "JustPurchase"
+    item.frequency?.intervalType === "JustPurchase"
+      ? "JustPurchase"
+      : ["Daily", "Weekly", "Monthly", "Yearly"].includes(
+          item.frequency?.intervalType
+        )
+      ? item.frequency.intervalType
+      : "JustPurchase"
   );
   const [intervalValue, setIntervalValue] = React.useState(
     item.frequency?.intervalValue || 1
   );
-  const [startDate, setStartDate] = React.useState(
-    item.frequency?.startDate
-      ? new Date(item.frequency.startDate).toISOString().slice(0, 10)
-      : ""
-  );
 
+  // End conditions
   const [endMode, setEndMode] = React.useState(
-    item.endDate ? "endDate" : item.occurrenceCount ? "count" : "none"
+    item.endDate === null && item.occurrenceCount === null
+      ? "yearEnd"
+      : item.endDate
+      ? "endDate"
+      : item.occurrenceCount
+      ? "count"
+      : "endDate"
   );
   const [endDate, setEndDate] = React.useState(
     item.endDate ? new Date(item.endDate).toISOString().slice(0, 10) : ""
   );
   const [occCount, setOccCount] = React.useState(item.occurrenceCount || "");
 
-  const [scheduleType, setScheduleType] = React.useState(
-    item.scheduleType || "AllDay"
-  );
-  const [startTime, setStartTime] = React.useState(
-    item.timeWindow?.startTime || "09:00"
-  );
-  const [endTime, setEndTime] = React.useState(
-    item.timeWindow?.endTime || "10:00"
-  );
-
   const [budgetCost, setBudgetCost] = React.useState(item.budgetCost || 0);
   const [purchaseCost, setPurchaseCost] = React.useState(
     item.purchaseCost || 0
-  );
-  const [occurrenceCost, setOccurrenceCost] = React.useState(
-    item.occurrenceCost || 0
   );
 
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
 
-  const isJustPurchase = intervalType === "JustPurchase";
+  const isUnscheduled = intervalType === "JustPurchase";
 
   const handleSave = async () => {
     try {
       setErr("");
       setBusy(true);
-
       if (!jwt) throw new Error("UNAUTHENTICATED");
       if (!name.trim()) throw new Error("Name is required.");
 
@@ -59,34 +53,27 @@ function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
         name: name.trim(),
         budgetCost: Number(budgetCost) || 0,
         purchaseCost: Number(purchaseCost) || 0,
-        occurrenceCost: isJustPurchase ? 0 : Number(occurrenceCost) || 0,
-        scheduleType,
+        // removed: occurrenceCost, scheduleType, timeWindow, assignees
       };
 
-      // frequency
+      // frequency (startDate is server-side or fixed to item existing start; no input now)
       payload.frequency = {
         intervalType,
-        intervalValue: isJustPurchase ? 1 : Number(intervalValue) || 1,
-        startDate: isJustPurchase
-          ? undefined
-          : new Date(startDate).toISOString(),
+        intervalValue: isUnscheduled ? 1 : Number(intervalValue) || 1,
+        startDate: item.frequency?.startDate, // keep original anchor
       };
 
-      // schedule time window
-      if (!isJustPurchase && scheduleType === "Timed") {
-        payload.timeWindow = { startTime, endTime };
-      } else {
-        payload.timeWindow = undefined;
-      }
-
-      // end conditions
-      if (!isJustPurchase && intervalType !== "OneTime") {
-        if (endMode === "endDate" && endDate) {
+      // end conditions for repeating
+      if (!isUnscheduled) {
+        if (endMode === "yearEnd") {
+          payload.endDate = null;
+          payload.occurrenceCount = null;
+        } else if (endMode === "endDate" && endDate) {
           payload.endDate = new Date(endDate).toISOString();
-          payload.occurrenceCount = undefined;
+          payload.occurrenceCount = null;
         } else if (endMode === "count" && occCount) {
           payload.occurrenceCount = Number(occCount);
-          payload.endDate = undefined;
+          payload.endDate = null;
         } else {
           payload.endDate = null;
           payload.occurrenceCount = null;
@@ -135,17 +122,10 @@ function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
         <div>
           <label>Recurrence</label>
           <select
-            value={
-              intervalType === "JustPurchase"
-                ? "unscheduled"
-                : intervalType === "OneTime"
-                ? "one"
-                : "repeat"
-            }
+            value={isUnscheduled ? "unscheduled" : "repeat"}
             onChange={(e) => {
               const v = e.target.value;
               if (v === "unscheduled") setIntervalType("JustPurchase");
-              else if (v === "one") setIntervalType("OneTime");
               else {
                 if (
                   !["Daily", "Weekly", "Monthly", "Yearly"].includes(
@@ -159,12 +139,11 @@ function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
             }}
           >
             <option value="unscheduled">Unscheduled</option>
-            <option value="one">One Time</option>
             <option value="repeat">Repeating</option>
           </select>
         </div>
 
-        {["Daily", "Weekly", "Monthly", "Yearly"].includes(intervalType) && (
+        {!isUnscheduled && (
           <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
             <div>
               <label>Every</label>
@@ -201,89 +180,45 @@ function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
         )}
       </div>
 
-      {intervalType !== "JustPurchase" && (
-        <div className="row" style={{ marginTop: 8 }}>
-          <div>
-            <label>Start date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          {intervalType !== "OneTime" && (
+      {!isUnscheduled && (
+        <>
+          <div className="row" style={{ marginTop: 8 }}>
             <div>
               <label>End condition</label>
               <select
                 value={endMode}
                 onChange={(e) => setEndMode(e.target.value)}
               >
-                <option value="none">No end</option>
                 <option value="endDate">End by date</option>
                 <option value="count">End after N occurrences</option>
+                <option value="yearEnd">Until end of current year</option>
               </select>
             </div>
-          )}
-        </div>
-      )}
-
-      {intervalType !== "JustPurchase" &&
-        intervalType !== "OneTime" &&
-        endMode === "endDate" && (
-          <div style={{ marginTop: 8 }}>
-            <label>End date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
           </div>
-        )}
 
-      {intervalType !== "JustPurchase" &&
-        intervalType !== "OneTime" &&
-        endMode === "count" && (
-          <div style={{ marginTop: 8 }}>
-            <label>Number of occurrences</label>
-            <input
-              type="number"
-              min="1"
-              value={occCount}
-              onChange={(e) => setOccCount(e.target.value)}
-            />
-          </div>
-        )}
-
-      {intervalType !== "JustPurchase" && (
-        <div className="row" style={{ marginTop: 8 }}>
-          <div>
-            <label>Schedule period</label>
-            <select
-              value={scheduleType}
-              onChange={(e) => setScheduleType(e.target.value)}
-            >
-              <option value="AllDay">All-day</option>
-              <option value="Timed">Scheduled (start/end)</option>
-            </select>
-          </div>
-          {scheduleType === "Timed" && (
-            <div>
-              <label>Start / End</label>
-              <div className="row">
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
+          {endMode === "endDate" && (
+            <div style={{ marginTop: 8 }}>
+              <label>End date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
           )}
-        </div>
+
+          {endMode === "count" && (
+            <div style={{ marginTop: 8 }}>
+              <label>Number of occurrences</label>
+              <input
+                type="number"
+                min="1"
+                value={occCount}
+                onChange={(e) => setOccCount(e.target.value)}
+              />
+            </div>
+          )}
+        </>
       )}
 
       <div className="row" style={{ marginTop: 8 }}>
@@ -307,18 +242,6 @@ function CareNeedItemRowEditor({ item, onCancel, onSaved, jwt }) {
             onChange={(e) => setPurchaseCost(Number(e.target.value) || 0)}
           />
         </div>
-        {intervalType !== "JustPurchase" && (
-          <div>
-            <label>Expected per task (AUD)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={String(occurrenceCost)}
-              onChange={(e) => setOccurrenceCost(Number(e.target.value) || 0)}
-            />
-          </div>
-        )}
       </div>
 
       {err && (
