@@ -305,7 +305,7 @@ function List({ jwt, clients }) {
                                     color: "white",
                                   }}
                                 >
-                                  Next year
+                                  Copy over next year
                                 </button>
                               )}
 

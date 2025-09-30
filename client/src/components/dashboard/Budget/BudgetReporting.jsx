@@ -28,6 +28,132 @@ function Badge({ level, children }) {
   return <span style={style}>{children}</span>;
 }
 
+function ensure12Months(breakdown, year) {
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const byName = new Map((breakdown || []).map((m) => [m.monthName, m]));
+  return months.map((mn, i) => ({
+    month: i + 1,
+    monthName: mn,
+    year,
+    total: Number(byName.get(mn)?.total || 0),
+  }));
+}
+
+function MonthlyBarChart({
+  breakdown,
+  year,
+  height = 200,
+  compact = false,
+  accent = "#10b981",
+}) {
+  const data = ensure12Months(breakdown, year);
+  const max = Math.max(0, ...data.map((d) => d.total));
+  const barH = (h) =>
+    max > 0 ? Math.max(2, Math.round((h / max) * (height - 40))) : 2;
+
+  const axisWidth = compact ? 36 : 44; // space on the left for ticks/labels
+
+  return (
+    <div className={compact ? "monthly-chart-small" : "monthly-chart"}>
+      {/* Make THIS the positioned parent */}
+      <div
+        className={compact ? "chart-container-small" : "chart-container"}
+        style={{
+          height,
+          position: "relative",
+          paddingLeft: axisWidth, // reserve space for the axis
+          overflow: "hidden", // keep everything inside
+        }}
+      >
+        {/* Y-axis ticks (0, ~50%, max) */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: compact ? 22 : 28,
+            width: axisWidth,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            fontSize: compact ? 10 : 12,
+            color: "#6b7280",
+            pointerEvents: "none",
+            background: "transparent",
+          }}
+        >
+          <span>{max > 0 ? aud.format(max) : ""}</span>
+          <span>{max > 0 ? aud.format(max / 2) : ""}</span>
+          <span>{aud.format(0)}</span>
+        </div>
+
+        {/* Bars row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: compact ? 8 : 12,
+            width: "100%",
+          }}
+        >
+          {data.map((d) => (
+            <div
+              key={`${d.year}-${d.month}`}
+              className={
+                compact ? "chart-bar-wrapper-small" : "chart-bar-wrapper"
+              }
+            >
+              <div
+                className={
+                  compact ? "chart-bar-container-small" : "chart-bar-container"
+                }
+              >
+                {d.total > 0 && (
+                  <div
+                    className={
+                      compact
+                        ? "chart-amount-label-small"
+                        : "chart-amount-label"
+                    }
+                    style={{ color: accent }}
+                    title={aud.format(d.total)}
+                  >
+                    {aud.format(d.total)}
+                  </div>
+                )}
+                <div
+                  className={compact ? "chart-bar-small" : "chart-bar"}
+                  style={{
+                    height: barH(d.total),
+                    background: d.total > 0 ? accent : "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={compact ? "chart-month-small" : "chart-month"}>
+                {d.monthName}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BudgetReporting({ jwt, clients }) {
   const [reportClientId, setReportClientId] = React.useState("");
   const [reportYear, setReportYear] = React.useState(new Date().getFullYear());
@@ -203,10 +329,10 @@ function BudgetReporting({ jwt, clients }) {
                 <span className="summary-label">Already Spent:</span>
                 <span className="summary-value">
                   {aud.format(report.spent.total)}
-                  <span className="summary-detail">
+                  {/* <span className="summary-detail">
                     (Purchases: {aud.format(report.spent.purchase)}, Tasks:{" "}
                     {aud.format(report.spent.completed)})
-                  </span>
+                  </span> */}
                 </span>
               </div>
               <div className="summary-item">
@@ -227,37 +353,12 @@ function BudgetReporting({ jwt, clients }) {
 
           <div className="monthly-section">
             <h4>Monthly Breakdown</h4>
-            <table className="monthly-table">
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th>Total Spent</th>
-                  <th>Purchases</th>
-                  <th>Completed Tasks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.monthlyBreakdown &&
-                  report.monthlyBreakdown.map((month) => (
-                    <tr key={month.month}>
-                      <td className="month-name">
-                        {month.monthName} {month.year}
-                      </td>
-                      <td>{aud.format(month.total)}</td>
-                      <td>{aud.format(month.purchase)}</td>
-                      <td>{aud.format(month.completed)}</td>
-                    </tr>
-                  ))}
-                {(!report.monthlyBreakdown ||
-                  report.monthlyBreakdown.length === 0) && (
-                  <tr>
-                    <td colSpan={4} className="no-data">
-                      No spending data for this year
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <MonthlyBarChart
+              breakdown={report.monthlyBreakdown}
+              year={reportYear}
+              height={200}
+              accent="#10b981" // green like the reference
+            />
           </div>
 
           <div className="categories-section">
@@ -423,29 +524,14 @@ function BudgetReporting({ jwt, clients }) {
                                 {c.monthlyBreakdown &&
                                   c.monthlyBreakdown.length > 0 && (
                                     <div className="category-monthly">
-                                      <h5>Monthly Spending - {c.category}</h5>
-                                      <table className="monthly-detail-table">
-                                        <thead>
-                                          <tr>
-                                            <th>Month</th>
-                                            <th>Total</th>
-                                            <th>Purchases</th>
-                                            <th>Tasks</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {c.monthlyBreakdown.map((m) => (
-                                            <tr
-                                              key={`${c.category}-${m.month}`}
-                                            >
-                                              <td>{m.monthName}</td>
-                                              <td>{aud.format(m.total)}</td>
-                                              <td>{aud.format(m.purchase)}</td>
-                                              <td>{aud.format(m.completed)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                                      <h5>Monthly Spending — {c.category}</h5>
+                                      <MonthlyBarChart
+                                        breakdown={c.monthlyBreakdown}
+                                        year={reportYear}
+                                        height={140}
+                                        compact
+                                        accent="#3b82f6" // blue for per-category
+                                      />
                                     </div>
                                   )}
                               </>
@@ -468,7 +554,6 @@ function BudgetReporting({ jwt, clients }) {
           border-radius: 0.5rem;
           padding: 1.5rem;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          width: 1000px;
           max-width: 1000px;
         }
 
@@ -709,7 +794,7 @@ function BudgetReporting({ jwt, clients }) {
 
         .cancel-btn {
           background: #f3f4f6;
-          color: #374151 !important;
+          color: #374151;
           border: 1px solid #d1d5db;
         }
 
@@ -733,10 +818,10 @@ function BudgetReporting({ jwt, clients }) {
         }
 
         .monthly-section {
-          margin-top: 2rem;
           background: #f9fafb;
           padding: 1.5rem;
           border-radius: 0.5rem;
+          margin-bottom: 1.5rem;
         }
 
         .monthly-section h4 {
@@ -744,32 +829,64 @@ function BudgetReporting({ jwt, clients }) {
           color: #111827;
         }
 
-        .monthly-table {
-          width: 100%;
-          border-collapse: collapse;
+        .monthly-chart {
           background: white;
+          padding: 1.5rem;
           border-radius: 0.375rem;
+          overflow-x: auto;
         }
 
-        .monthly-table th {
-          padding: 0.625rem;
-          background: #f3f4f6;
-          border-bottom: 1px solid #e5e7eb;
+        .chart-container {
+          display: flex;
+          align-items: flex-end;
+          gap: 0.75rem;
+          min-width: 600px;
+          height: 200px;
+        }
+
+        .chart-bar-wrapper {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .chart-bar-container {
+          position: relative;
+          width: 100%;
+          height: 160px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          align-items: center;
+        }
+
+        .chart-amount-label {
+          position: absolute;
+          top: -20px;
+          font-size: 0.75rem;
           font-weight: 600;
-          font-size: 0.875rem;
-          color: #374151;
-          text-align: left;
+          color: #10b981;
+          white-space: nowrap;
         }
 
-        .monthly-table td {
-          padding: 0.625rem;
-          border-bottom: 1px solid #f3f4f6;
-          font-size: 0.875rem;
+        .chart-bar {
+          width: 70%;
+          background: #e5e7eb;
+          border-radius: 0.375rem 0.375rem 0 0;
+          transition: all 0.3s ease;
+          min-height: 2px;
         }
 
-        .month-name {
+        .chart-bar.active {
+          background: #10b981;
+        }
+
+        .chart-month {
+          font-size: 0.875rem;
+          color: #6b7280;
           font-weight: 500;
-          color: #111827;
         }
 
         .category-monthly {
@@ -784,27 +901,63 @@ function BudgetReporting({ jwt, clients }) {
           font-size: 0.875rem;
         }
 
-        .monthly-detail-table {
-          width: 100%;
-          border-collapse: collapse;
+        .monthly-chart-small {
           background: #fafafa;
+          padding: 1rem;
           border-radius: 0.25rem;
-          font-size: 0.813rem;
+          overflow-x: auto;
         }
 
-        .monthly-detail-table th {
-          padding: 0.5rem;
-          background: #f3f4f6;
-          border-bottom: 1px solid #e5e7eb;
-          font-weight: 500;
+        .chart-container-small {
+          display: flex;
+          align-items: flex-end;
+          gap: 0.5rem;
+          min-width: 500px;
+          height: 120px;
+        }
+
+        .chart-bar-wrapper-small {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .chart-bar-container-small {
+          position: relative;
+          width: 100%;
+          height: 90px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          align-items: center;
+        }
+
+        .chart-amount-label-small {
+          position: absolute;
+          top: -16px;
+          font-size: 0.625rem;
+          font-weight: 600;
+          color: #3b82f6;
+          white-space: nowrap;
+        }
+
+        .chart-bar-small {
+          width: 60%;
+          background: #e5e7eb;
+          border-radius: 0.25rem 0.25rem 0 0;
+          transition: all 0.3s ease;
+          min-height: 2px;
+        }
+
+        .chart-bar-small.active {
+          background: #3b82f6;
+        }
+
+        .chart-month-small {
+          font-size: 0.75rem;
           color: #6b7280;
-          text-align: left;
-        }
-
-        .monthly-detail-table td {
-          padding: 0.5rem;
-          border-bottom: 1px solid #fff;
-          color: #374151;
         }
 
         @media (max-width: 768px) {
