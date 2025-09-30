@@ -34,6 +34,7 @@ function List({ jwt, clients }) {
 
   const [editingItemId, setEditingItemId] = React.useState(null);
   const [openActionMenuId, setOpenActionMenuId] = React.useState(null);
+  const [isExpanded, setIsExpanded] = React.useState(true);
 
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
@@ -133,6 +134,37 @@ function List({ jwt, clients }) {
   };
 
   const styles = {
+    card: {
+      background: "white",
+      borderRadius: 8,
+      padding: 0,
+      marginBottom: 16,
+      border: "1px solid #e5e7eb",
+      overflow: "hidden",
+      width: "1000px",
+    },
+    header: {
+      padding: "16px 20px",
+      background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+      borderBottom: "1px solid #bfdbfe",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+    },
+    title: {
+      fontSize: "1.125rem",
+      fontWeight: 600,
+      color: "#1e40af",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      margin: 0,
+    },
+    content: {
+      padding: 20,
+      transition: "max-height 0.3s ease, opacity 0.3s ease",
+    },
     table: {
       width: "100%",
       borderCollapse: "separate",
@@ -229,312 +261,350 @@ function List({ jwt, clients }) {
   };
 
   return (
-    <div className="card">
-      <h3>Sub-element List</h3>
-      <div className="row" style={{ marginBottom: 20 }}>
-        <div>
-          <label>Client</label>
-          <select
-            value={cniClientId}
-            onChange={(e) => handleClientChange(e.target.value)}
+    <div style={styles.card}>
+      <div style={styles.header} onClick={() => setIsExpanded(!isExpanded)}>
+        <h3 style={styles.title}>
+          <span
+            style={{
+              fontSize: "1rem",
+              transform: `rotate(${isExpanded ? 90 : 0}deg)`,
+              transition: "transform 0.2s",
+              display: "inline-block",
+            }}
           >
-            <option value="">— Select client —</option>
-            {clients.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button
-            className="secondary"
-            onClick={() => cniClientId && loadItemsFor(cniClientId)}
-          >
-            Refresh
-          </button>
-        </div>
+            ▶
+          </span>
+          📋 Sub-element List
+        </h3>
       </div>
 
-      {err && <p style={{ color: "#dc2626" }}>Error: {err}</p>}
-      {loading && <p>Loading items…</p>}
-      {!loading && items.length === 0 && <p>No items for this client.</p>}
+      {isExpanded && (
+        <div style={styles.content}>
+          <div className="row" style={{ marginBottom: 20 }}>
+            <div>
+              <label>Client</label>
+              <select
+                value={cniClientId}
+                onChange={(e) => handleClientChange(e.target.value)}
+              >
+                <option value="">— Select client —</option>
+                {clients.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button
+                className="secondary"
+                onClick={() => cniClientId && loadItemsFor(cniClientId)}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
 
-      {items.length > 0 && (
-        <table style={styles.table}>
-          <colgroup>
-            <col style={{ width: "25%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "15%" }} />
-            <col style={{ width: "15%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "15%" }} />
-          </colgroup>
+          {err && <p style={{ color: "#dc2626" }}>Error: {err}</p>}
+          {loading && <p>Loading items…</p>}
+          {!loading && items.length === 0 && <p>No items for this client.</p>}
 
-          <thead>
-            <tr>
-              <th style={styles.headerCell}>Name</th>
-              <th style={styles.headerCell}>Frequency</th>
-              <th style={styles.headerCell}>Budget</th>
-              <th style={styles.headerCell}>Purchase</th>
-              <th style={styles.headerCell}>Status</th>
-              <th style={{ ...styles.headerCell, textAlign: "center" }}>
-                Actions
-              </th>
-            </tr>
-          </thead>
+          {items.length > 0 && (
+            <table style={styles.table}>
+              <colgroup>
+                <col style={{ width: "25%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "15%" }} />
+              </colgroup>
 
-          <tbody>
-            {groupedByCategory.map(([category, group]) => (
-              <React.Fragment key={category}>
-                <tr style={styles.categoryRow}>
-                  <td colSpan={6} style={styles.categoryCell}>
-                    {category} ({group.length} item
-                    {group.length !== 1 ? "s" : ""})
-                  </td>
+              <thead>
+                <tr>
+                  <th style={styles.headerCell}>Name</th>
+                  <th style={styles.headerCell}>Frequency</th>
+                  <th style={styles.headerCell}>Budget</th>
+                  <th style={styles.headerCell}>Purchase</th>
+                  <th style={styles.headerCell}>Status</th>
+                  <th style={{ ...styles.headerCell, textAlign: "center" }}>
+                    Actions
+                  </th>
                 </tr>
+              </thead>
 
-                {group.map((it) => {
-                  const isReturned = it.status === "Returned";
-                  const hasExpanded =
-                    openCommentsForItem === it._id ||
-                    openFilesForItem === it._id ||
-                    editingItemId === it._id;
+              <tbody>
+                {groupedByCategory.map(([category, group]) => (
+                  <React.Fragment key={category}>
+                    <tr style={styles.categoryRow}>
+                      <td colSpan={6} style={styles.categoryCell}>
+                        {category} ({group.length} item
+                        {group.length !== 1 ? "s" : ""})
+                      </td>
+                    </tr>
 
-                  return (
-                    <React.Fragment key={it._id}>
-                      <tr
-                        style={{
-                          ...styles.dataRow,
-                          opacity: isReturned ? 0.65 : 1,
-                          backgroundColor: hasExpanded
-                            ? "#fafbfc"
-                            : "transparent",
-                        }}
-                      >
-                        <td style={{ ...styles.dataCell, fontWeight: 500 }}>
-                          {it.name}
-                          {it.frequency?.startDate && (
-                            <div
-                              style={{
-                                fontSize: "0.75rem",
-                                color: "#6b7280",
-                                marginTop: 2,
-                              }}
-                            >
-                              {it.frequency.intervalType === "JustPurchase"
-                                ? "On: "
-                                : "Started: "}
-                              {new Date(
-                                it.frequency.startDate
-                              ).toLocaleDateString()}
-                            </div>
-                          )}
-                        </td>
-                        <td style={styles.dataCell}>
-                          <span
-                            style={{ color: "#059669", fontSize: "0.875rem" }}
-                          >
-                            {formatFrequency(it.frequency)}
-                          </span>
-                        </td>
-                        <td style={styles.dataCell}>
-                          {aud.format(it.budgetCost || 0)}
-                        </td>
-                        <td style={styles.dataCell}>
-                          {aud.format(it.purchaseCost || 0)}
-                        </td>
-                        <td style={styles.dataCell}>
-                          {isReturned ? (
-                            <span
-                              style={{
-                                ...styles.statusBadge,
-                                background: "#fef3c7",
-                                color: "#92400e",
-                              }}
-                            >
-                              Returned
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                ...styles.statusBadge,
-                                background: "#d1fae5",
-                                color: "#065f46",
-                              }}
-                            >
-                              Active
-                            </span>
-                          )}
-                        </td>
+                    {group.map((it) => {
+                      const isReturned = it.status === "Returned";
+                      const hasExpanded =
+                        openCommentsForItem === it._id ||
+                        openFilesForItem === it._id ||
+                        editingItemId === it._id;
 
-                        <td style={{ ...styles.dataCell, textAlign: "center" }}>
-                          <div
-                            className="action-menu-container"
+                      return (
+                        <React.Fragment key={it._id}>
+                          <tr
                             style={{
-                              position: "relative",
-                              display: "inline-block",
+                              ...styles.dataRow,
+                              opacity: isReturned ? 0.65 : 1,
+                              backgroundColor: hasExpanded
+                                ? "#fafbfc"
+                                : "transparent",
                             }}
                           >
-                            <button
+                            <td style={{ ...styles.dataCell, fontWeight: 500 }}>
+                              {it.name}
+                              {it.frequency?.startDate && (
+                                <div
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    color: "#6b7280",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {it.frequency.intervalType === "JustPurchase"
+                                    ? "Event: "
+                                    : "Started: "}
+                                  {new Date(
+                                    it.frequency.startDate
+                                  ).toLocaleDateString()}
+                                </div>
+                              )}
+                            </td>
+                            <td style={styles.dataCell}>
+                              <span
+                                style={{
+                                  color: "#059669",
+                                  fontSize: "0.875rem",
+                                }}
+                              >
+                                {formatFrequency(it.frequency)}
+                              </span>
+                            </td>
+                            <td style={styles.dataCell}>
+                              {aud.format(it.budgetCost || 0)}
+                            </td>
+                            <td style={styles.dataCell}>
+                              {aud.format(it.purchaseCost || 0)}
+                            </td>
+                            <td style={styles.dataCell}>
+                              {isReturned ? (
+                                <span
+                                  style={{
+                                    ...styles.statusBadge,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                  }}
+                                >
+                                  Returned
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    ...styles.statusBadge,
+                                    background: "#d1fae5",
+                                    color: "#065f46",
+                                  }}
+                                >
+                                  Active
+                                </span>
+                              )}
+                            </td>
+
+                            <td
                               style={{
-                                ...styles.compactButton,
-                                fontWeight: 500,
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenActionMenuId(
-                                  openActionMenuId === it._id ? null : it._id
-                                );
+                                ...styles.dataCell,
+                                textAlign: "center",
                               }}
                             >
-                              Actions ▼
-                            </button>
-
-                            {openActionMenuId === it._id && (
-                              <div style={styles.actionMenu}>
-                                {!isReturned && (
-                                  <div
-                                    style={styles.menuItem}
-                                    onClick={() =>
-                                      handleActionClick(it._id, "edit")
-                                    }
-                                  >
-                                    📝{" "}
-                                    {editingItemId === it._id
-                                      ? "Close Edit"
-                                      : "Edit Details"}
-                                  </div>
-                                )}
-
-                                <div
-                                  style={styles.menuItem}
-                                  onClick={() =>
-                                    handleActionClick(it._id, "comments")
-                                  }
+                              <div
+                                className="action-menu-container"
+                                style={{
+                                  position: "relative",
+                                  display: "inline-block",
+                                }}
+                              >
+                                <button
+                                  style={{
+                                    ...styles.compactButton,
+                                    fontWeight: 500,
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(
+                                      openActionMenuId === it._id
+                                        ? null
+                                        : it._id
+                                    );
+                                  }}
                                 >
-                                  💬{" "}
-                                  {openCommentsForItem === it._id
-                                    ? "Hide"
-                                    : "Show"}{" "}
-                                  Comments
-                                </div>
+                                  Actions ▼
+                                </button>
 
-                                <div
-                                  style={styles.menuItem}
-                                  onClick={() =>
-                                    handleActionClick(it._id, "files")
-                                  }
-                                >
-                                  📎{" "}
-                                  {openFilesForItem === it._id
-                                    ? "Hide"
-                                    : "Show"}{" "}
-                                  Files
-                                </div>
+                                {openActionMenuId === it._id && (
+                                  <div style={styles.actionMenu}>
+                                    {!isReturned && (
+                                      <div
+                                        style={styles.menuItem}
+                                        onClick={() =>
+                                          handleActionClick(it._id, "edit")
+                                        }
+                                      >
+                                        📝{" "}
+                                        {editingItemId === it._id
+                                          ? "Close Edit"
+                                          : "Edit Details"}
+                                      </div>
+                                    )}
 
-                                {!isReturned && (
-                                  <div
-                                    style={styles.menuItem}
-                                    onClick={() =>
-                                      handleActionClick(it._id, "return")
-                                    }
-                                  >
-                                    ↩️ Mark as Returned
-                                  </div>
-                                )}
+                                    <div
+                                      style={styles.menuItem}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "comments")
+                                      }
+                                    >
+                                      💬{" "}
+                                      {openCommentsForItem === it._id
+                                        ? "Hide"
+                                        : "Show"}{" "}
+                                      Comments
+                                    </div>
 
-                                {!isReturned &&
-                                  it.frequency?.intervalType !==
-                                    "JustPurchase" &&
-                                  it.endDate === null &&
-                                  it.occurrenceCount === null && (
+                                    <div
+                                      style={styles.menuItem}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "files")
+                                      }
+                                    >
+                                      📎{" "}
+                                      {openFilesForItem === it._id
+                                        ? "Hide"
+                                        : "Show"}{" "}
+                                      Files
+                                    </div>
+
+                                    {!isReturned && (
+                                      <div
+                                        style={styles.menuItem}
+                                        onClick={() =>
+                                          handleActionClick(it._id, "return")
+                                        }
+                                      >
+                                        ↩️ Mark as Returned
+                                      </div>
+                                    )}
+
+                                    {!isReturned &&
+                                      it.frequency?.intervalType !==
+                                        "JustPurchase" &&
+                                      it.endDate === null &&
+                                      it.occurrenceCount === null && (
+                                        <div
+                                          style={{
+                                            ...styles.menuItem,
+                                            background: "#f0fdf4",
+                                            color: "#15803d",
+                                            fontWeight: 500,
+                                          }}
+                                          onClick={() =>
+                                            handleActionClick(
+                                              it._id,
+                                              "nextYear"
+                                            )
+                                          }
+                                        >
+                                          📅 Copy to Next Year
+                                        </div>
+                                      )}
+
                                     <div
                                       style={{
                                         ...styles.menuItem,
-                                        background: "#f0fdf4",
-                                        color: "#15803d",
-                                        fontWeight: 500,
+                                        borderBottom: "none",
+                                        color: "#dc2626",
                                       }}
                                       onClick={() =>
-                                        handleActionClick(it._id, "nextYear")
+                                        handleActionClick(it._id, "delete")
                                       }
                                     >
-                                      📅 Copy to Next Year
+                                      🗑️ Delete Item
                                     </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded panels row */}
+                          {hasExpanded && (
+                            <tr key={`${it._id}__expanded`}>
+                              <td colSpan={6} style={{ padding: 0 }}>
+                                <div style={styles.expandedPanel}>
+                                  {editingItemId === it._id && (
+                                    <CareNeedItemRowEditor
+                                      item={it}
+                                      jwt={jwt}
+                                      onCancel={() => setEditingItemId(null)}
+                                      onSaved={async () => {
+                                        setEditingItemId(null);
+                                        if (cniClientId)
+                                          await loadItemsFor(cniClientId);
+                                      }}
+                                    />
                                   )}
 
-                                <div
-                                  style={{
-                                    ...styles.menuItem,
-                                    borderBottom: "none",
-                                    color: "#dc2626",
-                                  }}
-                                  onClick={() =>
-                                    handleActionClick(it._id, "delete")
-                                  }
-                                >
-                                  🗑️ Delete Item
+                                  {openCommentsForItem === it._id && (
+                                    <CommentPanel
+                                      comments={commentsByItem[it._id] || []}
+                                      newCommentText={newCommentTextItem}
+                                      onCommentTextChange={
+                                        setNewCommentTextItem
+                                      }
+                                      onAddComment={() =>
+                                        addItemComment(it._id)
+                                      }
+                                      currentUserId={currentUserId}
+                                      onReload={() => loadItemComments(it._id)}
+                                    />
+                                  )}
+
+                                  {openFilesForItem === it._id && (
+                                    <FilePanel
+                                      scope="CareNeedItem"
+                                      targetId={it._id}
+                                      files={panelFilesByItem[it._id] || []}
+                                      newFile={newFileItem}
+                                      onNewFileChange={setNewFileItem}
+                                      onAddFile={() => addItemFile(it._id)}
+                                      onLoadFiles={() =>
+                                        loadItemFilesPanel(it._id)
+                                      }
+                                      currentUserId={currentUserId}
+                                    />
+                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Expanded panels row */}
-                      {hasExpanded && (
-                        <tr key={`${it._id}__expanded`}>
-                          <td colSpan={6} style={{ padding: 0 }}>
-                            <div style={styles.expandedPanel}>
-                              {editingItemId === it._id && (
-                                <CareNeedItemRowEditor
-                                  item={it}
-                                  jwt={jwt}
-                                  onCancel={() => setEditingItemId(null)}
-                                  onSaved={async () => {
-                                    setEditingItemId(null);
-                                    if (cniClientId)
-                                      await loadItemsFor(cniClientId);
-                                  }}
-                                />
-                              )}
-
-                              {openCommentsForItem === it._id && (
-                                <CommentPanel
-                                  comments={commentsByItem[it._id] || []}
-                                  newCommentText={newCommentTextItem}
-                                  onCommentTextChange={setNewCommentTextItem}
-                                  onAddComment={() => addItemComment(it._id)}
-                                  currentUserId={currentUserId}
-                                  onReload={() => loadItemComments(it._id)}
-                                />
-                              )}
-
-                              {openFilesForItem === it._id && (
-                                <FilePanel
-                                  scope="CareNeedItem"
-                                  targetId={it._id}
-                                  files={panelFilesByItem[it._id] || []}
-                                  newFile={newFileItem}
-                                  onNewFileChange={setNewFileItem}
-                                  onAddFile={() => addItemFile(it._id)}
-                                  onLoadFiles={() => loadItemFilesPanel(it._id)}
-                                  currentUserId={currentUserId}
-                                />
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );
