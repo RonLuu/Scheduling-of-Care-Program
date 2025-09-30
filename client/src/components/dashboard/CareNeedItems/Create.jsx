@@ -15,6 +15,11 @@ function Create({ jwt, clients }) {
   const [ciUseCustomCat, setCiUseCustomCat] = React.useState(false);
   const [ciCustomCat, setCiCustomCat] = React.useState("");
 
+  // Start date (Event Day for unscheduled, Start Date for repeating)
+  const [ciStartDate, setCiStartDate] = React.useState(
+    new Date().toISOString().slice(0, 10) // yyyy-mm-dd for today
+  );
+
   // Recurrence: JustPurchase (unscheduled) or repeating (Daily/Weekly/Monthly/Yearly)
   const [ciIntervalType, setCiIntervalType] = React.useState("JustPurchase");
   const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
@@ -36,12 +41,10 @@ function Create({ jwt, clients }) {
   const [attachMode, setAttachMode] = React.useState("none"); // none | upload | reference
   const [attachFile, setAttachFile] = React.useState(null);
 
-  // --- Shared receipt reference UI state ---
-  const [refPickDate, setRefPickDate] = React.useState(
-    new Date().toISOString().slice(0, 10) // yyyy-mm-dd
-  );
-  const [refMode, setRefMode] = React.useState("month"); // "month" | "day"
-  const [refFiles, setRefFiles] = React.useState([]); // loaded month’s files
+  // --- Simplified shared receipt reference UI state ---
+  const [refYear, setRefYear] = React.useState(new Date().getFullYear());
+  const [refMonth, setRefMonth] = React.useState(new Date().getMonth() + 1);
+  const [refFiles, setRefFiles] = React.useState([]); // loaded month's files
   const [refSelectedFileId, setRefSelectedFileId] = React.useState("");
   const [refLoading, setRefLoading] = React.useState(false);
   const [refErr, setRefErr] = React.useState("");
@@ -71,35 +74,18 @@ function Create({ jwt, clients }) {
     }
   };
 
-  // Jump to this month’s bucket
-  const quickPickTodayBucket = () => {
+  // Load today's bucket
+  const loadTodayBucket = () => {
     const now = new Date();
-    const toLocalYMD = (d) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString(
-        "en-CA"
-      );
-    setRefPickDate(toLocalYMD(now));
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    loadSharedBucket(y, m);
+    setRefYear(now.getFullYear());
+    setRefMonth(now.getMonth() + 1);
+    loadSharedBucket(now.getFullYear(), now.getMonth() + 1);
   };
 
-  // Pick any day -> load that day’s month bucket
-  const pickBucketByDate = () => {
-    if (!refPickDate) return;
-    const d = new Date(`${refPickDate}T00:00:00`);
-    loadSharedBucket(d.getFullYear(), d.getMonth() + 1);
+  // Load selected month/year bucket
+  const loadSelectedBucket = () => {
+    loadSharedBucket(refYear, refMonth);
   };
-
-  const visibleReceipts = React.useMemo(() => {
-    if (refMode !== "day" || !refPickDate) return refFiles;
-    return refFiles.filter((f) => {
-      const baseDate = f.effectiveDate || f.createdAt;
-      if (!baseDate) return false;
-      const localDay = new Date(baseDate).toLocaleDateString("en-CA");
-      return localDay === refPickDate;
-    });
-  }, [refFiles, refMode, refPickDate]);
 
   // Reset picker when client changes
   React.useEffect(() => {
@@ -136,11 +122,8 @@ function Create({ jwt, clients }) {
       if (!ciPersonId) throw new Error("Please select a client.");
       if (!ciName) throw new Error("Name is required.");
 
-      const todayISO = new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        new Date().getDate()
-      ).toISOString(); // 00:00 local -> ISO
+      // Use the user-selected start date
+      const startDateISO = new Date(ciStartDate + "T00:00:00").toISOString();
 
       const isUnscheduled = ciIntervalType === "JustPurchase";
 
@@ -150,11 +133,11 @@ function Create({ jwt, clients }) {
         ...(ciUseCustomCat
           ? { newCategoryName: ciCustomCat, category: ciCustomCat || "Other" }
           : { category: ciCategory }),
-        // frequency: startDate defaults to today; only for repeating items we care about cadence
+        // frequency: use the selected start date
         frequency: {
           intervalType: ciIntervalType, // JustPurchase or one of Daily/Weekly/Monthly/Yearly
           intervalValue: isUnscheduled ? 1 : Number(ciIntervalValue) || 1,
-          startDate: todayISO,
+          startDate: startDateISO,
         },
         // costs
         budgetCost: Number(ciBudgetCost) || 0,
@@ -248,6 +231,7 @@ function Create({ jwt, clients }) {
 
       // Reset (keep client & category selection)
       setCiName("");
+      setCiStartDate(new Date().toISOString().slice(0, 10)); // Reset to today
       setCiUseCustomCat(false);
       setCiCustomCat("");
       setCiPurchaseCost(0);
@@ -268,6 +252,22 @@ function Create({ jwt, clients }) {
       setCiBusy(false);
     }
   };
+
+  // Generate month options for the dropdown
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
   return (
     <div className="card">
@@ -343,7 +343,7 @@ function Create({ jwt, clients }) {
           </div>
         </div>
 
-        {/* Recurrence */}
+        {/* Recurrence and Start Date */}
         <div className="row">
           <div>
             <label>Recurrence</label>
@@ -373,14 +373,26 @@ function Create({ jwt, clients }) {
             </select>
             <p style={{ opacity: 0.6, marginTop: 4 }}>
               {ciIntervalType === "JustPurchase"
-                ? "Only happens today (no tasks will be scheduled)."
-                : "Repeating tasks will be generated on a cadence. Start date defaults to today."}
+                ? "Single event (no recurring tasks will be scheduled)."
+                : "Repeating tasks will be generated on a cadence."}
             </p>
           </div>
 
-          {["Daily", "Weekly", "Monthly", "Yearly"].includes(
-            ciIntervalType
-          ) && (
+          <div>
+            <label>
+              {ciIntervalType === "JustPurchase" ? "Event Day" : "Start Date"}
+            </label>
+            <input
+              type="date"
+              value={ciStartDate}
+              onChange={(e) => setCiStartDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Repeating interval settings */}
+        {["Daily", "Weekly", "Monthly", "Yearly"].includes(ciIntervalType) && (
+          <div className="row">
             <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
               <div>
                 <label>Repeat every</label>
@@ -416,8 +428,8 @@ function Create({ jwt, clients }) {
                 </select>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* End conditions (repeating only) */}
         {["Daily", "Weekly", "Monthly", "Yearly"].includes(ciIntervalType) && (
@@ -520,43 +532,30 @@ function Create({ jwt, clients }) {
           <div style={{ marginTop: 8, display: "grid", gap: 12 }}>
             <div className="row" style={{ alignItems: "end", gap: 12 }}>
               <div>
-                <label>Pick a day</label>
-                <input
-                  type="date"
-                  value={refPickDate}
-                  onChange={(e) => setRefPickDate(e.target.value)}
-                  style={{ width: 180 }}
-                />
+                <label>Month</label>
+                <select
+                  value={refMonth}
+                  onChange={(e) => setRefMonth(Number(e.target.value))}
+                  style={{ minWidth: 150 }}
+                >
+                  {monthNames.map((name, idx) => (
+                    <option key={idx} value={idx + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label>Load scope</label>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <label
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <input
-                      type="radio"
-                      name="refScope"
-                      value="day"
-                      checked={refMode === "day"}
-                      onChange={() => setRefMode("day")}
-                    />
-                    That exact day
-                  </label>
-                  <label
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <input
-                      type="radio"
-                      name="refScope"
-                      value="month"
-                      checked={refMode === "month"}
-                      onChange={() => setRefMode("month")}
-                    />
-                    Whole month (of that day)
-                  </label>
-                </div>
+                <label>Year</label>
+                <input
+                  type="number"
+                  min="2020"
+                  max="2050"
+                  value={refYear}
+                  onChange={(e) => setRefYear(Number(e.target.value))}
+                  style={{ width: 100 }}
+                />
               </div>
 
               <div>
@@ -565,21 +564,21 @@ function Create({ jwt, clients }) {
                   <button
                     type="button"
                     className="secondary"
-                    onClick={pickBucketByDate}
+                    onClick={loadSelectedBucket}
                     disabled={!ciPersonId || refLoading}
-                    title="Load the bucket for the chosen date"
+                    title="Load receipts for the selected month/year"
                   >
-                    {refLoading ? "Loading…" : "Load"}
+                    {refLoading ? "Loading…" : "Load Bucket"}
                   </button>
 
                   <button
                     type="button"
                     className="secondary"
-                    onClick={quickPickTodayBucket}
+                    onClick={loadTodayBucket}
                     disabled={!ciPersonId || refLoading}
-                    title="Jump to this month’s bucket"
+                    title="Load receipts for the current month"
                   >
-                    Use today’s bucket
+                    Today's Bucket
                   </button>
                 </div>
               </div>
@@ -592,15 +591,15 @@ function Create({ jwt, clients }) {
               <select
                 value={refSelectedFileId}
                 onChange={(e) => setRefSelectedFileId(e.target.value)}
-                disabled={visibleReceipts.length === 0}
+                disabled={refFiles.length === 0}
                 style={{ minWidth: 520 }}
               >
                 <option value="">
-                  {visibleReceipts.length === 0
+                  {refFiles.length === 0
                     ? "— No receipts found —"
                     : "— Choose a receipt —"}
                 </option>
-                {visibleReceipts.map((f) => (
+                {refFiles.map((f) => (
                   <option key={f._id} value={f._id}>
                     {`${f.filename}${
                       f.description ? " • " + f.description : ""
@@ -610,13 +609,6 @@ function Create({ jwt, clients }) {
                   </option>
                 ))}
               </select>
-              {refMode === "day" &&
-                refFiles.length > 0 &&
-                visibleReceipts.length === 0 && (
-                  <div style={{ marginTop: 6, opacity: 0.7 }}>
-                    No receipts on {refPickDate}. Try “Whole month”.
-                  </div>
-                )}
             </div>
           </div>
         )}
