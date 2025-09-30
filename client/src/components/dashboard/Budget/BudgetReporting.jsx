@@ -61,30 +61,35 @@ function MonthlyBarChart({
 }) {
   const data = ensure12Months(breakdown, year);
   const max = Math.max(0, ...data.map((d) => d.total));
-  const barH = (h) =>
-    max > 0 ? Math.max(2, Math.round((h / max) * (height - 40))) : 2;
 
-  const axisWidth = compact ? 36 : 44; // space on the left for ticks/labels
+  const axisWidth = compact ? 36 : 44; // left Y-axis width
+  const topLabelSpace = compact ? 18 : 24; // room for number labels
+  const bottomAxisSpace = compact ? 22 : 28; // room for month labels
+
+  const drawableH = Math.max(2, height - topLabelSpace - bottomAxisSpace);
+  const barH = (v) =>
+    max > 0 ? Math.max(2, Math.round((v / max) * drawableH)) : 2;
 
   return (
     <div className={compact ? "monthly-chart-small" : "monthly-chart"}>
-      {/* Make THIS the positioned parent */}
       <div
         className={compact ? "chart-container-small" : "chart-container"}
         style={{
           height,
           position: "relative",
-          paddingLeft: axisWidth, // reserve space for the axis
-          overflow: "hidden", // keep everything inside
+          paddingLeft: axisWidth,
+          paddingTop: topLabelSpace, // reserve space for labels
+          paddingBottom: bottomAxisSpace, // reserve space for month labels
+          overflow: "visible", // don't crop the labels
         }}
       >
-        {/* Y-axis ticks (0, ~50%, max) */}
+        {/* Y-axis ticks */}
         <div
           style={{
             position: "absolute",
             left: 0,
-            top: 0,
-            bottom: compact ? 22 : 28,
+            top: topLabelSpace,
+            bottom: bottomAxisSpace,
             width: axisWidth,
             display: "flex",
             flexDirection: "column",
@@ -93,7 +98,6 @@ function MonthlyBarChart({
             fontSize: compact ? 10 : 12,
             color: "#6b7280",
             pointerEvents: "none",
-            background: "transparent",
           }}
         >
           <span>{max > 0 ? aud.format(max) : ""}</span>
@@ -101,7 +105,7 @@ function MonthlyBarChart({
           <span>{aud.format(0)}</span>
         </div>
 
-        {/* Bars row */}
+        {/* Bars */}
         <div
           style={{
             display: "flex",
@@ -121,6 +125,7 @@ function MonthlyBarChart({
                 className={
                   compact ? "chart-bar-container-small" : "chart-bar-container"
                 }
+                style={{ height: drawableH }}
               >
                 {d.total > 0 && (
                   <div
