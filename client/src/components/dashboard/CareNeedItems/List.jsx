@@ -5,43 +5,17 @@ import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
 import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
 
-// function InlineAttachment({ f }) {
-//   const isImg = f.fileType && f.fileType.startsWith("image/");
-//   return (
-//     <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-//       {isImg ? (
-//         <img
-//           src={f.urlOrPath}
-//           alt={f.filename}
-//           style={{
-//             maxHeight: 64,
-//             maxWidth: 96,
-//             objectFit: "cover",
-//             borderRadius: 6,
-//             border: "1px solid #ddd",
-//           }}
-//         />
-//       ) : (
-//         <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-//       )}
-//     </a>
-//   );
-// }
-
 function List({ jwt, clients }) {
   const {
     cniClientId,
     items,
-    // filesByItem,
     panelFilesByItem,
     loading,
     err,
     handleClientChange,
     loadItemsFor,
-
     returnItem,
     deleteItem,
-
     openCommentsForItem,
     openFilesForItem,
     commentsByItem,
@@ -59,6 +33,7 @@ function List({ jwt, clients }) {
   } = useCareNeedItemsData(jwt, clients);
 
   const [editingItemId, setEditingItemId] = React.useState(null);
+  const [openActionMenuId, setOpenActionMenuId] = React.useState(null);
 
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
@@ -87,7 +62,19 @@ function List({ jwt, clients }) {
     closeEditorIfReturned();
   }, [items, closeEditorIfReturned]);
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".action-menu-container")) {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const generateNextYearTasks = async (itemId) => {
+    setOpenActionMenuId(null);
     if (
       !window.confirm(
         "This will replace ALL tasks for next year with newly generated ones. Continue?"
@@ -118,10 +105,133 @@ function List({ jwt, clients }) {
     }
   };
 
+  const handleActionClick = (itemId, action) => {
+    setOpenActionMenuId(null);
+
+    switch (action) {
+      case "edit":
+        setEditingItemId(editingItemId === itemId ? null : itemId);
+        break;
+      case "comments":
+        toggleItemComments(itemId);
+        break;
+      case "files":
+        toggleItemFiles(itemId);
+        break;
+      case "return":
+        returnItem(itemId);
+        break;
+      case "delete":
+        deleteItem(itemId);
+        break;
+      case "nextYear":
+        generateNextYearTasks(itemId);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const styles = {
+    table: {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: 0,
+      fontSize: "0.925rem",
+    },
+    categoryRow: {
+      background: "linear-gradient(to right, #f0f9ff, #f8fafc)",
+      borderLeft: "3px solid #3b82f6",
+    },
+    categoryCell: {
+      padding: "10px 12px",
+      fontWeight: 600,
+      fontSize: "0.875rem",
+      color: "#1e40af",
+      letterSpacing: "0.025em",
+    },
+    headerCell: {
+      textAlign: "left",
+      padding: "10px 12px",
+      borderBottom: "2px solid #e5e7eb",
+      fontWeight: 600,
+      fontSize: "0.825rem",
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      color: "#6b7280",
+    },
+    dataRow: {
+      borderBottom: "1px solid #f3f4f6",
+      transition: "background-color 0.15s ease",
+      "&:hover": {
+        backgroundColor: "#f9fafb",
+      },
+    },
+    dataCell: {
+      padding: "12px",
+      verticalAlign: "middle",
+    },
+    compactButton: {
+      padding: "5px 10px",
+      fontSize: "0.825rem",
+      borderRadius: 4,
+      border: "1px solid #d1d5db",
+      background: "white",
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      color: "#374151",
+      "&:hover": {
+        backgroundColor: "#f3f4f6",
+        borderColor: "#9ca3af",
+      },
+    },
+    actionMenu: {
+      position: "absolute",
+      right: 0,
+      top: "100%",
+      marginTop: 4,
+      background: "white",
+      border: "1px solid #d1d5db",
+      borderRadius: 6,
+      boxShadow:
+        "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      zIndex: 10,
+      minWidth: 180,
+      overflow: "hidden",
+    },
+    menuItem: {
+      padding: "8px 12px",
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      borderBottom: "1px solid #f3f4f6",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      transition: "background-color 0.15s ease",
+      "&:hover": {
+        backgroundColor: "#f9fafb",
+      },
+    },
+    statusBadge: {
+      padding: "2px 8px",
+      borderRadius: 4,
+      fontSize: "0.75rem",
+      fontWeight: 500,
+      display: "inline-block",
+    },
+    expandedPanel: {
+      background: "#f8fafc",
+      border: "1px solid #e5e7eb",
+      borderRadius: 6,
+      margin: "8px 12px 12px 12px",
+      padding: 12,
+    },
+  };
+
   return (
     <div className="card">
       <h3>Sub-element List</h3>
-      <div className="row">
+      <div className="row" style={{ marginBottom: 20 }}>
         <div>
           <label>Client</label>
           <select
@@ -147,77 +257,99 @@ function List({ jwt, clients }) {
         </div>
       </div>
 
-      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+      {err && <p style={{ color: "#dc2626" }}>Error: {err}</p>}
       {loading && <p>Loading items…</p>}
       {!loading && items.length === 0 && <p>No items for this client.</p>}
 
       {items.length > 0 && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            tableLayout: "fixed", // evenly distribute column widths
-          }}
-        >
-          {/* 5 columns, evenly spaced */}
+        <table style={styles.table}>
           <colgroup>
+            <col style={{ width: "25%" }} />
             <col style={{ width: "20%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "20%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "15%" }} />
           </colgroup>
 
           <thead>
             <tr>
-              <th style={{ textAlign: "left", padding: 8 }}>Name</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Frequency</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Purchase cost</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Returned</th>
-              <th style={{ textAlign: "center", padding: 8 }}>Actions</th>
+              <th style={styles.headerCell}>Name</th>
+              <th style={styles.headerCell}>Frequency</th>
+              <th style={styles.headerCell}>Budget</th>
+              <th style={styles.headerCell}>Purchase</th>
+              <th style={styles.headerCell}>Status</th>
+              <th style={{ ...styles.headerCell, textAlign: "center" }}>
+                Actions
+              </th>
             </tr>
           </thead>
 
           <tbody>
             {groupedByCategory.map(([category, group]) => (
               <React.Fragment key={category}>
-                <tr>
-                  <td
-                    colSpan={5} // <-- fix colSpan
-                    style={{
-                      padding: "8px", // match body cell padding
-                      background: "#f9fafb",
-                      textAlign: "left", // <-- only this row is left-aligned
-                    }}
-                  >
-                    <strong style={{ fontSize: 13 }}>{category}</strong>
+                <tr style={styles.categoryRow}>
+                  <td colSpan={6} style={styles.categoryCell}>
+                    {category} ({group.length} item
+                    {group.length !== 1 ? "s" : ""})
                   </td>
                 </tr>
 
                 {group.map((it) => {
                   const isReturned = it.status === "Returned";
+                  const hasExpanded =
+                    openCommentsForItem === it._id ||
+                    openFilesForItem === it._id ||
+                    editingItemId === it._id;
+
                   return (
                     <React.Fragment key={it._id}>
                       <tr
                         style={{
-                          borderTop: "1px solid #eee",
-                          opacity: isReturned ? 0.75 : 1,
+                          ...styles.dataRow,
+                          opacity: isReturned ? 0.65 : 1,
+                          backgroundColor: hasExpanded
+                            ? "#fafbfc"
+                            : "transparent",
                         }}
                       >
-                        <td style={{ textAlign: "left", padding: 8 }}>
+                        <td style={{ ...styles.dataCell, fontWeight: 500 }}>
                           {it.name}
+                          {it.frequency?.startDate && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#6b7280",
+                                marginTop: 2,
+                              }}
+                            >
+                              {it.frequency.intervalType === "JustPurchase"
+                                ? "On: "
+                                : "Started: "}
+                              {new Date(
+                                it.frequency.startDate
+                              ).toLocaleDateString()}
+                            </div>
+                          )}
                         </td>
-                        <td style={{ textAlign: "left", padding: 8 }}>
-                          {formatFrequency(it.frequency)}
+                        <td style={styles.dataCell}>
+                          <span
+                            style={{ color: "#059669", fontSize: "0.875rem" }}
+                          >
+                            {formatFrequency(it.frequency)}
+                          </span>
                         </td>
-                        <td style={{ textAlign: "left", padding: 8 }}>
+                        <td style={styles.dataCell}>
+                          {aud.format(it.budgetCost || 0)}
+                        </td>
+                        <td style={styles.dataCell}>
                           {aud.format(it.purchaseCost || 0)}
                         </td>
-                        <td style={{ textAlign: "left", padding: 8 }}>
+                        <td style={styles.dataCell}>
                           {isReturned ? (
                             <span
-                              className="badge"
                               style={{
+                                ...styles.statusBadge,
                                 background: "#fef3c7",
                                 color: "#92400e",
                               }}
@@ -225,146 +357,174 @@ function List({ jwt, clients }) {
                               Returned
                             </span>
                           ) : (
-                            <span style={{ opacity: 0.4 }}>No</span>
+                            <span
+                              style={{
+                                ...styles.statusBadge,
+                                background: "#d1fae5",
+                                color: "#065f46",
+                              }}
+                            >
+                              Active
+                            </span>
                           )}
                         </td>
 
-                        {/* Compact, centered actions that wrap */}
-                        <td style={{ textAlign: "center", padding: 8 }}>
+                        <td style={{ ...styles.dataCell, textAlign: "center" }}>
                           <div
+                            className="action-menu-container"
                             style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(auto-fit, minmax(110px, 1fr))",
-                              gap: 6,
-                              justifyItems: "center",
+                              position: "relative",
+                              display: "inline-block",
                             }}
                           >
-                            {!isReturned && (
-                              <button
-                                className="secondary"
-                                title="Edit details"
-                                onClick={() =>
-                                  setEditingItemId(
-                                    editingItemId === it._id ? null : it._id
-                                  )
-                                }
-                                style={{ padding: "4px 8px", fontSize: 12 }}
-                              >
-                                {editingItemId === it._id
-                                  ? "Close edit"
-                                  : "Edit"}
-                              </button>
-                            )}
-
                             <button
-                              className="secondary"
-                              title="View/add comments"
-                              onClick={() => toggleItemComments(it._id)}
-                              style={{ padding: "4px 8px", fontSize: 12 }}
+                              style={{
+                                ...styles.compactButton,
+                                fontWeight: 500,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenActionMenuId(
+                                  openActionMenuId === it._id ? null : it._id
+                                );
+                              }}
                             >
-                              {openCommentsForItem === it._id
-                                ? "Hide comments"
-                                : "Show comments"}
+                              Actions ▼
                             </button>
 
-                            <button
-                              className="secondary"
-                              title="View/add files"
-                              onClick={() => toggleItemFiles(it._id)}
-                              style={{ padding: "4px 8px", fontSize: 12 }}
-                            >
-                              {openFilesForItem === it._id
-                                ? "Hide files"
-                                : "Show files"}
-                            </button>
+                            {openActionMenuId === it._id && (
+                              <div style={styles.actionMenu}>
+                                {!isReturned && (
+                                  <div
+                                    style={styles.menuItem}
+                                    onClick={() =>
+                                      handleActionClick(it._id, "edit")
+                                    }
+                                  >
+                                    📝{" "}
+                                    {editingItemId === it._id
+                                      ? "Close Edit"
+                                      : "Edit Details"}
+                                  </div>
+                                )}
 
-                            {!isReturned && (
-                              <button
-                                className="secondary"
-                                title="Mark as returned"
-                                onClick={() => returnItem(it._id)}
-                                style={{ padding: "4px 8px", fontSize: 12 }}
-                              >
-                                Return
-                              </button>
-                            )}
-
-                            {!isReturned &&
-                              it.frequency?.intervalType !== "JustPurchase" &&
-                              it.endDate === null &&
-                              it.occurrenceCount === null && (
-                                <button
-                                  className="secondary"
-                                  title="Generate all tasks for next year"
-                                  onClick={() => generateNextYearTasks(it._id)}
-                                  style={{
-                                    padding: "4px 8px",
-                                    fontSize: 12,
-                                    backgroundColor: "#10b981",
-                                    color: "white",
-                                  }}
+                                <div
+                                  style={styles.menuItem}
+                                  onClick={() =>
+                                    handleActionClick(it._id, "comments")
+                                  }
                                 >
-                                  Copy over next year
-                                </button>
-                              )}
+                                  💬{" "}
+                                  {openCommentsForItem === it._id
+                                    ? "Hide"
+                                    : "Show"}{" "}
+                                  Comments
+                                </div>
 
-                            <button
-                              className="danger"
-                              onClick={() => deleteItem(it._id)}
-                              title="Delete item and ALL associated tasks/files/comments"
-                              style={{ padding: "4px 8px", fontSize: 12 }}
-                            >
-                              Delete
-                            </button>
+                                <div
+                                  style={styles.menuItem}
+                                  onClick={() =>
+                                    handleActionClick(it._id, "files")
+                                  }
+                                >
+                                  📎{" "}
+                                  {openFilesForItem === it._id
+                                    ? "Hide"
+                                    : "Show"}{" "}
+                                  Files
+                                </div>
+
+                                {!isReturned && (
+                                  <div
+                                    style={styles.menuItem}
+                                    onClick={() =>
+                                      handleActionClick(it._id, "return")
+                                    }
+                                  >
+                                    ↩️ Mark as Returned
+                                  </div>
+                                )}
+
+                                {!isReturned &&
+                                  it.frequency?.intervalType !==
+                                    "JustPurchase" &&
+                                  it.endDate === null &&
+                                  it.occurrenceCount === null && (
+                                    <div
+                                      style={{
+                                        ...styles.menuItem,
+                                        background: "#f0fdf4",
+                                        color: "#15803d",
+                                        fontWeight: 500,
+                                      }}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "nextYear")
+                                      }
+                                    >
+                                      📅 Copy to Next Year
+                                    </div>
+                                  )}
+
+                                <div
+                                  style={{
+                                    ...styles.menuItem,
+                                    borderBottom: "none",
+                                    color: "#dc2626",
+                                  }}
+                                  onClick={() =>
+                                    handleActionClick(it._id, "delete")
+                                  }
+                                >
+                                  🗑️ Delete Item
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
 
-                      {(openCommentsForItem === it._id ||
-                        openFilesForItem === it._id) && (
-                        <tr key={`${it._id}__panels`}>
-                          <td colSpan={5} style={{ paddingTop: 0 }}>
-                            {openCommentsForItem === it._id && (
-                              <CommentPanel
-                                comments={commentsByItem[it._id] || []}
-                                newCommentText={newCommentTextItem}
-                                onCommentTextChange={setNewCommentTextItem}
-                                onAddComment={() => addItemComment(it._id)}
-                                currentUserId={currentUserId}
-                                onReload={() => loadItemComments(it._id)}
-                              />
-                            )}
+                      {/* Expanded panels row */}
+                      {hasExpanded && (
+                        <tr key={`${it._id}__expanded`}>
+                          <td colSpan={6} style={{ padding: 0 }}>
+                            <div style={styles.expandedPanel}>
+                              {editingItemId === it._id && (
+                                <CareNeedItemRowEditor
+                                  item={it}
+                                  jwt={jwt}
+                                  onCancel={() => setEditingItemId(null)}
+                                  onSaved={async () => {
+                                    setEditingItemId(null);
+                                    if (cniClientId)
+                                      await loadItemsFor(cniClientId);
+                                  }}
+                                />
+                              )}
 
-                            {openFilesForItem === it._id && (
-                              <FilePanel
-                                scope="CareNeedItem"
-                                targetId={it._id}
-                                files={panelFilesByItem[it._id] || []}
-                                newFile={newFileItem}
-                                onNewFileChange={setNewFileItem}
-                                onAddFile={() => addItemFile(it._id)}
-                                onLoadFiles={() => loadItemFilesPanel(it._id)}
-                                currentUserId={currentUserId}
-                              />
-                            )}
-                          </td>
-                        </tr>
-                      )}
+                              {openCommentsForItem === it._id && (
+                                <CommentPanel
+                                  comments={commentsByItem[it._id] || []}
+                                  newCommentText={newCommentTextItem}
+                                  onCommentTextChange={setNewCommentTextItem}
+                                  onAddComment={() => addItemComment(it._id)}
+                                  currentUserId={currentUserId}
+                                  onReload={() => loadItemComments(it._id)}
+                                />
+                              )}
 
-                      {!isReturned && editingItemId === it._id && (
-                        <tr key={`${it._id}__editor`}>
-                          <td colSpan={5} style={{ paddingTop: 0 }}>
-                            <CareNeedItemRowEditor
-                              item={it}
-                              jwt={jwt}
-                              onCancel={() => setEditingItemId(null)}
-                              onSaved={async () => {
-                                setEditingItemId(null);
-                                if (cniClientId)
-                                  await loadItemsFor(cniClientId);
-                              }}
-                            />
+                              {openFilesForItem === it._id && (
+                                <FilePanel
+                                  scope="CareNeedItem"
+                                  targetId={it._id}
+                                  files={panelFilesByItem[it._id] || []}
+                                  newFile={newFileItem}
+                                  onNewFileChange={setNewFileItem}
+                                  onAddFile={() => addItemFile(it._id)}
+                                  onLoadFiles={() => loadItemFilesPanel(it._id)}
+                                  currentUserId={currentUserId}
+                                />
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}
