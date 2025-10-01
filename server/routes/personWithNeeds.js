@@ -56,6 +56,7 @@ async function postPerson(req, res) {
       organizationId: req.body.organizationId,
       name: req.body.name,
       dateOfBirth: req.body.dateOfBirth,
+      sex: req.body.sex,
       mobilePhone: req.body.mobilePhone,
       address: req.body.address || {},
       emergencyContact: req.body.emergencyContact || {},

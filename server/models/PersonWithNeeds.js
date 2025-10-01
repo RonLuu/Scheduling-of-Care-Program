@@ -17,6 +17,12 @@ const PersonWithNeedsSchema = new Schema(
     dateOfBirth: Date,
     mobilePhone: { type: String, trim: true },
 
+    sex: {
+      type: String,
+      enum: ["", "Male", "Female", "Prefer not to say"],
+      default: "",
+    },
+
     // Address Information
     address: {
       street: { type: String, trim: true },

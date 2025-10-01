@@ -6,10 +6,8 @@ function ClientInfoManager({ me, jwt, clients }) {
   const [accessErr, setAccessErr] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Get the selected client object
   const selectedClient = clients.find((c) => c._id === selectedClientId);
 
-  // Load access links when client changes
   const loadAccessLinks = async (pid) => {
     setIsLoading(true);
     try {
@@ -34,7 +32,6 @@ function ClientInfoManager({ me, jwt, clients }) {
     if (value) loadAccessLinks(value);
   };
 
-  // Client display helper functions
   const getMedicalInfoDisplay = (medicalInfo) => {
     if (!medicalInfo || typeof medicalInfo !== "object") return null;
     const info = [];
@@ -94,7 +91,6 @@ function ClientInfoManager({ me, jwt, clients }) {
     return age;
   };
 
-  // Access control functions
   const shouldShowUser = () => {
     if (!me) return false;
     return me.role === "Admin" || me.role === "Family" || me.role === "PoA";
@@ -103,17 +99,13 @@ function ClientInfoManager({ me, jwt, clients }) {
   const canRevoke = (userLink) => {
     const u = userLink.userId;
     if (!u) return false;
-
-    // Never allow revoking yourself
     if (String(u._id) === String(me.id)) return false;
 
     if (me.role === "Family" || me.role === "PoA") {
-      // Family/PoA can revoke anyone except themselves
       return true;
     }
 
     if (me.role === "Admin") {
-      // Admin can only revoke staff
       return u.role === "GeneralCareStaff";
     }
 
@@ -204,17 +196,9 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         {selectedClient && (
           <>
-            {/* Client Information Display */}
             <div className="client-info-section">
               <div className="section-header">
                 <h3>{selectedClient.name}</h3>
-                {/* <span
-                  className={`status-badge status-${
-                    selectedClient.status?.toLowerCase() || "active"
-                  }`}
-                >
-                  {selectedClient.status || "Active"}
-                </span> */}
               </div>
 
               <div className="info-grid">
@@ -227,6 +211,12 @@ function ClientInfoManager({ me, jwt, clients }) {
                       <span className="value">
                         {calculateAge(selectedClient.dateOfBirth)} years old
                       </span>
+                    </div>
+                  )}
+                  {selectedClient.sex && (
+                    <div className="info-row">
+                      <span className="label">Sex:</span>
+                      <span className="value">{selectedClient.sex}</span>
                     </div>
                   )}
                   {selectedClient.mobilePhone && (
@@ -311,7 +301,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                         <th align="left">Name</th>
                         <th align="left">Email</th>
                         <th align="left">Role</th>
-                        {/* <th align="center">Access Status</th> */}
                         <th align="center">Action</th>
                       </tr>
                     </thead>
@@ -330,13 +319,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                                 {u.role}
                               </span>
                             </td>
-                            {/* <td align="center">
-                              <span
-                                className={`access-status ${actionStatus.type}`}
-                              >
-                                {actionStatus.text}
-                              </span>
-                            </td> */}
                             <td align="center">
                               {actionStatus.canAct ? (
                                 <button
@@ -432,29 +414,6 @@ function ClientInfoManager({ me, jwt, clients }) {
           margin: 0;
           color: #111827;
           font-size: 1.25rem;
-        }
-
-        .status-badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .status-active {
-          background: #d1fae5;
-          color: #065f46;
-        }
-
-        .status-inactive {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-
-        .status-transferred {
-          background: #fef3c7;
-          color: #92400e;
         }
 
         .info-grid {
@@ -579,23 +538,6 @@ function ClientInfoManager({ me, jwt, clients }) {
         .role-generalcarestaff {
           background: #e0e7ff;
           color: #4338ca;
-        }
-
-        .access-status {
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-
-        .access-status.self {
-          color: #059669;
-        }
-
-        .access-status.protected {
-          color: #6b7280;
-        }
-
-        .access-status.revokable {
-          color: #dc2626;
         }
 
         .revoke-btn {
