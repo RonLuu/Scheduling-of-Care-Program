@@ -4,11 +4,11 @@ const FileUploadSchema = new Schema(
   {
     scope: {
       type: String,
-      enum: ["CareTask", "CareNeedItem", "Shared"],
+      enum: ["CareTask", "CareNeedItem", "Shared", "UserProfile"],
       required: true,
       index: true,
     },
-    targetId: { type: Schema.Types.ObjectId, required: true, index: true }, // _id of the task/item/bucket
+    targetId: { type: Schema.Types.ObjectId, required: true, index: true }, // _id of the task/item/bucket/user
 
     // When scope === "Shared"
     bucketId: {
@@ -26,7 +26,7 @@ const FileUploadSchema = new Schema(
 
     filename: { type: String, required: true },
     fileType: { type: String },
-    urlOrPath: { type: String, required: true }, // /uploads/…
+    urlOrPath: { type: String, required: true }, // /uploads/… or cloudinary URL
     size: { type: Number },
     description: { type: String },
     effectiveDate: { type: Date },

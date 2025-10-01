@@ -28,6 +28,13 @@ const UserSchema = new Schema(
     mobile: { type: String, trim: true, default: null },
     address: { type: String, trim: true, default: null },
 
+    // Profile image reference
+    avatarFileId: {
+      type: Schema.Types.ObjectId,
+      ref: "FileUpload",
+      default: null,
+    },
+
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
   },
@@ -35,5 +42,4 @@ const UserSchema = new Schema(
 );
 
 UserSchema.index({ organizationId: 1, role: 1 });
-
 export default model("User", UserSchema);

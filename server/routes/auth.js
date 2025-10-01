@@ -17,6 +17,7 @@ function sanitizeUser(user) {
     organizationId: u.organizationId || null,
     mobile: u.mobile || null,
     address: u.address || null,
+    avatarFileId: u.avatarFileId || null,
   };
 }
 
@@ -78,7 +79,7 @@ router.post("/login", requireLocal, (req, res) => {
 // GET api/auth/me
 router.get("/me", requireJwt, async (req, res) => {
   const userId = req.user.id || req.user._id || req.user.sub;
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).populate("avatarFileId").lean();
   if (!user) return res.status(404).json({ error: "USER_NOT_FOUND" });
 
   res.json({ user: sanitizeUser(user) });

@@ -297,6 +297,7 @@ router.patch("/me/leave-organization", requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/users/me - update profile
 router.patch("/me", requireAuth, async (req, res) => {
   // whitelist: only allow these fields to be updated by self
   const allowed = ["name", "mobile", "address"];
@@ -309,11 +310,29 @@ router.patch("/me", requireAuth, async (req, res) => {
     const updated = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,
       runValidators: true,
-    }).lean();
+    })
+      .populate("avatarFileId")
+      .lean();
+
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json(updated);
   } catch (e) {
     res.status(400).json({ error: e.message || "Failed to update profile" });
+  }
+});
+
+// GET /api/users/me - should populate avatar
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("avatarFileId")
+      .lean();
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json(user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

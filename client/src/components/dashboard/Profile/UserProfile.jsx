@@ -4,8 +4,11 @@ import NavigationTab from "../../NavigationTab";
 import EditInfo from "./EditInfo";
 
 import "../../../styles/UserProfile.css";
+
 function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
+
+  const avatarUrl = me?.avatarFileId?.urlOrPath;
 
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
@@ -24,7 +27,15 @@ function UserProfile({ me, refreshMe, jwt }) {
       <div className="userprofile-detail">
         <div className="userprofile-detail1">
           <div className="userprofile-image-wrapper">
-            <BiUser className="userprofile-image" />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                className="userprofile-image-photo"
+              />
+            ) : (
+              <BiUser className="userprofile-image" />
+            )}
           </div>
 
           <div className="userprofile-detail1-general-wrapper">
@@ -70,6 +81,15 @@ function UserProfile({ me, refreshMe, jwt }) {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .userprofile-image-photo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+        }
+      `}</style>
     </div>
   );
 }
