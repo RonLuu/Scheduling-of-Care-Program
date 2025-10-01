@@ -8,27 +8,42 @@ function ReceiptBucket({ jwt, clients }) {
   const [bucket, setBucket] = React.useState(null);
   const [files, setFiles] = React.useState([]);
   const [fileNote, setFileNote] = React.useState("");
-  const [fileDate, setFileDate] = React.useState(""); // effective date
+  const [fileDate, setFileDate] = React.useState("");
   const [err, setErr] = React.useState("");
 
-  // NEW: collapsible "add receipt" form state
+  // Collapsible states
   const [showAdd, setShowAdd] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(false);
 
   const todayISO = () => new Date().toISOString().slice(0, 10);
 
-  // NEW: auto-select first client (if any) on first mount
+  // Auto-select first client on mount
   React.useEffect(() => {
     if (!personId && Array.isArray(clients) && clients.length > 0) {
       setPersonId(clients[0]._id);
     }
   }, [clients, personId]);
 
-  // reference check + delete helper
+  // Month names for better display
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
   const deleteSharedReceipt = async (fileId) => {
     try {
       if (!jwt) throw new Error("UNAUTHENTICATED");
 
-      // 1) Ask server which items reference this file
       const r1 = await fetch(`/api/file-upload/${fileId}/references`, {
         headers: { Authorization: "Bearer " + jwt },
       });
@@ -57,7 +72,6 @@ function ReceiptBucket({ jwt, clients }) {
 
       if (!proceed) return;
 
-      // 2) Delete the file
       const r2 = await fetch(`/api/file-upload/${fileId}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + jwt },
@@ -65,7 +79,6 @@ function ReceiptBucket({ jwt, clients }) {
       const d2 = await r2.json();
       if (!r2.ok) throw new Error(d2.error || "Delete failed");
 
-      // 3) Refresh
       await load();
     } catch (e) {
       alert(e.message || String(e));
@@ -98,9 +111,8 @@ function ReceiptBucket({ jwt, clients }) {
   React.useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId, year, month]); // load when selection changes
+  }, [personId, year, month]);
 
-  // NEW: when opening the form, prefill date to today
   const handleOpenAdd = () => {
     setShowAdd(true);
     setFileDate(todayISO());
@@ -108,8 +120,8 @@ function ReceiptBucket({ jwt, clients }) {
 
   const handleCloseAdd = () => {
     setShowAdd(false);
-    // optional: keep what the user typed if they collapse; or reset:
-    // setFile(null); setFileNote(""); setFileDate("");
+    setFile(null);
+    setFileNote("");
   };
 
   const uploadToBucket = async () => {
@@ -122,11 +134,10 @@ function ReceiptBucket({ jwt, clients }) {
       const fd = new FormData();
       fd.append("scope", "Shared");
       fd.append("personId", personId);
-      fd.append("year", String(year)); // bucket resolution still uses current selection
-      fd.append("month", String(month)); // (date independence is enforced server-side)
+      fd.append("year", String(year));
+      fd.append("month", String(month));
       fd.append("file", file);
       if (fileNote) fd.append("description", fileNote);
-      // Always send an effective date; defaults to today when form opened
       if (fileDate) fd.append("effectiveDate", fileDate);
 
       const r = await fetch("/api/file-upload/upload", {
@@ -137,10 +148,10 @@ function ReceiptBucket({ jwt, clients }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Upload failed");
 
-      // Reset file chooser
       setFile(null);
+      setFileNote("");
+      handleCloseAdd();
 
-      // If user picked an effective date, switch the UI to that month/year so they see it immediately
       if (fileDate) {
         const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fileDate);
         if (m) {
@@ -149,7 +160,6 @@ function ReceiptBucket({ jwt, clients }) {
           if (yEff && mEff && (yEff !== year || mEff !== month)) {
             setYear(yEff);
             setMonth(mEff);
-            // load() will be triggered by the useEffect on [personId, year, month]
             return;
           }
         }
@@ -160,204 +170,463 @@ function ReceiptBucket({ jwt, clients }) {
     }
   };
 
+  const styles = {
+    card: {
+      background: "white",
+      borderRadius: 8,
+      padding: 0,
+      marginBottom: 16,
+      border: "1px solid #e5e7eb",
+      overflow: "hidden",
+      width: "1000px",
+    },
+    header: {
+      padding: "16px 20px",
+      background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+      borderBottom: "1px solid #bfdbfe",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+    },
+    title: {
+      fontSize: "1.125rem",
+      fontWeight: 600,
+      color: "#1e40af",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    content: {
+      padding: 20,
+      transition: "max-height 0.3s ease, opacity 0.3s ease",
+    },
+    controls: {
+      display: "grid",
+      gridTemplateColumns: "1fr 150px 150px 120px",
+      gap: 12,
+      marginBottom: 16,
+      alignItems: "end",
+    },
+    bucketInfo: {
+      background: "#f9fafb",
+      borderRadius: 6,
+      padding: 12,
+      marginBottom: 16,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    table: {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: 0,
+      fontSize: "0.925rem",
+    },
+    tableHeader: {
+      background: "#f9fafb",
+      borderBottom: "2px solid #e5e7eb",
+    },
+    tableHeaderCell: {
+      padding: "10px 12px",
+      textAlign: "left",
+      fontWeight: 600,
+      fontSize: "0.825rem",
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      color: "#6b7280",
+    },
+    tableRow: {
+      borderBottom: "1px solid #f3f4f6",
+      transition: "background-color 0.15s ease",
+    },
+    tableCell: {
+      padding: "12px",
+      verticalAlign: "middle",
+    },
+    addForm: {
+      background: "#f0f9ff",
+      borderRadius: 6,
+      padding: 16,
+      marginTop: 16,
+      border: "1px solid #bfdbfe",
+    },
+    filePreview: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+    },
+    thumbnail: {
+      height: 48,
+      width: 64,
+      objectFit: "cover",
+      borderRadius: 4,
+      border: "1px solid #e5e7eb",
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "40px 20px",
+      color: "#6b7280",
+    },
+  };
+
   return (
-    <div className="card">
-      <h3>Shared receipts (by client & month)</h3>
-
-      <div className="row">
-        <div>
-          <label>Client</label>
-          <select
-            value={personId}
-            onChange={(e) => setPersonId(e.target.value)}
-          >
-            <option value="">— Select client —</option>
-            {(clients || []).map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Year</label>
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <label>Month</label>
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button className="secondary" onClick={load} disabled={!personId}>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {err && <p style={{ color: "#b91c1c", marginTop: 8 }}>Error: {err}</p>}
-
-      <div style={{ marginTop: 12 }}>
-        <p>
-          <strong>Bucket:</strong>{" "}
-          {bucket ? bucket.title || `${month}/${year}` : "None yet"}
-        </p>
-        {files.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No shared receipts for this month.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left" }}>File</th>
-                <th style={{ textAlign: "left" }}>Note</th>
-                <th style={{ textAlign: "left" }}>Receipt date</th>
-                <th style={{ textAlign: "left" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((f) => {
-                const receiptDate = f.effectiveDate || f.createdAt;
-                return (
-                  <tr key={f._id} style={{ borderTop: "1px solid #eee" }}>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        {f.fileType?.startsWith("image/") && f.urlOrPath && (
-                          <a
-                            href={f.urlOrPath}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={f.filename}
-                          >
-                            <img
-                              src={f.urlOrPath}
-                              alt={f.filename}
-                              style={{
-                                height: 40,
-                                width: 60,
-                                objectFit: "cover",
-                                borderRadius: 4,
-                                border: "1px solid #eee",
-                              }}
-                            />
-                          </a>
-                        )}
-                        <span>{f.filename}</span>
-                      </div>
-                    </td>
-                    <td>
-                      {f.description ? (
-                        <span>{f.description}</span>
-                      ) : (
-                        <span style={{ opacity: 0.6 }}>—</span>
-                      )}
-                    </td>
-                    <td
-                      title={
-                        f.createdAt
-                          ? `Uploaded: ${new Date(
-                              f.createdAt
-                            ).toLocaleString()}`
-                          : ""
-                      }
-                    >
-                      {receiptDate ? (
-                        isNaN(new Date(receiptDate)) ? (
-                          <span style={{ opacity: 0.6 }}>—</span>
-                        ) : (
-                          new Date(receiptDate).toLocaleDateString()
-                        )
-                      ) : (
-                        <span style={{ opacity: 0.6 }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="danger"
-                        onClick={() => deleteSharedReceipt(f._id)}
-                        title="Delete this receipt"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/*  Add receipt area  */}
-      <div style={{ marginTop: 12 }}>
-        {!showAdd ? (
-          <div>
-            <button className="secondary" onClick={handleOpenAdd}>
-              + Add receipt
-            </button>
-          </div>
-        ) : (
-          <div
-            className="collapsible"
+    <div style={styles.card}>
+      <div style={styles.header} onClick={() => setIsExpanded(!isExpanded)}>
+        <h3 style={styles.title}>
+          <span
             style={{
-              overflow: "hidden",
-              transition: "max-height 240ms ease, opacity 240ms ease",
-              maxHeight: showAdd ? 300 : 0,
-              opacity: showAdd ? 1 : 0,
-              border: "1px solid #eee",
-              borderRadius: 8,
-              padding: 12,
-              marginTop: 8,
-              background: "#fafafa",
+              fontSize: "1rem",
+              transform: `rotate(${isExpanded ? 90 : 0}deg)`,
+              transition: "transform 0.2s",
             }}
-            aria-expanded={showAdd}
           >
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
-              <input
-                type="text"
-                placeholder='Optional note (e.g. "Pharmacy Receipt for Jan 12")'
-                value={fileNote}
-                onChange={(e) => setFileNote(e.target.value)}
-                style={{ minWidth: 260, flex: "1 1 260px" }}
-              />
-              <input
-                type="date"
-                value={fileDate}
-                onChange={(e) => setFileDate(e.target.value)}
-                title="Effective date (independent of the selected bucket’s month)"
-              />
-              <button
-                className="secondary"
-                onClick={uploadToBucket}
-                disabled={!file || !personId}
-                title={personId ? "" : "Select a client first"}
+            ▶
+          </span>
+          📁 Shared Receipts Bucket
+        </h3>
+      </div>
+
+      {isExpanded && (
+        <div style={styles.content}>
+          <div style={styles.controls}>
+            <div>
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "#374151",
+                }}
               >
-                Upload to bucket
-              </button>
-              <button onClick={handleCloseAdd}>Cancel</button>
+                Client
+              </label>
+              <select
+                value={personId}
+                onChange={(e) => setPersonId(e.target.value)}
+                style={{ width: "100%" }}
+              >
+                <option value="">— Select client —</option>
+                {(clients || []).map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "#374151",
+                }}
+              >
+                Month
+              </label>
+              <select
+                value={month}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                style={{ width: "100%" }}
+              >
+                {monthNames.map((name, idx) => (
+                  <option key={idx} value={idx + 1}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "#374151",
+                }}
+              >
+                Year
+              </label>
+              <input
+                type="number"
+                min="2020"
+                max="2050"
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
             </div>
           </div>
-        )}
-      </div>
+
+          {err && (
+            <div
+              style={{
+                color: "#dc2626",
+                background: "#fef2f2",
+                padding: "8px 12px",
+                borderRadius: 4,
+                marginBottom: 12,
+                fontSize: "0.875rem",
+              }}
+            >
+              Error: {err}
+            </div>
+          )}
+
+          {personId && (
+            <div style={styles.bucketInfo}>
+              <div>
+                <strong>Current Bucket:</strong>{" "}
+                {bucket ? (
+                  <span style={{ color: "#059669" }}>
+                    {monthNames[month - 1]} {year} - {files.length} file
+                    {files.length !== 1 ? "s" : ""}
+                  </span>
+                ) : (
+                  <span style={{ color: "#6b7280" }}>
+                    No bucket created yet
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {files.length === 0 ? (
+            <div style={styles.emptyState}>
+              <p style={{ marginBottom: 16 }}>
+                No receipts uploaded for this month yet.
+              </p>
+              {!showAdd && personId && (
+                <button className="secondary" onClick={handleOpenAdd}>
+                  + Upload First Receipt
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <table style={styles.table}>
+                <thead style={styles.tableHeader}>
+                  <tr>
+                    <th style={{ ...styles.tableHeaderCell, width: "35%" }}>
+                      File
+                    </th>
+                    <th style={{ ...styles.tableHeaderCell, width: "30%" }}>
+                      Description
+                    </th>
+                    <th style={{ ...styles.tableHeaderCell, width: "20%" }}>
+                      Receipt Date
+                    </th>
+                    <th
+                      style={{
+                        ...styles.tableHeaderCell,
+                        width: "15%",
+                        textAlign: "center",
+                      }}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {files.map((f) => {
+                    const receiptDate = f.effectiveDate || f.createdAt;
+                    return (
+                      <tr
+                        key={f._id}
+                        style={styles.tableRow}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = "#f9fafb")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "transparent")
+                        }
+                      >
+                        <td style={styles.tableCell}>
+                          <div style={styles.filePreview}>
+                            {f.fileType?.startsWith("image/") && f.urlOrPath ? (
+                              <a
+                                href={f.urlOrPath}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={f.filename}
+                              >
+                                <img
+                                  src={f.urlOrPath}
+                                  alt={f.filename}
+                                  style={styles.thumbnail}
+                                />
+                              </a>
+                            ) : (
+                              <div
+                                style={{
+                                  ...styles.thumbnail,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  background: "#f3f4f6",
+                                  fontSize: "1.5rem",
+                                }}
+                              >
+                                📄
+                              </div>
+                            )}
+                            <div>
+                              <a
+                                href={f.urlOrPath}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  color: "#2563eb",
+                                  textDecoration: "none",
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {f.filename}
+                              </a>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={styles.tableCell}>
+                          {f.description || (
+                            <span style={{ color: "#9ca3af" }}>
+                              No description
+                            </span>
+                          )}
+                        </td>
+                        <td style={styles.tableCell}>
+                          {receiptDate && !isNaN(new Date(receiptDate)) ? (
+                            <div>
+                              <div>
+                                {new Date(receiptDate).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: "#9ca3af" }}>—</span>
+                          )}
+                        </td>
+                        <td
+                          style={{ ...styles.tableCell, textAlign: "center" }}
+                        >
+                          <button
+                            className="danger"
+                            onClick={() => deleteSharedReceipt(f._id)}
+                            title="Delete this receipt"
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: "0.825rem",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {!showAdd && (
+                <div style={{ marginTop: 16 }}>
+                  <button className="secondary" onClick={handleOpenAdd}>
+                    + Add Another Receipt
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Add receipt form */}
+          {showAdd && (
+            <div style={styles.addForm}>
+              <h4 style={{ margin: "0 0 12px 0", color: "#1e40af" }}>
+                Upload New Receipt
+              </h4>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        color: "#374151",
+                      }}
+                    >
+                      Select File *
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        color: "#374151",
+                      }}
+                    >
+                      Receipt Date
+                    </label>
+                    <input
+                      type="date"
+                      value={fileDate}
+                      onChange={(e) => setFileDate(e.target.value)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "#374151",
+                    }}
+                  >
+                    Description (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder='e.g., "Pharmacy receipt for medications"'
+                    value={fileNote}
+                    onChange={(e) => setFileNote(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button onClick={handleCloseAdd} className="secondary">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={uploadToBucket}
+                    disabled={!file || !personId}
+                    title={personId ? "" : "Select a client first"}
+                  >
+                    Upload Receipt
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import CareTask from "../models/CareTask.js";
 import CareNeedItem from "../models/CareNeedItem.js";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
 import ReceiptBucket from "../models/ReceiptBucket.js";
+import User from "../models/User.js";
 import { requireAuth, ensureCanWorkOnTask } from "../middleware/authz.js";
 import multer from "multer";
 import path from "path";
@@ -28,6 +29,7 @@ const folderForScope = (scope) => {
   if (scope === "CareTask") return "CareTask";
   if (scope === "CareNeedItem") return "CareNeedItem";
   if (scope === "Shared") return "Shared";
+  if (scope === "UserProfile") return "UserProfile";
   return "General";
 };
 
@@ -46,10 +48,18 @@ if (isProd) {
       const scope = req.body?.scope || "General";
       const folder = `scheduling-of-care/${folderForScope(scope)}`;
 
-      // limit types similar to your original filter (images + pdf)
-      const allowed = /^(image\/|application\/pdf)/.test(file.mimetype);
-      if (!allowed) {
-        throw new Error("UNSUPPORTED_FILE_TYPE");
+      // For UserProfile, only allow images
+      if (scope === "UserProfile") {
+        const allowed = /^image\//.test(file.mimetype);
+        if (!allowed) {
+          throw new Error("PROFILE_IMAGES_ONLY");
+        }
+      } else {
+        // limit types similar to your original filter (images + pdf)
+        const allowed = /^(image\/|application\/pdf)/.test(file.mimetype);
+        if (!allowed) {
+          throw new Error("UNSUPPORTED_FILE_TYPE");
+        }
       }
 
       // Set resource_type=auto to support images + pdf seamlessly
@@ -68,9 +78,12 @@ if (isProd) {
 
   storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const scope = req.body.scope || "General";
+      // IMPORTANT: req.body.scope should be available here because multer parses it first
+      const scope = req.body?.scope || "General";
+      console.log("[MULTER DESTINATION] Scope from req.body:", scope); // Add this debug log
       const dir = path.join(UPLOAD_DIR, folderForScope(scope));
       fs.mkdirSync(dir, { recursive: true });
+      console.log("[MULTER DESTINATION] Saving to directory:", dir); // Add this debug log
       cb(null, dir);
     },
     filename: (req, file, cb) => {
@@ -87,9 +100,17 @@ if (isProd) {
 
 const upload = multer({
   storage,
-  fileFilter: (_req, file, cb) => {
-    const ok = /^(image\/|application\/pdf)/.test(file.mimetype);
-    cb(ok ? null : new Error("UNSUPPORTED_FILE_TYPE"), ok);
+  fileFilter: (req, file, cb) => {
+    const scope = req.body?.scope;
+
+    // For UserProfile, only allow images
+    if (scope === "UserProfile") {
+      const ok = /^image\//.test(file.mimetype);
+      cb(ok ? null : new Error("PROFILE_IMAGES_ONLY"), ok);
+    } else {
+      const ok = /^(image\/|application\/pdf)/.test(file.mimetype);
+      cb(ok ? null : new Error("UNSUPPORTED_FILE_TYPE"), ok);
+    }
   },
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
@@ -152,7 +173,7 @@ router.post("/", requireAuth, async (req, res) => {
       const access = await ensureCanWorkOnTask(req.user, task);
       if (!access.ok) return res.status(403).json({ error: access.code });
     } else if (scope === "CareNeedItem") {
-      // Optional sanity check so we don’t attach to a non-existent item
+      // Optional sanity check so we don't attach to a non-existent item
       const item = await CareNeedItem.findById(targetId).select(
         "_id organizationId"
       );
@@ -160,6 +181,11 @@ router.post("/", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "INVALID_CARE_NEED_ITEM" });
       if (String(item.organizationId) !== String(req.user.organizationId)) {
         return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
+      }
+    } else if (scope === "UserProfile") {
+      // Only allow users to upload their own profile picture
+      if (String(targetId) !== String(req.user.id)) {
+        return res.status(403).json({ error: "CAN_ONLY_UPDATE_OWN_PROFILE" });
       }
     }
 
@@ -192,6 +218,8 @@ router.post("/", requireAuth, async (req, res) => {
 // fields: scope, targetId (when scope != Shared), description
 // when scope=Shared:
 //   - either pass bucketId, OR pass personId+year+month (bucket will be upserted)
+// when scope=UserProfile:
+//   - targetId should be the user's own ID
 router.post("/upload", requireAuth, (req, res) => {
   upload.single("file")(req, res, async (err) => {
     try {
@@ -261,6 +289,22 @@ router.post("/upload", requireAuth, (req, res) => {
         targetId = bucketId;
       }
 
+      // For UserProfile, ensure user can only upload to their own profile
+      if (scope === "UserProfile") {
+        const currentUserId = String(req.user.id || req.user._id);
+
+        console.log("[DEBUG] UserProfile upload attempt");
+        console.log("[DEBUG] req.body.targetId:", targetId);
+        console.log("[DEBUG] currentUserId:", currentUserId);
+        console.log("[DEBUG] req.body.scope:", scope);
+
+        if (!targetId) {
+          targetId = currentUserId;
+        } else if (String(targetId) !== currentUserId) {
+          return res.status(403).json({ error: "CAN_ONLY_UPDATE_OWN_PROFILE" });
+        }
+      }
+
       if (!targetId) {
         return res.status(400).json({ error: "MISSING_TARGET_ID" });
       }
@@ -300,11 +344,71 @@ router.post("/upload", requireAuth, (req, res) => {
         );
       }
 
+      // For UserProfile, update the user's avatarFileId and delete old avatar
+      if (scope === "UserProfile") {
+        const user = await User.findById(targetId);
+
+        // Delete old avatar file if exists
+        if (user.avatarFileId) {
+          const oldAvatar = await FileUpload.findById(user.avatarFileId);
+          if (oldAvatar) {
+            await deleteUploadBlob(oldAvatar.urlOrPath);
+            await FileUpload.deleteOne({ _id: oldAvatar._id });
+          }
+        }
+
+        // Update user with new avatar
+        await User.findByIdAndUpdate(targetId, { avatarFileId: doc._id });
+      }
+
       res.status(201).json(doc);
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
+});
+
+// ============ Get user avatar ============
+// GET /api/file-upload/user-avatar/:userId
+router.get("/user-avatar/:userId", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select("avatarFileId").lean();
+
+    if (!user || !user.avatarFileId) {
+      return res.json({ avatar: null });
+    }
+
+    const avatar = await FileUpload.findById(user.avatarFileId).lean();
+    res.json({ avatar });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ============ Delete user avatar ============
+// DELETE /api/file-upload/user-avatar
+router.delete("/user-avatar", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user || !user.avatarFileId) {
+      return res.status(404).json({ error: "NO_AVATAR_FOUND" });
+    }
+
+    const avatar = await FileUpload.findById(user.avatarFileId);
+    if (avatar) {
+      await deleteUploadBlob(avatar.urlOrPath);
+      await FileUpload.deleteOne({ _id: avatar._id });
+    }
+
+    await User.findByIdAndUpdate(userId, { avatarFileId: null });
+
+    res.json({ message: "Avatar deleted successfully" });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // ============ Buckets (person-scoped) ============
@@ -488,6 +592,11 @@ router.delete("/:fileId", requireAuth, async (req, res) => {
         { fileRefs: doc._id },
         { $pull: { fileRefs: doc._id } }
       );
+    }
+
+    // If this is a UserProfile avatar, remove reference from User
+    if (doc.scope === "UserProfile") {
+      await User.updateMany({ avatarFileId: doc._id }, { avatarFileId: null });
     }
 
     // best effort remove blob

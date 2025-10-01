@@ -198,13 +198,16 @@ function OrganizationPage() {
                 </div>
                 {!editing && (
                   <div className="org-actions">
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setEditing(true)}
-                      disabled={isProcessing}
-                    >
-                      <BiEdit /> Change Organization
-                    </button>
+                    {(me.role === "Family" || me.role === "PoA") && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setEditing(true)}
+                        disabled={isProcessing}
+                      >
+                        <BiEdit /> Change Organization
+                      </button>
+                    )}
+
                     <button
                       className="btn-danger"
                       onClick={handleLeaveOrganization}

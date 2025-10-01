@@ -4,6 +4,7 @@ function AddClient({ me, jwt, setClients }) {
   const [formData, setFormData] = React.useState({
     name: "",
     dateOfBirth: "",
+    sex: "",
     mobilePhone: "",
     address: "",
     suburb: "",
@@ -35,6 +36,13 @@ function AddClient({ me, jwt, setClients }) {
     { value: "TAS", label: "Tasmania" },
     { value: "ACT", label: "Australian Capital Territory" },
     { value: "NT", label: "Northern Territory" },
+  ];
+
+  const sexOptions = [
+    { value: "", label: "Select" },
+    { value: "Male", label: "Male" },
+    { value: "Female", label: "Female" },
+    { value: "Prefer not to say", label: "Prefer not to say" },
   ];
 
   const handleInputChange = (field) => (e) => {
@@ -86,6 +94,7 @@ function AddClient({ me, jwt, setClients }) {
           dateOfBirth: formData.dateOfBirth
             ? new Date(formData.dateOfBirth).toISOString()
             : undefined,
+          sex: formData.sex || undefined,
           mobilePhone: formData.mobilePhone,
           address: {
             street: formData.address,
@@ -142,9 +151,7 @@ function AddClient({ me, jwt, setClients }) {
           })
             .then((rr) => rr.json())
             .then((pp) => {
-              // Ensure medicalInfo is properly formatted for display
               if (pp.medicalInfo && typeof pp.medicalInfo === "object") {
-                // Create a display-friendly version of medical info
                 const medicalSummary = [];
                 if (pp.medicalInfo.problems)
                   medicalSummary.push(`Problems: ${pp.medicalInfo.problems}`);
@@ -169,6 +176,7 @@ function AddClient({ me, jwt, setClients }) {
       setFormData({
         name: "",
         dateOfBirth: "",
+        sex: "",
         mobilePhone: "",
         address: "",
         suburb: "",
@@ -214,14 +222,24 @@ function AddClient({ me, jwt, setClients }) {
               />
             </div>
             <div>
-              <label>Mobile phone</label>
-              <input
-                type="tel"
-                value={formData.mobilePhone}
-                onChange={handleInputChange("mobilePhone")}
-                placeholder="+61 4XX XXX XXX"
-              />
+              <label>Sex</label>
+              <select value={formData.sex} onChange={handleInputChange("sex")}>
+                {sexOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+          <div>
+            <label>Mobile phone</label>
+            <input
+              type="tel"
+              value={formData.mobilePhone}
+              onChange={handleInputChange("mobilePhone")}
+              placeholder="+61 4XX XXX XXX"
+            />
           </div>
         </div>
 
