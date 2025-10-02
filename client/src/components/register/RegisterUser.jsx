@@ -105,7 +105,7 @@ const RegisterUser = () => {
               <h3 style={{ color: "#8b8b8bff" }}>Choose your role:</h3>
               <div className="select-container">
                 <select
-                  className={` form role ${role === "" ? "italic" : ""}`}
+                  className={` form ${role === "" ? "italic" : ""}`}
                   id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
@@ -115,16 +115,16 @@ const RegisterUser = () => {
                   <option style={{ fontStyle: "italic" }} value="">
                     -- Select a role --
                   </option>
-                  <option className="role" value="Family">
+                  <option  value="Family">
                     Family Member
                   </option>
-                  <option className="role" value="PoA">
+                  <option  value="PoA">
                     PoA
                   </option>
-                  <option className="role" value="Admin">
+                  <option value="Admin">
                     Admin
                   </option>
-                  <option className="role" value="GeneralCareStaff">
+                  <option value="GeneralCareStaff">
                     Caretaker
                   </option>
                 </select>

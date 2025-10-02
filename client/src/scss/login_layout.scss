@@ -18,6 +18,10 @@
         width: 400px;
         height: 500px;
     }
+    @include respond(xs){
+        width:325px;
+        height: 600px;
+    }
 
     background-color: $white;
     border-radius: 10px;
@@ -28,6 +32,8 @@
     position: relative;
     padding: 20px;
     margin: 20px auto;
+    overflow: visible; 
+
 }
 .h45m40
 {
@@ -83,25 +89,26 @@
     p 
     {
         font-size: 18px;
-        margin:10px 0;
+        margin:20px 0px 0px 0px;
     };
 }
-
 .left, .top, .center, .bottom {
   position: static; /* default */
 }
 .left {
   align-self: flex-start;  /* ensures the section is left-aligned */
-  margin-left: 50px;           /* or 1-2rem if you want a small offset */
+  margin-left: 2rem;           /* or 1-2rem if you want a small offset */
 }
 .register-box2 {
     @extend .register-box;
     background-color: $white;
+    overflow: visible; // Make sure this allows dropdown to overflow
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: flex-start; /* aligns children to the left */
-//   padding-left: 2rem;      /* optional: nudge all content right a bit */
-  gap: 1.5rem;             
+    gap: 1.5rem;             
     h2 
     {
         font-size: 30px;
@@ -124,6 +131,7 @@
     border: none;
     padding: 5px 20px;
     font-size: 14px;
+    margin:20px 0px 20px 0px;
     transition: background-color 0.3s ease;
 
 }
@@ -138,7 +146,8 @@
     font-size:18px;
     font-family: 'Inria Serif', serif;
     border:none;
-    background-color:$light-violet;
+    background-color:$white;
+    border: 1px solid $blueberry;
     color: $black;
     border-radius: 10px;
     padding: 10px 14px;
@@ -156,6 +165,9 @@
     @include respond(md){
         font-size: 14px;
     }
+    @include respond(sm){
+        width: 200px;
+    }
     
 }
 .error
@@ -163,40 +175,66 @@
     color:$red;
     font-size: 14px;
 }
-.role{
-    background-color: $violet;
-    border-radius: 0px;
-    color: $white;
-    border :none;
-    font-style: normal;
-    
-    &.italic{
-        font-style: italic;
-    }
-}
 
 .select-container {
     position: relative;
-    select{
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    color: $white;
-    // width: 100%;
-    padding-right: 40px;
+    width: 100%;
+    max-width: 400px;
+    z-index: 10;
+    
+    select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 10px 40px 10px 14px;
+        background-color: $violet;
+        border-radius: 0px;
+        color: $white;
+        border: none;
+        font-size: 18px;
+        font-family: 'Inria Serif', serif;
+        outline: none;
+        
+        &.italic {
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        option {
+            background-color: $violet;
+            color: $white;
+            font-style: normal;
+            padding: 10px;
+        }
+        
+        @include respond(md) {
+            font-size: 14px;
+        }
+        
+        @include respond(sm) {
+            width: 200px;
+        }
+        @include respond(xs)
+        {
+            width: 150px;
+        }
     }
+    
     .icon {    
-    color: $white;
-    position: absolute;
-    top: 50%;
-    right: 5%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    transition: transform 0.3s ease;
-    transform: translateY(-50%) rotate(0deg);
+        color: $white;
+        position: absolute;
+        top: 50%;
+        right: 5%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        transition: transform 0.3s ease;
 
-    &.open {
-        transform: translateY(-50%) rotate(180deg);}   
+        &.open {
+            transform: translateY(-50%) rotate(180deg);
+        }   
     }
-
 }

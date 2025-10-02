@@ -76,7 +76,7 @@ function RequestAccess({ jwt }) {
   };
 
   return (
-    <div className="card">
+    <div className="card card_res">
       <h3>Request access with a token</h3>
       <p>
         Paste the invite token you received, add an optional message, and
@@ -112,7 +112,7 @@ function RequestAccess({ jwt }) {
           </small>
         </div>
 
-        <button type="submit" disabled={isSubmitting || !token.trim()}>
+        <button className="btn" type="submit" disabled={isSubmitting || !token.trim()}>
           {isSubmitting ? "Submitting..." : "Request access"}
         </button>
       </form>

@@ -8,39 +8,131 @@ button, h3 {
   font-size: 20px;
 }
 
-.container {
-  position: relative;
-  width: 80%;
-  margin: auto;
+:root {
+  --h00-size-mobile: 2.5rem;
+  --h0-size-mobile: 2rem;
+  --h1-size-mobile: 1.625rem;
+  --h2-size-mobile: 1.375rem;
+  --h3-size-mobile: 1.125rem;
+  --h00-size: 3rem;
+  --h0-size: 2.5rem;
+  --h1-size: 2rem;
+  --h2-size: 1.5rem;
+  --h3-size: 1.25rem;
+  --h4-size: 1rem;
+  --h5-size: 0.875rem;
+  --h6-size: 0.75rem;
+  --body-font-size: 0.875rem;
+  --font-size-small: 0.75rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --button-height-sm: 32px;
+  --button-height-md: 40px;
+  --button-height-lg: 48px;
+  --icon-size-sm: 18px;
+  --icon-size-md: 24px;
+  --icon-size-lg: 32px;
+  --header-height-mobile: 50px;
+  --header-height-desktop: 60px;
+  --nav-width: 60px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
 }
-@media screen {
-  .container {
-    width: 90%;
-  }
+
+.container {
+  background-color: #F6FAFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0px;
+  grid-column: 1/-1; /* span both columns */
+  width: 100%;
+  max-width: none; /* override the generic main { max-width: 900px } */
+}
+.container .card_res {
+  margin: 0px;
 }
 @media screen and (max-width: 768px) {
-  .container {
-    width: 95%;
+  .container .card_res {
+    width: 500px;
+    margin: 0 10px;
   }
+}
+@media screen and (max-width: 576px) {
+  .container .card_res {
+    width: 300px;
+    margin: 0 10px;
+  }
+}
+.container .btn {
+  color: white;
+  width: 100%;
+  font-family: "inria serif";
+  padding: 10px 20px; /* was 15px 32px */
+  margin: 8px auto; /* center horizontally */
+  border: none;
+  font-size: 16px; /* was 25px */
+  line-height: 1.2;
+  display: block; /* allows auto margins to center */
+  transition-duration: 0.4s;
+}
+.container .btn .secondary {
+  background: #fff;
+  color: #2c3f70;
+  border: 1px solid #d1d5db;
 }
 
 .header {
-  background-color: #F6FAFF;
+  background-color: #E8EBED;
   color: #2C3F70;
-  padding: 10px 20px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-left: calc(var(--nav-width) + var(--spacing-lg));
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  font-size: 18px;
-  height: 40px;
+  font-size: var(--h3-size);
+  height: var(--header-height-desktop);
+}
+@media screen and (max-width: 768px) {
+  .header {
+    height: var(--header-height-mobile);
+    font-size: var(--font-size-small);
+  }
 }
 .header .navigation-tab {
   position: absolute;
   left: 0;
   top: 0;
-  height: 100vh; /* or 100% */
-  width: 60px;
+  height: var(--button-height-md);
+  width: var(--button-height-md);
+  font-size: var(--text-body-size-medium);
+  font-weight: var(--base-text-weight-normal);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+@media screen and (max-width: 768px) {
+  .header .navigation-tab {
+    height: var(--button-height-sm);
+    width: var(--button-height-sm);
+    font-size: var(--icon-size-sm);
+  }
+}
+.header .link {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  line-height: 1;
 }
 .header .link a {
   text-decoration: none;
@@ -57,6 +149,7 @@ button, h3 {
   position: relative;
   padding: 20px;
   margin: 20px auto;
+  overflow: visible;
 }
 @media screen {
   .box {
@@ -80,6 +173,12 @@ button, h3 {
   .box {
     width: 400px;
     height: 500px;
+  }
+}
+@media screen and (max-width: 576px) {
+  .box {
+    width: 325px;
+    height: 600px;
   }
 }
 
@@ -138,7 +237,7 @@ button, h3 {
 }
 .register-box1 p {
   font-size: 18px;
-  margin: 10px 0;
+  margin: 20px 0px 0px 0px;
 }
 
 .left, .top, .center, .bottom {
@@ -147,11 +246,14 @@ button, h3 {
 
 .left {
   align-self: flex-start; /* ensures the section is left-aligned */
-  margin-left: 50px; /* or 1-2rem if you want a small offset */
+  margin-left: 2rem; /* or 1-2rem if you want a small offset */
 }
 
 .register-box2 {
   background-color: #F6FAFF;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start; /* aligns children to the left */
@@ -178,6 +280,7 @@ button, h3 {
   border: none;
   padding: 5px 20px;
   font-size: 14px;
+  margin: 20px 0px 20px 0px;
   transition: background-color 0.3s ease;
 }
 
@@ -190,7 +293,8 @@ button, h3 {
   font-size: 18px;
   font-family: "Inria Serif", serif;
   border: none;
-  background-color: #C8CDED;
+  background-color: #F6FAFF;
+  border: 1px solid #2C3F70;
   color: #000000;
   border-radius: 10px;
   padding: 10px 14px;
@@ -213,32 +317,64 @@ button, h3 {
     font-size: 14px;
   }
 }
+@media screen and (max-width: 768px) {
+  .form {
+    width: 200px;
+  }
+}
 
 .error {
   color: #ff0000;
   font-size: 14px;
 }
 
-.role {
-  background-color: #8089D2;
-  border-radius: 0px;
-  color: #F6FAFF;
-  border: none;
-  font-style: normal;
-}
-.role.italic {
-  font-style: italic;
-}
-
 .select-container {
   position: relative;
+  width: 100%;
+  max-width: 400px;
+  z-index: 10;
 }
 .select-container select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 40px 10px 14px;
+  background-color: #8089D2;
+  border-radius: 0px;
   color: #F6FAFF;
-  padding-right: 40px;
+  border: none;
+  font-size: 18px;
+  font-family: "Inria Serif", serif;
+  outline: none;
+}
+.select-container select.italic {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+}
+.select-container select option {
+  background-color: #8089D2;
+  color: #F6FAFF;
+  font-style: normal;
+  padding: 10px;
+}
+@media screen and (max-width: 992px) {
+  .select-container select {
+    font-size: 14px;
+  }
+}
+@media screen and (max-width: 768px) {
+  .select-container select {
+    width: 200px;
+  }
+}
+@media screen and (max-width: 576px) {
+  .select-container select {
+    width: 150px;
+  }
 }
 .select-container .icon {
   color: #F6FAFF;
@@ -248,7 +384,6 @@ button, h3 {
   transform: translateY(-50%);
   pointer-events: none;
   transition: transform 0.3s ease;
-  transform: translateY(-50%) rotate(0deg);
 }
 .select-container .icon.open {
   transform: translateY(-50%) rotate(180deg);

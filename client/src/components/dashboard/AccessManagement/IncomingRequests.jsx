@@ -46,7 +46,7 @@ function IncomingRequests({ jwt }) {
   };
 
   return (
-    <div className="card">
+    <div className="card card_res">
       <h3>Incoming access requests</h3>
       {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
       {items.length === 0 ? (

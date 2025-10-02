@@ -6,6 +6,7 @@ import useAuth from "./components/dashboard/hooks/useAuth";
 import RegisterUser from "./components/register/RegisterUser";
 import LogIn from "./components/login/LogIn";
 import RegisterOrganization from "./components/register/RegisterOrganization";
+import Header from "./components/Header"
 
 // Authenticated route pages (create these as shown earlier)
 import ProfilePage from "./components/dashboard/pages/ProfilePage";
@@ -30,6 +31,9 @@ import { fab } from "@fortawesome/free-brands-svg-icons";
 
 library.add(fas, far, fab);
 
+// when working on the pages that are guard 
+// with Auth, take the element out and comment 
+// the Auth part of the code
 const App = () => {
   const { me, isReady } = useAuth();
 
@@ -57,7 +61,7 @@ const App = () => {
                 <Navigate to="/profile" replace />
               ) : (
                 <Navigate to="/login" replace />
-              )
+              ) 
             }
           />
 
@@ -68,14 +72,16 @@ const App = () => {
             element={<RegisterOrganization />}
           />
           <Route path="/login" element={<LogIn />} />
-
+          <Route path="/header" element={<Header/>}/>
           {/* Authenticated app routes */}
           <Route
             path="/profile"
             element={
-              <RequireAuth>
-                <ProfilePage />
-              </RequireAuth>
+              <ProfilePage />
+
+              // <RequireAuth>
+              //   <ProfilePage />
+              // </RequireAuth>
             }
           />
           <Route
@@ -89,9 +95,11 @@ const App = () => {
           <Route
             path="/access"
             element={
-              <RequireAuth>
-                <AccessPage />
-              </RequireAuth>
+               <AccessPage />
+              
+              // <RequireAuth>
+              //   <AccessPage />
+              // </RequireAuth>
             }
           />
           <Route

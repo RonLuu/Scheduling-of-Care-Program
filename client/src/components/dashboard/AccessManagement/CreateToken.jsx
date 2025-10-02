@@ -44,7 +44,7 @@ function CreateToken({ me, jwt, clients }) {
   };
 
   return (
-    <div className="card">
+    <div className="card card_res">
       <h3>Create invite token</h3>
 
       <label>Type</label>
@@ -84,7 +84,7 @@ function CreateToken({ me, jwt, clients }) {
         </div>
       </div>
 
-      <button onClick={createToken} disabled={!selectedPersonId}>
+      <button className="btn"  onClick={createToken} disabled={!selectedPersonId}>
         Create token
       </button>
 
