@@ -1,5 +1,6 @@
 import React from "react";
 
+
 function RequestAccess({ jwt }) {
   const [token, setToken] = React.useState("");
   const [message, setMessage] = React.useState("");
@@ -76,7 +77,7 @@ function RequestAccess({ jwt }) {
   };
 
   return (
-    <div className="card card_res">
+    <div className="card_res">
       <h3>Request access with a token</h3>
       <p>
         Paste the invite token you received, add an optional message, and
@@ -85,7 +86,17 @@ function RequestAccess({ jwt }) {
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="access-token">Invite Token *</label>
+          <label htmlFor="access-token">Invite Token 
+             <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+          
+            <div className="help-wrapper">
+              <span className="help-icon " >?</span>
+              <span className="tool-tip">This is given to you via email</span>
+            </div>
+          </label>
           <input
             id="access-token"
             type="text"
@@ -98,7 +109,10 @@ function RequestAccess({ jwt }) {
         </div>
 
         <div>
-          <label htmlFor="access-message">Message (optional)</label>
+          <label htmlFor="access-message">Message (optional)<br/></label>
+          <small style={{  display: "inline-block", marginTop: 5, opacity: 0.7  }}>
+            Let the approver know who you are or why you need access
+          </small>
           <input
             id="access-message"
             type="text"
@@ -107,9 +121,7 @@ function RequestAccess({ jwt }) {
             onChange={handleMessageChange}
             disabled={isSubmitting}
           />
-          <small style={{ opacity: 0.7 }}>
-            Let the approver know who you are or why you need access
-          </small>
+
         </div>
 
         <button className="btn" type="submit" disabled={isSubmitting || !token.trim()}>

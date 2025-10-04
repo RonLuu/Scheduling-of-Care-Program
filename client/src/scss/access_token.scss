@@ -1,0 +1,129 @@
+@import 'global_style.scss';
+
+.select-container {
+
+  &.access-select,
+  &.access-input {
+    position: relative;
+    margin: 0;
+  }
+
+  &.access-select {
+    .select__control {
+        margin: 10px 0;
+        padding: 6px 10px;
+        padding-right: 35px;
+        width: 100%;
+        box-sizing: border-box;
+        background-color: $white;
+        color: $dark-blueberry;
+        border: 1px solid $grey;
+        border-radius: 5px;
+        font-size: 14px;
+        line-height: normal;
+        cursor: pointer;
+
+        &:hover {
+            border-color: darken($grey, 10%);
+        }
+    }
+
+    .select__menu {
+      background-color: $white;
+      border: 1px solid $grey;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    .select__option {
+        background-color: $white;
+        font-size: 14px;
+        color: $dark-blueberry;
+        font-style: normal;
+        cursor: pointer;
+        padding: 10px 12px;
+
+        &:hover {
+            background-color: $blueberry !important;
+            color: $white !important;
+        }
+        &--is-focused {
+        background-color: $white;
+        color: $dark-blueberry;
+        }
+
+        &--is-selected {
+        background-color: $violet;
+        color: $white;
+        }
+    }
+
+    .select__single-value {
+        color: $dark-blueberry;
+    }
+
+    .select__placeholder {
+        color: $grey;
+    }
+
+    .select__indicator-separator {
+        color: $grey;
+        white-space: nowrap;      // Only apply to placeholder
+        overflow: hidden;         // Only apply to placeholder
+        text-overflow: ellipsis;  
+    }
+    .client-select__clear-indicator {
+      color: $grey;
+    }
+
+  }
+
+  &.access-input {
+    input {
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      background-color: $white;
+      color: $dark-blueberry;
+      border: 1px solid $grey;
+      border-radius: 5px;
+      font-size: 14px;
+      line-height: normal;
+      display: block;
+    }
+  }
+
+  .icon {    
+        color: $dark-blueberry;
+        position: absolute;
+        top: 50%;
+        right: 5%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        transition: transform 0.3s ease;
+
+        &.open {
+            transform: translateY(-50%) rotate(180deg);
+        }   
+    }
+}
+
+.access-token-row {
+  display: flex; // override grid
+  flex-direction: row;
+  gap: 20px;
+
+  .block {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @include respond("xs") {
+    flex-direction: column;
+
+    .block {
+      width: 100%;
+    }
+  }
+}
+

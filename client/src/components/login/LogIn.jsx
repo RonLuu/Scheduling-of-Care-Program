@@ -62,12 +62,40 @@ function LogIn() {
           <div className="left">
             <h2>Member Login</h2>
             <form onSubmit={submit}>
+                <label className="login-label">Email
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+
+                {/* Q&A tip */}
+
+                 <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">The Email you use when register</span>
+                    </div>
+                </label>
               <input
                 className="form"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               ></input>
+               <label className="login-label">Password 
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+
+                {/* Q&A tip */}
+
+                 <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">The password you set up in register</span>
+                    </div>
+                </label>
               <input
                 className="form"
                 type="password"

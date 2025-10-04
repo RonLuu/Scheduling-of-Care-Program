@@ -3,7 +3,7 @@ import useAuth from "../hooks/useAuth";
 import AccessManagement from "../AccessManagement";
 import Header from "../../Header";
 import { useClients } from "../hooks/useClients";
-
+import "../../../css/access_token.css";
 
 function AccessPage() {
   // const { me } = useAuth();
@@ -38,7 +38,7 @@ function AccessPage() {
   ]
 
   return (
-    <div >
+    <div className="access-page" >
       <Header />
       <div className="container">
         <AccessManagement.RequestAccess jwt={jwt} />

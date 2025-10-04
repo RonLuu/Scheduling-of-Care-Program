@@ -1,13 +1,4 @@
 @import url("https://fonts.googleapis.com/css?family=Inria+Serif&display=swap");
-p, h2, h3, h4, h5, h6, button {
-  font-family: "Inria Serif", serif;
-  color: #000000;
-}
-
-button, h3 {
-  font-size: 20px;
-}
-
 :root {
   --h00-size-mobile: 2.5rem;
   --h0-size-mobile: 2rem;
@@ -36,8 +27,8 @@ button, h3 {
   --icon-size-sm: 18px;
   --icon-size-md: 24px;
   --icon-size-lg: 32px;
-  --header-height-mobile: 50px;
-  --header-height-desktop: 60px;
+  --header-height-mobile: 40px;
+  --header-height-desktop: 50px;
   --nav-width: 60px;
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -48,19 +39,67 @@ button, h3 {
   --transition-slow: 500ms;
 }
 
+html,
+body,
+#root {
+  background-color: #E8EBED;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+p,
+h2,
+h3,
+h4,
+h5,
+h6,
+button {
+  font-family: "Inria Serif", serif;
+  color: #252E47;
+}
+
+button,
+h3 {
+  font-size: 1.25rem;
+}
+
+button.btn {
+  color: #F6FAFF;
+  background-color: #2C3F70;
+  border-radius: 10px;
+  width: 100%;
+  font-family: "Inria Serif", serif;
+  padding: 10px 20px;
+  margin: 8px auto;
+  border: none;
+  font-size: 16px;
+  line-height: 1.2;
+  display: block;
+}
+
 .container {
-  background-color: #F6FAFF;
+  background-color: #E8EBED;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 24px 0px;
-  grid-column: 1/-1; /* span both columns */
+  padding: 24px 0;
+  grid-column: 1/-1;
   width: 100%;
-  max-width: none; /* override the generic main { max-width: 900px } */
+  max-width: none;
+  font-family: "Inria Serif", serif;
+  font-weight: 400;
 }
 .container .card_res {
-  margin: 0px;
+  margin: 20px 0;
+  padding: 24px;
+  background-color: #F6FAFF;
+  border-radius: 8px;
+  box-shadow: 0 2px 7px 0 #d1d5db;
+  width: 750px;
+  max-width: 1000px;
+  z-index: 1;
 }
 @media screen and (max-width: 768px) {
   .container .card_res {
@@ -74,26 +113,38 @@ button, h3 {
     margin: 0 10px;
   }
 }
-.container .btn {
-  color: white;
-  width: 100%;
-  font-family: "inria serif";
-  padding: 10px 20px; /* was 15px 32px */
-  margin: 8px auto; /* center horizontally */
-  border: none;
-  font-size: 16px; /* was 25px */
-  line-height: 1.2;
-  display: block; /* allows auto margins to center */
-  transition-duration: 0.4s;
-}
-.container .btn .secondary {
-  background: #fff;
-  color: #2c3f70;
+.container .card_res input {
+  margin: 10px 0;
+  font-family: "Inria Serif", serif;
+  font-weight: 400;
+  padding: 10px;
+  border-radius: 8px;
   border: 1px solid #d1d5db;
+  width: 100%;
+  box-sizing: border-box;
+}
+.container .card_res .select-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  z-index: 10;
+}
+.container .card_res .select-container.icon {
+  color: #F6FAFF;
+  position: absolute;
+  top: 50%;
+  right: 5%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+.container .card_res .select-container.icon.open {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .header {
   background-color: #E8EBED;
+  font-family: "Inria Serif", serif;
   color: #2C3F70;
   padding: var(--spacing-md) var(--spacing-lg);
   padding-left: calc(var(--nav-width) + var(--spacing-lg));

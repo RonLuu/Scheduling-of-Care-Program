@@ -115,6 +115,8 @@ button.btn {
 }
 .container .card_res input {
   margin: 10px 0;
+  font-family: "Inria Serif", serif;
+  font-weight: 400;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
@@ -188,182 +190,46 @@ button.btn {
   color: inherit;
 }
 
-.box {
-  background-color: #F6FAFF;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  padding: 20px;
-  margin: 20px auto;
-  overflow: visible;
-}
-@media screen and (min-width: 1201px) {
-  .box {
-    width: 900px;
-    height: 700px;
-  }
-}
-@media screen and (max-width: 1200px) {
-  .box {
-    width: 600px;
-    height: 800px;
-  }
-}
-@media screen and (max-width: 992px) {
-  .box {
-    width: 500px;
-    height: 700px;
-  }
-}
-@media screen and (max-width: 768px) {
-  .box {
-    width: 400px;
-    height: 500px;
-  }
-}
-@media screen and (max-width: 576px) {
-  .box {
-    width: 325px;
-    height: 600px;
-  }
-}
-
-.h45m40 {
-  height: 45%;
-  margin-bottom: 40px;
-}
-
-.h55 {
-  height: 55%;
-}
-
-.h80m20 {
-  height: 80%;
-  margin-bottom: 20px;
-}
-@media screen and (max-width: 768px) {
-  .h80m20 {
-    height: 90%;
-  }
-  .h80m20 p {
-    font-size: 14px;
-  }
-}
-
-.h20 {
-  height: 20%;
-}
-
-.bg-wallpaper {
-  background-image: url("../components/img/wallpaper.jpg");
-  background-size: auto;
-  background-repeat: repeat;
-  background-position: top;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.register-box, .register-box2, .register-box1 {
-  width: 100%;
-  border: none;
-  font-family: "Inria Serif", serif;
-  background-size: cover;
-  box-shadow: 0 4px 10px 0 #8089D2, 0 -4px 10px 0 #8089D2;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.register-box button, .register-box2 button, .register-box1 button {
-  margin-top: 20px;
-}
-
-.register-box1 {
-  background-image: url("../components/img/wallpaper.jpg");
-}
-.register-box1 p {
-  font-size: 18px;
-  margin: 20px 0px 0px 0px;
-}
-
-.left, .top, .center, .bottom {
-  position: static; /* default */
-}
-
-.left {
-  align-self: flex-start; /* ensures the section is left-aligned */
-  margin-left: 2rem; /* or 1-2rem if you want a small offset */
-}
-
-.register-box2 {
-  background-color: #F6FAFF;
-  overflow: visible;
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* aligns children to the left */
-  gap: 1.5rem;
-}
-.register-box2 h2 {
-  font-size: 30px;
-  font-weight: bold;
-}
-@media screen and (max-width: 992px) {
-  .register-box2 h2 {
-    font-size: 25px;
-  }
-}
-
-.form {
-  width: 100%;
-  font-size: 18px;
-  font-family: "Inria Serif", serif;
-  font-weight: 400;
-  border: none;
-  background-color: #F6FAFF;
-  border: 1px solid #d1d5db;
-  color: #000000;
-  border-radius: 10px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  outline: none;
-}
-.form::-moz-placeholder {
-  font-style: italic;
-  color: #d1d5db;
-}
-.form::placeholder {
-  font-style: italic;
-  color: #d1d5db;
-}
-@media screen and (max-width: 992px) {
-  .form {
-    font-size: 14px;
-  }
-}
-@media screen and (max-width: 768px) {
-  .form {
-    width: 200px;
-  }
-}
-
-.error {
-  position: absolute;
+.important-info {
   color: #ff0000;
-  font-size: 14px;
+  cursor: pointer;
 }
 
-.login-label {
-  display: block;
-  margin: 4px 0px;
-}/*# sourceMappingURL=login_layout.css.map */
+.help-wrapper {
+  position: relative; /* anchor tooltip here */
+  display: inline-block;
+}
+
+.help-icon {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  border: 1px solid #A5231C;
+  border-radius: 50%;
+  padding: 0 5px;
+  font-size: 12px;
+  color: #A5231C;
+}
+
+.tool-tip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+  top: 25px;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show tooltip when hovering wrapper or icon */
+.help-wrapper:hover .tool-tip {
+  visibility: visible;
+  opacity: 1;
+  z-index: 11;
+}/*# sourceMappingURL=additional_help.css.map */

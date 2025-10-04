@@ -81,6 +81,10 @@
     flex-direction: column; 
     justify-content: center; 
     align-items: center; 
+    button 
+    {
+        margin-top: 20px;        
+    }
 }
 
 .register-box1 {
@@ -117,27 +121,7 @@
             font-size: 25px;
         }
     }
-    button 
-    {
-        margin-top: 20px;        
-    }
-}
-.btn
-{
-    width: 120px ;
-    background-color: $blueberry;
-    color: $white;
-    border-radius: 8px;
-    border: none;
-    padding: 5px 20px;
-    font-size: 14px;
-    margin:20px 0px 20px 0px;
-    transition: background-color 0.3s ease;
 
-}
-.btn:hover
-{
-    background-color:  $dark-blueberry;
 }
 
 .form
@@ -145,9 +129,10 @@
     width: 100%;
     font-size:18px;
     font-family: 'Inria Serif', serif;
+    font-weight: 400;
     border:none;
     background-color:$white;
-    border: 1px solid $blueberry;
+    border: 1px solid $grey;
     color: $black;
     border-radius: 10px;
     padding: 10px 14px;
@@ -172,69 +157,15 @@
 }
 .error
 {
+    position:absolute;
     color:$red;
     font-size: 14px;
 }
 
-.select-container {
-    position: relative;
-    width: 100%;
-    max-width: 400px;
-    z-index: 10;
-    
-    select {
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        width: 100%;
-        min-width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        padding: 10px 40px 10px 14px;
-        background-color: $violet;
-        border-radius: 0px;
-        color: $white;
-        border: none;
-        font-size: 18px;
-        font-family: 'Inria Serif', serif;
-        outline: none;
-        
-        &.italic {
-            font-style: italic;
-            color: rgba(255, 255, 255, 0.7);
-        }
 
-        option {
-            background-color: $violet;
-            color: $white;
-            font-style: normal;
-            padding: 10px;
-        }
-        
-        @include respond(md) {
-            font-size: 14px;
-        }
-        
-        @include respond(sm) {
-            width: 200px;
-        }
-        @include respond(xs)
-        {
-            width: 150px;
-        }
-    }
-    
-    .icon {    
-        color: $white;
-        position: absolute;
-        top: 50%;
-        right: 5%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        transition: transform 0.3s ease;
+.login-label
+{
+    display: block;
+    margin:4px 0px;
 
-        &.open {
-            transform: translateY(-50%) rotate(180deg);
-        }   
-    }
 }

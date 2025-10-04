@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-//import "../../styles/RegisterUser.css"
+import Select from 'react-select';
 import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -17,6 +17,13 @@ const RegisterUser = () => {
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const options = [
+    {value: 'Family', label: ' Family'},
+    {value: 'Person of Authority', label: 'Person of Authority'},
+    {value:'Admin', label:'Admin'},
+    {value:'Caretaker', label:'Caretaker'},
+  ];
+  const selectedOption = options.find((opt) => opt.value === role) || null;
   function onAuthed(userWithJwt) {
     setMe(userWithJwt);
     localStorage.setItem("jwt", userWithJwt.jwt);
@@ -73,6 +80,18 @@ const RegisterUser = () => {
           <form onSubmit={submit}>
             <div className="left top">
               <h2>Register User</h2>
+              <label className="login-label" >Enter Your Name 
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+                <div className="help-wrapper">
+                  <span className="help-icon " >?</span>
+                <span className="tool-tip">Please type your First Name + Last Name</span>
+                </div>
+                
+                </label>
               <input
                 className="form"
                 placeholder="Full name"
@@ -81,6 +100,19 @@ const RegisterUser = () => {
                 required
                 autoComplete="name"
               />
+              <label className="login-label">Enter Your Email 
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+                    <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">Please type a legit email!</span>
+                    </div>
+                
+                </label>
+
               <input
                 className="form"
                 type="email"
@@ -90,6 +122,21 @@ const RegisterUser = () => {
                 required
                 autoComplete="email"
               />
+              <label className="login-label">Enter Your Password 
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+
+                {/* Q&A tip */}
+
+                 <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">Password should have more than 6 characters</span>
+                    </div>
+                </label>
+
               <input
                 className="form"
                 type="password"
@@ -101,33 +148,45 @@ const RegisterUser = () => {
                 minLength={6}
               />
             </div>
-            <div className="left center">
-              <h3 style={{ color: "#8b8b8bff" }}>Choose your role:</h3>
-              <div className="select-container">
-                <select
-                  className={` form ${role === "" ? "italic" : ""}`}
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  onBlur={() => setIsOpen(false)}
-                  onClick={() => setIsOpen(!isOpen)}
-                >
-                  <option style={{ fontStyle: "italic" }} value="">
-                    -- Select a role --
-                  </option>
-                  <option  value="Family">
-                    Family Member
-                  </option>
-                  <option  value="PoA">
-                    PoA
-                  </option>
-                  <option value="Admin">
-                    Admin
-                  </option>
-                  <option value="GeneralCareStaff">
-                    Caretaker
-                  </option>
-                </select>
+            <div className="left center ">
+              <h3 style={{fontWeight:"normal", color: "#2C3F70" }}>Choose your role: &nbsp;
+                                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+                 
+                    <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">Your relationship with the client</span>
+                    </div>
+              </h3>
+              <div className="select-container  access-select" >
+                <Select
+                options={options}
+                value={selectedOption || null}
+                onChange={(option) => setRole(option ? option.value : "")}
+                onMenuOpen={() => setIsOpen(true)}
+                onMenuClose={() => setIsOpen(false)}
+                classNamePrefix="role-select"
+                isClearable
+                placeholder="-- Select a role --"
+                unstyled
+                components={{
+                DropdownIndicator: () => null, // hide default dropdown arrow
+                IndicatorSeparator: () => null,
+                }}
+                classNames={{
+                control: () => 'select__control',
+                menu: () => 'select__menu',
+                option: ({ isFocused, isSelected }) => 
+                  `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
+                placeholder: () => 'select__placeholder',
+                singleValue: () => 'select__single-value',
+                clearIndicator: () => 'client-select__clear-indicator',
+
+                }}
+                />
                 <FontAwesomeIcon
                   icon={faChevronDown}
                   className={`icon ${isOpen ? "open" : "close"}`}
