@@ -94,7 +94,7 @@ p {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 24px 16px;
+  /* padding: 24px 16px; */
   grid-column: 1 / -1; /* span both columns */
   width: 100%;
   max-width: none; /* override the generic main { max-width: 900px } */
