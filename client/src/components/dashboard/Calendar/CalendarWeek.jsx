@@ -9,46 +9,77 @@ const CalendarWeek = () => {
         "July", "August", "September", "October", "November", "December"
     ];
     const events = [
-        {
-            // "_id": "651f3b8f9a3b2f001234abcd",
-            // "organizationId": "651f2e4c8a2a1f0011223344",
-            // "personId": "651f2fdd8a2a1f0011223345",
-            // "staffUserId": "651f30108a2a1f0011223346",
-            "shiftType": "morning",
-            "start": "2025-09-30T08:00:00.000Z",
-            "end": "2025-09-30T12:00:00.000Z",
-            "notes": "Assist with breakfast and morning medication",
-            // "createdByUserId": "651f30108a2a1f0011223347",
-            // "createdAt": "2025-09-28T10:12:34.567Z",
-            // "updatedAt": "2025-09-28T10:12:34.567Z"
-        },
         // {
-        //     // "_id": "651f3c249a3b2f001234abce",
-        //     // "organizationId": "651f2e4c8a2a1f0011223344",
-        //     // "personId": "651f2fdd8a2a1f0011223348",
-        //     // "staffUserId": "651f30108a2a1f0011223349",
-        //     "shiftType": "custom",
-        //     "start": "2025-09-30T13:30:00.000Z",
-        //     "end": "2025-09-30T16:00:00.000Z",
-        //     "notes": "Accompany to doctor’s appointment",
-        //     // "createdByUserId": "651f30108a2a1f0011223347",
-        //     // "createdAt": "2025-09-28T10:15:00.000Z",
-        //     // "updatedAt": "2025-09-28T10:15:00.000Z"
+        //     "start": "2025-09-29T22:00:00.000Z",
+        //     "end": "2025-09-30T04:00:00.000Z",
+        //     "notes": "Task2",
         // },
         {
-            // "_id": "651f3c6e9a3b2f001234abcf",
-            // "organizationId": "651f2e4c8a2a1f0011223344",
-            // "personId": "651f2fdd8a2a1f0011223350",
-            // "staffUserId": "651f30108a2a1f0011223351",
-            // "shiftType": "evening",
-            // "start": "2025-09-30T20:00:00.000Z",
-            // "end": "2025-10-01T06:00:00.000Z",
-            // "notes": "Overnight supervision and morning handover",
-            // "createdByUserId": "651f30108a2a1f0011223347",
-            // "createdAt": "2025-09-28T10:17:45.000Z",
-            // "updatedAt": "2025-09-28T10:17:45.000Z"
-        }
+            "start": "2025-09-29T20:00:00.000Z",
+            "end": "2025-09-30T00:00:00.000Z",
+            "notes": "Task1",
+        },
+        // {
+        //     "start": "2025-10-01T23:00:00.000Z",
+        //     "end": "2025-10-02T03:00:00.000Z",
+        //     "notes": "Task3",
+        // },
+        // {
+        //     "start": "2025-10-02T02:00:00.000Z",
+        //     "end": "2025-10-02T05:00:00.000Z",
+        //     "notes": "Task4",
+        // },
     ];
+    function processEvents (events) {
+        let processedEvents = events.sort((a, b) => new Date(a.start) - new Date(b.start));
+        processedEvents = processedEvents.map(event => {
+            const startDate = new Date(event.start);
+            const day = daysOfWeek[startDate.getDay() === 0 ? 6 : startDate.getDay() - 1]; // getDay returns 0–6
+            return { ...event, day };
+        });
+
+        for (let i = 0; i < processedEvents.length; i++) {
+            let extraSlots = 0
+            let numberOfLeftOverlapped = 0
+            let numberOfRightOverlapped = 0
+            for (let j = 0; j < processedEvents.length; j++) {
+                if (i === j)
+                {
+                    continue
+                }
+                
+                if (processedEvents[i].day === processedEvents[j].day) 
+                {
+                    const currentStart = new Date(processedEvents[i].start);
+                    const otherStart = new Date(processedEvents[j].start);
+                    
+                    const diffMs = otherStart - currentStart; 
+                    if (diffMs > 0) {
+                        numberOfRightOverlapped ++;
+                    } 
+                    else 
+                    {
+                        numberOfLeftOverlapped ++;
+                    }
+
+                    const diffMinutes = Math.abs(diffMs) / (1000 * 60); // convert to minutes
+                    
+                    const slotDuration = 30; // minutes
+                    const slotsDiff = diffMinutes / slotDuration;
+                    processedEvents[i]["numberOfLeftOverlapped"] = numberOfLeftOverlapped
+                    processedEvents[i]["numberOfRightOverlapped"] = numberOfRightOverlapped
+                    processedEvents[i]["extraSlots"] = slotsDiff
+                }
+            }
+
+        }
+        console.log(processedEvents)
+
+
+        return processedEvents
+    }
+    const processedEvents = processEvents(events)
+    
     const date = new Date()
     const [currentDate, setCurrentDate] = useState(date)
     const [currentMonth, setCurrentMonth] = useState(date.getMonth());
@@ -121,22 +152,23 @@ const CalendarWeek = () => {
                     <thead className="calendarweek-header">
                         <tr className="calendarweek-header-row">
                             <th className="calendarweek-header-row-time">Time</th>
-                            { currentWeek.map(date => (
-                                <th className="calendarweek-header-row-day">
-                                    <div>{date.getDay() - 1 >= 0 ? daysOfWeek[date.getDay() - 1] : daysOfWeek[6]}</div>
-                                    <div>{date.getDate()}</div>
-                                </th>
-                            ))
+                            { 
+                                currentWeek.map(date => (
+                                    <th className="calendarweek-header-row-day" colSpan={2}>
+                                        <div>{date.getDay() - 1 >= 0 ? daysOfWeek[date.getDay() - 1] : daysOfWeek[6]}</div>
+                                        <div>{date.getDate()}</div>
+                                    </th>
+                                ))
                             }
-
                         </tr>
                     </thead>
                     <tbody className="calendarweek-body">
                         {slots.map((slot, i) => (
-                            <tr className="calendarweek-body-row">
+                            <tr className="calendarweek-body-row" id={slot.label}>
                                 {slot.minute === "00" && <td className="calendarweek-body-row-time" rowSpan="2">{`${slot.hour}:${slot.minute}`}</td>}
-                                {currentWeek.map((day) => {
-                                    const event = events.find((e) => {
+                                {currentWeek.map((day) => 
+                                {
+                                    const event = processedEvents.find((e) => {
                                         const eventStartDate = new Date(e.start);
                                         return (eventStartDate.getDate() === day.getDate() && 
                                                 eventStartDate.getHours() == slot.hour && 
@@ -144,20 +176,29 @@ const CalendarWeek = () => {
                                     });
 
                                     if (event) {
+                                        console.log(event)
                                         const eventStartDate = new Date(event.start);
                                         const eventEndDate = new Date(event.end);
                                         const diffMinutes = (eventEndDate - eventStartDate) / (1000 * 60);
                                         const slotDuration = 30;
                                         const slots = diffMinutes / slotDuration;
-
+                                        
                                         return (
-                                            <td className="calendarweek-body-row-day" rowSpan={8}>
-                                                <div className="event" style={{height: `${8*40}px`}}>{event.notes}</div>
-                                            </td>
+                                            <>
+                                                <td className="calendarweek-body-row-day" rowSpan={slots} >
+                                                    <div  style={{height: `${slots*40}px`}}>{event.notes}</div>
+                                                </td>
+                                                {/* {event.numberOfRightOverlapped !== 0 && (
+                                                    <td
+                                                        className="calendarweek-body-row-day"
+                                                        rowSpan={event.extraSlots}
+                                                    ></td>
+                                                )} */}
+                                            </>
                                         );
                                     }
-
-                                    const insideEvent = events.some((e) =>{
+                                    
+                                    const insideEvent = processedEvents.some((e) =>{
                                         const eventStartDate = new Date(e.start);
                                         const eventEndDate = new Date(e.end);
                                         
@@ -170,16 +211,17 @@ const CalendarWeek = () => {
                                     });
 
                                     if (insideEvent) {
-                                        return null; // skip this slot, since rowspan cell already covers it
+                                        console.log(insideEvent)
+                                        return null
                                     }
 
-                                    // Default empty cell
-                                    return <td className="calendarweek-body-row-day"></td>;
+                                    return <td className="calendarweek-body-row-day" id={`${day.getDate()}-${slot.label}`} colSpan={2}></td>;
                                      
                                     
                                 })}
                             </tr>
-                        ))}
+                        ))
+                        }
                     </tbody>
                 </table>
             </div>
