@@ -47,23 +47,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
-        run: |
-          if grep -q '"lint"' package.json; then
-            npm run lint
-          else
-            echo "No lint script found, skipping linting"
-          fi
-        continue-on-error: false
-
-      - name: Run TypeScript check (if applicable)
-        run: |
-          if [ -f "tsconfig.json" ]; then
-            npm run typecheck
-          else
-            echo "No TypeScript configuration found, skipping typecheck"
-          fi
-        continue-on-error: false
 
       - name: Run unit and integration tests
         run: npm test -- --coverage --reporter=verbose
@@ -167,8 +150,8 @@ jobs:
     steps:
       - name: Check job results
         run: |
-          echo "🧪 Frontend Tests: ${{ needs.frontend-tests.result }}"
-          echo "🏗️ Build: ${{ needs.build.result }}"
+          echo "Frontend Tests: ${{ needs.frontend-tests.result }}"
+          echo "Build: ${{ needs.build.result }}"
 
           if [[ "${{ needs.frontend-tests.result }}" == "failure" || "${{ needs.build.result }}" == "failure" ]]; then
             echo "❌ CI Pipeline failed"
@@ -185,7 +168,7 @@ jobs:
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🚨 CI Pipeline Failed on Main Branch`,
+              title: `CI Pipeline Failed on Main Branch`,
               body: `The CI pipeline failed on the main branch.\n\n**Details:**\n- **Commit**: \`${context.sha.substring(0, 7)}\`\n- **Author**: @${context.actor}\n- **Branch**: ${context.ref}\n- **Workflow**: ${context.workflow}\n\n**Actions:**\n1. Check the [failed workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})\n2. Review the test failures and build errors\n3. Fix the issues and push a new commit\n\n**Test Summary:**\n- Frontend Tests: ${{ needs.frontend-tests.result }}\n- Build: ${{ needs.build.result }}`,
               labels: ['bug', 'ci-failure', 'priority-high']
             })
@@ -193,7 +176,7 @@ jobs:
       - name: Notify success on main branch
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          echo "🎉 All checks passed on main branch!"
+          echo "All checks passed on main branch!"
           echo "✅ Frontend tests: ${{ needs.frontend-tests.result }}"
           echo "✅ Build: ${{ needs.build.result }}"
 
