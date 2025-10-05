@@ -4,18 +4,51 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
+import ShiftEditDrawer from "./ShiftEditDrawer.jsx";
 
 function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
   const calRef = React.useRef(null);
   const fcRef = React.useRef(null);
   const [drawer, setDrawer] = React.useState({ open: false, shift: null });
   const [assignables, setAssignables] = React.useState([]);
+  const [shiftSettings, setShiftSettings] = React.useState(null);
   const [err, setErr] = React.useState("");
+
+  // Get organization ID
+  const getOrgId = React.useCallback(async () => {
+    try {
+      const r = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + jwt },
+      });
+      const d = await r.json();
+      return d.user?.organizationId;
+    } catch {
+      return null;
+    }
+  }, [jwt]);
+
+  // Load organization shift settings
+  React.useEffect(() => {
+    const loadShiftSettings = async () => {
+      try {
+        const orgId = await getOrgId();
+        if (!orgId) return;
+
+        const r = await fetch(`/api/organizations/${orgId}/shift-settings`, {
+          headers: { Authorization: "Bearer " + jwt },
+        });
+        const d = await r.json();
+        setShiftSettings(d.shiftSettings);
+      } catch (e) {
+        console.error("Failed to load shift settings:", e);
+      }
+    };
+    loadShiftSettings();
+  }, [jwt, getOrgId]);
 
   const loadShifts = React.useCallback(async () => {
     try {
       setErr("");
-      // get visible range
       let from, to;
       if (fcRef.current) {
         const v = fcRef.current.view;
@@ -31,19 +64,46 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to load shifts");
 
-      const evs = d.map((s) => ({
-        id: s._id,
-        title: s.staff?.name || "Unknown",
-        start: s.start,
-        end: s.end,
-        allDay: !!s.allDay,
-        extendedProps: {
-          notes: s.notes || "",
-          staffId: s.staff?.id || s.staffUserId,
-        },
-      }));
+      const evs = d.map((s) => {
+        // Determine shift type for color coding
+        let color = "#2563eb"; // Default blue for custom
+        let shiftLabel = "";
 
-      // Replace events without re-initializing calendar
+        if (s.shiftType) {
+          switch (s.shiftType) {
+            case "morning":
+              color = "#fbbf24"; // Amber for morning
+              shiftLabel = " (Morning)";
+              break;
+            case "afternoon":
+              color = "#f97316"; // Orange for afternoon
+              shiftLabel = " (Afternoon)";
+              break;
+            case "evening":
+              color = "#8b5cf6"; // Purple for evening
+              shiftLabel = " (Evening)";
+              break;
+            default:
+              shiftLabel = " (Custom)";
+          }
+        }
+
+        return {
+          id: s._id,
+          title: (s.staff?.name || "Unknown") + shiftLabel,
+          start: s.start,
+          end: s.end,
+          allDay: false, // Never all-day anymore
+          backgroundColor: color,
+          borderColor: color,
+          extendedProps: {
+            notes: s.notes || "",
+            staffId: s.staff?.id || s.staffUserId,
+            shiftType: s.shiftType || "custom",
+          },
+        };
+      });
+
       if (fcRef.current) {
         fcRef.current.removeAllEvents();
         fcRef.current.addEventSource(evs);
@@ -53,7 +113,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
     }
   }, [jwt, personId]);
 
-  // load staff list for editor
+  // Load staff list for editor
   React.useEffect(() => {
     const loadStaff = async () => {
       if (!personId) return;
@@ -71,11 +131,10 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
     loadStaff().catch(() => {});
   }, [personId, jwt]);
 
-  // INIT CALENDAR ONCE (don’t depend on events.length)
+  // Initialize calendar once
   React.useEffect(() => {
     if (!calRef.current) return;
 
-    // destroy if somehow exists
     if (fcRef.current) {
       fcRef.current.destroy();
       fcRef.current = null;
@@ -98,18 +157,11 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       selectable: false,
       displayEventTime: true,
       eventTimeFormat: { hour: "numeric", minute: "2-digit", hour12: true },
-
-      // visual polish
       themeSystem: "standard",
       dayMaxEvents: true,
-      eventBackgroundColor: "#2563eb",
-      eventBorderColor: "#1d4ed8",
-      eventTextColor: "#fff",
       firstDay: 1, // Monday
       aspectRatio: 1.8,
       slotEventOverlap: true,
-
-      // always reload when the visible range changes, but do NOT re-init
       datesSet: () => loadShifts(),
       eventClick: (info) => {
         const e = info.event;
@@ -118,11 +170,11 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           shift: {
             id: e.id,
             title: e.title,
-            allDay: e.allDay,
             start: e.start,
             end: e.end,
             notes: e.extendedProps?.notes || "",
             staffId: e.extendedProps?.staffId || "",
+            shiftType: e.extendedProps?.shiftType || "custom",
           },
         });
       },
@@ -130,16 +182,14 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
 
     calendar.render();
     fcRef.current = calendar;
-    // initial load
     loadShifts();
 
     return () => {
       calendar.destroy();
       fcRef.current = null;
     };
-  }, [loadShifts]); // <-- no events or view here
+  }, [loadShifts]);
 
-  // external refresh (person change / created / edited / deleted)
   React.useEffect(() => {
     if (personId) loadShifts();
   }, [personId, refreshKey, loadShifts]);
@@ -147,6 +197,23 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
   return (
     <div style={{ marginTop: 12 }}>
       {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
+
+      {/* Legend for shift colors */}
+      <div className="shift-legend">
+        <span className="legend-item">
+          <span className="legend-color morning"></span> Morning
+        </span>
+        <span className="legend-item">
+          <span className="legend-color afternoon"></span> Afternoon
+        </span>
+        <span className="legend-item">
+          <span className="legend-color evening"></span> Evening
+        </span>
+        <span className="legend-item">
+          <span className="legend-color custom"></span> Custom
+        </span>
+      </div>
+
       <div
         ref={calRef}
         className="fc fc-media-screen"
@@ -164,6 +231,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           jwt={jwt}
           isAdmin={isAdmin}
           assignables={assignables}
+          shiftSettings={shiftSettings}
           shift={drawer.shift}
           onClose={() => setDrawer({ open: false, shift: null })}
           onSaved={async () => {
@@ -176,220 +244,48 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           }}
         />
       )}
+
+      <style jsx>{`
+        .shift-legend {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          padding: 0.5rem;
+          background: #f9fafb;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 0.25rem;
+        }
+
+        .legend-color.morning {
+          background: #fbbf24;
+        }
+
+        .legend-color.afternoon {
+          background: #f97316;
+        }
+
+        .legend-color.evening {
+          background: #8b5cf6;
+        }
+
+        .legend-color.custom {
+          background: #2563eb;
+        }
+      `}</style>
     </div>
   );
 }
 
 export default ShiftCalendar;
-
-// ---------- Drawer component ----------
-function ShiftEditDrawer({
-  jwt,
-  isAdmin,
-  assignables,
-  shift,
-  onClose,
-  onSaved,
-  onDeleted,
-}) {
-  const [staffUserId, setStaffUserId] = React.useState(shift.staffId || "");
-  const [mode, setMode] = React.useState(shift.allDay ? "allDay" : "timed");
-
-  // FIX: build local YYYY-MM-DD (no toISOString)
-  function toYMDLocal(d) {
-    const x = new Date(d);
-    const y = x.getFullYear();
-    const m = String(x.getMonth() + 1).padStart(2, "0");
-    const day = String(x.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-  function toHM(d) {
-    const x = new Date(d);
-    const hh = String(x.getHours()).padStart(2, "0");
-    const mm = String(x.getMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
-  }
-
-  const [date, setDate] = React.useState(
-    shift.start ? toYMDLocal(shift.start) : ""
-  );
-  const [startTime, setStartTime] = React.useState(
-    shift.start ? toHM(shift.start) : "09:00"
-  );
-  const [endTime, setEndTime] = React.useState(
-    shift.end ? toHM(shift.end) : "17:00"
-  );
-  const [notes, setNotes] = React.useState(shift.notes || "");
-  const [err, setErr] = React.useState("");
-
-  const save = async () => {
-    try {
-      setErr("");
-      if (!isAdmin) throw new Error("Only Admin can edit shifts.");
-      if (!staffUserId) throw new Error("Choose a staff member.");
-      if (!date) throw new Error("Pick a date.");
-
-      let payload = { staffUserId, notes, allDay: mode === "allDay" };
-      if (mode === "allDay") {
-        // all-day: 00:00 local to next day 00:00 local
-        const s = new Date(`${date}T00:00:00`);
-        const e = new Date(`${date}T00:00:00`);
-        e.setDate(e.getDate() + 1);
-        payload.start = s.toISOString();
-        payload.end = e.toISOString();
-      } else {
-        if (!startTime || !endTime || endTime <= startTime) {
-          throw new Error("Invalid start/end time.");
-        }
-        payload.start = new Date(`${date}T${startTime}:00`).toISOString();
-        payload.end = new Date(`${date}T${endTime}:00`).toISOString();
-      }
-
-      const r = await fetch(`/api/shift-allocations/${shift.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + jwt,
-        },
-        body: JSON.stringify(payload),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to update shift");
-      onSaved?.();
-    } catch (e) {
-      setErr(e.message || String(e));
-    }
-  };
-
-  const del = async () => {
-    if (!isAdmin) return;
-    if (!window.confirm("Delete this shift?")) return;
-    const r = await fetch(`/api/shift-allocations/${shift.id}`, {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + jwt },
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      alert(d.error || "Delete failed");
-      return;
-    }
-    onDeleted?.();
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        right: 16,
-        top: 90,
-        bottom: 16,
-        width: 360,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-        padding: 14,
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h4 style={{ margin: 0 }}>Edit shift</h4>
-        <button className="secondary" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
-
-      <div className="row" style={{ marginTop: 8 }}>
-        <div>
-          <label>Mode</label>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            disabled={!isAdmin}
-          >
-            <option value="allDay">All-day</option>
-            <option value="timed">Timed</option>
-          </select>
-        </div>
-        <div>
-          <label>Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            disabled={!isAdmin}
-          />
-        </div>
-      </div>
-
-      {mode === "timed" && (
-        <div className="row">
-          <div>
-            <label>Start</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              disabled={!isAdmin}
-            />
-          </div>
-          <div>
-            <label>End</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              disabled={!isAdmin}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="row">
-        <div>
-          <label>Staff</label>
-          <select
-            value={staffUserId}
-            onChange={(e) => setStaffUserId(e.target.value)}
-            disabled={!isAdmin}
-          >
-            {assignables.map((u) => (
-              <option key={u.userId} value={u.userId}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="row">
-        <div style={{ width: "100%" }}>
-          <label>Notes</label>
-          <input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={!isAdmin}
-          />
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="row" style={{ marginTop: 12 }}>
-          <button className="primary" onClick={save}>
-            Save
-          </button>
-          <button className="danger" onClick={del}>
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}

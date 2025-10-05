@@ -1,7 +1,7 @@
 import React from "react";
 import useAuth from "../hooks/useAuth";
-import Profile from "../Profile";
-import NavigationTab from "../../NavigationTab/NavigationTab";
+import UserProfile from "../Profile/UserProfile";
+import NavigationTab from "../../NavigationTab";
 import Header from "../../Header";
 
 function ProfilePage() {
@@ -32,15 +32,13 @@ function ProfilePage() {
     <>
       <NavigationTab setMe={setMe} />
 
-      <Profile.UserProfile
+      <UserProfile
         me={me}
         setMe={setMe}
         onLogout={logout}
         refreshMe={refreshMe}
         jwt={jwt}
       />
-
-      
     </>
   );
 }

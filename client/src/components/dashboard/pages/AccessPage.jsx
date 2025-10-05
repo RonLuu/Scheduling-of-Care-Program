@@ -1,7 +1,7 @@
 import React from "react";
 import useAuth from "../hooks/useAuth";
 import AccessManagement from "../AccessManagement";
-import NavigationTab from "../../NavigationTab/NavigationTab";
+import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
 
 function AccessPage() {

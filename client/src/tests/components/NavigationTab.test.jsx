@@ -5,8 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
-import NavigationTab from "./NavigationTab";
-import { AuthContext } from "../dashboard/auth/authContext";
+import NavigationTab from "../../components/NavigationTab";
+import { AuthContext } from "../../components/dashboard/auth/authContext";
 
 // Create a test AuthProvider that matches the structure expected by useAuth
 const TestAuthProvider = ({ children }) => {
@@ -114,7 +114,7 @@ describe("NavigationTab", () => {
     expect(panel).toHaveClass("navigationtab-panel", "off");
   });
 
-  // Interaction test: menu button toggles navigation panel
+  // Unit test: menu button toggles navigation panel
   it("toggles navigation panel when menu button is clicked", async () => {
     const user = userEvent.setup();
 
@@ -170,7 +170,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Log Out")).toBeInTheDocument();
   });
 
-  // Navigation test: FAQ link navigates correctly
+  // Integration test: FAQ link navigates correctly
   it("navigates to FAQ page when FAQ link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -207,7 +207,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("FAQ Page")).toBeInTheDocument();
   });
 
-  // Navigation test: profile link navigates correctly
+  // Integration test: profile link navigates correctly
   it("navigates to Profile page when Profile link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -275,7 +275,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Access Page")).toBeInTheDocument();
   });
 
-  // Navigation test: clients link navigates correctly
+  // Integration test: clients link navigates correctly
   it("navigates to Clients page when Clients link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -307,7 +307,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Clients Page")).toBeInTheDocument();
   });
 
-  // Navigation test: shift Allocation link navigates correctly
+  // Integration test: shift Allocation link navigates correctly
   it("navigates to Shift Allocation page when Shift Allocation link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -339,7 +339,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Shift Allocation Page")).toBeInTheDocument();
   });
 
-  // Navigation test: sub-elements link navigates correctly
+  // Integration test: sub-elements link navigates correctly
   it("navigates to Sub-elements page when Sub-elements link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -371,7 +371,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Sub-elements Page")).toBeInTheDocument();
   });
 
-  // Navigation test: tasks link navigates correctly
+  // Integration test: tasks link navigates correctly
   it("navigates to Tasks page when Tasks link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -403,7 +403,7 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Tasks Page")).toBeInTheDocument();
   });
 
-  // Navigation test: budget Reports link navigates correctly
+  // Integration test: budget Reports link navigates correctly
   it("navigates to Budget Reports page when Budget Reports link is clicked", async () => {
     const user = userEvent.setup();
 
@@ -436,7 +436,7 @@ describe("NavigationTab", () => {
   });
 
 
-  // Functionality test: logout button clears localStorage and navigates
+  // Integration test: logout button clears localStorage and navigates
   it("handles logout correctly", async () => {
     const user = userEvent.setup();
     localStorageMock.getItem.mockReturnValue("fake-jwt-token");
@@ -469,7 +469,7 @@ describe("NavigationTab", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
-  // Accessibility test: Menu button has proper ARIA attributes
+  // Unit test: Menu button has proper ARIA attributes
   it("has accessible menu button", () => {
     const { container } = render(
       <TestWrapper>

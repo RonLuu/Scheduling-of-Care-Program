@@ -4,7 +4,7 @@ import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
-import { data, Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const RegisterUser = () => {
   const { setMe } = useAuth();
@@ -139,6 +139,7 @@ const RegisterUser = () => {
                 {loading ? "Registering..." : "Register"}
               </button>
             </div>
+            {err && <p className="error">{err}</p>}
           </form>
         </div>
 

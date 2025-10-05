@@ -1,36 +1,14 @@
 import React, { useState } from "react";
+import { BiUser } from "react-icons/bi";
 import NavigationTab from "../../NavigationTab";
 import EditInfo from "./EditInfo";
-import { BiUser } from "react-icons/bi";
+
 import "../../../styles/UserProfile.css";
 
-function UserProfile() {
+function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
 
-  const handleLeaveOrganization = async () => {
-    try {
-      const r = await fetch("/api/users/me/leave-organization", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + jwt,
-        },
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed");
-
-      alert("You left the organisation successfully.");
-
-      const rr = await fetch("/api/auth/me", {
-        headers: { Authorization: "Bearer " + jwt },
-      });
-      if (rr.ok) {
-        refreshMe();
-      }
-    } catch (e) {
-      alert("Error leaving organisation: " + (e.message || e));
-    }
-  };
+  const avatarUrl = me?.avatarFileId?.urlOrPath;
 
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
@@ -49,30 +27,27 @@ function UserProfile() {
       <div className="userprofile-detail">
         <div className="userprofile-detail1">
           <div className="userprofile-image-wrapper">
-            <BiUser className="userprofile-image" />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                className="userprofile-image-photo"
+              />
+            ) : (
+              <BiUser className="userprofile-image" />
+            )}
           </div>
 
           <div className="userprofile-detail1-general-wrapper">
             <p className="userprofile-detail1-general">
-              {me?.name || "Please provide your full name..."}
+              {me?.name || "Testing"}
             </p>
-            <p className="userprofile-detail1-general">
-              {me?.organizationId || "No organization ID yet"}
-            </p>
+
             <button
               className="userprofile-detail1-edit-button"
               onClick={() => setShowEdit(!showEdit)}
             >
               Edit
-            </button>
-          </div>
-
-          <div className="userprofile-detail1-remove-button-wrapper">
-            <button
-              className="userprofile-detail1-remove-button"
-              onClick={handleLeaveOrganization}
-            >
-              Leave Organization
             </button>
           </div>
         </div>
@@ -106,6 +81,15 @@ function UserProfile() {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .userprofile-image-photo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+        }
+      `}</style>
     </div>
   );
 }

@@ -6,17 +6,27 @@ import CareNeedItem from "../models/CareNeedItem.js";
 
 const router = Router();
 
-const NEAR_THRESH = 0.8;
-
-function levelFromRatio(ratio) {
-  if (ratio > 1) return "serious";
-  if (ratio >= NEAR_THRESH) return "light";
-  return null;
-}
-
-function makeWarn(ratio, overMsg, nearMsg) {
-  if (ratio > 1) return { level: "serious", message: overMsg };
-  if (ratio >= NEAR_THRESH) return { level: "light", message: nearMsg };
+// Simplified warning function - only for overspending
+function makeWarn(spent, budget) {
+  if (budget > 0) {
+    if (spent > budget) {
+      return {
+        level: "serious",
+        message: "Already spent exceeds annual budget",
+      };
+    }
+    if (spent >= 0.8 * budget) {
+      return {
+        level: "light",
+        message: "Already spent ≥80% of annual budget",
+      };
+    }
+  } else if (spent > 0) {
+    return {
+      level: "medium",
+      message: "No budget set - please set budget",
+    };
+  }
   return null;
 }
 
@@ -37,9 +47,8 @@ router.get("/budget", requireAuth, async (req, res) => {
     if (String(person.organizationId) !== String(req.user.organizationId)) {
       return res.status(403).json({ error: "ORG_SCOPE_INVALID" });
     }
-    const predefinedAnnualBudget = Number(person.currentAnnualBudget || 0);
 
-    // ---------- Top-level spend aggregates (independent from budget source) ----------
+    // ---------- Top-level spend aggregates ----------
     const completedAgg = await CareTask.aggregate([
       {
         $match: {
@@ -64,29 +73,6 @@ router.get("/budget", requireAuth, async (req, res) => {
     ]);
     const completedSpend = completedAgg[0]?.total || 0;
 
-    const expectedAgg = await CareTask.aggregate([
-      {
-        $match: {
-          personId: person._id,
-          organizationId: person.organizationId,
-          status: { $in: ["Scheduled", "Missed"] },
-          dueDate: { $gte: from, $lt: to },
-        },
-      },
-      {
-        $lookup: {
-          from: "careneeditems",
-          localField: "careNeedItemId",
-          foreignField: "_id",
-          as: "item",
-        },
-      },
-      { $unwind: "$item" },
-      { $match: { "item.status": "Active" } },
-      { $group: { _id: null, total: { $sum: "$item.occurrenceCost" } } },
-    ]);
-    const expectedRemaining = expectedAgg[0]?.total || 0;
-
     const purchaseAgg = await CareNeedItem.aggregate([
       {
         $match: {
@@ -103,8 +89,8 @@ router.get("/budget", requireAuth, async (req, res) => {
 
     const totalSpent = completedSpend + purchaseSpend;
 
-    // ---------- Category-level rollups (spent / purchase / expected) ----------
-    const completedByCat = await CareTask.aggregate([
+    // ---------- Monthly breakdown (high-level) ----------
+    const monthlyCompleted = await CareTask.aggregate([
       {
         $match: {
           personId: person._id,
@@ -124,10 +110,15 @@ router.get("/budget", requireAuth, async (req, res) => {
       },
       { $unwind: "$item" },
       { $match: { "item.status": "Active" } },
-      { $group: { _id: "$item.category", spent: { $sum: "$cost" } } },
+      {
+        $group: {
+          _id: { $month: "$dueDate" },
+          completed: { $sum: "$cost" },
+        },
+      },
     ]);
 
-    const purchaseByCat = await CareNeedItem.aggregate([
+    const monthlyPurchase = await CareNeedItem.aggregate([
       {
         $match: {
           personId: person._id,
@@ -137,71 +128,68 @@ router.get("/budget", requireAuth, async (req, res) => {
           purchaseCost: { $gt: 0 },
         },
       },
-      { $group: { _id: "$category", purchase: { $sum: "$purchaseCost" } } },
-    ]);
-
-    const expectedByCat = await CareTask.aggregate([
-      {
-        $match: {
-          personId: person._id,
-          organizationId: person.organizationId,
-          status: { $in: ["Scheduled", "Missed"] },
-          dueDate: { $gte: from, $lt: to },
-        },
-      },
-      {
-        $lookup: {
-          from: "careneeditems",
-          localField: "careNeedItemId",
-          foreignField: "_id",
-          as: "item",
-        },
-      },
-      { $unwind: "$item" },
-      { $match: { "item.status": "Active" } },
       {
         $group: {
-          _id: "$item.category",
-          expected: { $sum: "$item.occurrenceCost" },
+          _id: { $month: "$frequency.startDate" },
+          purchase: { $sum: "$purchaseCost" },
         },
       },
     ]);
 
-    // Initialize cats from the three aggregates
-    const cats = {};
-    for (const r of completedByCat) {
-      cats[r._id] = {
-        category: r._id,
-        spent: r.spent || 0,
+    // Build monthly breakdown array
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthlyMap = {};
+
+    // Initialize all months
+    for (let m = 1; m <= 12; m++) {
+      monthlyMap[m] = {
+        month: m,
+        monthName: monthNames[m - 1],
+        year: y,
+        completed: 0,
         purchase: 0,
-        expected: 0,
-        annualBudget: 0,
-        items: [],
+        total: 0,
       };
     }
-    for (const r of purchaseByCat) {
-      (cats[r._id] ||= {
-        category: r._id,
-        spent: 0,
-        purchase: 0,
-        expected: 0,
-        annualBudget: 0,
-        items: [],
-      }).purchase = r.purchase || 0;
-    }
-    for (const r of expectedByCat) {
-      (cats[r._id] ||= {
-        category: r._id,
-        spent: 0,
-        purchase: 0,
-        expected: 0,
-        annualBudget: 0,
-        items: [],
-      }).expected = r.expected || 0;
+
+    // Add completed costs
+    for (const mc of monthlyCompleted) {
+      if (monthlyMap[mc._id]) {
+        monthlyMap[mc._id].completed = mc.completed || 0;
+      }
     }
 
-    // ---------- Per-item details (year scoped) ----------
-    const completedByItem = await CareTask.aggregate([
+    // Add purchase costs
+    for (const mp of monthlyPurchase) {
+      if (monthlyMap[mp._id]) {
+        monthlyMap[mp._id].purchase = mp.purchase || 0;
+      }
+    }
+
+    // Calculate totals and filter out zero months
+    const monthlyBreakdown = Object.values(monthlyMap)
+      .map((m) => ({
+        ...m,
+        total: m.completed + m.purchase,
+      }))
+      .filter((m) => m.total > 0)
+      .sort((a, b) => a.month - b.month);
+
+    // ---------- Category-level rollups with monthly breakdown ----------
+    const completedByCatMonth = await CareTask.aggregate([
       {
         $match: {
           personId: person._id,
@@ -220,17 +208,94 @@ router.get("/budget", requireAuth, async (req, res) => {
         },
       },
       { $unwind: "$item" },
-      { $match: { "item.status": "Active" } }, // NEW
-      { $group: { _id: "$careNeedItemId", completed: { $sum: "$cost" } } },
+      { $match: { "item.status": "Active" } },
+      {
+        $group: {
+          _id: {
+            category: "$item.category",
+            month: { $month: "$dueDate" },
+          },
+          spent: { $sum: "$cost" },
+        },
+      },
     ]);
 
-    const expectedByItem = await CareTask.aggregate([
+    const purchaseByCatMonth = await CareNeedItem.aggregate([
       {
         $match: {
           personId: person._id,
           organizationId: person.organizationId,
-          status: { $in: ["Scheduled", "Missed"] },
+          status: "Active",
+          "frequency.startDate": { $gte: from, $lt: to },
+          purchaseCost: { $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            category: "$category",
+            month: { $month: "$frequency.startDate" },
+          },
+          purchase: { $sum: "$purchaseCost" },
+        },
+      },
+    ]);
+
+    // Initialize categories with monthly data
+    const cats = {};
+    const catMonthlyData = {}; // {category: {month: {completed, purchase}}}
+
+    for (const r of completedByCatMonth) {
+      const cat = r._id.category;
+      const month = r._id.month;
+
+      if (!cats[cat]) {
+        cats[cat] = {
+          category: cat,
+          spent: 0,
+          purchase: 0,
+          annualBudget: 0,
+          items: [],
+        };
+      }
+      cats[cat].spent += r.spent || 0;
+
+      if (!catMonthlyData[cat]) catMonthlyData[cat] = {};
+      if (!catMonthlyData[cat][month])
+        catMonthlyData[cat][month] = { completed: 0, purchase: 0 };
+      catMonthlyData[cat][month].completed = r.spent || 0;
+    }
+
+    for (const r of purchaseByCatMonth) {
+      const cat = r._id.category;
+      const month = r._id.month;
+
+      if (!cats[cat]) {
+        cats[cat] = {
+          category: cat,
+          spent: 0,
+          purchase: 0,
+          annualBudget: 0,
+          items: [],
+        };
+      }
+      cats[cat].purchase += r.purchase || 0;
+
+      if (!catMonthlyData[cat]) catMonthlyData[cat] = {};
+      if (!catMonthlyData[cat][month])
+        catMonthlyData[cat][month] = { completed: 0, purchase: 0 };
+      catMonthlyData[cat][month].purchase = r.purchase || 0;
+    }
+
+    // ---------- Per-item details with monthly breakdown ----------
+    const completedByItemMonth = await CareTask.aggregate([
+      {
+        $match: {
+          personId: person._id,
+          organizationId: person.organizationId,
+          status: "Completed",
           dueDate: { $gte: from, $lt: to },
+          cost: { $ne: null },
         },
       },
       {
@@ -245,13 +310,16 @@ router.get("/budget", requireAuth, async (req, res) => {
       { $match: { "item.status": "Active" } },
       {
         $group: {
-          _id: "$careNeedItemId",
-          expected: { $sum: "$item.occurrenceCost" },
+          _id: {
+            itemId: "$careNeedItemId",
+            month: { $month: "$dueDate" },
+          },
+          completed: { $sum: "$cost" },
         },
       },
     ]);
 
-    const purchaseItems = await CareNeedItem.aggregate([
+    const purchaseItemsMonth = await CareNeedItem.aggregate([
       {
         $match: {
           personId: person._id,
@@ -261,101 +329,110 @@ router.get("/budget", requireAuth, async (req, res) => {
           purchaseCost: { $gt: 0 },
         },
       },
-      { $project: { _id: 1, purchaseCost: 1, name: 1, category: 1 } },
+      {
+        $project: {
+          _id: 1,
+          purchaseCost: 1,
+          name: 1,
+          category: 1,
+          month: { $month: "$frequency.startDate" },
+        },
+      },
     ]);
 
+    // Build item totals and monthly data
+    const itemTotals = {};
+    const itemMonthlyData = {}; // {itemId: {month: {completed, purchase}}}
+
+    for (const r of completedByItemMonth) {
+      const id = String(r._id.itemId);
+      const month = r._id.month;
+
+      itemTotals[id] = (itemTotals[id] || 0) + (r.completed || 0);
+
+      if (!itemMonthlyData[id]) itemMonthlyData[id] = {};
+      if (!itemMonthlyData[id][month])
+        itemMonthlyData[id][month] = { completed: 0, purchase: 0 };
+      itemMonthlyData[id][month].completed = r.completed || 0;
+    }
+
+    const purchaseItemTotals = {};
+    for (const r of purchaseItemsMonth) {
+      const id = String(r._id);
+      purchaseItemTotals[id] =
+        (purchaseItemTotals[id] || 0) + (r.purchaseCost || 0);
+
+      if (!itemMonthlyData[id]) itemMonthlyData[id] = {};
+      if (!itemMonthlyData[id][r.month])
+        itemMonthlyData[id][r.month] = { completed: 0, purchase: 0 };
+      itemMonthlyData[id][r.month].purchase =
+        (itemMonthlyData[id][r.month].purchase || 0) + r.purchaseCost;
+    }
+
     const itemIdsFromReport = Array.from(
-      new Set([
-        ...completedByItem.map((r) => String(r._id)),
-        ...expectedByItem.map((r) => String(r._id)),
-        ...purchaseItems.map((r) => String(r._id)),
-      ])
+      new Set([...Object.keys(itemTotals), ...Object.keys(purchaseItemTotals)])
     );
 
     let itemsMeta = {};
     if (itemIdsFromReport.length) {
       const metas = await CareNeedItem.find(
         { _id: { $in: itemIdsFromReport } },
-        { _id: 1, name: 1, category: 1, budgets: 1 }
+        { _id: 1, name: 1, category: 1, budgets: 1, budgetCost: 1 }
       ).lean();
       itemsMeta = Object.fromEntries(metas.map((m) => [String(m._id), m]));
     }
 
-    const mCompletedByItem = Object.fromEntries(
-      completedByItem.map((r) => [String(r._id), r.completed || 0])
-    );
-    const mExpectedByItem = Object.fromEntries(
-      expectedByItem.map((r) => [String(r._id), r.expected || 0])
-    );
-    const mPurchaseByItem = purchaseItems.reduce((acc, r) => {
-      acc[String(r._id)] = (acc[String(r._id)] || 0) + (r.purchaseCost || 0);
-      return acc;
-    }, {});
-
+    // Function to get budget for specific year
     function budgetForYear(metaDoc, yearNumber) {
       const arr = metaDoc?.budgets || [];
       const hit = arr.find((b) => Number(b.year) === Number(yearNumber));
-      return hit ? Number(hit.amount || 0) : 0;
+
+      if (hit) {
+        return Number(hit.amount || 0);
+      }
+
+      // Fallback to budgetCost (the default annual budget)
+      return Number(metaDoc?.budgetCost || 0);
     }
 
-    const warnFor = (budget, spent, expected) => {
-      if (budget > 0) {
-        if (spent > budget)
-          return {
-            level: "serious",
-            code: "over_spent",
-            message: "Already spent exceeds annual budget.",
-          };
-        if (spent + expected > budget)
-          return {
-            level: "medium",
-            code: "projected_over",
-            message: "Projected spend exceeds annual budget.",
-          };
-        if (spent >= 0.8 * budget)
-          return {
-            level: "light",
-            code: "high_spend",
-            message: "≥80% of annual budget already used.",
-          };
-        return null;
-      } else {
-        if (spent > 0 || expected > 0)
-          return {
-            level: "medium",
-            code: "no_budget",
-            message: "No budget set for this year. Please set the budget.",
-          };
-        return null;
-      }
-    };
-
-    const allItemIds = Object.keys({
-      ...mCompletedByItem,
-      ...mExpectedByItem,
-      ...mPurchaseByItem,
-    });
-
-    for (const id of allItemIds) {
+    // Build items for each category
+    for (const id of itemIdsFromReport) {
       const meta = itemsMeta[id] || {
         name: "(Unknown item)",
         category: "Other",
         budgets: [],
+        budgetCost: 0,
       };
       const category = meta.category || "Other";
       const annualBudgetItem = budgetForYear(meta, y);
-      const spentItem =
-        Number(mPurchaseByItem[id] || 0) + Number(mCompletedByItem[id] || 0);
-      const expectedItem = Number(mExpectedByItem[id] || 0);
+      const spentItem = (itemTotals[id] || 0) + (purchaseItemTotals[id] || 0);
       const currentBalanceItem = annualBudgetItem - spentItem;
-      const expectedBalanceItem = currentBalanceItem - expectedItem;
-      const warning = warnFor(annualBudgetItem, spentItem, expectedItem);
+
+      // Simple warning based on spending vs budget
+      const warning = makeWarn(spentItem, annualBudgetItem);
+
+      // Build monthly breakdown for this item
+      const itemMonthly = [];
+      if (itemMonthlyData[id]) {
+        for (const month in itemMonthlyData[id]) {
+          const data = itemMonthlyData[id][month];
+          if (data.completed > 0 || data.purchase > 0) {
+            itemMonthly.push({
+              month: Number(month),
+              monthName: monthNames[Number(month) - 1],
+              completed: data.completed || 0,
+              purchase: data.purchase || 0,
+              total: (data.completed || 0) + (data.purchase || 0),
+            });
+          }
+        }
+      }
+      itemMonthly.sort((a, b) => a.month - b.month);
 
       (cats[category] ||= {
         category,
         spent: 0,
         purchase: 0,
-        expected: 0,
         annualBudget: 0,
         items: [],
       }).items.push({
@@ -364,13 +441,12 @@ router.get("/budget", requireAuth, async (req, res) => {
         annualBudget: annualBudgetItem,
         alreadySpent: spentItem,
         currentBalance: currentBalanceItem,
-        expectedRemaining: expectedItem,
-        expectedBalanceAtYearEnd: expectedBalanceItem,
         warning,
+        monthlyBreakdown: itemMonthly,
       });
     }
 
-    // ---- Build categories with budget = sum of its items' budgets for the year ---
+    // Build categories with budget = sum of its items' budgets
     const categories = Object.values(cats).map((c) => {
       const annualBudgetFromItems = (c.items || []).reduce(
         (sum, it) => sum + Number(it.annualBudget || 0),
@@ -380,20 +456,36 @@ router.get("/budget", requireAuth, async (req, res) => {
 
       const totalCatSpent = (c.spent || 0) + (c.purchase || 0);
       const currentCatBalance = (c.annualBudget || 0) - totalCatSpent;
-      const expectedCatBalanceAtYearEnd =
-        (c.annualBudget || 0) - totalCatSpent - (c.expected || 0);
 
-      const spentPct = totalSpent > 0 ? totalCatSpent / totalSpent : 0;
-      const expectedPct =
-        expectedRemaining > 0 ? (c.expected || 0) / expectedRemaining : 0;
+      // Category-level warning
+      const categoryWarning = makeWarn(totalCatSpent, c.annualBudget);
 
+      // Build category monthly breakdown
+      const categoryMonthly = [];
+      if (catMonthlyData[c.category]) {
+        for (const month in catMonthlyData[c.category]) {
+          const data = catMonthlyData[c.category][month];
+          if (data.completed > 0 || data.purchase > 0) {
+            categoryMonthly.push({
+              month: Number(month),
+              monthName: monthNames[Number(month) - 1],
+              completed: data.completed || 0,
+              purchase: data.purchase || 0,
+              total: (data.completed || 0) + (data.purchase || 0),
+            });
+          }
+        }
+      }
+      categoryMonthly.sort((a, b) => a.month - b.month);
+
+      // Sort items by warning severity, then by overspend amount
       const rank = { serious: 3, medium: 2, light: 1 };
       (c.items || []).sort((a, b) => {
         const ra = a.warning ? rank[a.warning.level] || 0 : 0;
         const rb = b.warning ? rank[b.warning.level] || 0 : 0;
         if (rb !== ra) return rb - ra;
-        const oa = a.alreadySpent + a.expectedRemaining - a.annualBudget;
-        const ob = b.alreadySpent + b.expectedRemaining - b.annualBudget;
+        const oa = a.alreadySpent - a.annualBudget;
+        const ob = b.alreadySpent - b.annualBudget;
         return (ob || 0) - (oa || 0);
       });
 
@@ -402,13 +494,14 @@ router.get("/budget", requireAuth, async (req, res) => {
         annualBudget: c.annualBudget || 0,
         totalSpent: totalCatSpent,
         currentBalance: currentCatBalance,
-        expected: c.expected || 0,
-        expectedBalanceAtYearEnd: expectedCatBalanceAtYearEnd,
-        spentPct,
-        expectedPct,
+        warning: categoryWarning,
+        monthlyBreakdown: categoryMonthly,
         items: c.items || [],
       };
     });
+
+    // Sort categories by name
+    categories.sort((a, b) => a.category.localeCompare(b.category));
 
     // Report-level annual budget from categories
     const reportAnnualBudget = categories.reduce(
@@ -416,65 +509,28 @@ router.get("/budget", requireAuth, async (req, res) => {
       0
     );
 
-    // compute balances using the reportAnnualBudget
+    // Compute balance
     const currentBalance = reportAnnualBudget - totalSpent;
-    const expectedBalanceAtYearEnd =
-      reportAnnualBudget - totalSpent - expectedRemaining;
 
-    // ---------- NEW: top-level warnings ----------
+    // Top-level warnings
     const warnings = {
-      budgetVsPredefined: null,
-      spentVsReportBudget: null,
-      projectedVsReportBudget: null,
+      summary: makeWarn(totalSpent, reportAnnualBudget),
     };
-
-    // Sum-of-categories vs predefined person budget
-    if (predefinedAnnualBudget > 0) {
-      const ratio = reportAnnualBudget / predefinedAnnualBudget;
-      const w = makeWarn(
-        ratio,
-        "Total of category budgets exceeds the client's predefined annual budget.",
-        "Total of category budgets is ≥80% of the client's predefined annual budget."
-      );
-      if (w) warnings.budgetVsPredefined = w;
-    }
-
-    // Already spent vs report budget (sum of categories)
-    if (reportAnnualBudget > 0) {
-      const ratioSpent = totalSpent / reportAnnualBudget;
-      const wSpent = makeWarn(
-        ratioSpent,
-        "Already spent exceeds the total categories annual budget.",
-        "Already spent is ≥80% of the total categories annual budget."
-      );
-      if (wSpent) warnings.spentVsReportBudget = wSpent;
-
-      // Projected (spent + expected) vs report budget
-      const ratioProj = (totalSpent + expectedRemaining) / reportAnnualBudget;
-      const wProj = makeWarn(
-        ratioProj,
-        "Projected spend (spent + expected) exceeds the total categories annual budget.",
-        "Projected spend is ≥80% of the total categories annual budget."
-      );
-      if (wProj) warnings.projectedVsReportBudget = wProj;
-    }
 
     res.json({
       personId,
       year: y,
       annualBudget: reportAnnualBudget,
-      predefinedAnnualBudget,
       warnings,
       spent: {
         purchase: purchaseSpend,
         completed: completedSpend,
         total: totalSpent,
       },
-      expected: { remaining: expectedRemaining },
       balance: {
         current: currentBalance,
-        expectedAtYearEnd: expectedBalanceAtYearEnd,
       },
+      monthlyBreakdown,
       categories,
     });
   } catch (e) {

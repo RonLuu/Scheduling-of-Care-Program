@@ -21,13 +21,18 @@ Environment Variables
 Create .env files as follows:
 
 Server (server/.env):
-PORT=3000
-MONGO_URI=your-mongodb-connection-string
-JWT_SECRET=your-secret-key
-TOKEN_PEPPER=your-secret-token-pepper
 
-Client (client/.env.local):
-VITE_API_URL=http://localhost:3000
+```bash
+MONGODB_URI_LOCAL=mongodb://127.0.0.1:27017/care_scheduler
+MONGODB_URI=mongodb+srv://<username>:<password>@careschedulercluster.sk0cdgk.mongodb.net/?retryWrites=true&w=majority&appName=CareSchedulerCluster
+PORT=3000
+JWT_SECRET=dev-secret-change-me
+TOKEN_PEPPER=dev-pepper-change-me
+NODE_ENV=development
+CLOUDINARY_CLOUD_NAME=xxx
+CLOUDINARY_API_KEY=xxx
+CLOUDINARY_API_SECRET=xxx
+```
 
 ---
 
@@ -37,7 +42,7 @@ VITE_API_URL=http://localhost:3000
 
 ```bash
 npm install
-npm run start
+npm run dev
 
 UI: http://localhost:3000
 API: http://localhost:3000/api/*

@@ -5,43 +5,17 @@ import FilePanel from "../Panels/FilePanel.jsx";
 import { useCareNeedItemsData } from "../hooks/useCareNeedItemData.js";
 import CareNeedItemRowEditor from "./CareNeedItemRowEditor.jsx";
 
-function InlineAttachment({ f }) {
-  const isImg = f.fileType && f.fileType.startsWith("image/");
-  return (
-    <a href={f.urlOrPath} target="_blank" rel="noreferrer" title={f.filename}>
-      {isImg ? (
-        <img
-          src={f.urlOrPath}
-          alt={f.filename}
-          style={{
-            maxHeight: 64,
-            maxWidth: 96,
-            objectFit: "cover",
-            borderRadius: 6,
-            border: "1px solid #ddd",
-          }}
-        />
-      ) : (
-        <span style={{ textDecoration: "underline" }}>{f.filename}</span>
-      )}
-    </a>
-  );
-}
-
 function List({ jwt, clients }) {
   const {
     cniClientId,
     items,
-    filesByItem,
     panelFilesByItem,
     loading,
     err,
     handleClientChange,
     loadItemsFor,
-
     returnItem,
     deleteItem,
-
     openCommentsForItem,
     openFilesForItem,
     commentsByItem,
@@ -55,18 +29,12 @@ function List({ jwt, clients }) {
     addItemFile,
     loadItemFilesPanel,
     currentUserId,
+    loadItemComments,
   } = useCareNeedItemsData(jwt, clients);
 
-  // track which item is being edited
   const [editingItemId, setEditingItemId] = React.useState(null);
-
-  const renderCategoryDivider = (category) => (
-    <tr key={`div-${category}`}>
-      <td colSpan={10} style={{ padding: "10px 6px", background: "#f9fafb" }}>
-        <strong style={{ fontSize: 13 }}>{category}</strong>
-      </td>
-    </tr>
-  );
+  const [openActionMenuId, setOpenActionMenuId] = React.useState(null);
+  const [isExpanded, setIsExpanded] = React.useState(true);
 
   const closeEditorIfReturned = React.useCallback(() => {
     if (!editingItemId) return;
@@ -76,264 +44,567 @@ function List({ jwt, clients }) {
     }
   }, [editingItemId, items]);
 
+  const groupedByCategory = React.useMemo(() => {
+    const map = new Map();
+    for (const it of items) {
+      const cat = it.category || "Other";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(it);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([cat, arr]) => [
+        cat,
+        arr.sort((x, y) => (x.name || "").localeCompare(y.name || "")),
+      ]);
+  }, [items]);
+
   React.useEffect(() => {
     closeEditorIfReturned();
   }, [items, closeEditorIfReturned]);
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".action-menu-container")) {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const generateNextYearTasks = async (itemId) => {
+    setOpenActionMenuId(null);
+    if (
+      !window.confirm(
+        "This will replace ALL tasks for next year with newly generated ones. Continue?"
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/scheduling/care-need-items/${itemId}/generate-next-year`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate tasks");
+
+      alert(
+        `Successfully generated ${data.created} tasks for next year (deleted ${data.deleted} existing).`
+      );
+      if (cniClientId) await loadItemsFor(cniClientId);
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleActionClick = (itemId, action) => {
+    setOpenActionMenuId(null);
+
+    switch (action) {
+      case "edit":
+        setEditingItemId(editingItemId === itemId ? null : itemId);
+        break;
+      case "comments":
+        toggleItemComments(itemId);
+        break;
+      case "files":
+        toggleItemFiles(itemId);
+        break;
+      case "return":
+        returnItem(itemId);
+        break;
+      case "delete":
+        deleteItem(itemId);
+        break;
+      case "nextYear":
+        generateNextYearTasks(itemId);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const styles = {
+    card: {
+      background: "white",
+      borderRadius: 8,
+      padding: 0,
+      marginBottom: 16,
+      border: "1px solid #e5e7eb",
+      overflow: "hidden",
+      width: "1000px",
+    },
+    header: {
+      padding: "16px 20px",
+      background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+      borderBottom: "1px solid #bfdbfe",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+    },
+    title: {
+      fontSize: "1.125rem",
+      fontWeight: 600,
+      color: "#1e40af",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      margin: 0,
+    },
+    content: {
+      padding: 20,
+      transition: "max-height 0.3s ease, opacity 0.3s ease",
+    },
+    table: {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: 0,
+      fontSize: "0.925rem",
+    },
+    categoryRow: {
+      background: "linear-gradient(to right, #f0f9ff, #f8fafc)",
+      borderLeft: "3px solid #3b82f6",
+    },
+    categoryCell: {
+      padding: "10px 12px",
+      fontWeight: 600,
+      fontSize: "0.875rem",
+      color: "#1e40af",
+      letterSpacing: "0.025em",
+    },
+    headerCell: {
+      textAlign: "left",
+      padding: "10px 12px",
+      borderBottom: "2px solid #e5e7eb",
+      fontWeight: 600,
+      fontSize: "0.825rem",
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      color: "#6b7280",
+    },
+    dataRow: {
+      borderBottom: "1px solid #f3f4f6",
+      transition: "background-color 0.15s ease",
+      "&:hover": {
+        backgroundColor: "#f9fafb",
+      },
+    },
+    dataCell: {
+      padding: "12px",
+      verticalAlign: "middle",
+    },
+    compactButton: {
+      padding: "5px 10px",
+      fontSize: "0.825rem",
+      borderRadius: 4,
+      border: "1px solid #d1d5db",
+      background: "white",
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      color: "#374151",
+      "&:hover": {
+        backgroundColor: "#f3f4f6",
+        borderColor: "#9ca3af",
+      },
+    },
+    actionMenu: {
+      position: "absolute",
+      right: 0,
+      top: "100%",
+      marginTop: 4,
+      background: "white",
+      border: "1px solid #d1d5db",
+      borderRadius: 6,
+      boxShadow:
+        "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      zIndex: 10,
+      minWidth: 180,
+      overflow: "hidden",
+    },
+    menuItem: {
+      padding: "8px 12px",
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      borderBottom: "1px solid #f3f4f6",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      transition: "background-color 0.15s ease",
+      "&:hover": {
+        backgroundColor: "#f9fafb",
+      },
+    },
+    statusBadge: {
+      padding: "2px 8px",
+      borderRadius: 4,
+      fontSize: "0.75rem",
+      fontWeight: 500,
+      display: "inline-block",
+    },
+    expandedPanel: {
+      background: "#f8fafc",
+      border: "1px solid #e5e7eb",
+      borderRadius: 6,
+      margin: "8px 12px 12px 12px",
+      padding: 12,
+    },
+  };
+
   return (
-    <div className="card">
-      <h3>Sub-element List</h3>
-      <div className="row">
-        <div>
-          <label>Client</label>
-          <select
-            value={cniClientId}
-            onChange={(e) => handleClientChange(e.target.value)}
+    <div style={styles.card}>
+      <div style={styles.header} onClick={() => setIsExpanded(!isExpanded)}>
+        <h3 style={styles.title}>
+          <span
+            style={{
+              fontSize: "1rem",
+              transform: `rotate(${isExpanded ? 90 : 0}deg)`,
+              transition: "transform 0.2s",
+              display: "inline-block",
+            }}
           >
-            <option value="">— Select client —</option>
-            {clients.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button
-            className="secondary"
-            onClick={() => cniClientId && loadItemsFor(cniClientId)}
-          >
-            Refresh
-          </button>
-        </div>
+            ▶
+          </span>
+          📋 Sub-element List
+        </h3>
       </div>
 
-      {err && <p style={{ color: "#b91c1c" }}>Error: {err}</p>}
-      {loading && <p>Loading items…</p>}
+      {isExpanded && (
+        <div style={styles.content}>
+          <div className="row" style={{ marginBottom: 20 }}>
+            <div>
+              <label>Client</label>
+              <select
+                value={cniClientId}
+                onChange={(e) => handleClientChange(e.target.value)}
+              >
+                <option value="">— Select client —</option>
+                {clients.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button
+                className="secondary"
+                onClick={() => cniClientId && loadItemsFor(cniClientId)}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
 
-      {!loading && items.length === 0 && <p>No items for this client.</p>}
+          {err && <p style={{ color: "#dc2626" }}>Error: {err}</p>}
+          {loading && <p>Loading items…</p>}
+          {!loading && items.length === 0 && <p>No items for this client.</p>}
 
-      {items.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left" }}>Category</th>
-              <th style={{ textAlign: "left" }}>Name</th>
-              <th style={{ textAlign: "left" }}>Frequency</th>
-              <th style={{ textAlign: "left" }}>Budget</th>
-              <th style={{ textAlign: "left" }}>Purchase cost</th>
-              <th style={{ textAlign: "left" }}>Expected per task</th>
-              <th style={{ textAlign: "left" }}>Schedule Period</th>
-              <th style={{ textAlign: "left" }}>Returned</th>
-              <th style={{ textAlign: "left" }}>Attachments</th>
-              <th style={{ textAlign: "left" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(() => {
-              const rows = [];
-              let lastCat = null;
+          {items.length > 0 && (
+            <table style={styles.table}>
+              <colgroup>
+                <col style={{ width: "25%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "15%" }} />
+              </colgroup>
 
-              items.forEach((it) => {
-                const cat = it.category || "Other";
-                const rowFiles = filesByItem[it._id] || [];
-                const isPurchaseOnly =
-                  it.frequency?.intervalType === "JustPurchase";
-                const isReturned = it.status === "Returned";
+              <thead>
+                <tr>
+                  <th style={styles.headerCell}>Name</th>
+                  <th style={styles.headerCell}>Frequency</th>
+                  <th style={styles.headerCell}>Budget</th>
+                  <th style={styles.headerCell}>Purchase</th>
+                  <th style={styles.headerCell}>Status</th>
+                  <th style={{ ...styles.headerCell, textAlign: "center" }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
 
-                // category divider
-                if (cat !== lastCat) {
-                  rows.push(renderCategoryDivider(cat));
-                  lastCat = cat;
-                }
-
-                // main item row
-                rows.push(
-                  <tr
-                    key={it._id}
-                    style={{
-                      borderTop: "1px solid #eee",
-                      opacity: isReturned ? 0.75 : 1,
-                    }}
-                  >
-                    <td></td>
-                    <td>{it.name}</td>
-                    <td>{formatFrequency(it.frequency)}</td>
-                    <td>{aud.format(it.budgetCost || 0)}</td>
-                    <td>{aud.format(it.purchaseCost || 0)}</td>
-                    <td>
-                      {isPurchaseOnly
-                        ? "—"
-                        : aud.format(it.occurrenceCost || 0)}
-                    </td>
-                    <td>
-                      {isPurchaseOnly ? (
-                        "—"
-                      ) : (
-                        <span className="badge">
-                          {it.scheduleType === "Timed" && it.timeWindow
-                            ? `Scheduled ${it.timeWindow.startTime}–${it.timeWindow.endTime}`
-                            : "All-day"}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {isReturned ? (
-                        <span
-                          className="badge"
-                          style={{ background: "#fef3c7", color: "#92400e" }}
-                        >
-                          Returned
-                        </span>
-                      ) : (
-                        <span style={{ opacity: 0.4 }}>No</span>
-                      )}
-                    </td>
-                    <td>
-                      {rowFiles.length === 0 ? (
-                        <span style={{ opacity: 0.6 }}>—</span>
-                      ) : (
-                        <ul
-                          style={{
-                            margin: 0,
-                            paddingLeft: 16,
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {rowFiles.map((f) => (
-                            <li key={f._id} style={{ listStyle: "none" }}>
-                              <InlineAttachment f={f} />
-                              {f.scope === "Shared" && (
-                                <span
-                                  className="badge"
-                                  style={{ marginLeft: 6 }}
-                                >
-                                  Shared
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </td>
-                    <td>
-                      <div
-                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-                      >
-                        {/* Hide Edit & Return when item is Returned */}
-                        {!isReturned && (
-                          <>
-                            <button
-                              className="secondary"
-                              title="Edit details"
-                              onClick={() =>
-                                setEditingItemId(
-                                  editingItemId === it._id ? null : it._id
-                                )
-                              }
-                            >
-                              {editingItemId === it._id ? "Close edit" : "Edit"}
-                            </button>
-                            <button
-                              className="secondary"
-                              title="Mark as returned"
-                              onClick={() => returnItem(it._id)}
-                            >
-                              Return
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          className="danger"
-                          onClick={() => deleteItem(it._id)}
-                          title="Delete item and ALL associated tasks/files/comments"
-                        >
-                          Delete
-                        </button>
-                      </div>
-
-                      {/* Return attachments & comments entry (only when returned) */}
-                      {isReturned && (
-                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                              className="secondary"
-                              onClick={() => toggleItemComments(it._id)}
-                            >
-                              Comments
-                            </button>
-                            <button
-                              className="secondary"
-                              onClick={() => toggleItemFiles(it._id)}
-                            >
-                              Files
-                            </button>
-                          </div>
-
-                          {/* Comments panel (item scope) */}
-                          {openCommentsForItem === it._id && (
-                            <CommentPanel
-                              comments={commentsByItem[it._id] || []}
-                              newCommentText={newCommentTextItem}
-                              onCommentTextChange={setNewCommentTextItem}
-                              onAddComment={() => addItemComment(it._id)}
-                              currentUserId={currentUserId}
-                            />
-                          )}
-
-                          {/* Files panel (item scope, direct uploads for returns) */}
-                          {openFilesForItem === it._id && (
-                            <FilePanel
-                              // re-use TaskFiles uploader; server looks at "scope"
-                              taskId={it._id} // not used when scope is CareNeedItem; but TaskFiles expects it—safe to pass
-                              scope="CareNeedItem"
-                              targetId={it._id}
-                              files={panelFilesByItem[it._id] || []}
-                              newFile={newFileItem}
-                              onNewFileChange={setNewFileItem}
-                              onAddFile={() => addItemFile(it._id)}
-                              onLoadFiles={() => loadItemFilesPanel(it._id)}
-                              currentUserId={currentUserId}
-                              onReload={() =>
-                                toggleItemComments(it._id) ||
-                                toggleItemComments(it._id)
-                              } // quick reload
-                            />
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-
-                // editor row (full-width) — only for non-returned items
-                if (!isReturned && editingItemId === it._id) {
-                  rows.push(
-                    <tr key={`${it._id}__editor`}>
-                      <td colSpan={10} style={{ paddingTop: 0 }}>
-                        <CareNeedItemRowEditor
-                          item={it}
-                          jwt={jwt}
-                          onCancel={() => setEditingItemId(null)}
-                          onSaved={async () => {
-                            setEditingItemId(null);
-                            if (cniClientId) await loadItemsFor(cniClientId);
-                          }}
-                        />
+              <tbody>
+                {groupedByCategory.map(([category, group]) => (
+                  <React.Fragment key={category}>
+                    <tr style={styles.categoryRow}>
+                      <td colSpan={6} style={styles.categoryCell}>
+                        {category} ({group.length} item
+                        {group.length !== 1 ? "s" : ""})
                       </td>
                     </tr>
-                  );
-                }
-              });
 
-              return rows;
-            })()}
-          </tbody>
-        </table>
+                    {group.map((it) => {
+                      const isReturned = it.status === "Returned";
+                      const hasExpanded =
+                        openCommentsForItem === it._id ||
+                        openFilesForItem === it._id ||
+                        editingItemId === it._id;
+
+                      return (
+                        <React.Fragment key={it._id}>
+                          <tr
+                            style={{
+                              ...styles.dataRow,
+                              opacity: isReturned ? 0.65 : 1,
+                              backgroundColor: hasExpanded
+                                ? "#fafbfc"
+                                : "transparent",
+                            }}
+                          >
+                            <td style={{ ...styles.dataCell, fontWeight: 500 }}>
+                              {it.name}
+                              {it.frequency?.startDate && (
+                                <div
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    color: "#6b7280",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {it.frequency.intervalType === "JustPurchase"
+                                    ? "Event: "
+                                    : "Started: "}
+                                  {new Date(
+                                    it.frequency.startDate
+                                  ).toLocaleDateString()}
+                                </div>
+                              )}
+                            </td>
+                            <td style={styles.dataCell}>
+                              <span
+                                style={{
+                                  color: "#059669",
+                                  fontSize: "0.875rem",
+                                }}
+                              >
+                                {formatFrequency(it.frequency)}
+                              </span>
+                            </td>
+                            <td style={styles.dataCell}>
+                              {aud.format(it.budgetCost || 0)}
+                            </td>
+                            <td style={styles.dataCell}>
+                              {aud.format(it.purchaseCost || 0)}
+                            </td>
+                            <td style={styles.dataCell}>
+                              {isReturned ? (
+                                <span
+                                  style={{
+                                    ...styles.statusBadge,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                  }}
+                                >
+                                  Returned
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    ...styles.statusBadge,
+                                    background: "#d1fae5",
+                                    color: "#065f46",
+                                  }}
+                                >
+                                  Active
+                                </span>
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                ...styles.dataCell,
+                                textAlign: "center",
+                              }}
+                            >
+                              <div
+                                className="action-menu-container"
+                                style={{
+                                  position: "relative",
+                                  display: "inline-block",
+                                }}
+                              >
+                                <button
+                                  style={{
+                                    ...styles.compactButton,
+                                    fontWeight: 500,
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(
+                                      openActionMenuId === it._id
+                                        ? null
+                                        : it._id
+                                    );
+                                  }}
+                                >
+                                  Actions ▼
+                                </button>
+
+                                {openActionMenuId === it._id && (
+                                  <div style={styles.actionMenu}>
+                                    {!isReturned && (
+                                      <div
+                                        style={styles.menuItem}
+                                        onClick={() =>
+                                          handleActionClick(it._id, "edit")
+                                        }
+                                      >
+                                        📝{" "}
+                                        {editingItemId === it._id
+                                          ? "Close Edit"
+                                          : "Edit Details"}
+                                      </div>
+                                    )}
+
+                                    <div
+                                      style={styles.menuItem}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "comments")
+                                      }
+                                    >
+                                      💬{" "}
+                                      {openCommentsForItem === it._id
+                                        ? "Hide"
+                                        : "Show"}{" "}
+                                      Comments
+                                    </div>
+
+                                    <div
+                                      style={styles.menuItem}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "files")
+                                      }
+                                    >
+                                      📎{" "}
+                                      {openFilesForItem === it._id
+                                        ? "Hide"
+                                        : "Show"}{" "}
+                                      Files
+                                    </div>
+
+                                    {!isReturned && (
+                                      <div
+                                        style={styles.menuItem}
+                                        onClick={() =>
+                                          handleActionClick(it._id, "return")
+                                        }
+                                      >
+                                        ↩️ Mark as Returned
+                                      </div>
+                                    )}
+
+                                    {!isReturned &&
+                                      it.frequency?.intervalType !==
+                                        "JustPurchase" &&
+                                      it.endDate === null &&
+                                      it.occurrenceCount === null && (
+                                        <div
+                                          style={{
+                                            ...styles.menuItem,
+                                            background: "#f0fdf4",
+                                            color: "#15803d",
+                                            fontWeight: 500,
+                                          }}
+                                          onClick={() =>
+                                            handleActionClick(
+                                              it._id,
+                                              "nextYear"
+                                            )
+                                          }
+                                        >
+                                          📅 Copy to Next Year
+                                        </div>
+                                      )}
+
+                                    <div
+                                      style={{
+                                        ...styles.menuItem,
+                                        borderBottom: "none",
+                                        color: "#dc2626",
+                                      }}
+                                      onClick={() =>
+                                        handleActionClick(it._id, "delete")
+                                      }
+                                    >
+                                      🗑️ Delete Item
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded panels row */}
+                          {hasExpanded && (
+                            <tr key={`${it._id}__expanded`}>
+                              <td colSpan={6} style={{ padding: 0 }}>
+                                <div style={styles.expandedPanel}>
+                                  {editingItemId === it._id && (
+                                    <CareNeedItemRowEditor
+                                      item={it}
+                                      jwt={jwt}
+                                      onCancel={() => setEditingItemId(null)}
+                                      onSaved={async () => {
+                                        setEditingItemId(null);
+                                        if (cniClientId)
+                                          await loadItemsFor(cniClientId);
+                                      }}
+                                    />
+                                  )}
+
+                                  {openCommentsForItem === it._id && (
+                                    <CommentPanel
+                                      comments={commentsByItem[it._id] || []}
+                                      newCommentText={newCommentTextItem}
+                                      onCommentTextChange={
+                                        setNewCommentTextItem
+                                      }
+                                      onAddComment={() =>
+                                        addItemComment(it._id)
+                                      }
+                                      currentUserId={currentUserId}
+                                      onReload={() => loadItemComments(it._id)}
+                                    />
+                                  )}
+
+                                  {openFilesForItem === it._id && (
+                                    <FilePanel
+                                      scope="CareNeedItem"
+                                      targetId={it._id}
+                                      files={panelFilesByItem[it._id] || []}
+                                      newFile={newFileItem}
+                                      onNewFileChange={setNewFileItem}
+                                      onAddFile={() => addItemFile(it._id)}
+                                      onLoadFiles={() =>
+                                        loadItemFilesPanel(it._id)
+                                      }
+                                      currentUserId={currentUserId}
+                                    />
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );

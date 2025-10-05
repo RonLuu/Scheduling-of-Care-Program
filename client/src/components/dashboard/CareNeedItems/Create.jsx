@@ -4,7 +4,6 @@ function Create({ jwt, clients }) {
   // Form state
   const [ciPersonId, setCiPersonId] = React.useState("");
   const [ciName, setCiName] = React.useState("");
-  const [ciDesc, setCiDesc] = React.useState("");
   const [ciCategory, setCiCategory] = React.useState("HygieneProducts");
   const [ciCategories, setCiCategories] = React.useState([
     "HygieneProducts",
@@ -16,23 +15,23 @@ function Create({ jwt, clients }) {
   const [ciUseCustomCat, setCiUseCustomCat] = React.useState(false);
   const [ciCustomCat, setCiCustomCat] = React.useState("");
 
+  // Start date (Event Day for unscheduled, Start Date for repeating)
+  const [ciStartDate, setCiStartDate] = React.useState(
+    new Date().toISOString().slice(0, 10) // yyyy-mm-dd for today
+  );
+
+  // Recurrence: JustPurchase (unscheduled) or repeating (Daily/Weekly/Monthly/Yearly)
   const [ciIntervalType, setCiIntervalType] = React.useState("JustPurchase");
   const [ciIntervalValue, setCiIntervalValue] = React.useState(1);
-  const [ciStartDate, setCiStartDate] = React.useState("");
-  const [ciEndMode, setCiEndMode] = React.useState("none");
+
+  // End conditions for repeating only
+  const [ciEndMode, setCiEndMode] = React.useState("endDate"); // endDate | count | yearEnd
   const [ciEndDate, setCiEndDate] = React.useState("");
   const [ciOccurrenceCount, setCiOccurrenceCount] = React.useState("");
 
+  // Costs (annual budget + purchase only)
   const [ciBudgetCost, setCiBudgetCost] = React.useState(0);
   const [ciPurchaseCost, setCiPurchaseCost] = React.useState(0);
-  const [ciOccurrenceCost, setCiOccurrenceCost] = React.useState(0);
-
-  const [ciScheduleType, setCiScheduleType] = React.useState("AllDay");
-  const [ciStartTime, setCiStartTime] = React.useState("09:00");
-  const [ciEndTime, setCiEndTime] = React.useState("10:00");
-
-  const [assignableUsers, setAssignableUsers] = React.useState([]);
-  const [ciAssignedTo, setCiAssignedTo] = React.useState("");
 
   const [ciBusy, setCiBusy] = React.useState(false);
   const [ciErr, setCiErr] = React.useState("");
@@ -42,12 +41,10 @@ function Create({ jwt, clients }) {
   const [attachMode, setAttachMode] = React.useState("none"); // none | upload | reference
   const [attachFile, setAttachFile] = React.useState(null);
 
-  // --- Shared receipt reference UI state ---
-  const [refPickDate, setRefPickDate] = React.useState(
-    new Date().toISOString().slice(0, 10) // yyyy-mm-dd
-  );
-  const [refMode, setRefMode] = React.useState("month"); // "month" | "day"
-  const [refFiles, setRefFiles] = React.useState([]); // loaded month’s files
+  // --- Simplified shared receipt reference UI state ---
+  const [refYear, setRefYear] = React.useState(new Date().getFullYear());
+  const [refMonth, setRefMonth] = React.useState(new Date().getMonth() + 1);
+  const [refFiles, setRefFiles] = React.useState([]); // loaded month's files
   const [refSelectedFileId, setRefSelectedFileId] = React.useState("");
   const [refLoading, setRefLoading] = React.useState(false);
   const [refErr, setRefErr] = React.useState("");
@@ -77,37 +74,18 @@ function Create({ jwt, clients }) {
     }
   };
 
-  // Jump to this month’s bucket
-  const quickPickTodayBucket = () => {
+  // Load today's bucket
+  const loadTodayBucket = () => {
     const now = new Date();
-
-    const toLocalYMD = (d) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString(
-        "en-CA"
-      ); // yyyy-mm-dd in local time
-    setRefPickDate(toLocalYMD(now));
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    loadSharedBucket(y, m);
+    setRefYear(now.getFullYear());
+    setRefMonth(now.getMonth() + 1);
+    loadSharedBucket(now.getFullYear(), now.getMonth() + 1);
   };
 
-  // Pick any day -> load that day’s month bucket
-  const pickBucketByDate = () => {
-    if (!refPickDate) return;
-    const d = new Date(`${refPickDate}T00:00:00`);
-    loadSharedBucket(d.getFullYear(), d.getMonth() + 1);
+  // Load selected month/year bucket
+  const loadSelectedBucket = () => {
+    loadSharedBucket(refYear, refMonth);
   };
-
-  // Filter the loaded month to the exact picked day (if refMode === "day")
-  const visibleReceipts = React.useMemo(() => {
-    if (refMode !== "day" || !refPickDate) return refFiles;
-    return refFiles.filter((f) => {
-      const baseDate = f.effectiveDate || f.createdAt;
-      if (!baseDate) return false;
-      const localDay = new Date(baseDate).toLocaleDateString("en-CA"); // yyyy-mm-dd
-      return localDay === refPickDate;
-    });
-  }, [refFiles, refMode, refPickDate]);
 
   // Reset picker when client changes
   React.useEffect(() => {
@@ -134,27 +112,6 @@ function Create({ jwt, clients }) {
       .catch(() => {});
   }, [ciPersonId, jwt, ciCategory]);
 
-  // Load assignable users when client is selected
-  React.useEffect(() => {
-    if (!jwt || !ciPersonId) {
-      setAssignableUsers([]);
-      setCiAssignedTo("");
-      return;
-    }
-
-    fetch(
-      `/api/person-user-links/assignable-users?personId=${encodeURIComponent(
-        ciPersonId
-      )}`,
-      {
-        headers: { Authorization: "Bearer " + jwt },
-      }
-    )
-      .then((r) => r.json())
-      .then((d) => setAssignableUsers(Array.isArray(d) ? d : []))
-      .catch(() => setAssignableUsers([]));
-  }, [ciPersonId, jwt]);
-
   const submitCareNeedItem = async (e) => {
     e.preventDefault();
     setCiErr("");
@@ -165,51 +122,50 @@ function Create({ jwt, clients }) {
       if (!ciPersonId) throw new Error("Please select a client.");
       if (!ciName) throw new Error("Name is required.");
 
-      const startDate =
-        ciIntervalType === "JustPurchase" ? new Date() : new Date(ciStartDate);
+      // Use the user-selected start date
+      const startDateISO = new Date(ciStartDate + "T00:00:00").toISOString();
+
+      const isUnscheduled = ciIntervalType === "JustPurchase";
 
       const payload = {
         personId: ciPersonId,
         name: ciName,
-        description: ciDesc,
         ...(ciUseCustomCat
           ? { newCategoryName: ciCustomCat, category: ciCustomCat || "Other" }
           : { category: ciCategory }),
+        // frequency: use the selected start date
         frequency: {
-          intervalType: ciIntervalType,
-          intervalValue: Number(ciIntervalValue),
-          startDate: startDate.toISOString(),
+          intervalType: ciIntervalType, // JustPurchase or one of Daily/Weekly/Monthly/Yearly
+          intervalValue: isUnscheduled ? 1 : Number(ciIntervalValue) || 1,
+          startDate: startDateISO,
         },
-        scheduleType: ciScheduleType,
+        // costs
         budgetCost: Number(ciBudgetCost) || 0,
         purchaseCost: Number(ciPurchaseCost) || 0,
-        occurrenceCost: Number(ciOccurrenceCost) || 0,
+        // removed: occurrenceCost, scheduleType, timeWindow, assignees
       };
 
-      if (ciScheduleType === "Timed") {
-        payload.timeWindow = { startTime: ciStartTime, endTime: ciEndTime };
-      }
-
-      if (ciEndMode === "yearEnd") {
-        // explicitly null to signal open-ended (annual horizon will cap it)
-        payload.endDate = null;
-        payload.occurrenceCount = null;
-      } else if (ciEndMode === "endDate" && ciEndDate) {
-        payload.endDate = new Date(ciEndDate).toISOString();
-        payload.occurrenceCount = null;
-      } else if (ciEndMode === "count" && ciOccurrenceCount) {
-        payload.occurrenceCount = Number(ciOccurrenceCount);
-        payload.endDate = null;
-      } else {
-        // safety: if none of the above, do not leak previous values
-        payload.endDate = null;
-        payload.occurrenceCount = null;
-      }
-
-      if (attachMode === "reference") {
-        if (!refSelectedFileId) {
-          throw new Error("Please choose a shared receipt to reference.");
+      // End conditions (only if repeating)
+      if (
+        !isUnscheduled &&
+        ["Daily", "Weekly", "Monthly", "Yearly"].includes(ciIntervalType)
+      ) {
+        if (ciEndMode === "yearEnd") {
+          payload.endDate = null;
+          payload.occurrenceCount = null;
+        } else if (ciEndMode === "endDate" && ciEndDate) {
+          payload.endDate = new Date(ciEndDate).toISOString();
+          payload.occurrenceCount = null;
+        } else if (ciEndMode === "count" && ciOccurrenceCount) {
+          payload.occurrenceCount = Number(ciOccurrenceCount);
+          payload.endDate = null;
+        } else {
+          payload.endDate = null;
+          payload.occurrenceCount = null;
         }
+      } else {
+        payload.endDate = undefined;
+        payload.occurrenceCount = undefined;
       }
 
       // 1) Create CareNeedItem
@@ -224,8 +180,8 @@ function Create({ jwt, clients }) {
       const item = await r1.json();
       if (!r1.ok) throw new Error(item.error || "Failed to create item");
 
-      // 2) Generate tasks unless JustPurchase
-      if (ciIntervalType !== "JustPurchase") {
+      // 2) Generate tasks only if repeating (server should ignore time/assignee)
+      if (!isUnscheduled) {
         const r2 = await fetch(
           `/api/scheduling/care-need-items/${item._id}/generate-tasks`,
           {
@@ -234,16 +190,14 @@ function Create({ jwt, clients }) {
               "Content-Type": "application/json",
               Authorization: "Bearer " + jwt,
             },
-            body: JSON.stringify(
-              ciAssignedTo ? { assignToUserId: ciAssignedTo } : {}
-            ),
+            body: JSON.stringify({}), // no assignment, no times
           }
         );
         const gen = await r2.json();
         if (!r2.ok) throw new Error(gen.error || "Failed to generate tasks");
         setCiSuccess(`Created item and generated ${gen.upserts || 0} tasks.`);
       } else {
-        setCiSuccess(`Created purchase-only care need item (no tasks).`);
+        setCiSuccess(`Created unscheduled care need item (no tasks).`);
       }
 
       // 3) Attach (optional)
@@ -275,17 +229,16 @@ function Create({ jwt, clients }) {
         if (!ref.ok) throw new Error(rd.error || "Failed to reference receipt");
       }
 
-      // Reset
+      // Reset (keep client & category selection)
       setCiName("");
-      setCiDesc("");
+      setCiStartDate(new Date().toISOString().slice(0, 10)); // Reset to today
       setCiUseCustomCat(false);
       setCiCustomCat("");
       setCiPurchaseCost(0);
-      setCiOccurrenceCost(0);
       setCiBudgetCost(0);
       setCiIntervalType("JustPurchase");
       setCiIntervalValue(1);
-      setCiEndMode("none");
+      setCiEndMode("endDate");
       setCiEndDate("");
       setCiOccurrenceCount("");
       setAttachMode("none");
@@ -300,472 +253,437 @@ function Create({ jwt, clients }) {
     }
   };
 
+  // Generate month options for the dropdown
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  const styles = {
+    card: {
+      background: "white",
+      borderRadius: 8,
+      padding: 0,
+      marginBottom: 16,
+      border: "1px solid #e5e7eb",
+      overflow: "hidden",
+      width: "1000px",
+    },
+    header: {
+      padding: "16px 20px",
+      background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+      borderBottom: "1px solid #bfdbfe",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+    },
+    title: {
+      fontSize: "1.125rem",
+      fontWeight: 600,
+      color: "#1e40af",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      margin: 0,
+    },
+    content: {
+      padding: 20,
+      transition: "max-height 0.3s ease, opacity 0.3s ease",
+    },
+  };
+
   return (
-    <div className="card">
-      <h3>Create Sub-element</h3>
-      <form onSubmit={submitCareNeedItem}>
-        <label>Client</label>
-        <select
-          value={ciPersonId}
-          onChange={(e) => setCiPersonId(e.target.value)}
-        >
-          <option value="">— Select a client —</option>
-          {clients.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+    <div style={styles.card}>
+      <div style={styles.header} onClick={() => setIsExpanded(!isExpanded)}>
+        <h3 style={styles.title}>
+          <span
+            style={{
+              fontSize: "1rem",
+              transform: `rotate(${isExpanded ? 90 : 0}deg)`,
+              transition: "transform 0.2s",
+              display: "inline-block",
+            }}
+          >
+            ▶
+          </span>
+          ➕ Create Sub-element
+        </h3>
+      </div>
 
-        <div className="row">
-          <div>
-            <label>Category Name</label>
-            {!ciUseCustomCat ? (
-              <>
-                <select
-                  value={ciCategory}
-                  onChange={(e) => setCiCategory(e.target.value)}
-                >
-                  {ciCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    setCiUseCustomCat(true);
-                    setCiCustomCat("");
-                  }}
-                  style={{ marginTop: 6 }}
-                >
-                  + Add custom
-                </button>
-              </>
-            ) : (
-              <>
-                <input
-                  placeholder="Type new category"
-                  value={ciCustomCat}
-                  onChange={(e) => setCiCustomCat(e.target.value)}
-                />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setCiUseCustomCat(false)}
-                  >
-                    Use list instead
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div>
-            <label>Sub-element Name</label>
-            <input
-              value={ciName}
-              onChange={(e) => setCiName(e.target.value)}
-              placeholder="e.g., Dental visit"
-            />
-          </div>
-        </div>
-
-        <label>Description/Comment</label>
-        <input
-          value={ciDesc}
-          onChange={(e) => setCiDesc(e.target.value)}
-          placeholder="Optional comment"
-        />
-
-        {/* Recurrence / schedule */}
-        <div className="row">
-          <div>
-            <label>Recurrence</label>
+      {isExpanded && (
+        <div style={styles.content}>
+          <form onSubmit={submitCareNeedItem}>
+            <label>Client</label>
             <select
-              value={
-                ciIntervalType === "JustPurchase"
-                  ? "unscheduled"
-                  : ciIntervalType === "OneTime"
-                  ? "one"
-                  : "repeat"
-              }
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "unscheduled") {
-                  setCiIntervalType("JustPurchase");
-                } else if (v === "one") {
-                  setCiIntervalType("OneTime");
-                } else {
-                  // default sensible repeat if switching from non-repeat
-                  if (
-                    ["JustPurchase", "OneTime"].includes(ciIntervalType) ||
-                    !["Daily", "Weekly", "Monthly", "Yearly"].includes(
-                      ciIntervalType
-                    )
-                  ) {
-                    setCiIntervalType("Weekly");
-                  }
-                  if (!ciIntervalValue || ciIntervalValue < 1) {
-                    setCiIntervalValue(1);
-                  }
-                }
-              }}
+              value={ciPersonId}
+              onChange={(e) => setCiPersonId(e.target.value)}
             >
-              <option value="unscheduled">Unscheduled Event</option>
-              <option value="one">One Time</option>
-              <option value="repeat">Repeating</option>
+              <option value="">— Select a client —</option>
+              {clients.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
-            <p style={{ opacity: 0.6, marginTop: 4 }}>
-              {ciIntervalType === "JustPurchase" &&
-                "No tasks will be scheduled; used for purchases only."}
-              {ciIntervalType === "OneTime" &&
-                "Creates exactly one task on the start date."}
-              {["Daily", "Weekly", "Monthly", "Yearly"].includes(
-                ciIntervalType
-              ) && `Will schedule tasks on a repeating cadence.`}
-            </p>
-          </div>
 
-          {/* Repeat details */}
-          {["Daily", "Weekly", "Monthly", "Yearly"].includes(
-            ciIntervalType
-          ) && (
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div className="row">
               <div>
-                <label>Repeat every</label>
+                <label>Category Name</label>
+                {!ciUseCustomCat ? (
+                  <>
+                    <select
+                      value={ciCategory}
+                      onChange={(e) => setCiCategory(e.target.value)}
+                    >
+                      {ciCategories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => {
+                        setCiUseCustomCat(true);
+                        setCiCustomCat("");
+                      }}
+                      style={{ marginTop: 6 }}
+                    >
+                      + Add custom
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      placeholder="Type new category"
+                      value={ciCustomCat}
+                      onChange={(e) => setCiCustomCat(e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setCiUseCustomCat(false)}
+                      >
+                        Use list instead
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <label>Sub-element Name</label>
                 <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={ciIntervalValue}
-                  onChange={(e) =>
-                    setCiIntervalValue(Number(e.target.value) || 1)
-                  }
-                  style={{ width: 100 }}
+                  value={ciName}
+                  onChange={(e) => setCiName(e.target.value)}
+                  placeholder="e.g., Dental visit"
                 />
               </div>
-              <div>
-                <label>&nbsp;</label>
-                <select
-                  value={ciIntervalType}
-                  onChange={(e) => setCiIntervalType(e.target.value)}
-                >
-                  <option value="Daily">
-                    {`Day${ciIntervalValue > 1 ? "s" : ""}`}
-                  </option>
-                  <option value="Weekly">
-                    {`Week${ciIntervalValue > 1 ? "s" : ""}`}
-                  </option>
-                  <option value="Monthly">
-                    {`Month${ciIntervalValue > 1 ? "s" : ""}`}
-                  </option>
-                  <option value="Yearly">
-                    {`Year${ciIntervalValue > 1 ? "s" : ""}`}
-                  </option>
-                </select>
-              </div>
             </div>
-          )}
-        </div>
 
-        {ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Start date</label>
-              <input
-                type="date"
-                value={ciStartDate}
-                onChange={(e) => setCiStartDate(e.target.value)}
-              />
-            </div>
-            {ciIntervalType !== "OneTime" && (
+            {/* Recurrence and Start Date */}
+            <div className="row">
               <div>
-                <label>End condition</label>
+                <label>Recurrence</label>
                 <select
-                  value={ciEndMode}
+                  value={
+                    ciIntervalType === "JustPurchase" ? "unscheduled" : "repeat"
+                  }
                   onChange={(e) => {
                     const v = e.target.value;
-                    setCiEndMode(v);
-                    // when choosing yearEnd, force-clear other end fields in UI state
-                    if (v === "yearEnd") {
-                      setCiEndDate("");
-                      setCiOccurrenceCount("");
+                    if (v === "unscheduled") {
+                      setCiIntervalType("JustPurchase");
+                    } else {
+                      if (
+                        !["Daily", "Weekly", "Monthly", "Yearly"].includes(
+                          ciIntervalType
+                        )
+                      ) {
+                        setCiIntervalType("Weekly");
+                        setCiIntervalValue(1);
+                      }
+                      setCiEndMode("endDate");
                     }
                   }}
                 >
-                  <option value="yearEnd">
-                    Until end of this year (auto-renews for new year)
-                  </option>
-                  <option value="endDate">End by date</option>
-                  <option value="count">End after some occurrences</option>
+                  <option value="unscheduled">Unscheduled</option>
+                  <option value="repeat">Repeating</option>
                 </select>
+                <p style={{ opacity: 0.6, marginTop: 4 }}>
+                  {ciIntervalType === "JustPurchase"
+                    ? "Single event (no recurring tasks will be scheduled)."
+                    : "Repeating tasks will be generated on a cadence."}
+                </p>
               </div>
-            )}
-          </div>
-        )}
 
-        {ciIntervalType !== "JustPurchase" &&
-          ciIntervalType !== "OneTime" &&
-          ciEndMode === "endDate" && (
-            <div>
-              <label>End date</label>
-              <input
-                type="date"
-                value={ciEndDate}
-                onChange={(e) => setCiEndDate(e.target.value)}
-              />
-            </div>
-          )}
-        {ciIntervalType !== "JustPurchase" &&
-          ciIntervalType !== "OneTime" &&
-          ciEndMode === "count" && (
-            <div>
-              <label>Number of occurrences</label>
-              <input
-                type="number"
-                min="1"
-                value={ciOccurrenceCount}
-                onChange={(e) => setCiOccurrenceCount(e.target.value)}
-              />
-            </div>
-          )}
-
-        {ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Schedule period</label>
-              <select
-                value={ciScheduleType}
-                onChange={(e) => setCiScheduleType(e.target.value)}
-              >
-                <option value="AllDay">All-day</option>
-                <option value="Timed">Scheduled (start/end)</option>
-              </select>
-            </div>
-
-            {ciScheduleType === "Timed" && (
               <div>
-                <label>Start time / End time</label>
-                <div className="row">
-                  <input
-                    type="time"
-                    value={ciStartTime}
-                    onChange={(e) => setCiStartTime(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    value={ciEndTime}
-                    onChange={(e) => setCiEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="row">
-          <div>
-            <label>Annual Budget (AUD)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={ciBudgetCost !== 0 ? String(ciBudgetCost) : ""}
-              onChange={(e) => setCiBudgetCost(Number(e.target.value))}
-              placeholder="0.00"
-            />
-          </div>
-        </div>
-
-        <div className="row">
-          <div>
-            <label>Purchase cost (AUD)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={ciPurchaseCost !== 0 ? String(ciPurchaseCost) : ""}
-              onChange={(e) => setCiPurchaseCost(Number(e.target.value))}
-              placeholder="0.00"
-            />
-          </div>
-          {ciIntervalType !== "JustPurchase" && (
-            <div>
-              <label>Expected occurrence cost per task (AUD)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={ciOccurrenceCost !== 0 ? String(ciOccurrenceCost) : ""}
-                onChange={(e) => setCiOccurrenceCost(Number(e.target.value))}
-                placeholder="0.00"
-              />
-            </div>
-          )}
-        </div>
-
-        {ciPersonId && ciIntervalType !== "JustPurchase" && (
-          <div className="row">
-            <div>
-              <label>Assign to (optional)</label>
-              <select
-                value={ciAssignedTo}
-                onChange={(e) => setCiAssignedTo(e.target.value)}
-              >
-                <option value="">— Unassigned —</option>
-                {assignableUsers.map((u) => (
-                  <option key={u.userId} value={u.userId}>
-                    {u.name} ({u.role})
-                  </option>
-                ))}
-              </select>
-              <p style={{ opacity: 0.7, marginTop: -6 }}>
-                Admins and staff linked to this client
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Attach receipt */}
-        <hr />
-        <label>Attach Receipt/Record/Photograph</label>
-        <select
-          value={attachMode}
-          onChange={(e) => setAttachMode(e.target.value)}
-        >
-          <option value="none">— No attachment —</option>
-          <option value="upload">Upload directly to this care item</option>
-          <option value="reference">Reference a shared receipt (bucket)</option>
-        </select>
-
-        {attachMode === "upload" && (
-          <div style={{ marginTop: 8 }}>
-            <input
-              type="file"
-              onChange={(e) => setAttachFile(e.target.files?.[0] || null)}
-            />
-          </div>
-        )}
-
-        {attachMode === "reference" && (
-          <div style={{ marginTop: 8, display: "grid", gap: 12 }}>
-            <div className="row" style={{ alignItems: "end", gap: 12 }}>
-              <div>
-                <label>Pick a day</label>
+                <label>
+                  {ciIntervalType === "JustPurchase"
+                    ? "Event Day"
+                    : "Start Date"}
+                </label>
                 <input
                   type="date"
-                  value={refPickDate}
-                  onChange={(e) => setRefPickDate(e.target.value)}
-                  style={{ width: 180 }}
+                  value={ciStartDate}
+                  onChange={(e) => setCiStartDate(e.target.value)}
                 />
               </div>
-
-              <div>
-                <label>Load scope</label>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <label
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <input
-                      type="radio"
-                      name="refScope"
-                      value="day"
-                      checked={refMode === "day"}
-                      onChange={() => setRefMode("day")}
-                    />
-                    That exact day
-                  </label>
-                  <label
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <input
-                      type="radio"
-                      name="refScope"
-                      value="month"
-                      checked={refMode === "month"}
-                      onChange={() => setRefMode("month")}
-                    />
-                    Whole month (of that day)
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label>&nbsp;</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={pickBucketByDate}
-                    disabled={!ciPersonId || refLoading}
-                    title="Load the bucket for the chosen date"
-                  >
-                    {refLoading ? "Loading…" : "Load"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={quickPickTodayBucket}
-                    disabled={!ciPersonId || refLoading}
-                    title="Jump to this month’s bucket"
-                  >
-                    Use today’s bucket
-                  </button>
-                </div>
-              </div>
             </div>
 
-            {refErr && <div style={{ color: "#b91c1c" }}>Error: {refErr}</div>}
-
-            {/* Receipt selector */}
-            <div>
-              <label>Select receipt</label>
-              <select
-                value={refSelectedFileId}
-                onChange={(e) => setRefSelectedFileId(e.target.value)}
-                disabled={visibleReceipts.length === 0}
-                style={{ minWidth: 520 }}
-              >
-                <option value="">
-                  {visibleReceipts.length === 0
-                    ? "— No receipts found —"
-                    : "— Choose a receipt —"}
-                </option>
-                {visibleReceipts.map((f) => (
-                  <option key={f._id} value={f._id}>
-                    {`${f.filename}${
-                      f.description ? " • " + f.description : ""
-                    } • ${new Date(
-                      f.effectiveDate || f.createdAt
-                    ).toLocaleDateString()}`}
-                  </option>
-                ))}
-              </select>
-              {refSelectedFileId && (
-                <div style={{ marginTop: 6, opacity: 0.7 }}>
-                  Linked file id: <code>{refSelectedFileId}</code>
+            {/* Repeating interval settings */}
+            {["Daily", "Weekly", "Monthly", "Yearly"].includes(
+              ciIntervalType
+            ) && (
+              <div className="row">
+                <div
+                  style={{ display: "flex", gap: 8, alignItems: "flex-end" }}
+                >
+                  <div>
+                    <label>Repeat every</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={ciIntervalValue}
+                      onChange={(e) =>
+                        setCiIntervalValue(Number(e.target.value) || 1)
+                      }
+                      style={{ width: 100 }}
+                    />
+                  </div>
+                  <div>
+                    <label>&nbsp;</label>
+                    <select
+                      value={ciIntervalType}
+                      onChange={(e) => setCiIntervalType(e.target.value)}
+                    >
+                      <option value="Daily">
+                        {`Day${ciIntervalValue > 1 ? "s" : ""}`}
+                      </option>
+                      <option value="Weekly">
+                        {`Week${ciIntervalValue > 1 ? "s" : ""}`}
+                      </option>
+                      <option value="Monthly">
+                        {`Month${ciIntervalValue > 1 ? "s" : ""}`}
+                      </option>
+                      <option value="Yearly">
+                        {`Year${ciIntervalValue > 1 ? "s" : ""}`}
+                      </option>
+                    </select>
+                  </div>
                 </div>
-              )}
-              {refMode === "day" &&
-                refFiles.length > 0 &&
-                visibleReceipts.length === 0 && (
-                  <div style={{ marginTop: 6, opacity: 0.7 }}>
-                    No receipts on {refPickDate}. Try “Whole month”.
+              </div>
+            )}
+
+            {/* End conditions (repeating only) */}
+            {["Daily", "Weekly", "Monthly", "Yearly"].includes(
+              ciIntervalType
+            ) && (
+              <>
+                <div className="row">
+                  <div>
+                    <label>End condition</label>
+                    <select
+                      value={ciEndMode}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCiEndMode(v);
+                        if (v === "yearEnd") {
+                          setCiEndDate("");
+                          setCiOccurrenceCount("");
+                        }
+                      }}
+                    >
+                      <option value="endDate">End by date</option>
+                      <option value="count">End after some occurrences</option>
+                      <option value="yearEnd">
+                        Until end of current year (copy next year later)
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                {ciEndMode === "endDate" && (
+                  <div>
+                    <label>End date</label>
+                    <input
+                      type="date"
+                      value={ciEndDate}
+                      onChange={(e) => setCiEndDate(e.target.value)}
+                    />
                   </div>
                 )}
-            </div>
-          </div>
-        )}
 
-        <button disabled={ciBusy}>{ciBusy ? "Saving..." : "Create"}</button>
-        {ciErr && <p style={{ color: "#b91c1c" }}>Error: {ciErr}</p>}
-        {ciSuccess && <p style={{ color: "#065f46" }}>{ciSuccess}</p>}
-      </form>
+                {ciEndMode === "count" && (
+                  <div>
+                    <label>Number of occurrences</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={ciOccurrenceCount}
+                      onChange={(e) => setCiOccurrenceCount(e.target.value)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="row">
+              <div>
+                <label>Annual Budget (AUD)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={ciBudgetCost !== 0 ? String(ciBudgetCost) : ""}
+                  onChange={(e) => setCiBudgetCost(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label>Purchase cost (AUD)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={ciPurchaseCost !== 0 ? String(ciPurchaseCost) : ""}
+                  onChange={(e) => setCiPurchaseCost(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Attach receipt */}
+            <hr />
+            <label>Attach Receipt/Record/Photograph</label>
+            <select
+              value={attachMode}
+              onChange={(e) => setAttachMode(e.target.value)}
+            >
+              <option value="none">— No attachment —</option>
+              <option value="upload">Upload directly to this care item</option>
+              <option value="reference">
+                Reference a shared receipt (bucket)
+              </option>
+            </select>
+
+            {attachMode === "upload" && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="file"
+                  onChange={(e) => setAttachFile(e.target.files?.[0] || null)}
+                />
+              </div>
+            )}
+
+            {attachMode === "reference" && (
+              <div style={{ marginTop: 8, display: "grid", gap: 12 }}>
+                <div className="row" style={{ alignItems: "end", gap: 12 }}>
+                  <div>
+                    <label>Month</label>
+                    <select
+                      value={refMonth}
+                      onChange={(e) => setRefMonth(Number(e.target.value))}
+                      style={{ minWidth: 150 }}
+                    >
+                      {monthNames.map((name, idx) => (
+                        <option key={idx} value={idx + 1}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label>Year</label>
+                    <input
+                      type="number"
+                      min="2020"
+                      max="2050"
+                      value={refYear}
+                      onChange={(e) => setRefYear(Number(e.target.value))}
+                      style={{ width: 100 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label>&nbsp;</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={loadSelectedBucket}
+                        disabled={!ciPersonId || refLoading}
+                        title="Load receipts for the selected month/year"
+                      >
+                        {refLoading ? "Loading…" : "Load Bucket"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={loadTodayBucket}
+                        disabled={!ciPersonId || refLoading}
+                        title="Load receipts for the current month"
+                      >
+                        Today's Bucket
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {refErr && (
+                  <div style={{ color: "#b91c1c" }}>Error: {refErr}</div>
+                )}
+
+                <div>
+                  <label>Select receipt</label>
+                  <select
+                    value={refSelectedFileId}
+                    onChange={(e) => setRefSelectedFileId(e.target.value)}
+                    disabled={refFiles.length === 0}
+                    style={{ minWidth: 520 }}
+                  >
+                    <option value="">
+                      {refFiles.length === 0
+                        ? "— No receipts found —"
+                        : "— Choose a receipt —"}
+                    </option>
+                    {refFiles.map((f) => (
+                      <option key={f._id} value={f._id}>
+                        {`${f.filename}${
+                          f.description ? " • " + f.description : ""
+                        } • ${new Date(
+                          f.effectiveDate || f.createdAt
+                        ).toLocaleDateString()}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <button disabled={ciBusy}>{ciBusy ? "Saving..." : "Create"}</button>
+            {ciErr && <p style={{ color: "#b91c1c" }}>Error: {ciErr}</p>}
+            {ciSuccess && <p style={{ color: "#065f46" }}>{ciSuccess}</p>}
+          </form>
+        </div>
+      )}
     </div>
   );
 }

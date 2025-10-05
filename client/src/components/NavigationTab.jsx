@@ -3,6 +3,7 @@ import {
   BiMenu,
   BiHelpCircle,
   BiUser,
+  BiBuilding,
   BiLockAlt,
   BiGroup,
   BiCalendar,
@@ -12,8 +13,8 @@ import {
   BiExit,
 } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
-import "../../styles/NavigationTab.css";
-import useAuth from "../dashboard/hooks/useAuth";
+import "../styles/NavigationTab.css";
+import useAuth from "./dashboard/hooks/useAuth";
 
 const NavItem = ({ to, onClick, children }) => {
   return to ? (
@@ -68,6 +69,7 @@ const NavigationTab = () => {
     <div className="navigationtab-wrapper">
       <div className="navigationtab-button-menu-wrapper">
         <button
+          ref={buttonRef}
           className={`navigationtab-button-menu ${showTab ? "on" : "off"}`}
           onClick={() => setShowTab(!showTab)}
           type="button"
@@ -83,7 +85,10 @@ const NavigationTab = () => {
         />
       )}
 
-      <div className={`navigationtab-panel ${showTab ? "on" : "off"}`}>
+      <div
+        ref={panelRef}
+        className={`navigationtab-panel ${showTab ? "on" : "off"}`}
+      >
         {showTab && (
           <div className="navigationtab-link-wrapper">
             <NavItem to="/faq">
@@ -93,6 +98,10 @@ const NavigationTab = () => {
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
               Profile
+            </NavItem>
+            <NavItem to="/organization">
+              <BiBuilding className="navigationtab-icon" />
+              Organization
             </NavItem>
             <NavItem to="/access">
               <BiLockAlt className="navigationtab-icon" />

@@ -1,6 +1,6 @@
 import React from "react";
 import useAuth from "../hooks/useAuth";
-import NavigationTab from "../../NavigationTab/NavigationTab";
+import NavigationTab from "../../NavigationTab";
 import ShiftScheduler from "../Shift/ShiftScheduler";
 import { useClients } from "../hooks/useClients";
 

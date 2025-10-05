@@ -154,6 +154,112 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
   }
 });
 
+// router.patch("/me/organization", requireAuth, async (req, res) => {
+//   const { organizationId, migrateClients } = req.body || {};
+//   if (!organizationId) return res.status(400).json({ error: "ORG_REQUIRED" });
+
+//   const me = await User.findById(req.user.id);
+//   if (!me) return res.status(404).json({ error: "USER_NOT_FOUND" });
+
+//   const org = await Organization.findById(organizationId).lean();
+//   if (!org) return res.status(404).json({ error: "ORG_NOT_FOUND" });
+
+//   // Simple self-update (no cascade)
+//   if (!migrateClients) {
+//     me.organizationId = organizationId;
+//     await me.save();
+//     return res.json({
+//       ok: true,
+//       user: { id: me._id, organizationId: me.organizationId },
+//     });
+//   }
+
+//   if (!["Family", "PoA"].includes(me.role)) {
+//     return res.status(403).json({ error: "ONLY_FAMILY_POA_CAN_CASCADE" });
+//   }
+
+//   try {
+//     // 1) Persons directly linked to requester as Family/PoA
+//     const myLinks = await PersonUserLink.find({
+//       userId: me._id,
+//       relationshipType: { $in: ["Family", "PoA"] },
+//       active: true,
+//     })
+//       .select("personId")
+//       .lean();
+
+//     const personIds = [...new Set(myLinks.map((l) => String(l.personId)))];
+
+//     // Nothing to cascade: just switch requester org
+//     if (personIds.length === 0) {
+//       me.organizationId = organizationId;
+//       await me.save();
+//       return res.json({ ok: true, user: { id: me._id, organizationId } });
+//     }
+
+//     // 2) Family/PoA users for those persons (include requester)
+//     const famLinks = await PersonUserLink.find({
+//       personId: { $in: personIds },
+//       relationshipType: { $in: ["Family", "PoA"] },
+//       active: true,
+//     })
+//       .select("userId")
+//       .lean();
+
+//     const familyUserIds = [
+//       ...new Set(famLinks.map((l) => String(l.userId)).concat(String(me._id))),
+//     ];
+
+//     // 3) Apply the updates (no session / no transaction)
+//     const moveUsersRes = await User.updateMany(
+//       { _id: { $in: familyUserIds } },
+//       { $set: { organizationId } }
+//     );
+
+//     const personsRes = await PersonWithNeeds.updateMany(
+//       { _id: { $in: personIds } },
+//       { $set: { organizationId } }
+//     );
+
+//     const itemsRes = await CareNeedItem.updateMany(
+//       { personId: { $in: personIds } },
+//       { $set: { organizationId } }
+//     );
+
+//     const tasksRes = await CareTask.updateMany(
+//       { personId: { $in: personIds } },
+//       { $set: { organizationId } }
+//     );
+
+//     const revokeRes = await PersonUserLink.updateMany(
+//       {
+//         personId: { $in: personIds },
+//         relationshipType: { $in: ["GeneralCareStaff", "Admin"] },
+//         active: true,
+//       },
+//       { $set: { active: false, endAt: new Date() } }
+//     );
+
+//     // 4) Ensure requester record reflects new org
+//     me.organizationId = organizationId;
+//     await me.save();
+
+//     return res.json({
+//       ok: true,
+//       user: { id: me._id, organizationId },
+//       cascade: {
+//         personsMoved: personsRes.modifiedCount || 0,
+//         itemsMoved: itemsRes.modifiedCount || 0,
+//         tasksMoved: tasksRes.modifiedCount || 0,
+//         familyMoved: Math.max((moveUsersRes.modifiedCount || 0) - 1, 0),
+//         staffRevoked: revokeRes.modifiedCount || 0,
+//       },
+//     });
+//   } catch (e) {
+//     return res.status(400).json({ error: e.message });
+//   }
+// });
+
 /**
  * PATCH /api/users/me/leave-organization
  * Lets Admin or GeneralCareStaff leave org if no active clients.
@@ -191,6 +297,7 @@ router.patch("/me/leave-organization", requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/users/me - update profile
 router.patch("/me", requireAuth, async (req, res) => {
   // whitelist: only allow these fields to be updated by self
   const allowed = ["name", "mobile", "address"];
@@ -203,11 +310,29 @@ router.patch("/me", requireAuth, async (req, res) => {
     const updated = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,
       runValidators: true,
-    }).lean();
+    })
+      .populate("avatarFileId")
+      .lean();
+
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json(updated);
   } catch (e) {
     res.status(400).json({ error: e.message || "Failed to update profile" });
+  }
+});
+
+// GET /api/users/me - should populate avatar
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("avatarFileId")
+      .lean();
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json(user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 
