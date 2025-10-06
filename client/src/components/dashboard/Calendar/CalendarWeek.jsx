@@ -64,27 +64,21 @@ const CalendarWeek = () => {
             const slotDuration = 30;
             const slots = diffMinutes / slotDuration;
 
-            // Either get existing timeEvent or make a new one
-            const date = eventStartDate.getDate().toString() + "/" + eventStartDate.getMonth().toString() + "/" + eventStartDate.getFullYear().toString()
+            const date = `${eventStartDate.getDate()}/${eventStartDate.getMonth()}/${ eventStartDate.getFullYear()}`;
             let timeEvent;
             if (dayTimeEvent[date]) {
                 timeEvent = dayTimeEvent[date];
-                taskNumber += 1
+                taskNumber += 1;
             } else {
                 timeEvent = {};
-                taskNumber = 0
-            }   
+                taskNumber = 0;
+            }
 
-            // Slice the current event into slots
             for (let j = 0; j < slots; j++) {
                 const start = new Date(eventStartDate.getTime() + j * 30 * 60 * 1000);
                 let id = start.getHours();
 
-                if (start.getMinutes() === 0) {
-                    id = id + ":00";
-                } else {
-                    id = id + ":30";
-                }
+                id = start.getMinutes() === 0 ? id + ":00" : id + ":30";
 
                 const object = {
                     notes: curEvent.notes,
@@ -98,20 +92,19 @@ const CalendarWeek = () => {
                     timeEvent[id] = [object];
                 }
             }
-
             dayTimeEvent[date] = timeEvent;
         }
+
         for (const day in dayTimeEvent) {
             if (!Object.hasOwn(dayTimeEvent, day)) continue;
-            const curDay = dayTimeEvent[day]
-            let numberOfOverlapped = 0
-            // Finding the maximum number of overlapping events in a day
+            const curDay = dayTimeEvent[day];
+            let numberOfOverlapped = 0;
+
             for (const slot in curDay) {
                 if (!Object.hasOwn(curDay, slot)) continue;
-                numberOfOverlapped = Math.max(numberOfOverlapped, curDay[slot].length)
+                numberOfOverlapped = Math.max(numberOfOverlapped, curDay[slot].length);
             }
-            
-            // For every slot in the current day
+
             for (const slot in curDay) {
                 if (!Object.hasOwn(curDay, slot)) continue;
                 // Get the list of tasks in that slot
@@ -130,34 +123,31 @@ const CalendarWeek = () => {
             }
         }
 
-        return dayTimeEvent
-    }
+    return dayTimeEvent;
+}
 
-    const processedEvents = processEvents(events)
-    const currentDate = new Date()
-    const [calendarDate, setCalendarDate] = useState(currentDate)
-    const [calendarMonth, setCalendarMonth] = useState(currentDate.getMonth());
-    const [calendarYear, setCalendarYear] = useState(currentDate.getFullYear());
+    const processedEvents = processEvents(events);
+    const [calendarDate, setCalendarDate] = useState(new Date());
+    const [calendarMonth, setCalendarMonth] = useState(calendarDate.getMonth());
+    const [calendarYear, setCalendarYear] = useState(calendarDate.getFullYear());
 
-    function getMondayDate() {
-        // Convert the day index such that Monday is at the zero index
-        const dayIndex = calendarDate.getDay() === 0 ? 6 : calendarDate.getDay() - 1;
-        const calendarMonday = new Date(calendarDate);
-        calendarMonday.setDate(calendarDate.getDate() - dayIndex)
-        return calendarMonday
+    function getMondayDate(date) {
+        const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+        const calendarMonday = new Date(date);
+        calendarMonday.setDate(date.getDate() - dayIndex);
+        return calendarMonday;
     }
 
     const getCalendarWeek = (date) => {
-        // Return the list of date in the calendar week
-        const calendarMondayDate = getMondayDate(date)
+        const calendarMondayDate = getMondayDate(date);
         return Array.from({ length: 7 }, (_, i) => {
-            const calendarDayDate = new Date(calendarMondayDate)
+            const calendarDayDate = new Date(calendarMondayDate);
             calendarDayDate.setDate(calendarMondayDate.getDate() + i);
             return calendarDayDate;
         });
     };
 
-    const [calendarWeek, setCalendarWeek] = useState(getCalendarWeek())
+    const [calendarWeek, setCalendarWeek] = useState(getCalendarWeek(calendarDate));
 
     const slots = Array.from({ length: 48 }, (_, i) => {
         const h = Math.floor(i / 2);
@@ -166,44 +156,42 @@ const CalendarWeek = () => {
     });
 
     const prevWeek = () => {
-        const newDate = new Date(calendarDate)
-        newDate.setDate(newDate.getDate() - 7)
-        setCalendarDate(newDate)
+        const newDate = new Date(calendarDate);
+        newDate.setDate(newDate.getDate() - 7);
+        setCalendarDate(newDate);
 
-        const calendarMondayDate = getMondayDate(newDate)
-        setCalendarWeek(getCalendarWeek(newDate))
-        setCalendarMonth(calendarMondayDate.getMonth())
-        setCalendarYear(calendarMondayDate.getFullYear())
-    }
+        const calendarMondayDate = getMondayDate(newDate);
+        setCalendarWeek(getCalendarWeek(newDate));
+        setCalendarMonth(calendarMondayDate.getMonth());
+        setCalendarYear(calendarMondayDate.getFullYear());
+    };
 
     const nextWeek = () => {
-        console.log("Before: ",calendarDate)
-        const newDate = new Date(calendarDate)
-        newDate.setDate(newDate.getDate() + 7)
-        setCalendarDate(newDate)
-        
-        const calendarMondayDate = getMondayDate(newDate)
-        setCalendarWeek(getCalendarWeek(newDate))
-        setCalendarMonth(calendarMondayDate.getMonth())
-        setCalendarYear(calendarMondayDate.getFullYear())
-        console.log("After: ",calendarDate)
-    }
+        const newDate = new Date(calendarDate);
+        newDate.setDate(newDate.getDate() + 7);
+        setCalendarDate(newDate);
+
+        const calendarMondayDate = getMondayDate(newDate);
+        setCalendarWeek(getCalendarWeek(newDate));
+        setCalendarMonth(calendarMondayDate.getMonth());
+        setCalendarYear(calendarMondayDate.getFullYear());
+    };
 
     return (
         <div className="calendarweek">
             <div className="calendarweek-title">
                 <div className="calendarweek-title-button-wrapper">
-                    <button className="calendarweek-title-button">
-                        <SlArrowLeft className="calendarweek-title-icon" onClick={prevWeek} />
+                    <button className="calendarweek-title-button" onClick={prevWeek}>
+                        <SlArrowLeft className="calendarweek-title-icon" />
                     </button>
                 </div>
                 <div className="calendarweek-title-month-wrapper">
-                    <h2 className="calendarweek-title-month">{getMondayDate(calendarDate).getFullYear()}</h2>
-                    <h2 className="calendarweek-title-month">{monthsOfYear[getMondayDate(calendarDate).getMonth()]}</h2>
+                    <h2 className="calendarweek-title-month">{calendarYear}</h2>
+                    <h2 className="calendarweek-title-month">{monthsOfYear[calendarMonth]}</h2>
                 </div>
                 <div className="calendarweek-title-button-wrapper">
-                    <button className="calendarweek-title-button">
-                        <SlArrowRight className="calendarweek-title-icon" onClick={nextWeek} />
+                    <button className="calendarweek-title-button" onClick={nextWeek}>
+                        <SlArrowRight className="calendarweek-title-icon" />
                     </button>
                 </div>
             </div>
@@ -213,32 +201,40 @@ const CalendarWeek = () => {
                         <tr className="calendarweek-header-row">
                             <th className="calendarweek-header-row-time">Time</th>
                             {
-                                calendarWeek.map(date => (
-                                    <th className="calendarweek-header-row-day" colSpan="1">
-                                        <div>{date.getDay() - 1 >= 0 ? daysOfWeek[date.getDay() - 1] : daysOfWeek[6]}</div>
-                                        <div>{date.getDate()}</div>
-                                    </th>
-                                ))
-                            }
+                                calendarWeek.map((date) => (
+                                <th key={date.toISOString()} className="calendarweek-header-row-day">
+                                    <div>{date.getDay() - 1 >= 0 ? daysOfWeek[date.getDay() - 1] : daysOfWeek[6]}</div>
+                                    <div>{date.getDate()}</div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="calendarweek-body">
-                        {slots.map((slot, i) => (
-                            <tr className="calendarweek-body-row" id={slot.label}>
-                                {slot.minute === "00" && <td className="calendarweek-body-row-time" rowSpan="2">{`${slot.hour}:${slot.minute}`}</td>}
+                        {slots.map((slot) => (
+                            <tr key={slot.label} className="calendarweek-body-row" id={slot.label}>
+                                {slot.minute === "00" && (
+                                    <td className="calendarweek-body-row-time" rowSpan="2">{`${ slot.hour }:${ slot.minute } `}</td>
+                                )}
                                 {calendarWeek.map((date) => {
-                                    const dateMonthYear = date.getDate() + "/" + date.getMonth() + "/" + date.getFullYear() 
+                                    const dateMonthYear = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()}`;
                                     if (dateMonthYear in processedEvents && slot.label in processedEvents[dateMonthYear]) {
-                                        return <td style={{ background: "red", borderBottom:"none" }} className="calendarweek-body-row-day" id={`${date.getDate()}-${slot.label}`}></td>;
+                                        return (
+                                            <td
+                                                key={`${ dateMonthYear } -${ slot.label } `}
+                                                style={{ background: "red", borderBottom: "none" }}
+                                                className="calendarweek-body-row-day"
+                                            ></td>
+                                        );
                                     }
-
-                                    return <td className="calendarweek-body-row-day" id={`${dateMonthYear}-${slot.label}`}></td>;
-
-
+                                    return (
+                                        <td
+                                            key={`${ dateMonthYear } -${ slot.label } `}
+                                            className="calendarweek-body-row-day"
+                                        ></td>
+                                    );
                                 })}
                             </tr>
-                        ))
-                        }
+                        ))}
                     </tbody>
                 </table>
             </div>
