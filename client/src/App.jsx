@@ -77,11 +77,11 @@ const App = () => {
           <Route
             path="/profile"
             element={
-              <ProfilePage />
+              // <ProfilePage />
 
-              // <RequireAuth>
-              //   <ProfilePage />
-              // </RequireAuth>
+              <RequireAuth>
+                <ProfilePage />
+              </RequireAuth>
             }
           />
           <Route
@@ -95,11 +95,11 @@ const App = () => {
           <Route
             path="/access"
             element={
-               <AccessPage />
+              //  <AccessPage />
               
-              // <RequireAuth>
-              //   <AccessPage />
-              // </RequireAuth>
+              <RequireAuth>
+                <AccessPage />
+              </RequireAuth>
             }
           />
           <Route
@@ -136,7 +136,9 @@ const App = () => {
           />
           <Route
             path="/budget-reports"
+            
             element={
+              //  <BudgetPage />
               <RequireAuth>
                 <BudgetPage />
               </RequireAuth>

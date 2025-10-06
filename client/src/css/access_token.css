@@ -115,6 +115,8 @@ button.btn {
 }
 .container .card_res input {
   margin: 10px 0;
+  font-family: "Inria Serif", serif;
+  font-weight: 400;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
