@@ -1,7 +1,7 @@
 {
   "name": "care-scheduler",
   "version": "1.0.0",
-  "description": "Care Scheduler MERN Application",
+  "description": "Care Scheduler Application",
   "engines": {
     "node": "22.x",
     "npm": "10.x"
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "concurrently \"cd client && npm i && npm run build\" \"cd server && npm i && npm run dev\"",
-    "heroku-postbuild": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci"
+    "heroku-postbuild": "npm --prefix client install && npm --prefix client run build && npm --prefix server ci"
   },
   "dependencies": {
     "cloudinary": "^1.41.3",
