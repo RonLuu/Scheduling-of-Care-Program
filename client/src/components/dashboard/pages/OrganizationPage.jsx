@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { BiBuilding, BiEdit, BiLogOut } from "react-icons/bi";
-import NavigationTab from "../../NavigationTab";
+import Select from 'react-select';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+// import NavigationTab from "../../NavigationTab";
+import Header from "../../Header"
 import useAuth from "../hooks/useAuth";
 
 function OrganizationPage() {
@@ -14,6 +18,17 @@ function OrganizationPage() {
   const [orgSaveMsg, setOrgSaveMsg] = useState("");
   const [editing, setEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // for the select 
+  const [isOrgOpen, setIsOrgOpen] = useState(false);  
+  const orgOptions = orgs.map((o) => ({
+  value: o._id,
+  label: o.name,
+  }));
+
+  const selectedOrgOption = orgOptions.find(
+    (option) => option.value === pendingOrgId
+  );
+  // end edit
 
   const refreshMe = async () => {
     try {
@@ -174,39 +189,36 @@ function OrganizationPage() {
   };
 
   return (
-    <div className="page">
-      <NavigationTab />
-      <div className="page-main">
-        <div className="organization-container">
-          <div className="org-header">
-            <BiBuilding className="org-icon" />
-            <h1>Organization Settings</h1>
-          </div>
+    <div className="access-page" >
 
+      <Header title="Organization Settings" />
+      <div className="container">
+        <div className="card_res">
+      
           {/* Current Organization Status */}
-          <div className="org-status-card">
+          <div>
             <h2>Current Organization</h2>
             {currentOrg ? (
-              <div className="current-org-info">
-                <div className="org-name">
-                  <span className="label">Organization:</span>
+              <div className="">
+                <div className="">
+                  <span className="">Organization:</span>
                   <span className="value">{currentOrg.name}</span>
                 </div>
-                <div className="org-id">
-                  <span className="label">ID:</span>
-                  <code className="value">{currentOrg._id}</code>
+                <div className="">
+                  <span className="">ID:</span>
+                  <code className="">{currentOrg._id}</code>
                 </div>
                 {!editing && (
-                  <div className="org-actions">
+                  <div className="">
                     <button
-                      className="btn-secondary"
+                      className="btn"
                       onClick={() => setEditing(true)}
                       disabled={isProcessing}
                     >
                       <BiEdit /> Change Organization
                     </button>
                     <button
-                      className="btn-danger"
+                      className="btn"
                       onClick={handleLeaveOrganization}
                       disabled={isProcessing}
                     >
@@ -216,17 +228,18 @@ function OrganizationPage() {
                 )}
               </div>
             ) : (
-              <div className="no-org-info">
-                <p className="warning-text">
+              //when user not have organization
+              <div className="">
+                <p className="">
                   You are not currently associated with any organization.
                 </p>
-                <p className="info-text">
+                <p className="">
                   You must set your organization before you can add or manage
                   clients.
                 </p>
                 {!editing && (
                   <button
-                    className="btn-primary"
+                    className="btn"
                     onClick={() => setEditing(true)}
                     disabled={isProcessing}
                   >
@@ -239,7 +252,7 @@ function OrganizationPage() {
 
           {/* Edit Organization Section */}
           {editing && (
-            <div className="org-edit-card">
+            <div className="">
               <h3>
                 {currentOrg ? "Change Organization" : "Join Organization"}
               </h3>
@@ -247,26 +260,44 @@ function OrganizationPage() {
               {loadingOrgs ? (
                 <div className="loading">Loading organizations...</div>
               ) : orgErr ? (
-                <div className="error-message">Error: {orgErr}</div>
+                // main content
+                <div className="error">Error: {orgErr}</div>
               ) : (
                 <>
-                  <div className="form-group">
-                    <label htmlFor="orgSelect">Select Organization</label>
-                    <select
-                      id="orgSelect"
-                      className="org-select"
-                      value={pendingOrgId}
-                      onChange={(e) => setPendingOrgId(e.target.value)}
-                      disabled={isProcessing}
-                    >
-                      <option value="">— Select organization —</option>
-                      {orgs.map((o) => (
-                        <option key={o._id} value={o._id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <div className="">
+                    <label htmlFor="">Select Organization</label>
+                    <div className="select-container access-select">
+                    <Select
+                      options={orgOptions}
+                      value={selectedOrgOption || null}
+                      onChange={(option) => setPendingOrgId(option ? option.value : "")}
+                      onMenuOpen={() => setIsOrgOpen(true)}
+                      onMenuClose={() => setIsOrgOpen(false)}
+                      classNamePrefix="org-select"
+                      placeholder="— Select organization —"
+                      isClearable
+                      unstyled
+                      isDisabled={isProcessing}
+                      components={{
+                        DropdownIndicator: () => null,
+                        IndicatorSeparator: () => null,
+                      }}
+                      classNames={{
+                        control: () => 'select__control',
+                        menu: () => 'select__menu',
+                        option: ({ isFocused, isSelected }) => 
+                          `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
+                        placeholder: () => 'select__placeholder',
+                        singleValue: () => 'select__single-value',
+                        clearIndicator: () => 'client-select__clear-indicator',
+                      }}
+                    />
+                    <FontAwesomeIcon
+                      icon={faChevronDown}
+                      className={`icon access-icon ${isOrgOpen ? "open" : "close"}`}
+                    />
+                     </div>
+                  </div>             
 
                   {(me?.role === "Family" || me?.role === "PoA") &&
                     currentOrg &&
@@ -284,14 +315,14 @@ function OrganizationPage() {
 
                   <div className="edit-actions">
                     <button
-                      className="btn-primary"
+                      className="btn"
                       onClick={handleSaveOrganization}
                       disabled={!pendingOrgId || isProcessing}
                     >
                       {isProcessing ? "Processing..." : "Save"}
                     </button>
                     <button
-                      className="btn-secondary"
+                      className="btn"
                       onClick={handleCancelEdit}
                       disabled={isProcessing}
                     >
@@ -356,279 +387,7 @@ function OrganizationPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .page {
-          min-height: 100vh;
-          background: #f3f4f6;
-        }
-
-        .page-main {
-          max-width: 1000px;
-          margin: 0 auto;
-          padding: 2rem 1rem;
-        }
-
-        .organization-container {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .org-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .org-icon {
-          font-size: 2.5rem;
-          color: #3b82f6;
-        }
-
-        .org-header h1 {
-          margin: 0;
-          color: #111827;
-          font-size: 2rem;
-        }
-
-        .org-status-card,
-        .org-edit-card,
-        .info-card {
-          background: white;
-          border-radius: 0.5rem;
-          padding: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .org-status-card h2,
-        .org-edit-card h3,
-        .info-card h3 {
-          margin: 0 0 1rem 0;
-          color: #111827;
-        }
-
-        .current-org-info {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .org-name,
-        .org-id {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .label {
-          font-weight: 600;
-          color: #6b7280;
-          min-width: 100px;
-        }
-
-        .value {
-          color: #111827;
-          font-size: 1rem;
-        }
-
-        .org-id code {
-          background: #f3f4f6;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          font-family: monospace;
-          font-size: 0.875rem;
-        }
-
-        .org-actions {
-          display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-
-        .no-org-info {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .warning-text {
-          color: #dc2626;
-          font-weight: 600;
-          margin: 0;
-        }
-
-        .info-text {
-          color: #6b7280;
-          margin: 0;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .form-group label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.875rem;
-        }
-
-        .org-select {
-          width: 100%;
-          padding: 0.625rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          font-size: 1rem;
-          background: white;
-        }
-
-        .org-select:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .migration-warning {
-          background: #fef3c7;
-          border: 1px solid #fbbf24;
-          border-radius: 0.375rem;
-          padding: 1rem;
-          margin-bottom: 1rem;
-          color: #92400e;
-        }
-
-        .migration-warning strong {
-          display: block;
-          margin-bottom: 0.5rem;
-        }
-
-        .migration-warning ul {
-          margin: 0.5rem 0 0 1.5rem;
-          padding: 0;
-        }
-
-        .edit-actions {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .btn-primary,
-        .btn-secondary,
-        .btn-danger {
-          padding: 0.625rem 1.25rem;
-          border-radius: 0.375rem;
-          font-weight: 600;
-          cursor: pointer;
-          border: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
-        }
-
-        .btn-secondary {
-          background: #f3f4f6;
-          color: #374151 !important;
-          border: 1px solid #d1d5db;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #e5e7eb;
-        }
-
-        .btn-danger {
-          background: #fee2e2;
-          color: #991b1b !important;
-          border: 1px solid #fecaca;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-          background: #fecaca;
-        }
-
-        button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .status-message {
-          padding: 1rem;
-          border-radius: 0.375rem;
-          margin-top: 1rem;
-        }
-
-        .status-message.success {
-          background: #d1fae5;
-          color: #065f46;
-          border: 1px solid #a7f3d0;
-        }
-
-        .status-message.error {
-          background: #fee2e2;
-          color: #991b1b;
-          border: 1px solid #fecaca;
-        }
-
-        .loading {
-          color: #6b7280;
-          font-style: italic;
-          padding: 1rem;
-        }
-
-        .error-message {
-          color: #dc2626;
-          padding: 1rem;
-          background: #fee2e2;
-          border-radius: 0.375rem;
-        }
-
-        .info-content {
-          color: #374151;
-        }
-
-        .info-content h4 {
-          margin: 1rem 0 0.5rem 0;
-          color: #111827;
-        }
-
-        .info-content ul {
-          margin: 0.5rem 0 0 1.5rem;
-          padding: 0;
-          color: #6b7280;
-        }
-
-        .info-content li {
-          margin-bottom: 0.25rem;
-        }
-
-        @media (max-width: 768px) {
-          .page-main {
-            padding: 1rem 0.5rem;
-          }
-
-          .org-actions,
-          .edit-actions {
-            flex-direction: column;
-          }
-
-          button {
-            width: 100%;
-            justify-content: center;
-          }
-        }
-      `}</style>
+    
     </div>
   );
 }

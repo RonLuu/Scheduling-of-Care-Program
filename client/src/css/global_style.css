@@ -14,7 +14,7 @@
   --h5-size: 0.875rem;
   --h6-size: 0.75rem;
   --body-font-size: 0.875rem;
-  --font-size-small: 0.75rem;
+  --font-size-small: 0.9rem;
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -64,7 +64,7 @@ h3 {
   font-size: 1.25rem;
 }
 
-button.btn {
+.btn {
   color: #F6FAFF;
   background-color: #2C3F70;
   border-radius: 10px;
@@ -76,6 +76,9 @@ button.btn {
   font-size: 16px;
   line-height: 1.2;
   display: block;
+}
+.btn:hover {
+  background-color: #A5231C;
 }
 
 .container {
@@ -92,7 +95,7 @@ button.btn {
   font-weight: 400;
 }
 .container .card_res {
-  margin: 20px 0;
+  margin: 20px auto;
   padding: 24px;
   background-color: #F6FAFF;
   border-radius: 8px;
@@ -149,9 +152,9 @@ button.btn {
   padding: var(--spacing-md) var(--spacing-lg);
   padding-left: calc(var(--nav-width) + var(--spacing-lg));
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  position: relative;
   font-size: var(--h3-size);
   height: var(--header-height-desktop);
 }
@@ -159,6 +162,20 @@ button.btn {
   .header {
     height: var(--header-height-mobile);
     font-size: var(--font-size-small);
+  }
+}
+.header h1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+@media screen and (max-width: 768px) {
+  .header h1 {
+    position: static;
+    transform: none;
+    font-size: var(--font-size-small);
+    margin-right: auto;
   }
 }
 .header .navigation-tab {
@@ -188,4 +205,11 @@ button.btn {
 .header .link a {
   text-decoration: none;
   color: inherit;
+}
+
+.error {
+  position: absolute;
+  color: #ff0000;
+  font-size: 14px;
+  background-color: ligthen(#A5231C, 0.4);
 }/*# sourceMappingURL=global_style.css.map */

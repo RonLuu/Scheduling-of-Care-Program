@@ -33,7 +33,7 @@ $red: #ff0000;
   --h5-size: 0.875rem;
   --h6-size: 0.75rem;
   --body-font-size: 0.875rem;
-  --font-size-small: 0.75rem;
+  --font-size-small: 0.9rem;
 
   // Spacing Scale
   --spacing-xs: 0.25rem;
@@ -122,7 +122,7 @@ h3 {
 }
 
 // Button Styles
-button.btn {
+.btn {
   color: $white;
   background-color: $blueberry;
   border-radius: 10px;
@@ -134,6 +134,10 @@ button.btn {
   font-size: 16px;
   line-height: 1.2;
   display: block;
+  &:hover
+  {
+    background-color: $strawberry;
+  }
 }
 
 // Container Component
@@ -152,7 +156,7 @@ button.btn {
 
 
   .card_res {
-    margin: 20px 0;
+    margin: 20px auto;
     padding: 24px;
     background-color: $white;
     border-radius: 8px;
@@ -207,20 +211,34 @@ button.btn {
 // Header Component
 .header {
   background-color: $meringue;
-  font-family: 'Inria Serif', serif;;
+  font-family: 'Inria Serif', serif;
   color: $blueberry;
   padding: var(--spacing-md) var(--spacing-lg);
   padding-left: calc(var(--nav-width) + var(--spacing-lg));
-  display: flex;
-  flex-direction: row;
+  display: flex;  // Changed back to flex
   justify-content: space-between;
   align-items: center;
+  position: relative;  // Added for absolute positioning context
   font-size: var(--h3-size);
   height: var(--header-height-desktop);
 
   @include respond(sm) {
     height: var(--header-height-mobile);
     font-size: var(--font-size-small);
+  }
+
+  h1 {
+    position: absolute;  
+    left: 50%;          
+    transform: translateX(-50%);  
+    white-space: nowrap; 
+    @include respond(sm) {
+      position: static;  // Remove absolute positioning on mobile
+      transform: none;   // Remove centering transform
+      font-size: var(--font-size-small);
+      margin-right: auto;  // Push to the left
+    }
+
   }
 
   .navigation-tab {
@@ -242,7 +260,7 @@ button.btn {
   }
 
   .link {
-    margin-left: auto;
+    margin-left: auto;  // Keeps it on the right
     display: flex;
     align-items: center;
     line-height: 1;
@@ -252,4 +270,12 @@ button.btn {
       color: inherit;
     }
   }
+}
+
+.error
+{
+    position:absolute;
+    color:$red;
+    font-size: 14px;
+    background-color: ligthen($strawberry, 0.4);
 }
