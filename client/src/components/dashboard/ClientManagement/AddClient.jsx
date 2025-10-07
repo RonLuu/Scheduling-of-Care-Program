@@ -18,13 +18,22 @@ function AddClient({ me, jwt, setClients }) {
     mobilityNeeds: "",
     communicationNeeds: "",
     dietaryRequirements: "",
-    customFields: [],
+    customMedicalFields: [], // New: for medical custom fields
+    customAdditionalFields: [], // New: for additional custom fields
   });
 
   const [adding, setAdding] = React.useState(false);
   const [addErr, setAddErr] = React.useState("");
-  const [newFieldTitle, setNewFieldTitle] = React.useState("");
-  const [newFieldValue, setNewFieldValue] = React.useState("");
+
+  // Medical custom field inputs
+  const [newMedicalFieldTitle, setNewMedicalFieldTitle] = React.useState("");
+  const [newMedicalFieldValue, setNewMedicalFieldValue] = React.useState("");
+
+  // Additional custom field inputs
+  const [newAdditionalFieldTitle, setNewAdditionalFieldTitle] =
+    React.useState("");
+  const [newAdditionalFieldValue, setNewAdditionalFieldValue] =
+    React.useState("");
 
   const australianStates = [
     { value: "", label: "Select State" },
@@ -49,24 +58,85 @@ function AddClient({ me, jwt, setClients }) {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const addCustomField = () => {
-    if (newFieldTitle && newFieldValue) {
+  const addMedicalCustomField = () => {
+    if (newMedicalFieldTitle && newMedicalFieldValue) {
       setFormData((prev) => ({
         ...prev,
-        customFields: [
-          ...prev.customFields,
-          { title: newFieldTitle, value: newFieldValue },
+        customMedicalFields: [
+          ...prev.customMedicalFields,
+          { title: newMedicalFieldTitle, value: newMedicalFieldValue },
         ],
       }));
-      setNewFieldTitle("");
-      setNewFieldValue("");
+      setNewMedicalFieldTitle("");
+      setNewMedicalFieldValue("");
     }
   };
 
-  const removeCustomField = (index) => {
+  const removeMedicalCustomField = (index) => {
     setFormData((prev) => ({
       ...prev,
-      customFields: prev.customFields.filter((_, i) => i !== index),
+      customMedicalFields: prev.customMedicalFields.filter(
+        (_, i) => i !== index
+      ),
+    }));
+  };
+
+  const updateMedicalFieldTitle = (index, newTitle) => {
+    setFormData((prev) => ({
+      ...prev,
+      customMedicalFields: prev.customMedicalFields.map((field, i) =>
+        i === index ? { ...field, title: newTitle } : field
+      ),
+    }));
+  };
+
+  const updateMedicalFieldValue = (index, newValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      customMedicalFields: prev.customMedicalFields.map((field, i) =>
+        i === index ? { ...field, value: newValue } : field
+      ),
+    }));
+  };
+
+  const addAdditionalCustomField = () => {
+    if (newAdditionalFieldTitle && newAdditionalFieldValue) {
+      setFormData((prev) => ({
+        ...prev,
+        customAdditionalFields: [
+          ...prev.customAdditionalFields,
+          { title: newAdditionalFieldTitle, value: newAdditionalFieldValue },
+        ],
+      }));
+      setNewAdditionalFieldTitle("");
+      setNewAdditionalFieldValue("");
+    }
+  };
+
+  const removeAdditionalCustomField = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.filter(
+        (_, i) => i !== index
+      ),
+    }));
+  };
+
+  const updateAdditionalFieldTitle = (index, newTitle) => {
+    setFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.map((field, i) =>
+        i === index ? { ...field, title: newTitle } : field
+      ),
+    }));
+  };
+
+  const updateAdditionalFieldValue = (index, newValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.map((field, i) =>
+        i === index ? { ...field, value: newValue } : field
+      ),
     }));
   };
 
@@ -82,7 +152,19 @@ function AddClient({ me, jwt, setClients }) {
     setAddErr("");
 
     try {
-      // Create PersonWithNeeds with new fields
+      // Combine all custom fields with categories
+      const allCustomFields = [
+        ...formData.customMedicalFields.map((f) => ({
+          ...f,
+          category: "Medical",
+        })),
+        ...formData.customAdditionalFields.map((f) => ({
+          ...f,
+          category: "Additional",
+        })),
+      ];
+
+      // Create PersonWithNeeds
       const r1 = await fetch("/api/person-with-needs", {
         method: "POST",
         headers: {
@@ -114,7 +196,7 @@ function AddClient({ me, jwt, setClients }) {
             communicationNeeds: formData.communicationNeeds,
             dietaryRequirements: formData.dietaryRequirements,
           },
-          customFields: formData.customFields,
+          customFields: allCustomFields,
           organizationId: me.organizationId,
         }),
       });
@@ -190,7 +272,8 @@ function AddClient({ me, jwt, setClients }) {
         mobilityNeeds: "",
         communicationNeeds: "",
         dietaryRequirements: "",
-        customFields: [],
+        customMedicalFields: [],
+        customAdditionalFields: [],
       });
     } catch (err) {
       setAddErr(err.message || String(err));
@@ -201,7 +284,13 @@ function AddClient({ me, jwt, setClients }) {
 
   return (
     <div className="card">
-      <h3>Add a client (Person with Special Needs)</h3>
+      <h3>Add a Client (Person with Special Needs)</h3>
+      <p className="card-description">
+        Fill in the client's information below. Fields marked with * are
+        required. You can add custom fields in both Medical and Additional
+        Information sections as needed.
+      </p>
+
       <form onSubmit={addClient}>
         {/* Basic Information */}
         <div className="section">
@@ -314,6 +403,12 @@ function AddClient({ me, jwt, setClients }) {
         {/* Medical Information */}
         <div className="section">
           <h4>Medical Information</h4>
+          <p className="section-description">
+            Document the client's medical conditions, medications, and care
+            needs. You can add custom medical fields below if you need to record
+            additional health information.
+          </p>
+
           <div>
             <label>Medical problems/conditions</label>
             <textarea
@@ -368,35 +463,124 @@ function AddClient({ me, jwt, setClients }) {
               rows="2"
             />
           </div>
+
+          {/* Custom Medical Fields */}
+          <div className="custom-fields-subsection">
+            <h5>Add Custom Medical Information</h5>
+            <p className="subsection-hint">
+              Add any additional medical details not covered above (e.g., Vision
+              needs, Hearing aids, etc.)
+            </p>
+
+            {formData.customMedicalFields.length > 0 && (
+              <div className="custom-fields-list">
+                {formData.customMedicalFields.map((field, index) => (
+                  <div key={index} className="custom-field-display">
+                    <div className="field-content">
+                      <div className="field-input-group">
+                        <label>Header:</label>
+                        <input
+                          type="text"
+                          value={field.title}
+                          onChange={(e) =>
+                            updateMedicalFieldTitle(index, e.target.value)
+                          }
+                          placeholder="e.g., Vision needs"
+                        />
+                      </div>
+                      <div className="field-input-group">
+                        <label>Details:</label>
+                        <textarea
+                          value={field.value}
+                          onChange={(e) =>
+                            updateMedicalFieldValue(index, e.target.value)
+                          }
+                          rows="2"
+                          placeholder="Enter details..."
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeMedicalCustomField(index)}
+                      className="remove-btn"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="custom-field-input">
+              <div>
+                <label>Header</label>
+                <input
+                  placeholder="e.g., Vision needs"
+                  value={newMedicalFieldTitle}
+                  onChange={(e) => setNewMedicalFieldTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label>Details</label>
+                <textarea
+                  placeholder="e.g., Requires prescription glasses"
+                  value={newMedicalFieldValue}
+                  onChange={(e) => setNewMedicalFieldValue(e.target.value)}
+                  rows="2"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addMedicalCustomField}
+                className="add-field-btn"
+              >
+                Add Field
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Custom Fields */}
+        {/* Additional Information */}
         <div className="section">
           <h4>Additional Information</h4>
-          <div className="custom-field-input">
-            <input
-              placeholder="What is it about?"
-              value={newFieldTitle}
-              onChange={(e) => setNewFieldTitle(e.target.value)}
-            />
-            <input
-              placeholder="Details"
-              value={newFieldValue}
-              onChange={(e) => setNewFieldValue(e.target.value)}
-            />
-            <button type="button" onClick={addCustomField}>
-              Add Information
-            </button>
-          </div>
+          <p className="section-description">
+            Add any other relevant information about the client that doesn't fit
+            in the categories above (e.g., Hobbies, Preferences, Special notes,
+            etc.)
+          </p>
 
-          {formData.customFields.length > 0 && (
+          {formData.customAdditionalFields.length > 0 && (
             <div className="custom-fields-list">
-              {formData.customFields.map((field, index) => (
-                <div key={index} className="custom-field-item">
-                  <strong>{field.title}:</strong> {field.value}
+              {formData.customAdditionalFields.map((field, index) => (
+                <div key={index} className="custom-field-display">
+                  <div className="field-content">
+                    <div className="field-input-group">
+                      <label>Header:</label>
+                      <input
+                        type="text"
+                        value={field.title}
+                        onChange={(e) =>
+                          updateAdditionalFieldTitle(index, e.target.value)
+                        }
+                        placeholder="e.g., Hobbies"
+                      />
+                    </div>
+                    <div className="field-input-group">
+                      <label>Details:</label>
+                      <textarea
+                        value={field.value}
+                        onChange={(e) =>
+                          updateAdditionalFieldValue(index, e.target.value)
+                        }
+                        rows="2"
+                        placeholder="Enter details..."
+                      />
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => removeCustomField(index)}
+                    onClick={() => removeAdditionalCustomField(index)}
                     className="remove-btn"
                   >
                     Remove
@@ -405,10 +589,37 @@ function AddClient({ me, jwt, setClients }) {
               ))}
             </div>
           )}
+
+          <div className="custom-field-input">
+            <div>
+              <label>Header</label>
+              <input
+                placeholder="e.g., Hobbies, Preferences"
+                value={newAdditionalFieldTitle}
+                onChange={(e) => setNewAdditionalFieldTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <label>Details</label>
+              <textarea
+                placeholder="e.g., Enjoys painting, Loves outdoor activities"
+                value={newAdditionalFieldValue}
+                onChange={(e) => setNewAdditionalFieldValue(e.target.value)}
+                rows="2"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addAdditionalCustomField}
+              className="add-field-btn"
+            >
+              Add Field
+            </button>
+          </div>
         </div>
 
         <button disabled={adding} className="submit-btn">
-          {adding ? "Adding..." : "Add client"}
+          {adding ? "Adding..." : "Add Client"}
         </button>
         {addErr && <p style={{ color: "#b91c1c" }}>Error: {addErr}</p>}
       </form>
@@ -421,6 +632,13 @@ function AddClient({ me, jwt, setClients }) {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
+        .card-description {
+          color: #6b7280;
+          font-size: 0.875rem;
+          margin-bottom: 1.5rem;
+          line-height: 1.5;
+        }
+
         .section {
           margin-bottom: 1.5rem;
           padding-bottom: 1rem;
@@ -428,9 +646,36 @@ function AddClient({ me, jwt, setClients }) {
         }
 
         .section h4 {
-          margin-bottom: 1rem;
+          margin-bottom: 0.5rem;
           color: #374151;
           font-weight: 600;
+        }
+
+        .section-description {
+          color: #6b7280;
+          font-size: 0.8125rem;
+          margin-bottom: 1rem;
+          font-style: italic;
+          line-height: 1.4;
+        }
+
+        .custom-fields-subsection {
+          margin-top: 0;
+          padding-top: 0;
+        }
+
+        .custom-fields-subsection h5 {
+          margin-bottom: 0.25rem;
+          color: #4b5563;
+          font-size: 0.9375rem;
+          font-weight: 600;
+        }
+
+        .subsection-hint {
+          color: #9ca3af;
+          font-size: 0.75rem;
+          margin-bottom: 0.75rem;
+          font-style: italic;
         }
 
         .row {
@@ -471,14 +716,28 @@ function AddClient({ me, jwt, setClients }) {
         }
 
         .custom-field-input {
-          display: grid;
-          grid-template-columns: 1fr 1fr auto;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-          align-items: center;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-top: 0.75rem;
+          padding: 1rem;
+          background: #f9fafb;
+          border-radius: 0.375rem;
+          border: 1px dashed #d1d5db;
+        }
+        .custom-field-input > div {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .custom-field-input > div {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
         }
 
-        .custom-field-input input {
+        .custom-field-input input,
+        .custom-field-input textarea {
           width: 100%;
           min-width: 0;
           padding: 0.5rem;
@@ -488,18 +747,19 @@ function AddClient({ me, jwt, setClients }) {
           box-sizing: border-box;
         }
 
-        .custom-field-input button {
-          padding: 0.5rem 1rem;
+        .add-field-btn {
+          padding: 0.625rem 1rem;
           background: #3b82f6;
           color: white;
           border: none;
           border-radius: 0.375rem;
           cursor: pointer;
-          white-space: nowrap;
           font-size: 0.875rem;
+          font-weight: 500;
+          align-self: flex-start;
         }
 
-        .custom-field-input button:hover {
+        .add-field-btn:hover {
           background: #2563eb;
         }
 
@@ -507,27 +767,78 @@ function AddClient({ me, jwt, setClients }) {
           background: #f9fafb;
           padding: 0.75rem;
           border-radius: 0.375rem;
+          margin-bottom: 0.75rem;
         }
 
-        .custom-field-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.5rem;
-          margin-bottom: 0.5rem;
+        .custom-field-display {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 0.75rem;
+          align-items: start;
+          padding: 0.75rem;
+          margin-bottom: 0.75rem;
           background: white;
-          border-radius: 0.25rem;
+          border-radius: 0.375rem;
+          border: 1px solid #e5e7eb;
+        }
+
+        .custom-field-display:last-child {
+          margin-bottom: 0;
+        }
+
+        .field-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          min-width: 0;
+        }
+
+        .field-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .field-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .field-input-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .field-input-group label {
+          display: block;
+          margin-bottom: 0.25rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #4b5563;
+        }
+
+        .field-input-group input,
+        .field-input-group textarea {
+          width: 100%;
+          padding: 0.5rem;
+          font-size: 0.875rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
         }
 
         .remove-btn {
-          padding: 0.25rem 0.5rem;
+          padding: 0.375rem 0.625rem;
           background: #ef4444;
           color: white;
           border: none;
           border-radius: 0.25rem;
           cursor: pointer;
           font-size: 0.75rem;
-          margin-left: 1rem;
+          white-space: nowrap;
+          height: fit-content;
+          min-width: fit-content;
         }
 
         .remove-btn:hover {
@@ -553,6 +864,20 @@ function AddClient({ me, jwt, setClients }) {
         .submit-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+          .custom-field-input {
+            grid-template-columns: 1fr;
+          }
+
+          .custom-field-display {
+            grid-template-columns: 1fr;
+          }
+
+          .remove-btn {
+            width: 100%;
+          }
         }
       `}</style>
     </div>
