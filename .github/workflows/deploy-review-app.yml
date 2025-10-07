@@ -1,0 +1,156 @@
+name: Deploy Review App
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+jobs:
+  deploy-review:
+    name: Deploy Review App
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Review App Name
+        id: app-name
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g' | cut -c1-30)
+          APP_NAME="sched-care-pr-${PR_NUMBER}"
+          echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "📦 Review app name: ${APP_NAME}"
+
+      - name: Check if Review App Exists
+        id: check-app
+        run: |
+          if heroku apps:info --app ${{ steps.app-name.outputs.app_name }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ App already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ App does not exist"
+          fi
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Deploy to Heroku Review App
+        uses: akhileshns/heroku-deploy@v3.14.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ steps.app-name.outputs.app_name }}
+          heroku_email: trongducnbk43@gmail.com
+          dontautocreate: false
+          region: "us"
+          branch: ${{ github.head_ref }}
+
+      - name: Add to Pipeline (if not exists)
+        if: steps.check-app.outputs.exists == 'false'
+        run: |
+          # Try to add to pipeline, ignore if pipeline doesn't exist
+          heroku pipelines:add scheduling-of-care-pipeline --stage development --app ${{ steps.app-name.outputs.app_name }} || echo "⚠️ Could not add to pipeline (may not exist)"
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Get Review App URL
+        id: app-url
+        run: |
+          APP_URL="https://${{ steps.app-name.outputs.app_name }}.herokuapp.com"
+          echo "url=${APP_URL}" >> $GITHUB_OUTPUT
+
+      - name: Wait for App to be Ready
+        run: |
+          echo "⏳ Waiting for app to be ready..."
+          sleep 30
+
+      - name: Comment PR with Review App URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const appName = '${{ steps.app-name.outputs.app_name }}';
+            const appUrl = '${{ steps.app-url.outputs.url }}';
+            const prNumber = context.issue.number;
+
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🚀 Review App')
+            );
+
+            const body = `## 🚀 Review App Deployed!
+
+            **App Name:** \`${appName}\`  
+            **URL:** ${appUrl}  
+            **Branch:** \`${{ github.head_ref }}\`  
+            **Commit:** \`${{ github.sha }}\`.substring(0, 7)
+
+            ✅ Your changes are now available for review!
+
+            ---
+
+            <sub>This review app will be automatically destroyed when the PR is closed.</sub>`;
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }
+
+  cleanup-review:
+    name: Cleanup Review App
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    steps:
+      - name: Generate Review App Name
+        id: app-name
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          APP_NAME="sched-care-pr-${PR_NUMBER}"
+          echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Destroy Review App
+        run: |
+          echo "🗑️ Destroying review app: ${{ steps.app-name.outputs.app_name }}"
+          heroku apps:destroy --app ${{ steps.app-name.outputs.app_name }} --confirm ${{ steps.app-name.outputs.app_name }} || echo "⚠️ App may not exist or already destroyed"
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Comment PR with Cleanup Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const appName = '${{ steps.app-name.outputs.app_name }}';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🗑️ Review App Destroyed\n\n**App Name:** \`${appName}\`\n\n✅ Resources have been cleaned up.`
+            });

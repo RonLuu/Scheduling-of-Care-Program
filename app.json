@@ -1,0 +1,38 @@
+{
+  "name": "Scheduling of Care Program",
+  "description": "Care Scheduler Application",
+  "repository": "https://github.com/RonLuu/Scheduling-of-Care-Program",
+  "logo": "",
+  "keywords": ["node", "express", "react", "vite"],
+  "success_url": "/",
+  "scripts": {
+    "postdeploy": "echo 'Review app deployed successfully!'"
+  },
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "environments": {
+    "review": {
+      "formation": {
+        "web": {
+          "quantity": 1,
+          "size": "basic"
+        }
+      }
+    }
+  }
+}

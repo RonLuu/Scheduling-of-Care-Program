@@ -1,0 +1,47 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm production deployment'
+        required: true
+        default: ""
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'deploy'
+
+    environment:
+      name: production
+      url: https://scheduling-of-care.herokuapp.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Deploy to Heroku Production
+        uses: akhileshns/heroku-deploy@v3.14.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: scheduling-of-care
+          heroku_email: trongducnbk43@gmail.com
+          dontautocreate: true
+
+      - name: Create Deployment Tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          DATE=$(date +'%Y%m%d-%H%M%S')
+          git tag -a "production-$DATE" -m "Production deployment $DATE"
+          git push origin "production-$DATE"
+
+      - name: Production Deployment Success
+        run: |
+          echo "✅ Successfully deployed to production!"
+          echo "🔗 Production URL: https://scheduling-of-care.herokuapp.com"
