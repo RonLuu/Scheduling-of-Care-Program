@@ -281,7 +281,14 @@ function ClientInfoManager({ me, jwt, clients }) {
 
             {/* Access Management Section */}
             <div className="access-section">
-              <h3>Access Management</h3>
+              <h3>Access to Client</h3>
+              <p className="access-description">
+                This section shows all users who currently have access to view
+                this client's information. This includes family members, Power
+                of Attorney (PoA), admin (or manager), and general care staff
+                assigned to this client, with ability to revoke access of the
+                workers.
+              </p>
 
               {accessErr && (
                 <div className="error-message">
@@ -566,6 +573,17 @@ function ClientInfoManager({ me, jwt, clients }) {
           color: #6b7280;
           padding: 1.5rem;
           font-style: italic;
+        }
+
+        .access-description {
+          color: #6b7280;
+          font-size: 0.875rem;
+          line-height: 1.5;
+          margin: 0 0 1.25rem 0;
+          padding: 0.75rem;
+          background: #f9fafb;
+          border-left: 3px solid #3b82f6;
+          border-radius: 0.25rem;
         }
 
         @media (max-width: 768px) {
