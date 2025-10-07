@@ -320,7 +320,7 @@ function AddClient({ me, jwt, setClients }) {
               value={formData.medicalProblems}
               onChange={handleInputChange("medicalProblems")}
               placeholder="e.g., Diabetes, Heart conditions, etc."
-              rows="3"
+              rows="2"
             />
           </div>
           <div>
@@ -343,26 +343,29 @@ function AddClient({ me, jwt, setClients }) {
           </div>
           <div>
             <label>Mobility needs</label>
-            <input
+            <textarea
               value={formData.mobilityNeeds}
               onChange={handleInputChange("mobilityNeeds")}
               placeholder="e.g., Wheelchair, Walker, Assistance required"
+              rows="2"
             />
           </div>
           <div>
             <label>Communication needs</label>
-            <input
+            <textarea
               value={formData.communicationNeeds}
               onChange={handleInputChange("communicationNeeds")}
               placeholder="e.g., Sign language, Speech assistance, etc."
+              rows="2"
             />
           </div>
           <div>
             <label>Dietary requirements</label>
-            <input
+            <textarea
               value={formData.dietaryRequirements}
               onChange={handleInputChange("dietaryRequirements")}
               placeholder="e.g., Vegetarian, Gluten-free, Soft foods only"
+              rows="2"
             />
           </div>
         </div>
