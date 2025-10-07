@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "concurrently \"cd client && npm i && npm run build\" \"cd server && npm i && npm run dev\"",
-    "heroku-postbuild": "cd client && rm -rf package-lock.json node_modules && npm install && npm install @rollup/rollup-linux-x64-gnu --save-optional && npm run build && cd ../server && npm ci"
+    "heroku-postbuild": "cd client && rm -rf package-lock.json node_modules && npm install && npm install && npm run build && cd ../server && npm ci"
   },
   "dependencies": {
     "cloudinary": "^1.41.3",
