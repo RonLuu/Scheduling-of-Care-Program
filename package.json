@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server/index.js",
-    "dev": "concurrently \"cd client && npm i && npm run build\" \"cd server && npm i && npm run dev\"",
+    "dev": "concurrently \"cd client && npm install && npm run build\" \"cd server && npm install && npm run dev\"",
     "heroku-postbuild": "cd client && rm -rf package-lock.json node_modules && npm install --include=optional && npm run build && cd ../server && npm ci"
   },
   "dependencies": {
