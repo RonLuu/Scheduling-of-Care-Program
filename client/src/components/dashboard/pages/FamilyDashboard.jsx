@@ -86,8 +86,8 @@ function FamilyDashboard() {
           <div className="onboarding-guide">
             {/* Header Section */}
             <div className="onboarding-header">
-              <h2>Welcome to your care dashboard</h2>
-              <p>To get started with managing care, you'll need to follow these steps:</p>
+              <h2>Welcome to Schedule of Care</h2>
+              <p>To get started, you'll need to follow these steps:</p>
             </div>
 
             {/* Content Section */}
@@ -100,7 +100,7 @@ function FamilyDashboard() {
                   <h3>Join an Organization</h3>
                   <p>
                     {hasJoinedOrganization
-                      ? 'Great! You have successfully joined an organization and can now proceed to add clients.'
+                      ? 'You have successfully joined an organization and can now proceed to add clients.'
                       : 'First, you need to join a care organization that manages clients. This is required before you can add or access any clients.'
                     }
                   </p>
@@ -132,7 +132,7 @@ function FamilyDashboard() {
                 <div className="step-number">3</div>
                 <div className="step-content">
                   <h3>Start Managing Care</h3>
-                  <p>With clients added, you'll be able to manage tasks, supplies, schedules, and budgets all from this dashboard.</p>
+                  <p>With clients added, you'll be able to manage tasks, supplies, schedules, and budgets from this dashboard.</p>
                 </div>
               </div>
             </div>
@@ -443,8 +443,7 @@ function FamilyDashboard() {
           <div className="dashboard-header">
             <div className="header-content">
               <div className="header-title">
-                <h1>Care Dashboard</h1>
-                <p>Manage all aspects of care for your loved ones</p>
+                <h1>Schedule of Care</h1>
               </div>
 
               {organizationData && (
@@ -636,7 +635,7 @@ function FamilyDashboard() {
         }
 
         .header-title {
-          text-align: center;
+          text-align: left;
           flex: 1;
         }
 
@@ -1167,7 +1166,6 @@ function OverviewSection({ client, jwt }) {
     supplies: { total: 0, needsPurchase: 0, lowStock: 0 },
     budget: { spent: 0, allocated: 0, remaining: 0 },
     recentActivity: [],
-    alerts: [],
     accessRequests: [],
     loading: true,
     error: null
@@ -1238,30 +1236,12 @@ function OverviewSection({ client, jwt }) {
           }))
         ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
 
-        // Generate alerts
-        const alerts = [];
-        if (accessRequests.length > 0) {
-          alerts.push({ type: 'urgent', message: `${accessRequests.length} access request(s) pending approval` });
-        }
-        if (taskStats.overdue > 0) {
-          alerts.push({ type: 'warning', message: `${taskStats.overdue} task(s) overdue` });
-        }
-        if (supplyStats.lowStock > 0) {
-          alerts.push({ type: 'warning', message: `${supplyStats.lowStock} supply item(s) running low` });
-        }
-        if (budgetStats.remaining < 0) {
-          alerts.push({ type: 'error', message: `Budget exceeded by $${Math.abs(budgetStats.remaining).toFixed(2)}` });
-        }
-        if (alerts.length === 0) {
-          alerts.push({ type: 'success', message: 'All systems running smoothly' });
-        }
 
         setOverviewData({
           tasks: taskStats,
           supplies: supplyStats,
           budget: budgetStats,
           recentActivity,
-          alerts,
           accessRequests,
           loading: false,
           error: null
@@ -1283,7 +1263,7 @@ function OverviewSection({ client, jwt }) {
   if (overviewData.loading) {
     return (
       <div className="overview-loading">
-        <h3>📊 Care Overview for {client.name}</h3>
+        <h3>Overview for {client.name}</h3>
         <p>Loading dashboard data...</p>
       </div>
     );
@@ -1292,102 +1272,55 @@ function OverviewSection({ client, jwt }) {
   if (overviewData.error) {
     return (
       <div className="overview-error">
-        <h3>📊 Care Overview for {client.name}</h3>
+        <h3>Care Overview for {client.name}</h3>
         <p>Error: {overviewData.error}</p>
         <button onClick={() => window.location.reload()}>Retry</button>
       </div>
     );
   }
 
-  const { tasks, supplies, budget, recentActivity, alerts, accessRequests } = overviewData;
+  const { tasks, supplies, budget, recentActivity, accessRequests } = overviewData;
 
   return (
     <div className="overview-section">
-      <h3>📊 Care Overview for {client.name}</h3>
+      <h3>Care Overview for {client.name}</h3>
 
       {/* Access Requests Widget - Only show if there are pending requests */}
       {accessRequests.length > 0 && (
         <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
       )}
 
-      {/* Key Metrics Cards */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-header">
-            <h4>📋 Care Tasks</h4>
-            <span className="metric-total">{tasks.total}</span>
-          </div>
-          <div className="metric-breakdown">
-            <div className="metric-item">
-              <span className="metric-label">Completed</span>
-              <span className="metric-value success">{tasks.completed}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Pending</span>
-              <span className="metric-value pending">{tasks.pending}</span>
-            </div>
-            {tasks.overdue > 0 && (
-              <div className="metric-item">
-                <span className="metric-label">Overdue</span>
-                <span className="metric-value error">{tasks.overdue}</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Today's Schedule or Task Creation Guidance */}
+      <TodaysScheduleOrGuidance client={client} jwt={jwt} />
 
-        <div className="metric-card">
-          <div className="metric-header">
-            <h4>🛒 Supplies</h4>
-            <span className="metric-total">{supplies.total}</span>
+      {/* Budget Overview - Keep only budget as it's important for families */}
+      <div className="budget-overview">
+        <div className="budget-card">
+          <div className="budget-header">
+            <h4>💰 Budget Overview</h4>
+            <span className="budget-total">${budget.allocated.toFixed(0)}</span>
           </div>
-          <div className="metric-breakdown">
-            <div className="metric-item">
-              <span className="metric-label">Need Purchase</span>
-              <span className="metric-value warning">{supplies.needsPurchase}</span>
+          <div className="budget-breakdown">
+            <div className="budget-item">
+              <span className="budget-label">Spent</span>
+              <span className="budget-value">${budget.spent.toFixed(0)}</span>
             </div>
-            <div className="metric-item">
-              <span className="metric-label">Low Stock</span>
-              <span className="metric-value error">{supplies.lowStock}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <h4>💰 Budget</h4>
-            <span className="metric-total">${budget.allocated.toFixed(0)}</span>
-          </div>
-          <div className="metric-breakdown">
-            <div className="metric-item">
-              <span className="metric-label">Spent</span>
-              <span className="metric-value">${budget.spent.toFixed(0)}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Remaining</span>
-              <span className={`metric-value ${budget.remaining < 0 ? 'error' : 'success'}`}>
+            <div className="budget-item">
+              <span className="budget-label">Remaining</span>
+              <span className={`budget-value ${budget.remaining < 0 ? 'error' : 'success'}`}>
                 ${budget.remaining.toFixed(0)}
+              </span>
+            </div>
+            <div className="budget-item">
+              <span className="budget-label">Usage</span>
+              <span className="budget-value">
+                {budget.allocated > 0 ? Math.round((budget.spent / budget.allocated) * 100) : 0}%
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Alerts Section */}
-      {alerts.length > 0 && (
-        <div className="alerts-section">
-          <h4>🚨 Alerts & Notifications</h4>
-          <div className="alerts-list">
-            {alerts.map((alert, index) => (
-              <div key={index} className={`alert alert-${alert.type}`}>
-                <span className="alert-icon">
-                  {alert.type === 'success' ? '✅' : alert.type === 'warning' ? '⚠️' : '🚨'}
-                </span>
-                <span className="alert-message">{alert.message}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
@@ -1432,22 +1365,20 @@ function OverviewSection({ client, jwt }) {
           color: #6b7280;
         }
 
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 1.5rem;
+        .budget-overview {
           margin-bottom: 2rem;
         }
 
-        .metric-card {
+        .budget-card {
           background: white;
           border: 1px solid #e5e7eb;
           border-radius: 12px;
           padding: 1.5rem;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          max-width: 400px;
         }
 
-        .metric-header {
+        .budget-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -1456,73 +1387,54 @@ function OverviewSection({ client, jwt }) {
           border-bottom: 1px solid #f3f4f6;
         }
 
-        .metric-header h4 {
+        .budget-header h4 {
           margin: 0;
           font-size: 1rem;
           color: #374151;
         }
 
-        .metric-total {
+        .budget-total {
           font-size: 1.75rem;
           font-weight: 700;
           color: #667eea;
         }
 
-        .metric-breakdown {
+        .budget-breakdown {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
         }
 
-        .metric-item {
+        .budget-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
 
-        .metric-label {
+        .budget-label {
           color: #6b7280;
           font-size: 0.875rem;
         }
 
-        .metric-value {
+        .budget-value {
           font-weight: 600;
           font-size: 0.875rem;
         }
 
-        .metric-value.success { color: #10b981; }
-        .metric-value.warning { color: #f59e0b; }
-        .metric-value.error { color: #ef4444; }
-        .metric-value.pending { color: #6b7280; }
+        .budget-value.success { color: #10b981; }
+        .budget-value.error { color: #ef4444; }
 
-        .alerts-section, .activity-section {
+        .activity-section {
           background: #f8fafc;
           border-radius: 12px;
           padding: 1.5rem;
           margin-bottom: 1.5rem;
         }
 
-        .alerts-list, .activity-list {
+        .activity-list {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
-        }
-
-        .alert {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem;
-          border-radius: 8px;
-        }
-
-        .alert-success { background: #ecfdf5; border-left: 4px solid #10b981; }
-        .alert-warning { background: #fffbeb; border-left: 4px solid #f59e0b; }
-        .alert-error { background: #fef2f2; border-left: 4px solid #ef4444; }
-
-        .alert-message {
-          color: #374151;
-          font-weight: 500;
         }
 
         .activity-item {
@@ -1553,12 +1465,353 @@ function OverviewSection({ client, jwt }) {
         }
 
         @media (max-width: 768px) {
-          .metrics-grid {
-            grid-template-columns: 1fr;
+          .budget-card {
+            max-width: none;
           }
 
-          .metric-breakdown {
+          .budget-breakdown {
             gap: 0.75rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Today's Schedule or Guidance Component
+function TodaysScheduleOrGuidance({ client, jwt }) {
+  const [scheduleData, setScheduleData] = React.useState({
+    shifts: [],
+    todaysTasks: [],
+    allTasks: [],
+    hasAnyTasks: false,
+    loading: true,
+    error: null
+  });
+
+  React.useEffect(() => {
+    if (!client?._id || !jwt) return;
+
+    const fetchScheduleData = async () => {
+      try {
+        // Get today's date
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        // Fetch all tasks for this client
+        const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
+          headers: { Authorization: `Bearer ${jwt}` }
+        });
+
+        const allTasks = tasksRes.ok ? await tasksRes.json() : [];
+
+        // Filter for today's tasks
+        const todaysTasks = allTasks.filter(task => {
+          if (!task.dueDate && !task.scheduledDate) return false;
+          const taskDate = task.scheduledDate
+            ? new Date(task.scheduledDate).toISOString().split('T')[0]
+            : new Date(task.dueDate).toISOString().split('T')[0];
+          return taskDate === todayStr;
+        }).slice(0, 5); // Limit to 5 tasks
+
+        setScheduleData({
+          todaysTasks,
+          allTasks,
+          hasAnyTasks: allTasks.length > 0,
+          shifts: [], // We can add shifts later
+          loading: false,
+          error: null
+        });
+      } catch (error) {
+        console.error('Error fetching schedule data:', error);
+        setScheduleData({
+          todaysTasks: [],
+          allTasks: [],
+          hasAnyTasks: false,
+          shifts: [],
+          loading: false,
+          error: 'Failed to load schedule'
+        });
+      }
+    };
+
+    fetchScheduleData();
+  }, [client?._id, jwt]);
+
+  if (scheduleData.loading) {
+    return (
+      <div className="todays-schedule">
+        <h4>Today's Schedule</h4>
+        <p>Loading today's schedule...</p>
+      </div>
+    );
+  }
+
+  if (scheduleData.error) {
+    return (
+      <div className="todays-schedule">
+        <h4>Today's Schedule</h4>
+        <p>Error loading schedule</p>
+      </div>
+    );
+  }
+
+  const { todaysTasks, hasAnyTasks } = scheduleData;
+
+  // Show task creation guidance if no tasks exist for this client
+  if (!hasAnyTasks) {
+    return (
+      <div className="task-guidance">
+        <div className="guidance-header">
+          <h4>Get Started with Care Tasks</h4>
+        </div>
+        <div className="guidance-content">
+          <div className="guidance-message">
+            <p>Start creating care tasks for <strong>{client.name}</strong></p>
+            <p className="guidance-description">
+              Care tasks are automatically generated from your care need items.<br />
+              Set up recurring needs like medications, hygiene products, or daily activities.
+            </p>
+          </div>
+          <a href="/sub-elements" className="guidance-btn">
+            Create Care Items →
+          </a>
+        </div>
+
+        <style jsx>{`
+          .task-guidance {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #38bdf8;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .guidance-header h4 {
+            margin: 0 0 1rem 0;
+            color: #0369a1;
+            font-size: 1.2rem;
+          }
+
+          .guidance-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+          }
+
+          .guidance-message {
+            flex: 1;
+          }
+
+          .guidance-message p {
+            margin: 0 0 0.5rem 0;
+            color: #0c4a6e;
+            font-size: 1rem;
+          }
+
+          .guidance-message p:first-child {
+            font-size: 1.1rem;
+            font-weight: 600;
+          }
+
+          .guidance-description {
+            font-size: 0.9rem !important;
+            color: #075985 !important;
+            opacity: 0.8;
+          }
+
+          .guidance-btn {
+            background: #0ea5e9;
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+
+          .guidance-btn:hover {
+            background: #0284c7;
+            transform: translateY(-1px);
+            text-decoration: none;
+          }
+
+          @media (max-width: 768px) {
+            .guidance-content {
+              flex-direction: column;
+              gap: 1rem;
+              text-align: center;
+            }
+
+            .guidance-btn {
+              align-self: center;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="todays-schedule">
+      <div className="schedule-header">
+        <h4>Today's Schedule</h4>
+        <a href="/shift-allocation" className="view-more-btn">
+          View Full Schedule →
+        </a>
+      </div>
+
+      {todaysTasks.length === 0 ? (
+        <div className="no-schedule">
+          <p>No scheduled tasks for today</p>
+        </div>
+      ) : (
+        <div className="schedule-list">
+          {todaysTasks.map((task, index) => (
+            <div key={task._id || index} className="schedule-item">
+              <div className="schedule-time">
+                {task.scheduledTime || 'All day'}
+              </div>
+              <div className="schedule-content">
+                <div className="schedule-title">{task.title}</div>
+                <div className="schedule-details">
+                  {task.assignedTo && <span className="assigned-to">👤 {task.assignedTo}</span>}
+                  <span className={`status-badge ${task.status?.toLowerCase()}`}>
+                    {task.status || 'Scheduled'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style jsx>{`
+        .todays-schedule {
+          background: #f8fafc;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .schedule-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .schedule-header h4 {
+          margin: 0;
+          color: #374151;
+          font-size: 1.2rem;
+        }
+
+        .view-more-btn {
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.9rem;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          transition: background-color 0.2s;
+        }
+
+        .view-more-btn:hover {
+          background-color: rgba(102, 126, 234, 0.1);
+          text-decoration: none;
+        }
+
+        .no-schedule {
+          text-align: center;
+          padding: 2rem;
+          color: #6b7280;
+        }
+
+        .schedule-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .schedule-item {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: white;
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .schedule-time {
+          color: #667eea;
+          font-weight: 600;
+          font-size: 0.875rem;
+          min-width: 80px;
+          flex-shrink: 0;
+        }
+
+        .schedule-content {
+          flex: 1;
+        }
+
+        .schedule-title {
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 0.25rem;
+        }
+
+        .schedule-details {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-size: 0.875rem;
+        }
+
+        .assigned-to {
+          color: #6b7280;
+        }
+
+        .status-badge {
+          padding: 0.125rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .status-badge.scheduled {
+          background: #e0f2fe;
+          color: #0369a1;
+        }
+
+        .status-badge.complete {
+          background: #ecfdf5;
+          color: #059669;
+        }
+
+        .status-badge.missed {
+          background: #fef2f2;
+          color: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+          .schedule-header {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+          }
+
+          .schedule-item {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .schedule-time {
+            min-width: auto;
           }
         }
       `}</style>
