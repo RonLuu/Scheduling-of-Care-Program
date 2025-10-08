@@ -39,7 +39,12 @@ function LogIn() {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
-      navigate("/profile");
+      // Redirect based on user role
+      if (d.user.role === "Family") {
+        navigate("/dashboard");
+      } else {
+        navigate("/profile");
+      }
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {

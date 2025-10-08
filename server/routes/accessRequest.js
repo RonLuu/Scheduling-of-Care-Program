@@ -105,9 +105,19 @@ router.get("/incoming", requireAuth, async (req, res) => {
     issuerId: req.user.id,
     status: "Pending",
   })
+    .populate('requesterId', 'name email')
+    .populate('organizationId', 'name')
     .sort({ createdAt: -1 })
     .lean();
-  res.json(list);
+
+  // Transform the response to include requester details at the top level
+  const transformedList = list.map(request => ({
+    ...request,
+    requesterName: request.requesterId?.name,
+    organizationName: request.organizationId?.name
+  }));
+
+  res.json(transformedList);
 });
 
 // PATCH /api/access-requests/:id/decision  { approve: true|false }

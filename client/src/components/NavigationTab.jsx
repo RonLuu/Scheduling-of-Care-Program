@@ -11,6 +11,7 @@ import {
   BiTask,
   BiBarChartSquare,
   BiExit,
+  BiHome,
 } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/NavigationTab.css";
@@ -34,7 +35,7 @@ const NavItem = ({ to, onClick, children }) => {
 
 const NavigationTab = () => {
   const [showTab, setShowTab] = useState(false);
-  const { setMe } = useAuth();
+  const { me, setMe } = useAuth();
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -91,6 +92,12 @@ const NavigationTab = () => {
       >
         {showTab && (
           <div className="navigationtab-link-wrapper">
+            {me?.role === "Family" && (
+              <NavItem to="/dashboard">
+                <BiHome className="navigationtab-icon" />
+                Dashboard
+              </NavItem>
+            )}
             <NavItem to="/faq">
               <BiHelpCircle className="navigationtab-icon" />
               FAQ
