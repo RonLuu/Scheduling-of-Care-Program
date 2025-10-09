@@ -12,13 +12,13 @@ function makeWarn(spent, budget) {
     if (spent > budget) {
       return {
         level: "serious",
-        message: "Already spent exceeds annual budget",
+        message: "Expense exceeds annual budget",
       };
     }
     if (spent >= 0.8 * budget) {
       return {
         level: "light",
-        message: "Already spent ≥80% of annual budget",
+        message: "Expense ≥80% of annual budget",
       };
     }
   } else if (spent > 0) {

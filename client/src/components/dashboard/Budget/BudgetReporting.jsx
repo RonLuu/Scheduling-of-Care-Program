@@ -331,7 +331,7 @@ function BudgetReporting({ jwt, clients }) {
                 </span>
               </div>
               <div className="summary-item">
-                <span className="summary-label">Already Spent:</span>
+                <span className="summary-label">Expense:</span>
                 <span className="summary-value">
                   {aud.format(report.spent.total)}
                   {/* <span className="summary-detail">
@@ -376,7 +376,7 @@ function BudgetReporting({ jwt, clients }) {
                   <tr>
                     <th>Category</th>
                     <th>Annual Budget</th>
-                    <th>Already Spent</th>
+                    <th>Expense</th>
                     <th>Current Balance</th>
                     <th>Warning</th>
                     <th>Details</th>
@@ -423,7 +423,7 @@ function BudgetReporting({ jwt, clients }) {
                                     <tr>
                                       <th>Care Need Item</th>
                                       <th>Annual Budget</th>
-                                      <th>Already Spent</th>
+                                      <th>Expense</th>
                                       <th>Current Balance</th>
                                       <th>Warning</th>
                                       <th>Actions</th>
