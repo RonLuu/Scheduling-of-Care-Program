@@ -27,7 +27,7 @@ jobs:
           echo "📦 Review app name: ${APP_NAME}"
 
       - name: Install Heroku CLI
-            run: curl https://cli-assets.heroku.com/install.sh | sh
+        run: curl https://cli-assets.heroku.com/install.sh | sh
 
       - name: Check if Review App Exists
         id: check-app
