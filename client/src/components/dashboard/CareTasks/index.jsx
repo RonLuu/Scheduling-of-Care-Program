@@ -1,11 +1,8 @@
 import React from "react";
-import CareTaskList from "./CareTaskList";
 import CareTaskCalendar from "./CareTaskCalendar";
 import { useTasksData } from "../hooks/useTasksData";
-import { aud, displayUser } from "../utils/formatters";
 
 function CareTasks({ jwt, clients }) {
-  const [viewMode, setViewMode] = React.useState("calendar");
   const {
     tasks,
     tasksLoading,
@@ -87,21 +84,6 @@ function CareTasks({ jwt, clients }) {
         >
           Refresh
         </button>
-
-        <button
-          className={viewMode === "list" ? "" : "secondary"}
-          onClick={() => setViewMode("list")}
-          style={{ marginRight: 8 }}
-        >
-          List
-        </button>
-
-        <button
-          className={viewMode === "calendar" ? "" : "secondary"}
-          onClick={() => setViewMode("calendar")}
-        >
-          Calendar
-        </button>
       </div>
 
       {tasksLoading && <p>Loading…</p>}
@@ -111,40 +93,9 @@ function CareTasks({ jwt, clients }) {
         <p>No tasks found for this client.</p>
       )}
 
-      {!tasksLoading &&
-        !tasksErr &&
-        tasks.length > 0 &&
-        (viewMode === "calendar" ? (
-          <CareTaskCalendar tasks={tasks} />
-        ) : (
-          <CareTaskList
-            tasks={tasks}
-            toggleTaskComplete={toggleTaskComplete}
-            displayUser={displayUser}
-            aud={aud}
-            costEditorHiddenByTask={costEditorHiddenByTask}
-            setCostEditorHiddenByTask={setCostEditorHiddenByTask}
-            costDraftByTask={costDraftByTask}
-            setCostDraftByTask={setCostDraftByTask}
-            saveTaskCost={saveTaskCost}
-            toggleComments={toggleComments}
-            toggleFiles={toggleFiles}
-            openCommentsFor={openCommentsFor}
-            openFilesFor={openFilesFor}
-            commentsByTask={commentsByTask}
-            filesByTask={filesByTask}
-            newCommentText={newCommentText}
-            setNewCommentText={setNewCommentText}
-            addComment={addComment}
-            newFile={newFile}
-            setNewFile={setNewFile}
-            addFile={addFile}
-            loadFiles={loadFiles}
-            assignableUsers={assignableUsers}
-            reloadAfterEdit={() => tasksClientId && loadTasksFor(tasksClientId)}
-            currentUserId={currentUserId}
-          />
-        ))}
+      {!tasksLoading && !tasksErr && tasks.length > 0 && (
+        <CareTaskCalendar tasks={tasks} />
+      )}
     </div>
   );
 }

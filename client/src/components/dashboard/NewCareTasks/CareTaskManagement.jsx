@@ -1,9 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
 
 function CareTaskManagement({ jwt, clients }) {
   const [selectedClient, setSelectedClient] = React.useState("");
-  const [viewMode, setViewMode] = React.useState("calendar");
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -44,56 +44,6 @@ function CareTaskManagement({ jwt, clients }) {
     const clientId = e.target.value;
     setSelectedClient(clientId);
     loadTasks(clientId);
-  };
-
-  // Toggle task completion
-  const toggleTaskComplete = async (taskId, currentStatus) => {
-    const newStatus = currentStatus === "Completed" ? "Scheduled" : "Completed";
-
-    try {
-      const response = await fetch(`/api/care-tasks/${taskId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update task");
-      }
-
-      // Reload tasks
-      loadTasks(selectedClient);
-    } catch (err) {
-      alert("Error updating task: " + err.message);
-    }
-  };
-
-  // Add cost to task
-  const addCostToTask = async (taskId, cost) => {
-    try {
-      const response = await fetch(`/api/care-tasks/${taskId}/cost`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ cost: parseFloat(cost) }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save cost");
-      }
-
-      // Reload tasks
-      loadTasks(selectedClient);
-      return true;
-    } catch (err) {
-      alert("Error saving cost: " + err.message);
-      return false;
-    }
   };
 
   // Handle task click
@@ -175,20 +125,6 @@ function CareTaskManagement({ jwt, clients }) {
           >
             ↻ Refresh
           </button>
-          <div className="view-toggle">
-            <button
-              className={viewMode === "calendar" ? "active" : ""}
-              onClick={() => setViewMode("calendar")}
-            >
-              📅 Calendar
-            </button>
-            <button
-              className={viewMode === "list" ? "active" : ""}
-              onClick={() => setViewMode("list")}
-            >
-              📋 List
-            </button>
-          </div>
         </div>
       </div>
 
@@ -210,15 +146,7 @@ function CareTaskManagement({ jwt, clients }) {
 
       {!loading && !error && tasks.length > 0 && (
         <div className="tasks-view">
-          {viewMode === "calendar" ? (
-            <CareTaskCalendar tasks={tasks} onTaskClick={handleTaskClick} />
-          ) : (
-            <CareTaskListView
-              tasks={tasks}
-              toggleTaskComplete={toggleTaskComplete}
-              addCostToTask={addCostToTask}
-            />
-          )}
+          <CareTaskCalendar tasks={tasks} onTaskClick={handleTaskClick} />
         </div>
       )}
 
@@ -299,31 +227,6 @@ function CareTaskManagement({ jwt, clients }) {
           background: #f3f4f6;
         }
 
-        .view-toggle {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .view-toggle button {
-          padding: 0.5rem 1rem;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .view-toggle button:hover {
-          background: #f3f4f6;
-        }
-
-        .view-toggle button.active {
-          background: #667eea;
-          color: white;
-          border-color: #667eea;
-        }
-
         .loading-state,
         .error-state,
         .empty-state {
@@ -364,373 +267,14 @@ function CareTaskManagement({ jwt, clients }) {
   );
 }
 
-// Simple List View Component
-function CareTaskListView({ tasks, toggleTaskComplete, addCostToTask }) {
-  const [costEditing, setCostEditing] = React.useState({});
-  const [costValues, setCostValues] = React.useState({});
-
-  const handleCostSave = async (taskId) => {
-    const cost = costValues[taskId];
-    if (!cost || isNaN(cost)) {
-      alert("Please enter a valid cost");
-      return;
-    }
-
-    const success = await addCostToTask(taskId, cost);
-    if (success) {
-      setCostEditing({ ...costEditing, [taskId]: false });
-      setCostValues({ ...costValues, [taskId]: "" });
-    }
-  };
-
-  // Group tasks by status
-  const groupedTasks = {
-    scheduled: tasks.filter((t) => t.status === "Scheduled"),
-    completed: tasks.filter((t) => t.status === "Completed"),
-    other: tasks.filter((t) => !["Scheduled", "Completed"].includes(t.status)),
-  };
-
-  return (
-    <div className="list-view">
-      {/* Scheduled Tasks */}
-      {groupedTasks.scheduled.length > 0 && (
-        <div className="task-group">
-          <h4>📋 Scheduled Tasks ({groupedTasks.scheduled.length})</h4>
-          <div className="task-list">
-            {groupedTasks.scheduled.map((task) => (
-              <TaskCard
-                key={task._id}
-                task={task}
-                toggleTaskComplete={toggleTaskComplete}
-                costEditing={costEditing}
-                setCostEditing={setCostEditing}
-                costValues={costValues}
-                setCostValues={setCostValues}
-                handleCostSave={handleCostSave}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Completed Tasks */}
-      {groupedTasks.completed.length > 0 && (
-        <div className="task-group">
-          <h4>✅ Completed Tasks ({groupedTasks.completed.length})</h4>
-          <div className="task-list">
-            {groupedTasks.completed.map((task) => (
-              <TaskCard
-                key={task._id}
-                task={task}
-                toggleTaskComplete={toggleTaskComplete}
-                costEditing={costEditing}
-                setCostEditing={setCostEditing}
-                costValues={costValues}
-                setCostValues={setCostValues}
-                handleCostSave={handleCostSave}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        .list-view {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .task-group h4 {
-          margin: 0 0 1rem 0;
-          color: #1f2937;
-          font-size: 1.1rem;
-          padding-bottom: 0.5rem;
-          border-bottom: 2px solid #e5e7eb;
-        }
-
-        .task-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// Individual Task Card
-function TaskCard({ task, toggleTaskComplete, costEditing, setCostEditing, costValues, setCostValues, handleCostSave }) {
-  const isCompleted = task.status === "Completed";
-  const hasCost = task.cost !== undefined && task.cost !== null;
-
-  return (
-    <div className={`task-card ${isCompleted ? "completed" : ""}`}>
-      <div className="task-main">
-        <button
-          className="complete-btn"
-          onClick={() => toggleTaskComplete(task._id, task.status)}
-          title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
-        >
-          {isCompleted ? "✓" : "○"}
-        </button>
-        <div className="task-info">
-          <div className="task-title">{task.title}</div>
-          <div className="task-meta">
-            <span className="task-date">
-              📅 {new Date(task.dueDate).toLocaleDateString()}
-            </span>
-            {task.scheduleType === "Timed" && task.startAt && (
-              <span className="task-time">
-                🕒 {new Date(task.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-            <span className={`task-status ${task.status.toLowerCase()}`}>
-              {task.status}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Cost Section - Only show for completed tasks */}
-      {isCompleted && (
-        <div className="task-cost">
-          {!hasCost && !costEditing[task._id] ? (
-            <button
-              className="add-cost-btn"
-              onClick={() => setCostEditing({ ...costEditing, [task._id]: true })}
-            >
-              + Add Cost
-            </button>
-          ) : hasCost && !costEditing[task._id] ? (
-            <div className="cost-display">
-              <span className="cost-label">Cost:</span>
-              <span className="cost-value">${task.cost.toFixed(2)}</span>
-              <button
-                className="edit-cost-btn"
-                onClick={() => {
-                  setCostValues({ ...costValues, [task._id]: task.cost });
-                  setCostEditing({ ...costEditing, [task._id]: true });
-                }}
-              >
-                Edit
-              </button>
-            </div>
-          ) : (
-            <div className="cost-editor">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={costValues[task._id] || ""}
-                onChange={(e) => setCostValues({ ...costValues, [task._id]: e.target.value })}
-              />
-              <button className="save-btn" onClick={() => handleCostSave(task._id)}>
-                Save
-              </button>
-              <button
-                className="cancel-btn"
-                onClick={() => {
-                  setCostEditing({ ...costEditing, [task._id]: false });
-                  setCostValues({ ...costValues, [task._id]: "" });
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <style jsx>{`
-        .task-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 1rem;
-          transition: all 0.2s;
-        }
-
-        .task-card:hover {
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .task-card.completed {
-          opacity: 0.85;
-          background: #f9fafb;
-        }
-
-        .task-main {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-        }
-
-        .complete-btn {
-          width: 2rem;
-          height: 2rem;
-          border-radius: 50%;
-          border: 2px solid #d1d5db;
-          background: white;
-          cursor: pointer;
-          font-size: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          transition: all 0.2s;
-        }
-
-        .complete-btn:hover {
-          border-color: #667eea;
-          background: #f3f4f6;
-        }
-
-        .task-card.completed .complete-btn {
-          background: #10b981;
-          border-color: #10b981;
-          color: white;
-        }
-
-        .task-info {
-          flex: 1;
-        }
-
-        .task-title {
-          font-weight: 600;
-          color: #1f2937;
-          margin-bottom: 0.5rem;
-          font-size: 1rem;
-        }
-
-        .task-card.completed .task-title {
-          text-decoration: line-through;
-          color: #6b7280;
-        }
-
-        .task-meta {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        .task-status {
-          padding: 0.125rem 0.5rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 500;
-        }
-
-        .task-status.scheduled {
-          background: #e0f2fe;
-          color: #0369a1;
-        }
-
-        .task-status.completed {
-          background: #dcfce7;
-          color: #16a34a;
-        }
-
-        .task-cost {
-          margin-top: 0.75rem;
-          padding-top: 0.75rem;
-          border-top: 1px solid #e5e7eb;
-        }
-
-        .add-cost-btn {
-          padding: 0.375rem 0.75rem;
-          background: #667eea;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          cursor: pointer;
-        }
-
-        .add-cost-btn:hover {
-          background: #5a67d8;
-        }
-
-        .cost-display {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .cost-label {
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        .cost-value {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #10b981;
-        }
-
-        .edit-cost-btn {
-          padding: 0.25rem 0.5rem;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          cursor: pointer;
-        }
-
-        .cost-editor {
-          display: flex;
-          gap: 0.5rem;
-          align-items: center;
-        }
-
-        .cost-editor input {
-          padding: 0.375rem 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          width: 120px;
-          font-size: 0.875rem;
-        }
-
-        .save-btn,
-        .cancel-btn {
-          padding: 0.375rem 0.75rem;
-          border: none;
-          border-radius: 4px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          cursor: pointer;
-        }
-
-        .save-btn {
-          background: #10b981;
-          color: white;
-        }
-
-        .save-btn:hover {
-          background: #059669;
-        }
-
-        .cancel-btn {
-          background: #f3f4f6;
-          color: #374151;
-        }
-
-        .cancel-btn:hover {
-          background: #e5e7eb;
-        }
-      `}</style>
-    </div>
-  );
-}
-
 // Task Detail Modal
 function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [comments, setComments] = React.useState([]);
+  const [files, setFiles] = React.useState([]);
+  const [loadingDetails, setLoadingDetails] = React.useState(false);
   const [editedTask, setEditedTask] = React.useState({
     title: task.title,
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
@@ -738,6 +282,55 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
     startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
     endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
   });
+
+  // Load comments and files for completed tasks
+  React.useEffect(() => {
+    const loadCompletionDetails = async () => {
+      if (task.status !== "Completed") return;
+
+      setLoadingDetails(true);
+      try {
+        // Load comments
+        const commentsResponse = await fetch(`/api/comments?careTaskId=${task._id}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData);
+        }
+
+        // Load files - both direct uploads and referenced files
+        const filesResponse = await fetch(`/api/file-upload?scope=CareTask&targetId=${task._id}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+
+        let allFiles = [];
+        if (filesResponse.ok) {
+          const directFiles = await filesResponse.json();
+          allFiles = [...directFiles];
+        }
+
+        // Also load files from fileRefs (shared receipts)
+        if (task.fileRefs && task.fileRefs.length > 0) {
+          const refsPromises = task.fileRefs.map(fileId =>
+            fetch(`/api/file-upload/${fileId}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }).then(res => res.ok ? res.json() : null)
+          );
+          const refsFiles = await Promise.all(refsPromises);
+          allFiles = [...allFiles, ...refsFiles.filter(f => f !== null)];
+        }
+
+        setFiles(allFiles);
+      } catch (err) {
+        console.error("Error loading completion details:", err);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    loadCompletionDetails();
+  }, [task._id, task.status, jwt]);
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -950,6 +543,79 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
               <span className="detail-value cost">${task.cost.toFixed(2)}</span>
             </div>
           )}
+
+          {/* Completion Details for Completed Tasks */}
+          {task.status === "Completed" && (
+            <>
+              {loadingDetails && (
+                <div className="loading-details">Loading completion details...</div>
+              )}
+
+              {/* Comments Section */}
+              {!loadingDetails && comments.length > 0 && (
+                <div className="completion-section">
+                  <h4 className="completion-section-title">Comments</h4>
+                  <div className="comments-list">
+                    {comments.map((comment) => (
+                      <div key={comment._id} className="comment-item">
+                        <div className="comment-meta">
+                          <span className="comment-author">
+                            {comment.author?.name || comment.author?.email || comment.authorUserId?.name || comment.authorUserId?.email || "User"}
+                          </span>
+                          <span className="comment-date">
+                            {new Date(comment.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="comment-text">{comment.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Files Section */}
+              {!loadingDetails && files.length > 0 && (
+                <div className="completion-section">
+                  <h4 className="completion-section-title">
+                    Receipts & Documents ({files.length})
+                  </h4>
+                  <div className="files-list">
+                    {files.map((file) => (
+                      <div key={file._id} className="file-item">
+                        <div className="file-info">
+
+                          <div className="file-details">
+                            <span className="file-name">{file.filename}</span>
+                            <span className="file-meta">
+                              {file.description && `${file.description} • `}
+                              {(file.size / 1024).toFixed(1)} KB
+                            </span>
+                          </div>
+                        </div>
+                        <div className="file-actions">
+                          <a
+                            href={file.urlOrPath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="file-action-btn view-btn"
+                          >
+                            View
+                          </a>
+                          <a
+                            href={file.urlOrPath}
+                            download={file.filename}
+                            className="file-action-btn download-btn"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="modal-footer">
@@ -964,15 +630,21 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
             </>
           ) : (
             <>
-              <button className="btn-complete" onClick={onClose}>
-                Complete Task
-              </button>
-              <button className="btn-reschedule" onClick={() => setIsEditing(true)}>
-                Reschedule
-              </button>
-              <button className="btn-delete" onClick={onDelete}>
-                Delete Task
-              </button>
+              {task.status !== "Completed" && (
+                <button className="btn-complete" onClick={() => navigate(`/tasks/${task._id}/complete`)}>
+                  Complete Task
+                </button>
+              )}
+              {task.status !== "Completed" && (
+                <button className="btn-reschedule" onClick={() => setIsEditing(true)}>
+                  Reschedule
+                </button>
+              )}
+              {task.status !== "Completed" && (
+                <button className="btn-delete" onClick={onDelete}>
+                  Delete Task
+                </button>
+              )}
               <button className="btn-close" onClick={onClose}>
                 Close
               </button>
@@ -1177,6 +849,157 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           background: #059669;
         }
 
+        .loading-details {
+          padding: 1rem;
+          text-align: center;
+          color: #6b7280;
+          font-size: 0.875rem;
+          background: #f9fafb;
+          border-radius: 6px;
+          margin-top: 0.5rem;
+        }
+
+        .completion-section {
+          margin-top: 1rem;
+          padding: 1rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+
+        .completion-section-title {
+          margin: 0 0 0.75rem 0;
+          color: #1f2937;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .comments-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .comment-item {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 0.75rem;
+        }
+
+        .comment-meta {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          gap: 0.5rem;
+        }
+
+        .comment-author {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .comment-date {
+          font-size: 0.75rem;
+          color: #9ca3af;
+        }
+
+        .comment-text {
+          color: #1f2937;
+          font-size: 0.875rem;
+          line-height: 1.5;
+          word-wrap: break-word;
+        }
+
+        .files-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .file-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 0.75rem;
+        }
+
+        .file-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .file-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .file-details {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          min-width: 0;
+        }
+
+        .file-name {
+          color: #1f2937;
+          font-weight: 500;
+          font-size: 0.875rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .file-meta {
+          color: #9ca3af;
+          font-size: 0.75rem;
+        }
+
+        .file-actions {
+          display: flex;
+          gap: 0.5rem;
+          flex-shrink: 0;
+        }
+
+        .file-action-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-decoration: none;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          white-space: nowrap;
+          text-align: center;
+        }
+
+        .view-btn {
+          background: #667eea;
+          color: white;
+        }
+
+        .view-btn:hover {
+          background: #5a67d8;
+        }
+
+        .download-btn {
+          background: #10b981;
+          color: white;
+        }
+
+        .download-btn:hover {
+          background: #059669;
+        }
+
         @media (max-width: 640px) {
           .modal-content {
             margin: 0;
@@ -1185,6 +1008,25 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           .detail-row {
             flex-direction: column;
             gap: 0.25rem;
+          }
+
+          .file-item {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .file-actions {
+            flex-direction: column;
+            width: 100%;
+          }
+
+          .file-action-btn {
+            width: 100%;
+          }
+
+          .comment-meta {
+            flex-direction: column;
+            align-items: flex-start;
           }
         }
       `}</style>

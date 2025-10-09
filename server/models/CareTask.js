@@ -22,7 +22,7 @@ const CareTaskSchema = new Schema(
     careNeedItemId: {
       type: Schema.Types.ObjectId,
       ref: "CareNeedItem",
-      required: true,
+      required: false,
       index: true,
     },
 
@@ -52,12 +52,19 @@ const CareTaskSchema = new Schema(
 
     // Actual spend recorded when completed
     cost: { type: Number },
+
+    // File references to shared receipts from ReceiptBuckets
+    fileRefs: [{ type: Schema.Types.ObjectId, ref: "FileUpload", index: true }],
   },
   { timestamps: true }
 );
 
 CareTaskSchema.index({ organizationId: 1, status: 1, dueDate: 1 });
 CareTaskSchema.index({ assignedToUserId: 1, dueDate: 1 });
-CareTaskSchema.index({ careNeedItemId: 1, dueDate: 1 }, { unique: true });
+// Only enforce uniqueness when careNeedItemId exists (for backward compatibility with old system)
+CareTaskSchema.index(
+  { careNeedItemId: 1, dueDate: 1 },
+  { unique: true, sparse: true }
+);
 
 export default model("CareTask", CareTaskSchema);

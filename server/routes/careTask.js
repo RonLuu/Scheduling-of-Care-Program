@@ -215,6 +215,7 @@ async function completeTask(req, res) {
         return res.status(400).json({ error: "INVALID_STATUS" });
       }
       patch.status = req.body.status;
+      nextStatus = req.body.status; // Update nextStatus when status is changed
       if (req.body.status === "Completed") {
         patch.completedAt = req.body.completedAt
           ? new Date(req.body.completedAt)
@@ -357,22 +358,6 @@ router.post(
         }
       }
 
-      // Create a dummy CareNeedItem for standalone tasks
-      // This is a temporary solution until we modify the schema
-      const dummyItem = await CareNeedItem.create({
-        personId,
-        organizationId: perm.person.organizationId,
-        name: title,
-        category: "Standalone Task", // Required field
-        frequency: {
-          intervalType: "OneTime", // Required field
-          intervalValue: 1,
-        },
-        scheduleType: scheduleType || "AllDay",
-        status: "Active",
-        isStandalone: true, // Custom flag to identify standalone items
-      });
-
       const tasksToCreate = [];
 
       // Helper function to combine date and time
@@ -398,7 +383,6 @@ router.post(
           const taskDoc = {
             personId,
             organizationId: perm.person.organizationId,
-            careNeedItemId: dummyItem._id,
             title,
             dueDate: new Date(currentDate),
             scheduleType: scheduleType || "AllDay",
@@ -430,7 +414,6 @@ router.post(
         const taskDoc = {
           personId,
           organizationId: perm.person.organizationId,
-          careNeedItemId: dummyItem._id,
           title,
           dueDate: new Date(dueDate),
           scheduleType: scheduleType || "AllDay",

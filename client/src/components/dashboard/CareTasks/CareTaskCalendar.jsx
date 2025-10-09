@@ -29,7 +29,7 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
         if (t.scheduleType === "Timed" && t.startAt && t.endAt) {
           return {
             id: t._id,
-            title: `${t.title} · ${isOverdue ? "Overdue" : t.status}`,
+            title: t.title,
             start: t.startAt,
             end: t.endAt,
             allDay: false,
@@ -48,7 +48,7 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
 
         return {
           id: t._id,
-          title: `${t.title} · ${isOverdue ? "Overdue" : t.status}`,
+          title: t.title,
           start: d.toISOString().slice(0, 10),
           end: end.toISOString().slice(0, 10),
           allDay: true,
