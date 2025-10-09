@@ -12,7 +12,8 @@ function FamilyDashboard() {
   const [activeSection, setActiveSection] = React.useState("overview");
   const [showCreateTokenModal, setShowCreateTokenModal] = React.useState(false);
   const [showEnterTokenModal, setShowEnterTokenModal] = React.useState(false);
-  const [showOrganizationModal, setShowOrganizationModal] = React.useState(false);
+  const [showOrganizationModal, setShowOrganizationModal] =
+    React.useState(false);
   const [organizationData, setOrganizationData] = React.useState(null);
 
   // Check if user has joined an organization
@@ -31,9 +32,12 @@ function FamilyDashboard() {
 
     const fetchOrganizationData = async () => {
       try {
-        const response = await fetch(`/api/organizations/${me.organizationId}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
-        });
+        const response = await fetch(
+          `/api/organizations/${me.organizationId}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         if (response.ok) {
           const orgData = await response.json();
@@ -92,54 +96,70 @@ function FamilyDashboard() {
 
             {/* Content Section */}
             <div className="onboarding-content">
+              <div className="onboarding-steps">
+                <div
+                  className={`step ${hasJoinedOrganization ? "completed" : ""}`}
+                >
+                  <div className="step-number">
+                    {hasJoinedOrganization ? "✓" : "1"}
+                  </div>
+                  <div className="step-content">
+                    <h3>Join an Organization</h3>
+                    <p>
+                      {hasJoinedOrganization
+                        ? "You have successfully joined an organization and can now proceed to add clients."
+                        : "First, you need to join a care organization that manages clients. This is required before you can add or access any clients."}
+                    </p>
+                    {!hasJoinedOrganization && (
+                      <a href="/organization" className="step-button">
+                        Join Organization
+                      </a>
+                    )}
+                    {hasJoinedOrganization && (
+                      <a href="/organization" className="step-button secondary">
+                        Manage Organization
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-            <div className="onboarding-steps">
-              <div className={`step ${hasJoinedOrganization ? 'completed' : ''}`}>
-                <div className="step-number">{hasJoinedOrganization ? '✓' : '1'}</div>
-                <div className="step-content">
-                  <h3>Join an Organization</h3>
-                  <p>
-                    {hasJoinedOrganization
-                      ? 'You have successfully joined an organization and can now proceed to add clients.'
-                      : 'First, you need to join a care organization that manages clients. This is required before you can add or access any clients.'
-                    }
-                  </p>
-                  {!hasJoinedOrganization && (
-                    <a href="/organization" className="step-button">
-                      Join Organization
+                <div className="step">
+                  <div className="step-number">2</div>
+                  <div className="step-content">
+                    <h3>Add Your First Client</h3>
+                    <p>
+                      Once you've joined an organization, you can add clients to
+                      start managing their care.
+                    </p>
+                    <a
+                      href="/clients"
+                      className={`step-button ${
+                        !hasJoinedOrganization ? "disabled" : ""
+                      }`}
+                    >
+                      Add Client
                     </a>
-                  )}
-                  {hasJoinedOrganization && (
-                    <a href="/organization" className="step-button secondary">
-                      Manage Organization
-                    </a>
-                  )}
+                  </div>
+                </div>
+
+                <div className="step">
+                  <div className="step-number">3</div>
+                  <div className="step-content">
+                    <h3>Start Managing Care</h3>
+                    <p>
+                      With clients added, you'll be able to manage tasks,
+                      supplies, schedules, and budgets from this dashboard.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="step">
-                <div className="step-number">2</div>
-                <div className="step-content">
-                  <h3>Add Your First Client</h3>
-                  <p>Once you've joined an organization, you can add clients to start managing their care.</p>
-                  <a href="/clients" className={`step-button ${!hasJoinedOrganization ? 'disabled' : ''}`}>
-                    Add Client
-                  </a>
-                </div>
+              <div className="help-note">
+                <p>
+                  <strong>Need help?</strong> Contact your care organization
+                  administrator if you're unsure about the joining process.
+                </p>
               </div>
-
-              <div className="step">
-                <div className="step-number">3</div>
-                <div className="step-content">
-                  <h3>Start Managing Care</h3>
-                  <p>With clients added, you'll be able to manage tasks, supplies, schedules, and budgets from this dashboard.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="help-note">
-              <p><strong>Need help?</strong> Contact your care organization administrator if you're unsure about the joining process.</p>
-            </div>
             </div>
           </div>
         </div>
@@ -228,7 +248,7 @@ function FamilyDashboard() {
           }
 
           .step::before {
-            content: '';
+            content: "";
             position: absolute;
             top: 0;
             left: 0;
@@ -256,13 +276,14 @@ function FamilyDashboard() {
           }
 
           .step-number::after {
-            content: '';
+            content: "";
             position: absolute;
             inset: -2px;
             padding: 2px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 50%;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box,
+              linear-gradient(#fff 0 0);
             mask-composite: exclude;
           }
 
@@ -320,7 +341,7 @@ function FamilyDashboard() {
           }
 
           .step-button::after {
-            content: '→';
+            content: "→";
             font-size: 1.2rem;
             transition: transform 0.3s ease;
           }
@@ -349,7 +370,7 @@ function FamilyDashboard() {
           }
 
           .help-note::before {
-            content: '💡';
+            content: "💡";
             font-size: 1.5rem;
             position: absolute;
             top: -0.75rem;
@@ -472,7 +493,7 @@ function FamilyDashboard() {
                 id="client-select"
                 value={selectedClient?._id || ""}
                 onChange={(e) => {
-                  const client = clients.find(c => c._id === e.target.value);
+                  const client = clients.find((c) => c._id === e.target.value);
                   setSelectedClient(client);
                   setActiveSection("overview"); // Reset to overview when switching clients
                 }}
@@ -506,7 +527,6 @@ function FamilyDashboard() {
 
           {selectedClient && (
             <>
-
               {/* Section Navigation */}
               <div className="section-nav">
                 <button
@@ -942,7 +962,7 @@ function FamilyDashboard() {
         }
 
         .step::before {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
@@ -970,7 +990,7 @@ function FamilyDashboard() {
         }
 
         .step-number::after {
-          content: '';
+          content: "";
           position: absolute;
           inset: -2px;
           padding: 2px;
@@ -1029,7 +1049,7 @@ function FamilyDashboard() {
         }
 
         .step-button::after {
-          content: '→';
+          content: "→";
           font-size: 1.2rem;
           transition: transform 0.3s ease;
         }
@@ -1049,7 +1069,7 @@ function FamilyDashboard() {
         }
 
         .help-note::before {
-          content: '💡';
+          content: "💡";
           font-size: 1.5rem;
           position: absolute;
           top: -0.75rem;
@@ -1168,7 +1188,7 @@ function OverviewSection({ client, jwt }) {
     recentActivity: [],
     accessRequests: [],
     loading: true,
-    error: null
+    error: null,
   });
 
   // Fetch overview data for the selected client
@@ -1176,66 +1196,74 @@ function OverviewSection({ client, jwt }) {
     if (!client?._id || !jwt) return;
 
     const fetchOverviewData = async () => {
-      setOverviewData(prev => ({ ...prev, loading: true, error: null }));
+      setOverviewData((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
         // Fetch multiple endpoints in parallel
-        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] = await Promise.all([
-          fetch(`/api/care-tasks/client/${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/care-need-items/client/${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/budget/client/${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })), // Budget endpoint might not exist
-          fetch(`/api/access-requests/incoming`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })) // Access requests might fail
-        ]);
+        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] =
+          await Promise.all([
+            fetch(`/api/care-tasks/client/${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(`/api/care-need-items/client/${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(`/api/budget/client/${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }).catch(() => ({ ok: false })), // Budget endpoint might not exist
+            fetch(`/api/access-requests/incoming`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }).catch(() => ({ ok: false })), // Access requests might fail
+          ]);
 
         const tasks = tasksRes.ok ? await tasksRes.json() : [];
         const supplies = suppliesRes.ok ? await suppliesRes.json() : [];
         const budget = budgetRes?.ok ? await budgetRes.json() : null;
-        const accessRequests = accessRequestsRes?.ok ? await accessRequestsRes.json() : [];
+        const accessRequests = accessRequestsRes?.ok
+          ? await accessRequestsRes.json()
+          : [];
 
         // Process tasks data
         const taskStats = {
           total: tasks.length,
-          completed: tasks.filter(t => t.status === 'Complete').length,
-          pending: tasks.filter(t => t.status === 'Scheduled').length,
-          overdue: tasks.filter(t => t.status === 'Missed').length
+          completed: tasks.filter((t) => t.status === "Complete").length,
+          pending: tasks.filter((t) => t.status === "Scheduled").length,
+          overdue: tasks.filter((t) => t.status === "Missed").length,
         };
 
         // Process supplies data
         const supplyStats = {
           total: supplies.length,
-          needsPurchase: supplies.filter(s => s.status === 'pending').length,
-          lowStock: supplies.filter(s => s.priority === 'high').length
+          needsPurchase: supplies.filter((s) => s.status === "pending").length,
+          lowStock: supplies.filter((s) => s.priority === "high").length,
         };
 
         // Process budget data
-        const budgetStats = budget ? {
-          spent: budget.totalSpent || 0,
-          allocated: budget.totalBudget || 0,
-          remaining: (budget.totalBudget || 0) - (budget.totalSpent || 0)
-        } : { spent: 0, allocated: 0, remaining: 0 };
+        const budgetStats = budget
+          ? {
+              spent: budget.totalSpent || 0,
+              allocated: budget.totalBudget || 0,
+              remaining: (budget.totalBudget || 0) - (budget.totalSpent || 0),
+            }
+          : { spent: 0, allocated: 0, remaining: 0 };
 
         // Generate recent activity
         const recentActivity = [
-          ...tasks.slice(0, 3).map(t => ({
-            type: 'task',
-            message: `Task "${t.title}" ${t.status === 'Complete' ? 'completed' : 'updated'}`,
-            time: new Date(t.updatedAt || t.createdAt).toLocaleString()
+          ...tasks.slice(0, 3).map((t) => ({
+            type: "task",
+            message: `Task "${t.title}" ${
+              t.status === "Complete" ? "completed" : "updated"
+            }`,
+            time: new Date(t.updatedAt || t.createdAt).toLocaleString(),
           })),
-          ...supplies.slice(0, 2).map(s => ({
-            type: 'supply',
+          ...supplies.slice(0, 2).map((s) => ({
+            type: "supply",
             message: `Supply "${s.name}" needs attention`,
-            time: new Date(s.updatedAt || s.createdAt).toLocaleString()
-          }))
-        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
-
+            time: new Date(s.updatedAt || s.createdAt).toLocaleString(),
+          })),
+        ]
+          .sort((a, b) => new Date(b.time) - new Date(a.time))
+          .slice(0, 5);
 
         setOverviewData({
           tasks: taskStats,
@@ -1244,15 +1272,14 @@ function OverviewSection({ client, jwt }) {
           recentActivity,
           accessRequests,
           loading: false,
-          error: null
+          error: null,
         });
-
       } catch (error) {
-        console.error('Error fetching overview data:', error);
-        setOverviewData(prev => ({
+        console.error("Error fetching overview data:", error);
+        setOverviewData((prev) => ({
           ...prev,
           loading: false,
-          error: 'Failed to load overview data'
+          error: "Failed to load overview data",
         }));
       }
     };
@@ -1279,7 +1306,8 @@ function OverviewSection({ client, jwt }) {
     );
   }
 
-  const { tasks, supplies, budget, recentActivity, accessRequests } = overviewData;
+  const { tasks, supplies, budget, recentActivity, accessRequests } =
+    overviewData;
 
   return (
     <div className="overview-section">
@@ -1287,7 +1315,11 @@ function OverviewSection({ client, jwt }) {
 
       {/* Access Requests Widget - Only show if there are pending requests */}
       {accessRequests.length > 0 && (
-        <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
+        <AccessRequestsWidget
+          requests={accessRequests}
+          jwt={jwt}
+          onUpdate={() => window.location.reload()}
+        />
       )}
 
       {/* Today's Schedule or Task Creation Guidance */}
@@ -1307,20 +1339,26 @@ function OverviewSection({ client, jwt }) {
             </div>
             <div className="budget-item">
               <span className="budget-label">Remaining</span>
-              <span className={`budget-value ${budget.remaining < 0 ? 'error' : 'success'}`}>
+              <span
+                className={`budget-value ${
+                  budget.remaining < 0 ? "error" : "success"
+                }`}
+              >
                 ${budget.remaining.toFixed(0)}
               </span>
             </div>
             <div className="budget-item">
               <span className="budget-label">Usage</span>
               <span className="budget-value">
-                {budget.allocated > 0 ? Math.round((budget.spent / budget.allocated) * 100) : 0}%
+                {budget.allocated > 0
+                  ? Math.round((budget.spent / budget.allocated) * 100)
+                  : 0}
+                %
               </span>
             </div>
           </div>
         </div>
       </div>
-
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
@@ -1330,7 +1368,7 @@ function OverviewSection({ client, jwt }) {
             {recentActivity.map((activity, index) => (
               <div key={index} className="activity-item">
                 <span className="activity-icon">
-                  {activity.type === 'task' ? '📋' : '🛒'}
+                  {activity.type === "task" ? "📋" : "🛒"}
                 </span>
                 <div className="activity-content">
                   <span className="activity-message">{activity.message}</span>
@@ -1359,7 +1397,8 @@ function OverviewSection({ client, jwt }) {
           font-size: 1.2rem;
         }
 
-        .overview-loading, .overview-error {
+        .overview-loading,
+        .overview-error {
           text-align: center;
           padding: 2rem;
           color: #6b7280;
@@ -1421,8 +1460,12 @@ function OverviewSection({ client, jwt }) {
           font-size: 0.875rem;
         }
 
-        .budget-value.success { color: #10b981; }
-        .budget-value.error { color: #ef4444; }
+        .budget-value.success {
+          color: #10b981;
+        }
+        .budget-value.error {
+          color: #ef4444;
+        }
 
         .activity-section {
           background: #f8fafc;
@@ -1486,7 +1529,7 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
     allTasks: [],
     hasAnyTasks: false,
     loading: true,
-    error: null
+    error: null,
   });
 
   React.useEffect(() => {
@@ -1496,23 +1539,25 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
       try {
         // Get today's date
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = today.toISOString().split("T")[0];
 
         // Fetch all tasks for this client
         const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
+          headers: { Authorization: `Bearer ${jwt}` },
         });
 
         const allTasks = tasksRes.ok ? await tasksRes.json() : [];
 
         // Filter for today's tasks
-        const todaysTasks = allTasks.filter(task => {
-          if (!task.dueDate && !task.scheduledDate) return false;
-          const taskDate = task.scheduledDate
-            ? new Date(task.scheduledDate).toISOString().split('T')[0]
-            : new Date(task.dueDate).toISOString().split('T')[0];
-          return taskDate === todayStr;
-        }).slice(0, 5); // Limit to 5 tasks
+        const todaysTasks = allTasks
+          .filter((task) => {
+            if (!task.dueDate && !task.scheduledDate) return false;
+            const taskDate = task.scheduledDate
+              ? new Date(task.scheduledDate).toISOString().split("T")[0]
+              : new Date(task.dueDate).toISOString().split("T")[0];
+            return taskDate === todayStr;
+          })
+          .slice(0, 5); // Limit to 5 tasks
 
         setScheduleData({
           todaysTasks,
@@ -1520,17 +1565,17 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
           hasAnyTasks: allTasks.length > 0,
           shifts: [], // We can add shifts later
           loading: false,
-          error: null
+          error: null,
         });
       } catch (error) {
-        console.error('Error fetching schedule data:', error);
+        console.error("Error fetching schedule data:", error);
         setScheduleData({
           todaysTasks: [],
           allTasks: [],
           hasAnyTasks: false,
           shifts: [],
           loading: false,
-          error: 'Failed to load schedule'
+          error: "Failed to load schedule",
         });
       }
     };
@@ -1567,10 +1612,14 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
         </div>
         <div className="guidance-content">
           <div className="guidance-message">
-            <p>Start creating care tasks for <strong>{client.name}</strong></p>
+            <p>
+              Start creating care tasks for <strong>{client.name}</strong>
+            </p>
             <p className="guidance-description">
-              Care tasks are automatically generated from your care need items.<br />
-              Set up recurring needs like medications, hygiene products, or daily activities.
+              Care tasks are automatically generated from your care need items.
+              <br />
+              Set up recurring needs like medications, hygiene products, or
+              daily activities.
             </p>
           </div>
           <a href="/sub-elements" className="guidance-btn">
@@ -1674,14 +1723,18 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
           {todaysTasks.map((task, index) => (
             <div key={task._id || index} className="schedule-item">
               <div className="schedule-time">
-                {task.scheduledTime || 'All day'}
+                {task.scheduledTime || "All day"}
               </div>
               <div className="schedule-content">
                 <div className="schedule-title">{task.title}</div>
                 <div className="schedule-details">
-                  {task.assignedTo && <span className="assigned-to">👤 {task.assignedTo}</span>}
-                  <span className={`status-badge ${task.status?.toLowerCase()}`}>
-                    {task.status || 'Scheduled'}
+                  {task.assignedTo && (
+                    <span className="assigned-to">👤 {task.assignedTo}</span>
+                  )}
+                  <span
+                    className={`status-badge ${task.status?.toLowerCase()}`}
+                  >
+                    {task.status || "Scheduled"}
                   </span>
                 </div>
               </div>
@@ -1826,14 +1879,17 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
   const handleDecision = async (requestId, approve) => {
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/access-requests/${requestId}/decision`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ approve }),
-      });
+      const response = await fetch(
+        `/api/access-requests/${requestId}/decision`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({ approve }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -1844,7 +1900,7 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
       // Refresh the data
       onUpdate();
     } catch (error) {
-      alert("Failed to process request");
+      alert("Failed to process request: " + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -1853,7 +1909,10 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
   return (
     <div className="access-requests-widget">
       <div className="widget-header">
-        <h4>{requests.length} Access Request{requests.length !== 1 ? 's' : ''} Awaiting Your Review</h4>
+        <h4>
+          {requests.length} Access Request{requests.length !== 1 ? "s" : ""}{" "}
+          Awaiting Your Review
+        </h4>
       </div>
 
       <div className="requests-list">
@@ -1861,13 +1920,25 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           <div key={request._id} className="request-item">
             <div className="request-info">
               <div className="requester">
-                <span className="name">{request.requesterName || request.requesterEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                <span className="name">
+                  {request.requesterName ||
+                    request.requesterEmail
+                      .split("@")[0]
+                      .replace(/[._]/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                </span>
                 <span className="role-badge">{request.requesterRole}</span>
               </div>
               <div className="request-details">
                 <span className="email">{request.requesterEmail}</span>
-                {request.organizationName && <span className="organization">from {request.organizationName}</span>}
-                {request.message && <span className="message">"{request.message}"</span>}
+                {request.organizationName && (
+                  <span className="organization">
+                    from {request.organizationName}
+                  </span>
+                )}
+                {request.message && (
+                  <span className="message">"{request.message}"</span>
+                )}
               </div>
             </div>
 
@@ -1991,7 +2062,8 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           gap: 0.5rem;
         }
 
-        .approve-btn, .reject-btn {
+        .approve-btn,
+        .reject-btn {
           padding: 0.5rem 1rem;
           border: none;
           border-radius: 6px;
@@ -2019,7 +2091,8 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           background: #dc2626;
         }
 
-        .approve-btn:disabled, .reject-btn:disabled {
+        .approve-btn:disabled,
+        .reject-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
@@ -2101,7 +2174,9 @@ function SuppliesSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>🛒 Supplies & Purchases for {client.name}</h3>
       <p>Care supplies and purchase planning will be integrated here.</p>
-      <a href="/sub-elements" className="legacy-link">→ View in current Sub-elements page</a>
+      <a href="/sub-elements" className="legacy-link">
+        → View in current Sub-elements page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -2133,7 +2208,9 @@ function ScheduleSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>📅 Schedule & Shifts for {client.name}</h3>
       <p>Shift scheduling and care calendar will be integrated here.</p>
-      <a href="/shift-allocation" className="legacy-link">→ View in current Shift Allocation page</a>
+      <a href="/shift-allocation" className="legacy-link">
+        → View in current Shift Allocation page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -2165,7 +2242,9 @@ function BudgetSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>💰 Budget & Reports for {client.name}</h3>
       <p>Financial tracking and budget reports will be integrated here.</p>
-      <a href="/budget-reports" className="legacy-link">→ View in current Budget Reports page</a>
+      <a href="/budget-reports" className="legacy-link">
+        → View in current Budget Reports page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -2195,7 +2274,7 @@ function BudgetSection({ client, jwt }) {
 // Create Token Modal Component
 function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
   const [tokenType, setTokenType] = React.useState("FAMILY_TOKEN");
-  const [maxUses, setMaxUses] = React.useState(1);
+  // const [maxUses, setMaxUses] = React.useState(1);
   const [expiresInDays, setExpiresInDays] = React.useState(7);
   const [generatedToken, setGeneratedToken] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -2205,6 +2284,7 @@ function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
       alert("Please select a client first");
       return;
     }
+    const maxUses = 1; // Always limit to 1 use for security
 
     setIsGenerating(true);
     try {
@@ -2249,32 +2329,29 @@ function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Create Invite Token</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
           {!generatedToken ? (
             <>
-              <p>Create an invite token for <strong>{selectedClient?.name}</strong></p>
+              <p>
+                Create an invite token for{" "}
+                <strong>{selectedClient?.name}</strong>
+              </p>
 
               <div className="form-group">
                 <label>Token Type:</label>
-                <select value={tokenType} onChange={(e) => setTokenType(e.target.value)}>
+                <select
+                  value={tokenType}
+                  onChange={(e) => setTokenType(e.target.value)}
+                >
                   <option value="FAMILY_TOKEN">Family Token</option>
                   <option value="MANAGER_TOKEN">Manager Token</option>
                   <option value="STAFF_TOKEN">Staff Token</option>
                 </select>
-              </div>
-
-              <div className="form-group">
-                <label>Maximum Uses:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={maxUses}
-                  onChange={(e) => setMaxUses(parseInt(e.target.value))}
-                />
               </div>
 
               <div className="form-group">
@@ -2494,7 +2571,9 @@ function EnterTokenModal({ isOpen, onClose, jwt, onSuccess }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Enter Invite Token</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -2622,30 +2701,37 @@ function EnterTokenModal({ isOpen, onClose, jwt, onSuccess }) {
 }
 
 // Organization Management Modal Component
-function OrganizationManagementModal({ isOpen, onClose, organizationData, user, jwt, onSuccess }) {
+function OrganizationManagementModal({
+  isOpen,
+  onClose,
+  organizationData,
+  user,
+  jwt,
+  onSuccess,
+}) {
   const [isLeaving, setIsLeaving] = React.useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = React.useState(false);
   const [showChangeOrg, setShowChangeOrg] = React.useState(false);
-  const [newOrgId, setNewOrgId] = React.useState('');
+  const [newOrgId, setNewOrgId] = React.useState("");
   const [isChanging, setIsChanging] = React.useState(false);
 
   const handleLeaveOrganization = async () => {
     setIsLeaving(true);
     try {
-      const response = await fetch('/api/organizations/leave', {
-        method: 'POST',
+      const response = await fetch("/api/organizations/leave", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to leave organization');
+        throw new Error(error.error || "Failed to leave organization");
       }
 
-      alert('Successfully left organization');
+      alert("Successfully left organization");
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -2657,16 +2743,16 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
 
   const handleChangeOrganization = async () => {
     if (!newOrgId.trim()) {
-      alert('Please enter an organization ID');
+      alert("Please enter an organization ID");
       return;
     }
 
     setIsChanging(true);
     try {
-      const response = await fetch('/api/organizations/change', {
-        method: 'POST',
+      const response = await fetch("/api/organizations/change", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
         body: JSON.stringify({
@@ -2676,17 +2762,17 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to change organization');
+        throw new Error(error.error || "Failed to change organization");
       }
 
-      alert('Successfully changed organization');
+      alert("Successfully changed organization");
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
     } finally {
       setIsChanging(false);
       setShowChangeOrg(false);
-      setNewOrgId('');
+      setNewOrgId("");
     }
   };
 
@@ -2697,7 +2783,9 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Manage Organization</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -2723,7 +2811,8 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
             <div className="action-section">
               <h4>Actions</h4>
               <p className="action-description">
-                You can change to a different organization using its ID, or leave your current organization.
+                You can change to a different organization using its ID, or
+                leave your current organization.
               </p>
 
               <div className="action-buttons">
@@ -2738,7 +2827,9 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                 ) : (
                   <div className="change-org-form">
                     <h5>Change Organization</h5>
-                    <p className="form-description">Enter the ID of the organization you want to join:</p>
+                    <p className="form-description">
+                      Enter the ID of the organization you want to join:
+                    </p>
                     <input
                       type="text"
                       value={newOrgId}
@@ -2752,13 +2843,13 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                         onClick={handleChangeOrganization}
                         disabled={isChanging || !newOrgId.trim()}
                       >
-                        {isChanging ? 'Changing...' : 'Change Organization'}
+                        {isChanging ? "Changing..." : "Change Organization"}
                       </button>
                       <button
                         className="cancel-change-btn"
                         onClick={() => {
                           setShowChangeOrg(false);
-                          setNewOrgId('');
+                          setNewOrgId("");
                         }}
                         disabled={isChanging}
                       >
@@ -2779,8 +2870,9 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                 ) : (
                   <div className="leave-confirm">
                     <p className="warning-text">
-                      ⚠️ Are you sure you want to leave "{organizationData?.name}"?
-                      This will remove your access to all clients and data in this organization.
+                      ⚠️ Are you sure you want to leave "
+                      {organizationData?.name}"? This will remove your access to
+                      all clients and data in this organization.
                     </p>
                     <div className="confirm-actions">
                       <button
@@ -2788,7 +2880,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                         onClick={handleLeaveOrganization}
                         disabled={isLeaving}
                       >
-                        {isLeaving ? 'Leaving...' : 'Yes, Leave Organization'}
+                        {isLeaving ? "Leaving..." : "Yes, Leave Organization"}
                       </button>
                       <button
                         className="cancel-leave-btn"
