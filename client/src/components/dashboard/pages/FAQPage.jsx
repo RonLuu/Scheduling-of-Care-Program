@@ -2,6 +2,7 @@ import React from "react";
 import NavigationTab from "../../NavigationTab";
 import useAuth from "../hooks/useAuth";
 import { useClients } from "../hooks/useClients";
+import { useBudgetPlan } from "../hooks/useBudgetPlan";
 
 function BudgetPlanningPage() {
   const { me } = useAuth();
@@ -9,19 +10,23 @@ function BudgetPlanningPage() {
   const { clients, loading, error } = useClients(me, jwt);
 
   const [selectedClient, setSelectedClient] = React.useState(null);
-  const [yearlyBudget, setYearlyBudget] = React.useState("");
-  const [budgetSaved, setBudgetSaved] = React.useState(false);
-  const [categories, setCategories] = React.useState([]);
-  const [categoriesSaved, setCategoriesSaved] = React.useState(false);
-  const [customCategories, setCustomCategories] = React.useState([]);
-  const [deletedCategories, setDeletedCategories] = React.useState([]);
+  const [year] = React.useState(new Date().getFullYear());
   const [newCategoryName, setNewCategoryName] = React.useState("");
   const [newCategoryDescription, setNewCategoryDescription] = React.useState("");
   const [showAddCategory, setShowAddCategory] = React.useState(false);
-  const [budgetItems, setBudgetItems] = React.useState({});
-  const [itemsSaved, setItemsSaved] = React.useState(false);
   const [expandedCategory, setExpandedCategory] = React.useState(null);
   const [newItemForms, setNewItemForms] = React.useState({});
+  const [tempYearlyBudget, setTempYearlyBudget] = React.useState("");
+  const [customCategories, setCustomCategories] = React.useState([]);
+  const [deletedCategories, setDeletedCategories] = React.useState([]);
+  const [budgetItems, setBudgetItems] = React.useState({});
+
+  // Use the budget plan hook
+  const { budgetPlan, loading: budgetLoading, error: budgetError, saveBudgetPlan } = useBudgetPlan(
+    selectedClient?._id,
+    year,
+    jwt
+  );
 
   // Predefined categories with emojis
   const predefinedCategories = [
@@ -42,36 +47,51 @@ function BudgetPlanningPage() {
     }
   }, [clients, selectedClient]);
 
-  const handleSaveYearlyBudget = () => {
-    if (!yearlyBudget || isNaN(yearlyBudget) || parseFloat(yearlyBudget) <= 0) {
+  const handleSaveYearlyBudget = async () => {
+    if (!tempYearlyBudget || isNaN(tempYearlyBudget) || parseFloat(tempYearlyBudget) <= 0) {
       alert("Please enter a valid yearly budget amount");
       return;
     }
 
-    // For now, just save to local state - we'll connect to backend later
-    setBudgetSaved(true);
-    alert(`Yearly budget of $${parseFloat(yearlyBudget).toLocaleString()} saved!`);
+    try {
+      await saveBudgetPlan({
+        yearlyBudget: parseFloat(tempYearlyBudget),
+        categories: budgetPlan?.categories || [],
+      });
+      alert(`Yearly budget of $${parseFloat(tempYearlyBudget).toLocaleString()} saved!`);
+    } catch (error) {
+      alert(`Error saving budget: ${error.message}`);
+    }
   };
 
   const handleCategoryBudgetChange = (categoryId, amount) => {
-    setCategories(prevCategories => {
-      const existingIndex = prevCategories.findIndex(cat => cat.id === categoryId);
-      if (existingIndex >= 0) {
-        const updatedCategories = [...prevCategories];
-        updatedCategories[existingIndex] = { ...updatedCategories[existingIndex], budget: amount };
-        return updatedCategories;
-      } else {
-        // Look in both predefined and custom categories
-        const allAvailable = getAllAvailableCategories();
-        const categoryData = allAvailable.find(cat => cat.id === categoryId);
-        return [...prevCategories, { ...categoryData, budget: amount }];
+    const updatedCategories = [...(budgetPlan?.categories || [])];
+    const existingIndex = updatedCategories.findIndex(cat => cat.id === categoryId);
+
+    if (existingIndex >= 0) {
+      updatedCategories[existingIndex] = { ...updatedCategories[existingIndex], budget: parseFloat(amount) || 0 };
+    } else {
+      // Look in both predefined and custom categories
+      const allAvailable = getAllAvailableCategories();
+      const categoryData = allAvailable.find(cat => cat.id === categoryId);
+      if (categoryData) {
+        updatedCategories.push({ ...categoryData, budget: parseFloat(amount) || 0 });
       }
+    }
+
+    // Update the backend immediately
+    saveBudgetPlan({
+      yearlyBudget: budgetPlan?.yearlyBudget || 0,
+      categories: updatedCategories,
+    }).catch(error => {
+      console.error('Error saving category budget:', error);
     });
   };
 
   const handleSaveCategories = () => {
-    const totalAllocated = categories.reduce((sum, cat) => sum + (parseFloat(cat.budget) || 0), 0);
-    const yearlyAmount = parseFloat(yearlyBudget);
+    const categories = budgetPlan?.categories || [];
+    const totalAllocated = getTotalAllocated();
+    const yearlyAmount = budgetPlan?.yearlyBudget || 0;
 
     if (totalAllocated > yearlyAmount) {
       alert(`Total allocated budget ($${totalAllocated.toLocaleString()}) exceeds yearly budget ($${yearlyAmount.toLocaleString()})`);
@@ -83,16 +103,15 @@ function BudgetPlanningPage() {
       return;
     }
 
-    setCategoriesSaved(true);
     alert(`Budget categories saved! Allocated: $${totalAllocated.toLocaleString()} of $${yearlyAmount.toLocaleString()}`);
   };
 
   const getTotalAllocated = () => {
-    return categories.reduce((sum, cat) => sum + (parseFloat(cat.budget) || 0), 0);
+    return (budgetPlan?.categories || []).reduce((sum, cat) => sum + (parseFloat(cat.budget) || 0), 0);
   };
 
   const getRemainingBudget = () => {
-    return parseFloat(yearlyBudget) - getTotalAllocated();
+    return (budgetPlan?.yearlyBudget || 0) - getTotalAllocated();
   };
 
   const handleAddCustomCategory = () => {
@@ -109,23 +128,33 @@ function BudgetPlanningPage() {
       isCustom: true
     };
 
-    setCustomCategories(prev => [...prev, newCategory]);
+    const updatedCustomCategories = [...customCategories, newCategory];
+    setCustomCategories(updatedCustomCategories);
     setNewCategoryName("");
     setNewCategoryDescription("");
     setShowAddCategory(false);
   };
 
-  const handleDeleteCategory = (categoryId) => {
-    // Remove from categories if it has budget allocated
-    setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+  const handleDeleteCategory = async (categoryId) => {
+    // Remove from backend categories if it has budget allocated
+    const updatedCategories = (budgetPlan?.categories || []).filter(cat => cat.id !== categoryId);
 
-    // If it's a predefined category, add to deleted list
-    const predefinedCategory = predefinedCategories.find(cat => cat.id === categoryId);
-    if (predefinedCategory) {
-      setDeletedCategories(prev => [...prev, categoryId]);
-    } else {
-      // If it's a custom category, remove from custom categories
-      setCustomCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    try {
+      await saveBudgetPlan({
+        yearlyBudget: budgetPlan?.yearlyBudget || 0,
+        categories: updatedCategories,
+      });
+
+      // If it's a predefined category, add to deleted list
+      const predefinedCategory = predefinedCategories.find(cat => cat.id === categoryId);
+      if (predefinedCategory) {
+        setDeletedCategories(prev => [...prev, categoryId]);
+      } else {
+        // If it's a custom category, remove from custom categories
+        setCustomCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
     }
   };
 
@@ -134,7 +163,7 @@ function BudgetPlanningPage() {
     return [...availablePredefined, ...customCategories];
   };
 
-  const handleAddBudgetItem = (categoryId, itemName, itemBudget, itemDescription = '') => {
+  const handleAddBudgetItem = async (categoryId, itemName, itemBudget, itemDescription = '') => {
     if (!itemName.trim()) {
       alert("Please enter an item name");
       return;
@@ -146,39 +175,65 @@ function BudgetPlanningPage() {
     }
 
     const newItem = {
-      id: `item_${Date.now()}`,
       name: itemName.trim(),
       budget: parseFloat(itemBudget),
       description: itemDescription.trim()
     };
 
-    setBudgetItems(prev => ({
-      ...prev,
-      [categoryId]: [...(prev[categoryId] || []), newItem]
-    }));
+    // Update the category with the new item
+    const updatedCategories = (budgetPlan?.categories || []).map(cat => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          items: [...(cat.items || []), newItem]
+        };
+      }
+      return cat;
+    });
 
-    // Clear the form
-    setNewItemForms(prev => ({
-      ...prev,
-      [categoryId]: { name: '', budget: '', description: '' }
-    }));
+    try {
+      await saveBudgetPlan({
+        yearlyBudget: budgetPlan?.yearlyBudget || 0,
+        categories: updatedCategories,
+      });
+
+      // Clear the form
+      setNewItemForms(prev => ({
+        ...prev,
+        [categoryId]: { name: '', budget: '', description: '' }
+      }));
+    } catch (error) {
+      console.error('Error adding budget item:', error);
+    }
   };
 
-  const handleDeleteBudgetItem = (categoryId, itemId) => {
-    setBudgetItems(prev => ({
-      ...prev,
-      [categoryId]: prev[categoryId]?.filter(item => item.id !== itemId) || []
-    }));
-  };
+  const handleDeleteBudgetItem = async (categoryId, itemIndex) => {
+    // Update the category by removing the item at the specified index
+    const updatedCategories = (budgetPlan?.categories || []).map(cat => {
+      if (cat.id === categoryId) {
+        const updatedItems = [...(cat.items || [])];
+        updatedItems.splice(itemIndex, 1);
+        return {
+          ...cat,
+          items: updatedItems
+        };
+      }
+      return cat;
+    });
 
-  const getCategoryItemsTotal = (categoryId) => {
-    const items = budgetItems[categoryId] || [];
-    return items.reduce((sum, item) => sum + item.budget, 0);
+    try {
+      await saveBudgetPlan({
+        yearlyBudget: budgetPlan?.yearlyBudget || 0,
+        categories: updatedCategories,
+      });
+    } catch (error) {
+      console.error('Error deleting budget item:', error);
+    }
   };
 
   const getTotalItemsBudget = () => {
-    return Object.values(budgetItems).reduce((total, items) => {
-      return total + items.reduce((sum, item) => sum + item.budget, 0);
+    return (budgetPlan?.categories || []).reduce((total, category) => {
+      return total + (category.items || []).reduce((sum, item) => sum + (item.budget || 0), 0);
     }, 0);
   };
 
@@ -191,7 +246,6 @@ function BudgetPlanningPage() {
       return;
     }
 
-    setItemsSaved(true);
     alert(`Budget items saved! Total items budget: $${totalItems.toLocaleString()}`);
   };
 
@@ -292,8 +346,8 @@ function BudgetPlanningPage() {
                       <input
                         type="number"
                         id="yearly-budget"
-                        value={yearlyBudget}
-                        onChange={(e) => setYearlyBudget(e.target.value)}
+                        value={tempYearlyBudget || budgetPlan?.yearlyBudget || ''}
+                        onChange={(e) => setTempYearlyBudget(e.target.value)}
                         placeholder="Enter amount (e.g., 25000)"
                         min="0"
                         step="100"
@@ -308,16 +362,16 @@ function BudgetPlanningPage() {
                     Save Yearly Budget
                   </button>
 
-                  {budgetSaved && (
+                  {budgetPlan?.yearlyBudget && (
                     <div className="budget-saved-indicator">
-                      ✅ Yearly budget saved: ${parseFloat(yearlyBudget).toLocaleString()}
+                      ✅ Yearly budget saved: ${budgetPlan.yearlyBudget.toLocaleString()}
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Step 2: Budget Categories */}
-              {budgetSaved && (
+              {budgetPlan?.yearlyBudget && (
                 <div className="budget-step">
                   <div className="step-header">
                     <h3>📂 Step 2: Budget Categories</h3>
@@ -329,7 +383,7 @@ function BudgetPlanningPage() {
                     <div className="budget-summary">
                       <div className="summary-row">
                         <span>Total Yearly Budget:</span>
-                        <span className="budget-amount">${parseFloat(yearlyBudget).toLocaleString()}</span>
+                        <span className="budget-amount">${(budgetPlan?.yearlyBudget || 0).toLocaleString()}</span>
                       </div>
                       <div className="summary-row">
                         <span>Allocated:</span>
@@ -392,7 +446,7 @@ function BudgetPlanningPage() {
                     {/* Category Grid */}
                     <div className="categories-grid">
                       {getAllAvailableCategories().map((category) => {
-                        const categoryBudget = categories.find(cat => cat.id === category.id)?.budget || '';
+                        const categoryBudget = (budgetPlan?.categories || []).find(cat => cat.id === category.id)?.budget || '';
                         return (
                           <div key={category.id} className="category-card">
                             <div className="category-header">
@@ -437,12 +491,12 @@ function BudgetPlanningPage() {
                       <button
                         className="save-categories-btn"
                         onClick={handleSaveCategories}
-                        disabled={categories.length === 0}
+                        disabled={(budgetPlan?.categories || []).length === 0}
                       >
                         Save Budget Categories
                       </button>
 
-                      {categoriesSaved && (
+                      {(budgetPlan?.categories || []).length > 0 && (
                         <div className="categories-saved-indicator">
                           ✅ Budget categories saved! You can now add specific items to each category.
                         </div>
@@ -453,7 +507,7 @@ function BudgetPlanningPage() {
               )}
 
               {/* Step 3: Budget Items */}
-              {categoriesSaved && (
+              {(budgetPlan?.categories || []).some(cat => cat.budget > 0) && (
                 <div className="budget-step">
                   <div className="step-header">
                     <h3>📝 Step 3: Budget Items</h3>
@@ -481,9 +535,9 @@ function BudgetPlanningPage() {
 
                     {/* Categories with Items */}
                     <div className="categories-items-list">
-                      {categories.filter(cat => cat.budget > 0).map((category) => {
-                        const categoryItems = budgetItems[category.id] || [];
-                        const itemsTotal = getCategoryItemsTotal(category.id);
+                      {(budgetPlan?.categories || []).filter(cat => cat.budget > 0).map((category) => {
+                        const categoryItems = category.items || [];
+                        const itemsTotal = categoryItems.reduce((sum, item) => sum + (item.budget || 0), 0);
                         const remaining = category.budget - itemsTotal;
                         const isExpanded = expandedCategory === category.id;
                         const newItemForm = newItemForms[category.id] || { name: '', budget: '', description: '' };
@@ -513,8 +567,8 @@ function BudgetPlanningPage() {
                                 {/* Existing Items */}
                                 {categoryItems.length > 0 && (
                                   <div className="existing-items">
-                                    {categoryItems.map((item) => (
-                                      <div key={item.id} className="budget-item">
+                                    {categoryItems.map((item, itemIndex) => (
+                                      <div key={itemIndex} className="budget-item">
                                         <div className="budget-item-info">
                                           <div className="budget-item-name">{item.name}</div>
                                           <div className="budget-item-description">{item.description}</div>
@@ -523,7 +577,7 @@ function BudgetPlanningPage() {
                                           <span className="budget-item-amount">${item.budget.toLocaleString()}</span>
                                           <button
                                             className="delete-item-btn"
-                                            onClick={() => handleDeleteBudgetItem(category.id, item.id)}
+                                            onClick={() => handleDeleteBudgetItem(category.id, itemIndex)}
                                             title="Delete item"
                                           >
                                             Delete
@@ -600,7 +654,7 @@ function BudgetPlanningPage() {
                         Save Budget Items
                       </button>
 
-                      {itemsSaved && (
+                      {getTotalItemsBudget() > 0 && (
                         <div className="items-saved-indicator">
                           ✅ Budget items saved! Your budget plan is complete.
                         </div>

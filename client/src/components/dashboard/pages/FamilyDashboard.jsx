@@ -1187,9 +1187,9 @@ function OverviewSection({ client, jwt }) {
           fetch(`/api/care-need-items/client/${client._id}`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }),
-          fetch(`/api/budget/client/${client._id}`, {
+          fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
             headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })), // Budget endpoint might not exist
+          }).catch(() => ({ ok: false })), // Budget planning endpoint
           fetch(`/api/access-requests/incoming`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }).catch(() => ({ ok: false })) // Access requests might fail
@@ -1215,12 +1215,16 @@ function OverviewSection({ client, jwt }) {
           lowStock: supplies.filter(s => s.priority === 'high').length
         };
 
-        // Process budget data
-        const budgetStats = budget ? {
-          spent: budget.totalSpent || 0,
-          allocated: budget.totalBudget || 0,
-          remaining: (budget.totalBudget || 0) - (budget.totalSpent || 0)
-        } : { spent: 0, allocated: 0, remaining: 0 };
+        // Process budget data from budget planning
+        const budgetPlan = budget?.budgetPlan;
+        const budgetStats = budgetPlan ? {
+          allocated: budgetPlan.yearlyBudget || 0,
+          spent: 0, // We don't track spending yet, but could be calculated from care tasks
+          remaining: budgetPlan.yearlyBudget || 0,
+          categories: budgetPlan.categories || [],
+          categoryCount: (budgetPlan.categories || []).length,
+          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0)
+        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0 };
 
         // Generate recent activity
         const recentActivity = [
@@ -1293,31 +1297,44 @@ function OverviewSection({ client, jwt }) {
       {/* Today's Schedule or Task Creation Guidance */}
       <TodaysScheduleOrGuidance client={client} jwt={jwt} />
 
-      {/* Budget Overview - Keep only budget as it's important for families */}
+      {/* Budget Overview */}
       <div className="budget-overview">
         <div className="budget-card">
           <div className="budget-header">
-            <h4>💰 Budget Overview</h4>
-            <span className="budget-total">${budget.allocated.toFixed(0)}</span>
+            <h4>💰 Budget Planning</h4>
+            {budget.allocated > 0 ? (
+              <span className="budget-total">${budget.allocated.toLocaleString()}</span>
+            ) : (
+              <a href="/faq" className="create-budget-link">Create Budget →</a>
+            )}
           </div>
-          <div className="budget-breakdown">
-            <div className="budget-item">
-              <span className="budget-label">Spent</span>
-              <span className="budget-value">${budget.spent.toFixed(0)}</span>
+
+          {budget.allocated > 0 ? (
+            <div className="budget-breakdown">
+              <div className="budget-item">
+                <span className="budget-label">Yearly Budget</span>
+                <span className="budget-value">${budget.allocated.toLocaleString()}</span>
+              </div>
+              <div className="budget-item">
+                <span className="budget-label">Categories</span>
+                <span className="budget-value">{budget.categoryCount}</span>
+              </div>
+              <div className="budget-item">
+                <span className="budget-label">Budget Items</span>
+                <span className="budget-value">{budget.itemsCount}</span>
+              </div>
+              <div className="budget-actions">
+                <a href="/faq" className="manage-budget-btn">Manage Budget →</a>
+              </div>
             </div>
-            <div className="budget-item">
-              <span className="budget-label">Remaining</span>
-              <span className={`budget-value ${budget.remaining < 0 ? 'error' : 'success'}`}>
-                ${budget.remaining.toFixed(0)}
-              </span>
+          ) : (
+            <div className="no-budget">
+              <p>No budget plan created yet</p>
+              <p className="budget-description">
+                Create a yearly budget plan with categories and specific items to better manage {client.name}'s care expenses.
+              </p>
             </div>
-            <div className="budget-item">
-              <span className="budget-label">Usage</span>
-              <span className="budget-value">
-                {budget.allocated > 0 ? Math.round((budget.spent / budget.allocated) * 100) : 0}%
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -1423,6 +1440,54 @@ function OverviewSection({ client, jwt }) {
 
         .budget-value.success { color: #10b981; }
         .budget-value.error { color: #ef4444; }
+
+        .create-budget-link {
+          color: #10b981;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 1rem;
+        }
+
+        .create-budget-link:hover {
+          text-decoration: underline;
+        }
+
+        .no-budget {
+          text-align: center;
+          padding: 1rem 0;
+        }
+
+        .no-budget p {
+          margin: 0 0 0.5rem 0;
+          color: #6b7280;
+        }
+
+        .budget-description {
+          font-size: 0.875rem !important;
+          line-height: 1.4;
+        }
+
+        .budget-actions {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #f3f4f6;
+          text-align: center;
+        }
+
+        .manage-budget-btn {
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.9rem;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          transition: background-color 0.2s;
+        }
+
+        .manage-budget-btn:hover {
+          background-color: rgba(102, 126, 234, 0.1);
+          text-decoration: none;
+        }
 
         .activity-section {
           background: #f8fafc;
