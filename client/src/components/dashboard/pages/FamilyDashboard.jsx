@@ -9,7 +9,6 @@ function FamilyDashboard() {
   const jwt = localStorage.getItem("jwt");
   const { clients, loading, error, refresh } = useClients(me, jwt);
   const [selectedClient, setSelectedClient] = React.useState(null);
-  const [activeSection, setActiveSection] = React.useState("overview");
   const [showCreateTokenModal, setShowCreateTokenModal] = React.useState(false);
   const [showEnterTokenModal, setShowEnterTokenModal] = React.useState(false);
   const [showOrganizationModal, setShowOrganizationModal] = React.useState(false);
@@ -474,7 +473,6 @@ function FamilyDashboard() {
                 onChange={(e) => {
                   const client = clients.find(c => c._id === e.target.value);
                   setSelectedClient(client);
-                  setActiveSection("overview"); // Reset to overview when switching clients
                 }}
                 className="client-dropdown"
               >
@@ -505,61 +503,9 @@ function FamilyDashboard() {
           </div>
 
           {selectedClient && (
-            <>
-
-              {/* Section Navigation */}
-              <div className="section-nav">
-                <button
-                  className={activeSection === "overview" ? "active" : ""}
-                  onClick={() => setActiveSection("overview")}
-                >
-                  📊 Overview
-                </button>
-                <button
-                  className={activeSection === "tasks" ? "active" : ""}
-                  onClick={() => setActiveSection("tasks")}
-                >
-                  ✓ Care Tasks
-                </button>
-                <button
-                  className={activeSection === "supplies" ? "active" : ""}
-                  onClick={() => setActiveSection("supplies")}
-                >
-                  🛒 Supplies & Purchases
-                </button>
-                <button
-                  className={activeSection === "schedule" ? "active" : ""}
-                  onClick={() => setActiveSection("schedule")}
-                >
-                  📅 Schedule & Shifts
-                </button>
-                <button
-                  className={activeSection === "budget" ? "active" : ""}
-                  onClick={() => setActiveSection("budget")}
-                >
-                  💰 Budget & Reports
-                </button>
-              </div>
-
-              {/* Section Content */}
-              <div className="section-content">
-                {activeSection === "overview" && (
-                  <OverviewSection client={selectedClient} jwt={jwt} />
-                )}
-                {activeSection === "tasks" && (
-                  <TasksSection client={selectedClient} jwt={jwt} />
-                )}
-                {activeSection === "supplies" && (
-                  <SuppliesSection client={selectedClient} jwt={jwt} />
-                )}
-                {activeSection === "schedule" && (
-                  <ScheduleSection client={selectedClient} jwt={jwt} />
-                )}
-                {activeSection === "budget" && (
-                  <BudgetSection client={selectedClient} jwt={jwt} />
-                )}
-              </div>
-            </>
+            <div className="dashboard-widgets">
+              <DashboardContent client={selectedClient} jwt={jwt} />
+            </div>
           )}
         </div>
       </div>
@@ -804,40 +750,9 @@ function FamilyDashboard() {
           background: #5a67d8;
         }
 
-        .section-nav {
-          display: flex;
-          background: white;
-          border-bottom: 1px solid #e2e8f0;
-          overflow-x: auto;
-        }
-
-        .section-nav button {
-          padding: 1rem 1.5rem;
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 0.95rem;
-          font-weight: 500;
-          color: #64748b;
-          border-bottom: 3px solid transparent;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-
-        .section-nav button:hover {
-          background: #f8fafc;
-          color: #374151;
-        }
-
-        .section-nav button.active {
-          color: #667eea;
-          border-bottom-color: #667eea;
-          background: #f8fafc;
-        }
-
-        .section-content {
+        .dashboard-widgets {
           padding: 2rem;
-          min-height: 400px;
+          background: #f8fafc;
         }
 
         .loading-state,
@@ -1085,21 +1000,6 @@ function FamilyDashboard() {
             align-items: flex-start;
           }
 
-          .section-nav {
-            flex-direction: column;
-          }
-
-          .section-nav button {
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-            border-right: none;
-          }
-
-          .section-nav button.active {
-            border-bottom-color: #e2e8f0;
-            border-left: 3px solid #667eea;
-          }
-
           .onboarding-header {
             padding: 2rem 1rem;
           }
@@ -1159,8 +1059,216 @@ function FamilyDashboard() {
   );
 }
 
-// Enhanced Overview Section with real data
-function OverviewSection({ client, jwt }) {
+// Main Dashboard Content with Widget Layout
+function DashboardContent({ client, jwt }) {
+  const [overviewData, setOverviewData] = React.useState({
+    tasks: { total: 0, completed: 0, pending: 0, overdue: 0 },
+    supplies: { total: 0, needsPurchase: 0, lowStock: 0 },
+    budget: { spent: 0, allocated: 0, remaining: 0 },
+    recentActivity: [],
+    accessRequests: [],
+    loading: true,
+    error: null
+  });
+
+  // Fetch overview data for the selected client
+  React.useEffect(() => {
+    if (!client?._id || !jwt) return;
+
+    const fetchOverviewData = async () => {
+      setOverviewData(prev => ({ ...prev, loading: true, error: null }));
+
+      try {
+        // Fetch multiple endpoints in parallel
+        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] = await Promise.all([
+          fetch(`/api/care-tasks/client/${client._id}`, {
+            headers: { Authorization: `Bearer ${jwt}` }
+          }),
+          fetch(`/api/care-need-items/client/${client._id}`, {
+            headers: { Authorization: `Bearer ${jwt}` }
+          }),
+          fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
+            headers: { Authorization: `Bearer ${jwt}` }
+          }).catch(() => ({ ok: false })),
+          fetch(`/api/access-requests/incoming`, {
+            headers: { Authorization: `Bearer ${jwt}` }
+          }).catch(() => ({ ok: false }))
+        ]);
+
+        const tasks = tasksRes.ok ? await tasksRes.json() : [];
+        const supplies = suppliesRes.ok ? await suppliesRes.json() : [];
+        const budget = budgetRes?.ok ? await budgetRes.json() : null;
+        const accessRequests = accessRequestsRes?.ok ? await accessRequestsRes.json() : [];
+
+        // Process tasks data
+        const taskStats = {
+          total: tasks.length,
+          completed: tasks.filter(t => t.status === 'Complete').length,
+          pending: tasks.filter(t => t.status === 'Scheduled').length,
+          overdue: tasks.filter(t => t.status === 'Missed').length
+        };
+
+        // Process supplies data
+        const supplyStats = {
+          total: supplies.length,
+          needsPurchase: supplies.filter(s => s.status === 'pending').length,
+          lowStock: supplies.filter(s => s.priority === 'high').length
+        };
+
+        // Process budget data
+        const budgetPlan = budget?.budgetPlan;
+        const budgetStats = budgetPlan ? {
+          allocated: budgetPlan.yearlyBudget || 0,
+          spent: 0,
+          remaining: budgetPlan.yearlyBudget || 0,
+          categories: budgetPlan.categories || [],
+          categoryCount: (budgetPlan.categories || []).length,
+          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0)
+        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0 };
+
+        // Generate recent activity
+        const recentActivity = [
+          ...tasks.slice(0, 3).map(t => ({
+            type: 'task',
+            message: `Task "${t.title}" ${t.status === 'Complete' ? 'completed' : 'updated'}`,
+            time: new Date(t.updatedAt || t.createdAt).toLocaleString()
+          })),
+          ...supplies.slice(0, 2).map(s => ({
+            type: 'supply',
+            message: `Supply "${s.name}" needs attention`,
+            time: new Date(s.updatedAt || s.createdAt).toLocaleString()
+          }))
+        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
+
+        setOverviewData({
+          tasks: taskStats,
+          supplies: supplyStats,
+          budget: budgetStats,
+          recentActivity,
+          accessRequests,
+          loading: false,
+          error: null
+        });
+
+      } catch (error) {
+        console.error('Error fetching overview data:', error);
+        setOverviewData(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Failed to load overview data'
+        }));
+      }
+    };
+
+    fetchOverviewData();
+  }, [client?._id, jwt]);
+
+  if (overviewData.loading) {
+    return (
+      <div className="dashboard-loading">
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (overviewData.error) {
+    return (
+      <div className="dashboard-error">
+        <p>Error: {overviewData.error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
+  }
+
+  const { tasks, supplies, budget, recentActivity, accessRequests } = overviewData;
+
+  return (
+    <div className="widgets-container">
+      {/* Access Requests - Full Width Alert */}
+      {accessRequests.length > 0 && (
+        <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
+      )}
+
+      {/* Getting Started Guidance or Today's Schedule - Full Width */}
+      <GettingStartedOrSchedule
+        client={client}
+        jwt={jwt}
+        hasBudget={budget.allocated > 0}
+        hasTasks={tasks.total > 0}
+      />
+
+      {/* Two Column Layout for Widgets */}
+      <div className="widget-grid">
+        {/* Left Column */}
+        <div className="widget-column">
+          {/* Task Summary Widget */}
+          <TaskSummaryWidget tasks={tasks} client={client} />
+
+          {/* Supplies Widget */}
+          <SuppliesWidget supplies={supplies} client={client} />
+        </div>
+
+        {/* Right Column */}
+        <div className="widget-column">
+          {/* Budget Widget */}
+          <BudgetWidget budget={budget} client={client} />
+
+          {/* Recent Activity Widget */}
+          {recentActivity.length > 0 && (
+            <RecentActivityWidget activity={recentActivity} />
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .widgets-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .widget-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .widget-column {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .dashboard-loading,
+        .dashboard-error {
+          text-align: center;
+          padding: 3rem;
+          color: #6b7280;
+        }
+
+        .dashboard-error button {
+          margin-top: 1rem;
+          padding: 0.75rem 1.5rem;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        @media (max-width: 968px) {
+          .widget-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Enhanced Overview Section with real data (DEPRECATED - kept for reference)
+function OverviewSection_OLD({ client, jwt }) {
   const [overviewData, setOverviewData] = React.useState({
     tasks: { total: 0, completed: 0, pending: 0, overdue: 0 },
     supplies: { total: 0, needsPurchase: 0, lowStock: 0 },
@@ -1543,8 +1651,587 @@ function OverviewSection({ client, jwt }) {
   );
 }
 
-// Today's Schedule or Guidance Component
-function TodaysScheduleOrGuidance({ client, jwt }) {
+// Getting Started Guidance or Today's Schedule Component
+function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
+  const [scheduleData, setScheduleData] = React.useState({
+    todaysTasks: [],
+    loading: true,
+    error: null
+  });
+
+  React.useEffect(() => {
+    if (!client?._id || !jwt) return;
+
+    const fetchScheduleData = async () => {
+      try {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
+          headers: { Authorization: `Bearer ${jwt}` }
+        });
+
+        const allTasks = tasksRes.ok ? await tasksRes.json() : [];
+
+        const todaysTasks = allTasks.filter(task => {
+          if (!task.dueDate && !task.scheduledDate) return false;
+          const taskDate = task.scheduledDate
+            ? new Date(task.scheduledDate).toISOString().split('T')[0]
+            : new Date(task.dueDate).toISOString().split('T')[0];
+          return taskDate === todayStr;
+        }).slice(0, 5);
+
+        setScheduleData({
+          todaysTasks,
+          loading: false,
+          error: null
+        });
+      } catch (error) {
+        console.error('Error fetching schedule data:', error);
+        setScheduleData({
+          todaysTasks: [],
+          loading: false,
+          error: 'Failed to load schedule'
+        });
+      }
+    };
+
+    fetchScheduleData();
+  }, [client?._id, jwt]);
+
+  // Priority 1: No budget plan - Guide user to create budget first
+  if (!hasBudget) {
+    return (
+      <div className="guidance-banner budget-guidance">
+        <div className="guidance-header">
+          <h4>💡 Tip to Get Started: Create Your Budget Plan</h4>
+        </div>
+        <div className="guidance-content">
+          <div className="guidance-message">
+            <p className="guidance-description">
+              Start by creating a yearly budget plan for {client.name}. <br />
+              Once your budget is set up, you can then create care tasks and track spending.
+            </p>
+            <div className="guidance-steps">
+              <div className="step-indicator">
+                <span className="step-number current">1</span>
+                <span className="step-text">Create Budget Plan</span>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="step-indicator">
+                <span className="step-number">2</span>
+                <span className="step-text">Set Up Care Tasks</span>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="step-indicator">
+                <span className="step-number">3</span>
+                <span className="step-text">Manage Daily Care</span>
+              </div>
+            </div>
+          </div>
+          <a href="/faq" className="guidance-cta-btn">
+            Create Budget Plan →
+          </a>
+        </div>
+
+        <style jsx>{`
+          .guidance-banner {
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+          }
+
+          .budget-guidance {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          }
+
+          .guidance-header h4 {
+            margin: 0 0 1rem 0;
+            color: #1e40af;
+            font-size: 1.3rem;
+            font-weight: 600;
+          }
+
+          .guidance-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+
+          .guidance-message {
+            flex: 1;
+          }
+
+          .guidance-title {
+            margin: 0 0 0.75rem 0;
+            color: #1e3a8a;
+            font-size: 1.05rem;
+            font-weight: 600;
+          }
+
+          .guidance-description {
+            margin: 0 0 1.5rem 0;
+            color: #1e40af;
+            font-size: 0.95rem;
+            line-height: 1.6;
+          }
+
+          .guidance-steps {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #93c5fd;
+          }
+
+          .step-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+          }
+
+          .step-number {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+          }
+
+          .step-number.current {
+            background: #3b82f6;
+            color: white;
+          }
+
+          .step-text {
+            font-size: 0.75rem;
+            color: #374151;
+            text-align: center;
+            font-weight: 500;
+          }
+
+          .step-arrow {
+            color: #93c5fd;
+            font-size: 1.25rem;
+            font-weight: 700;
+          }
+
+          .guidance-cta-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.875rem 1.75rem;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            align-self: flex-start;
+          }
+
+          .guidance-cta-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          }
+
+          @media (max-width: 768px) {
+            .guidance-steps {
+              flex-direction: column;
+              gap: 0.5rem;
+            }
+
+            .step-arrow {
+              transform: rotate(90deg);
+            }
+
+            .guidance-cta-btn {
+              align-self: stretch;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Priority 2: Has budget but no tasks - Guide user to create care tasks
+  if (!hasTasks) {
+    return (
+      <div className="guidance-banner tasks-guidance">
+        <div className="guidance-header">
+          <h4>💡 Tip to Get Started: Set Up Care Tasks</h4>
+        </div>
+        <div className="guidance-content">
+          <div className="guidance-message">
+            <p className="guidance-description">
+              Budget planning is completed! You can now create care need items for {client.name}.<br />
+            </p>
+            <div className="guidance-steps">
+              <div className="step-indicator">
+                <span className="step-number completed">✓</span>
+                <span className="step-text">Budget Plan</span>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="step-indicator">
+                <span className="step-number current">2</span>
+                <span className="step-text">Set Up Care Tasks</span>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="step-indicator">
+                <span className="step-number">3</span>
+                <span className="step-text">Manage Daily Care</span>
+              </div>
+            </div>
+          </div>
+          <a href="/sub-elements" className="guidance-cta-btn">
+            Create Care Items →
+          </a>
+        </div>
+
+        <style jsx>{`
+          .guidance-banner {
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+          }
+
+          .tasks-guidance {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          }
+
+          .guidance-header h4 {
+            margin: 0 0 1rem 0;
+            color: #1e40af;
+            font-size: 1.3rem;
+            font-weight: 600;
+          }
+
+          .guidance-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+
+          .guidance-message {
+            flex: 1;
+          }
+
+          .guidance-title {
+            margin: 0 0 0.75rem 0;
+            color: #1e3a8a;
+            font-size: 1.05rem;
+            font-weight: 600;
+          }
+
+          .guidance-description {
+            margin: 0 0 1.5rem 0;
+            color: #1e40af;
+            font-size: 0.95rem;
+            line-height: 1.6;
+          }
+
+          .guidance-steps {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #93c5fd;
+          }
+
+          .step-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+          }
+
+          .step-number {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+          }
+
+          .step-number.completed {
+            background: #10b981;
+            color: white;
+          }
+
+          .step-number.current {
+            background: #3b82f6;
+            color: white;
+          }
+
+          .step-text {
+            font-size: 0.75rem;
+            color: #374151;
+            text-align: center;
+            font-weight: 500;
+          }
+
+          .step-arrow {
+            color: #93c5fd;
+            font-size: 1.25rem;
+            font-weight: 700;
+          }
+
+          .guidance-cta-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.875rem 1.75rem;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            align-self: flex-start;
+          }
+
+          .guidance-cta-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          }
+
+          @media (max-width: 768px) {
+            .guidance-steps {
+              flex-direction: column;
+              gap: 0.5rem;
+            }
+
+            .step-arrow {
+              transform: rotate(90deg);
+            }
+
+            .guidance-cta-btn {
+              align-self: stretch;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Priority 3: Has both budget and tasks - Show today's schedule
+  return <TodaysScheduleWidget scheduleData={scheduleData} client={client} />;
+}
+
+// Today's Schedule Widget (when user has budget and tasks)
+function TodaysScheduleWidget({ scheduleData, client }) {
+  const { todaysTasks, loading, error } = scheduleData;
+
+  if (loading) {
+    return (
+      <div className="todays-schedule">
+        <h4>Today's Schedule</h4>
+        <p>Loading today's schedule...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="todays-schedule">
+        <h4>Today's Schedule</h4>
+        <p>Error loading schedule</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="todays-schedule">
+      <div className="schedule-header">
+        <h4>📅 Today's Schedule</h4>
+        <a href="/shift-allocation" className="view-more-btn">
+          View Full Schedule →
+        </a>
+      </div>
+
+      {todaysTasks.length === 0 ? (
+        <div className="no-schedule">
+          <p>No scheduled tasks for today</p>
+        </div>
+      ) : (
+        <div className="schedule-list">
+          {todaysTasks.map((task, index) => (
+            <div key={task._id || index} className="schedule-item">
+              <div className="schedule-time">
+                {task.scheduledTime || 'All day'}
+              </div>
+              <div className="schedule-content">
+                <div className="schedule-title">{task.title}</div>
+                <div className="schedule-details">
+                  {task.assignedTo && <span className="assigned-to">👤 {task.assignedTo}</span>}
+                  <span className={`status-badge ${task.status?.toLowerCase()}`}>
+                    {task.status || 'Scheduled'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style jsx>{`
+        .todays-schedule {
+          background: #f8fafc;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 1px solid #e5e7eb;
+        }
+
+        .schedule-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .schedule-header h4 {
+          margin: 0;
+          color: #374151;
+          font-size: 1.2rem;
+        }
+
+        .view-more-btn {
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.9rem;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          transition: background-color 0.2s;
+        }
+
+        .view-more-btn:hover {
+          background-color: rgba(102, 126, 234, 0.1);
+          text-decoration: none;
+        }
+
+        .no-schedule {
+          text-align: center;
+          padding: 2rem;
+          color: #6b7280;
+        }
+
+        .schedule-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .schedule-item {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: white;
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .schedule-time {
+          color: #667eea;
+          font-weight: 600;
+          font-size: 0.875rem;
+          min-width: 80px;
+          flex-shrink: 0;
+        }
+
+        .schedule-content {
+          flex: 1;
+        }
+
+        .schedule-title {
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 0.25rem;
+        }
+
+        .schedule-details {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-size: 0.875rem;
+        }
+
+        .assigned-to {
+          color: #6b7280;
+        }
+
+        .status-badge {
+          padding: 0.125rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .status-badge.scheduled {
+          background: #e0f2fe;
+          color: #0369a1;
+        }
+
+        .status-badge.complete {
+          background: #ecfdf5;
+          color: #059669;
+        }
+
+        .status-badge.missed {
+          background: #fef2f2;
+          color: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+          .schedule-header {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+          }
+
+          .schedule-item {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .schedule-time {
+            min-width: auto;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// OLD COMPONENT - Kept for reference, can be removed later
+function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
   const [scheduleData, setScheduleData] = React.useState({
     shifts: [],
     todaysTasks: [],
@@ -1878,6 +2565,553 @@ function TodaysScheduleOrGuidance({ client, jwt }) {
           .schedule-time {
             min-width: auto;
           }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Task Summary Widget
+function TaskSummaryWidget({ tasks, client }) {
+  return (
+    <div className="widget task-summary-widget">
+      <div className="widget-header">
+        <h4>📋 Care Tasks</h4>
+        <a href="/sub-elements" className="widget-link">View All →</a>
+      </div>
+
+      <div className="task-stats">
+        <div className="stat-item">
+          <div className="stat-value">{tasks.total}</div>
+          <div className="stat-label">Total Tasks</div>
+        </div>
+        <div className="stat-item success">
+          <div className="stat-value">{tasks.completed}</div>
+          <div className="stat-label">Completed</div>
+        </div>
+        <div className="stat-item warning">
+          <div className="stat-value">{tasks.pending}</div>
+          <div className="stat-label">Pending</div>
+        </div>
+        <div className="stat-item error">
+          <div className="stat-value">{tasks.overdue}</div>
+          <div className="stat-label">Overdue</div>
+        </div>
+      </div>
+
+      {tasks.total === 0 && (
+        <div className="widget-empty">
+          <p>No care tasks yet</p>
+          <a href="/sub-elements" className="widget-action-btn">Create Care Items →</a>
+        </div>
+      )}
+
+      <style jsx>{`
+        .widget {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e7eb;
+        }
+
+        .widget-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .widget-header h4 {
+          margin: 0;
+          font-size: 1.1rem;
+          color: #374151;
+          font-weight: 600;
+        }
+
+        .widget-link {
+          color: #667eea;
+          text-decoration: none;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .widget-link:hover {
+          text-decoration: underline;
+        }
+
+        .task-stats {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+        }
+
+        .stat-item {
+          text-align: center;
+          padding: 1rem;
+          background: #f8fafc;
+          border-radius: 8px;
+          border: 2px solid #e5e7eb;
+        }
+
+        .stat-item.success {
+          background: #f0fdf4;
+          border-color: #86efac;
+        }
+
+        .stat-item.warning {
+          background: #fefce8;
+          border-color: #fde047;
+        }
+
+        .stat-item.error {
+          background: #fef2f2;
+          border-color: #fca5a5;
+        }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 0.25rem;
+        }
+
+        .stat-item.success .stat-value {
+          color: #16a34a;
+        }
+
+        .stat-item.warning .stat-value {
+          color: #ca8a04;
+        }
+
+        .stat-item.error .stat-value {
+          color: #dc2626;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .widget-empty {
+          text-align: center;
+          padding: 2rem 1rem;
+          color: #9ca3af;
+        }
+
+        .widget-empty p {
+          margin: 0 0 1rem 0;
+        }
+
+        .widget-action-btn {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          background: #667eea;
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .widget-action-btn:hover {
+          background: #5a67d8;
+        }
+
+        @media (max-width: 640px) {
+          .task-stats {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Supplies Widget
+function SuppliesWidget({ supplies, client }) {
+  return (
+    <div className="widget supplies-widget">
+      <div className="widget-header">
+        <h4>🛒 Supplies & Purchases</h4>
+        <a href="/sub-elements" className="widget-link">Manage →</a>
+      </div>
+
+      <div className="supplies-summary">
+        <div className="summary-row">
+          <span className="summary-label">Total Items</span>
+          <span className="summary-value">{supplies.total}</span>
+        </div>
+        <div className="summary-row warning">
+          <span className="summary-label">Needs Purchase</span>
+          <span className="summary-value">{supplies.needsPurchase}</span>
+        </div>
+        <div className="summary-row alert">
+          <span className="summary-label">Low Stock / High Priority</span>
+          <span className="summary-value">{supplies.lowStock}</span>
+        </div>
+      </div>
+
+      {supplies.total === 0 && (
+        <div className="widget-empty">
+          <p>No supplies tracked yet</p>
+          <a href="/sub-elements" className="widget-action-btn">Add Supplies →</a>
+        </div>
+      )}
+
+      <style jsx>{`
+        .widget {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e7eb;
+        }
+
+        .widget-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .widget-header h4 {
+          margin: 0;
+          font-size: 1.1rem;
+          color: #374151;
+          font-weight: 600;
+        }
+
+        .widget-link {
+          color: #667eea;
+          text-decoration: none;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .widget-link:hover {
+          text-decoration: underline;
+        }
+
+        .supplies-summary {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.875rem;
+          background: #f8fafc;
+          border-radius: 6px;
+          border-left: 3px solid #e5e7eb;
+        }
+
+        .summary-row.warning {
+          background: #fefce8;
+          border-left-color: #eab308;
+        }
+
+        .summary-row.alert {
+          background: #fef2f2;
+          border-left-color: #ef4444;
+        }
+
+        .summary-label {
+          font-size: 0.875rem;
+          color: #374151;
+          font-weight: 500;
+        }
+
+        .summary-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .summary-row.warning .summary-value {
+          color: #ca8a04;
+        }
+
+        .summary-row.alert .summary-value {
+          color: #dc2626;
+        }
+
+        .widget-empty {
+          text-align: center;
+          padding: 2rem 1rem;
+          color: #9ca3af;
+        }
+
+        .widget-empty p {
+          margin: 0 0 1rem 0;
+        }
+
+        .widget-action-btn {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          background: #667eea;
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .widget-action-btn:hover {
+          background: #5a67d8;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Budget Widget
+function BudgetWidget({ budget, client }) {
+  return (
+    <div className="widget budget-widget">
+      <div className="widget-header">
+        <h4>💰 Budget Planning</h4>
+        <a href="/faq" className="widget-link">
+          {budget.allocated > 0 ? 'Manage →' : 'Create →'}
+        </a>
+      </div>
+
+      {budget.allocated > 0 ? (
+        <div className="budget-info">
+          <div className="budget-main">
+            <div className="budget-amount">${budget.allocated.toLocaleString()}</div>
+            <div className="budget-label">Yearly Budget</div>
+          </div>
+
+          <div className="budget-breakdown">
+            <div className="breakdown-item">
+              <span className="breakdown-label">Categories</span>
+              <span className="breakdown-value">{budget.categoryCount}</span>
+            </div>
+            <div className="breakdown-item">
+              <span className="breakdown-label">Budget Items</span>
+              <span className="breakdown-value">{budget.itemsCount}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="widget-empty">
+          <p>No budget plan yet</p>
+          <p className="empty-description">Create a yearly budget to track care expenses</p>
+          <a href="/faq" className="widget-action-btn">Create Budget →</a>
+        </div>
+      )}
+
+      <style jsx>{`
+        .widget {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e7eb;
+        }
+
+        .widget-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .widget-header h4 {
+          margin: 0;
+          font-size: 1.1rem;
+          color: #374151;
+          font-weight: 600;
+        }
+
+        .widget-link {
+          color: #667eea;
+          text-decoration: none;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .widget-link:hover {
+          text-decoration: underline;
+        }
+
+        .budget-info {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .budget-main {
+          text-align: center;
+          padding: 1.5rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 8px;
+          color: white;
+        }
+
+        .budget-amount {
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 0.25rem;
+        }
+
+        .budget-label {
+          font-size: 0.875rem;
+          opacity: 0.9;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .budget-breakdown {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .breakdown-item {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 1rem;
+          background: #f8fafc;
+          border-radius: 6px;
+        }
+
+        .breakdown-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          margin-bottom: 0.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .breakdown-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .widget-empty {
+          text-align: center;
+          padding: 2rem 1rem;
+          color: #9ca3af;
+        }
+
+        .widget-empty p {
+          margin: 0 0 0.5rem 0;
+        }
+
+        .empty-description {
+          font-size: 0.875rem;
+          margin-bottom: 1rem !important;
+        }
+
+        .widget-action-btn {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          background: #667eea;
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .widget-action-btn:hover {
+          background: #5a67d8;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Recent Activity Widget
+function RecentActivityWidget({ activity }) {
+  return (
+    <div className="widget activity-widget">
+      <div className="widget-header">
+        <h4>⏱️ Recent Activity</h4>
+      </div>
+
+      <div className="activity-list">
+        {activity.map((item, index) => (
+          <div key={index} className="activity-item">
+            <span className="activity-icon">
+              {item.type === 'task' ? '📋' : '🛒'}
+            </span>
+            <div className="activity-content">
+              <div className="activity-message">{item.message}</div>
+              <div className="activity-time">{item.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style jsx>{`
+        .widget {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e7eb;
+        }
+
+        .widget-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .widget-header h4 {
+          margin: 0;
+          font-size: 1.1rem;
+          color: #374151;
+          font-weight: 600;
+        }
+
+        .activity-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .activity-item {
+          display: flex;
+          gap: 0.75rem;
+          padding: 0.75rem;
+          background: #f8fafc;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .activity-icon {
+          font-size: 1.25rem;
+          flex-shrink: 0;
+        }
+
+        .activity-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .activity-message {
+          font-size: 0.875rem;
+          color: #374151;
+          margin-bottom: 0.25rem;
+          line-height: 1.4;
+        }
+
+        .activity-time {
+          font-size: 0.75rem;
+          color: #9ca3af;
         }
       `}</style>
     </div>
@@ -2693,6 +3927,33 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
   const [showChangeOrg, setShowChangeOrg] = React.useState(false);
   const [newOrgId, setNewOrgId] = React.useState('');
   const [isChanging, setIsChanging] = React.useState(false);
+  const [organizations, setOrganizations] = React.useState([]);
+  const [loadingOrgs, setLoadingOrgs] = React.useState(false);
+  const [orgError, setOrgError] = React.useState('');
+
+  // Fetch organizations when user clicks "Change Organization"
+  React.useEffect(() => {
+    if (!showChangeOrg) return;
+
+    const fetchOrganizations = async () => {
+      setLoadingOrgs(true);
+      setOrgError('');
+      try {
+        const response = await fetch('/api/organizations');
+        if (!response.ok) {
+          throw new Error('Failed to load organizations');
+        }
+        const data = await response.json();
+        setOrganizations(data);
+      } catch (error) {
+        setOrgError(error.message || 'Failed to load organizations');
+      } finally {
+        setLoadingOrgs(false);
+      }
+    };
+
+    fetchOrganizations();
+  }, [showChangeOrg]);
 
   const handleLeaveOrganization = async () => {
     setIsLeaving(true);
@@ -2721,21 +3982,40 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
   };
 
   const handleChangeOrganization = async () => {
-    if (!newOrgId.trim()) {
-      alert('Please enter an organization ID');
+    if (!newOrgId) {
+      alert('Please select an organization');
+      return;
+    }
+
+    // Check if same organization
+    if (newOrgId === String(user.organizationId)) {
+      alert("You're already in this organization. No changes made.");
+      return;
+    }
+
+    // Confirm with user
+    const selectedOrgName = organizations.find(o => o._id === newOrgId)?.name || 'the selected organization';
+    const confirmChange = window.confirm(
+      `Are you sure you want to change to "${selectedOrgName}"?\n\n` +
+      `This will move all your clients to the new organization.`
+    );
+
+    if (!confirmChange) {
       return;
     }
 
     setIsChanging(true);
     try {
-      const response = await fetch('/api/organizations/change', {
-        method: 'POST',
+      // Use the same endpoint as OrganizationPage
+      const response = await fetch('/api/users/me/organization', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${jwt}`,
         },
         body: JSON.stringify({
-          newOrganizationId: newOrgId.trim(),
+          organizationId: newOrgId,
+          migrateClients: true, // For Family/PoA roles
         }),
       });
 
@@ -2744,7 +4024,20 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
         throw new Error(error.error || 'Failed to change organization');
       }
 
-      alert('Successfully changed organization');
+      const data = await response.json();
+
+      // Show success message with cascade info if available
+      if (data.cascade) {
+        const c = data.cascade;
+        alert(
+          `Successfully changed to "${selectedOrgName}".\n\n` +
+          `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks.\n` +
+          `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
+        );
+      } else {
+        alert(`Successfully joined "${selectedOrgName}".`);
+      }
+
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -2788,7 +4081,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
             <div className="action-section">
               <h4>Actions</h4>
               <p className="action-description">
-                You can change to a different organization using its ID, or leave your current organization.
+                You can change to a different organization, or leave your current organization.
               </p>
 
               <div className="action-buttons">
@@ -2803,19 +4096,48 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                 ) : (
                   <div className="change-org-form">
                     <h5>Change Organization</h5>
-                    <p className="form-description">Enter the ID of the organization you want to join:</p>
-                    <input
-                      type="text"
-                      value={newOrgId}
-                      onChange={(e) => setNewOrgId(e.target.value)}
-                      placeholder="Enter organization ID"
-                      className="org-id-input"
-                    />
+                    <p className="form-description">Select the organization you want to join:</p>
+
+                    {loadingOrgs ? (
+                      <div className="loading-orgs">Loading organizations...</div>
+                    ) : orgError ? (
+                      <div className="org-error">Error: {orgError}</div>
+                    ) : (
+                      <>
+                        <select
+                          value={newOrgId}
+                          onChange={(e) => setNewOrgId(e.target.value)}
+                          className="org-select"
+                          disabled={isChanging}
+                        >
+                          <option value="">— Select organization —</option>
+                          {organizations.map((org) => (
+                            <option key={org._id} value={org._id}>
+                              {org.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {(user?.role === 'Family' || user?.role === 'PoA') &&
+                          newOrgId &&
+                          newOrgId !== String(user.organizationId) && (
+                            <div className="migration-warning">
+                              <strong>Important:</strong> Changing organizations will:
+                              <ul>
+                                <li>Move all your clients to the new organization</li>
+                                <li>Transfer associated family/PoA members</li>
+                                <li>Revoke all staff/admin access to your clients</li>
+                              </ul>
+                            </div>
+                          )}
+                      </>
+                    )}
+
                     <div className="form-actions">
                       <button
                         className="confirm-change-btn"
                         onClick={handleChangeOrganization}
-                        disabled={isChanging || !newOrgId.trim()}
+                        disabled={isChanging || !newOrgId || loadingOrgs}
                       >
                         {isChanging ? 'Changing...' : 'Change Organization'}
                       </button>
@@ -2998,7 +4320,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
             font-size: 0.875rem;
           }
 
-          .org-id-input {
+          .org-select {
             width: 100%;
             padding: 0.75rem;
             border: 1px solid #d1d5db;
@@ -3006,6 +4328,53 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
             font-size: 1rem;
             margin-bottom: 1rem;
             box-sizing: border-box;
+            background: white;
+          }
+
+          .org-select:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .loading-orgs {
+            padding: 1rem;
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+          }
+
+          .org-error {
+            padding: 1rem;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            color: #dc2626;
+            margin-bottom: 1rem;
+          }
+
+          .migration-warning {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: #92400e;
+            font-size: 0.875rem;
+          }
+
+          .migration-warning strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+          }
+
+          .migration-warning ul {
+            margin: 0.5rem 0 0 1.5rem;
+            padding: 0;
+          }
+
+          .migration-warning li {
+            margin-bottom: 0.25rem;
           }
 
           .form-actions {
