@@ -14,9 +14,56 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     recurrenceEndDate: "",
     assignedToUserId: "",
   });
+  const [hasBudgetCost, setHasBudgetCost] = React.useState(false);
+  const [budgetCategoryId, setBudgetCategoryId] = React.useState("");
+  const [budgetItemId, setBudgetItemId] = React.useState("");
+  const [expectedCost, setExpectedCost] = React.useState("");
+  const [categories, setCategories] = React.useState([]);
+  const [budgetItems, setBudgetItems] = React.useState([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState("");
   const [success, setSuccess] = React.useState("");
+
+  // Load budget categories when client is selected
+  React.useEffect(() => {
+    if (!selectedClient) {
+      setCategories([]);
+      return;
+    }
+
+    const loadCategories = async () => {
+      try {
+        // Get current year
+        const currentYear = new Date().getFullYear();
+
+        const response = await fetch(`/api/budget-plans?personId=${selectedClient}&year=${currentYear}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.budgetPlan?.categories || []);
+        }
+      } catch (err) {
+        console.error("Error loading categories:", err);
+      }
+    };
+
+    loadCategories();
+  }, [selectedClient, jwt]);
+
+  // Filter budget items based on selected category
+  React.useEffect(() => {
+    if (!budgetCategoryId) {
+      setBudgetItems([]);
+      setBudgetItemId("");
+      return;
+    }
+
+    const category = categories.find((c) => c.id === budgetCategoryId);
+    if (category) {
+      setBudgetItems(category.items || []);
+    }
+  }, [budgetCategoryId, categories]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,6 +105,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrencePattern: taskData.isRecurring ? taskData.recurrencePattern : undefined,
         recurrenceInterval: taskData.isRecurring ? taskData.recurrenceInterval : undefined,
         recurrenceEndDate: taskData.isRecurring && taskData.recurrenceEndDate ? taskData.recurrenceEndDate : undefined,
+        budgetCategoryId: hasBudgetCost && budgetCategoryId ? budgetCategoryId : undefined,
+        budgetItemId: hasBudgetCost && budgetItemId ? budgetItemId : undefined,
+        expectedCost: hasBudgetCost && expectedCost ? parseFloat(expectedCost) : undefined,
       };
 
       const response = await fetch("/api/care-tasks/standalone", {
@@ -94,6 +144,10 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrenceEndDate: "",
         assignedToUserId: "",
       });
+      setHasBudgetCost(false);
+      setBudgetCategoryId("");
+      setBudgetItemId("");
+      setExpectedCost("");
 
       // Notify parent to reload tasks
       if (onTaskCreated) {
@@ -251,6 +305,70 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           </div>
         )}
 
+        {/* Budget Tracking */}
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={hasBudgetCost}
+              onChange={(e) => setHasBudgetCost(e.target.checked)}
+            />
+            <span>Track budget for this task</span>
+          </label>
+        </div>
+
+        {hasBudgetCost && (
+          <div className="budget-settings">
+            <div className="form-group">
+              <label htmlFor="budgetCategory">Budget Category</label>
+              <select
+                id="budgetCategory"
+                value={budgetCategoryId}
+                onChange={(e) => setBudgetCategoryId(e.target.value)}
+              >
+                <option value="">Select a category...</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {budgetCategoryId && (
+              <div className="form-group">
+                <label htmlFor="budgetItem">Budget Item</label>
+                <select
+                  id="budgetItem"
+                  value={budgetItemId}
+                  onChange={(e) => setBudgetItemId(e.target.value)}
+                >
+                  <option value="">Select a budget item...</option>
+                  {budgetItems.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label htmlFor="expectedCost">Expected Cost (Optional)</label>
+              <input
+                type="number"
+                id="expectedCost"
+                min="0"
+                step="0.01"
+                value={expectedCost}
+                onChange={(e) => setExpectedCost(e.target.value)}
+                placeholder="0.00"
+              />
+              <small>Enter the estimated cost for this task</small>
+            </div>
+          </div>
+        )}
+
         {/* Messages */}
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
@@ -351,6 +469,16 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         }
 
         .recurrence-settings {
+          background: #f8fafc;
+          padding: 1rem;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .budget-settings {
           background: #f8fafc;
           padding: 1rem;
           border-radius: 6px;

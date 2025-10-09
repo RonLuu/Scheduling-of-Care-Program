@@ -344,6 +344,9 @@ router.post(
         recurrencePattern,
         recurrenceInterval,
         recurrenceEndDate,
+        budgetCategoryId,
+        budgetItemId,
+        expectedCost,
       } = req.body;
 
       // Validate access
@@ -396,6 +399,11 @@ router.post(
             if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
           }
 
+          // Add budget fields if provided
+          if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
+          if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
+          if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
+
           tasksToCreate.push(taskDoc);
 
           // Increment date based on pattern
@@ -426,6 +434,11 @@ router.post(
           if (startAt) taskDoc.startAt = combineDateTime(dueDate, startAt);
           if (endAt) taskDoc.endAt = combineDateTime(dueDate, endAt);
         }
+
+        // Add budget fields if provided
+        if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
+        if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
+        if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
 
         tasksToCreate.push(taskDoc);
       }

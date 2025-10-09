@@ -275,6 +275,8 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
   const [comments, setComments] = React.useState([]);
   const [files, setFiles] = React.useState([]);
   const [loadingDetails, setLoadingDetails] = React.useState(false);
+  const [budgetCategoryName, setBudgetCategoryName] = React.useState("");
+  const [budgetItemName, setBudgetItemName] = React.useState("");
   const [editedTask, setEditedTask] = React.useState({
     title: task.title,
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
@@ -282,6 +284,47 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
     startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
     endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
   });
+
+  // Load budget category and item names
+  React.useEffect(() => {
+    const loadBudgetNames = async () => {
+      if (!task.budgetCategoryId && !task.budgetItemId) return;
+
+      try {
+        // Get current year
+        const currentYear = new Date().getFullYear();
+
+        const response = await fetch(`/api/budget-plans?personId=${task.personId}&year=${currentYear}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const categories = data.budgetPlan?.categories || [];
+
+          // Find category name
+          if (task.budgetCategoryId) {
+            const category = categories.find(c => c.id === task.budgetCategoryId);
+            if (category) {
+              setBudgetCategoryName(category.name);
+
+              // Find budget item name within that category
+              if (task.budgetItemId) {
+                const item = category.items?.find(i => String(i._id) === String(task.budgetItemId));
+                if (item) {
+                  setBudgetItemName(item.name);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error loading budget names:", err);
+      }
+    };
+
+    loadBudgetNames();
+  }, [task.budgetCategoryId, task.budgetItemId, task.personId, jwt]);
 
   // Load comments and files for completed tasks
   React.useEffect(() => {
@@ -537,7 +580,28 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
             </div>
           )}
 
-          {task.cost !== undefined && task.cost !== null && (
+          {budgetCategoryName && (
+            <div className="detail-row">
+              <span className="detail-label">Budget Category:</span>
+              <span className="detail-value">{budgetCategoryName}</span>
+            </div>
+          )}
+
+          {budgetItemName && (
+            <div className="detail-row">
+              <span className="detail-label">Budget Item:</span>
+              <span className="detail-value">{budgetItemName}</span>
+            </div>
+          )}
+
+          {task.expectedCost !== undefined && task.expectedCost !== null && task.status !== "Completed" && (
+            <div className="detail-row">
+              <span className="detail-label">Expected Cost:</span>
+              <span className="detail-value cost">${task.expectedCost.toFixed(2)}</span>
+            </div>
+          )}
+
+          {task.cost !== undefined && task.cost !== null && task.status === "Completed" && (
             <div className="detail-row">
               <span className="detail-label">Cost:</span>
               <span className="detail-value cost">${task.cost.toFixed(2)}</span>

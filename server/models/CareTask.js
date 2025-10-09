@@ -50,6 +50,19 @@ const CareTaskSchema = new Schema(
     completedByUserId: { type: Schema.Types.ObjectId, ref: "User" },
     completedAt: { type: Date },
 
+    // Budget tracking fields
+    budgetCategoryId: {
+      type: String, // Category uses string ID in BudgetPlan schema
+      required: false,
+      index: true,
+    },
+    budgetItemId: {
+      type: Schema.Types.ObjectId, // Items have MongoDB ObjectIds
+      required: false,
+      index: true,
+    },
+    expectedCost: { type: Number }, // Expected/planned cost
+
     // Actual spend recorded when completed
     cost: { type: Number },
 
