@@ -1,5 +1,6 @@
 import { Router } from "express";
 import BudgetPlan from "../models/BudgetPlan.js";
+import CareTask from "../models/CareTask.js";
 import { requireAuth } from "../middleware/authz.js";
 
 const router = Router();
@@ -143,6 +144,58 @@ router.delete("/", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error deleting budget plan:", error);
     res.status(500).json({ error: "Failed to delete budget plan" });
+  }
+});
+
+// GET /api/budget-plans/:personId/spending?year=2024
+// Calculate actual spending from completed care tasks
+router.get("/:personId/spending", requireAuth, async (req, res) => {
+  try {
+    const { personId } = req.params;
+    const { year } = req.query;
+
+    if (!year) {
+      return res.status(400).json({ error: "year is required" });
+    }
+
+    // Get date range for the year
+    const startDate = new Date(parseInt(year), 0, 1);
+    const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59);
+
+    // Find all completed care tasks with budget tracking for this person and year
+    const tasks = await CareTask.find({
+      personId,
+      organizationId: req.user.organizationId,
+      status: "Completed",
+      cost: { $exists: true, $ne: null },
+      budgetCategoryId: { $exists: true, $ne: null },
+      budgetItemId: { $exists: true, $ne: null },
+      completedAt: { $gte: startDate, $lte: endDate },
+    });
+
+    // Aggregate spending by category and item
+    const spending = {};
+
+    for (const task of tasks) {
+      const categoryId = task.budgetCategoryId;
+      const itemId = task.budgetItemId.toString();
+      const cost = task.cost || 0;
+
+      if (!spending[categoryId]) {
+        spending[categoryId] = { items: {} };
+      }
+
+      if (!spending[categoryId].items[itemId]) {
+        spending[categoryId].items[itemId] = 0;
+      }
+
+      spending[categoryId].items[itemId] += cost;
+    }
+
+    res.json({ spending });
+  } catch (error) {
+    console.error("Error calculating spending:", error);
+    res.status(500).json({ error: "Failed to calculate spending" });
   }
 });
 
