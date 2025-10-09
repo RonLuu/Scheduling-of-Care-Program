@@ -17,6 +17,7 @@ import SubElementsPage from "./components/dashboard/pages/SubElementsPage";
 import TasksPage from "./components/dashboard/pages/TasksPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
 import FAQPage from "./components/dashboard/pages/FAQPage";
+import FamilyDashboard from "./components/dashboard/pages/FamilyDashboard";
 
 import PrintButton from "./components/PrintButton";
 
@@ -54,7 +55,11 @@ const App = () => {
             path="/"
             element={
               me ? (
-                <Navigate to="/profile" replace />
+                me.role === "Family" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/profile" replace />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -70,6 +75,14 @@ const App = () => {
           <Route path="/login" element={<LogIn />} />
 
           {/* Authenticated app routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <RequireAuth>
+                <FamilyDashboard />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/profile"
             element={
