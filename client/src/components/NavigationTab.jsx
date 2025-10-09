@@ -12,6 +12,7 @@ import {
   BiBarChartSquare,
   BiExit,
   BiHome,
+  BiDollarCircle,
 } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/NavigationTab.css";
@@ -99,8 +100,8 @@ const NavigationTab = () => {
               </NavItem>
             )}
             <NavItem to="/faq">
-              <BiHelpCircle className="navigationtab-icon" />
-              FAQ
+              <BiDollarCircle className="navigationtab-icon" />
+              Budget Planning
             </NavItem>
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
