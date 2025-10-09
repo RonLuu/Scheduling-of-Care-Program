@@ -1873,12 +1873,13 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
     return (
       <div className="guidance-banner tasks-guidance">
         <div className="guidance-header">
-          <h4>💡 Tip to Get Started: Set Up Care Tasks</h4>
+          <h4>💡 Next Step: Create Care Tasks</h4>
         </div>
         <div className="guidance-content">
           <div className="guidance-message">
             <p className="guidance-description">
-              Budget planning is completed! You can now create care need items for {client.name}.<br />
+              Budget planning is complete! Now create specific care tasks for {client.name} such as
+              medication reminders, appointments, daily activities, or supply purchases.
             </p>
             <div className="guidance-steps">
               <div className="step-indicator">
@@ -1897,8 +1898,8 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
               </div>
             </div>
           </div>
-          <a href="/sub-elements" className="guidance-cta-btn">
-            Create Care Items →
+          <a href="/tasks-new" className="guidance-cta-btn">
+            Create Care Tasks →
           </a>
         </div>
 
@@ -2577,7 +2578,7 @@ function TaskSummaryWidget({ tasks, client }) {
     <div className="widget task-summary-widget">
       <div className="widget-header">
         <h4>📋 Care Tasks</h4>
-        <a href="/sub-elements" className="widget-link">View All →</a>
+        <a href="/tasks-new" className="widget-link">View All →</a>
       </div>
 
       <div className="task-stats">
@@ -2602,7 +2603,7 @@ function TaskSummaryWidget({ tasks, client }) {
       {tasks.total === 0 && (
         <div className="widget-empty">
           <p>No care tasks yet</p>
-          <a href="/sub-elements" className="widget-action-btn">Create Care Items →</a>
+          <a href="/tasks-new" className="widget-action-btn">Create Care Tasks →</a>
         </div>
       )}
 
@@ -2737,7 +2738,7 @@ function SuppliesWidget({ supplies, client }) {
     <div className="widget supplies-widget">
       <div className="widget-header">
         <h4>🛒 Supplies & Purchases</h4>
-        <a href="/sub-elements" className="widget-link">Manage →</a>
+        <a href="/tasks-new" className="widget-link">Manage →</a>
       </div>
 
       <div className="supplies-summary">
@@ -2758,7 +2759,7 @@ function SuppliesWidget({ supplies, client }) {
       {supplies.total === 0 && (
         <div className="widget-empty">
           <p>No supplies tracked yet</p>
-          <a href="/sub-elements" className="widget-action-btn">Add Supplies →</a>
+          <a href="/tasks-new" className="widget-action-btn">Add Supplies →</a>
         </div>
       )}
 

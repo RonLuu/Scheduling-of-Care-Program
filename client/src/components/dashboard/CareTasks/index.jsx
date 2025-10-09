@@ -5,7 +5,7 @@ import { useTasksData } from "../hooks/useTasksData";
 import { aud, displayUser } from "../utils/formatters";
 
 function CareTasks({ jwt, clients }) {
-  const [viewMode, setViewMode] = React.useState("list");
+  const [viewMode, setViewMode] = React.useState("calendar");
   const {
     tasks,
     tasksLoading,

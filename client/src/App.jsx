@@ -15,6 +15,7 @@ import ClientsPage from "./components/dashboard/pages/ClientsPage";
 import ShiftPage from "./components/dashboard/pages/ShiftPage";
 import SubElementsPage from "./components/dashboard/pages/SubElementsPage";
 import TasksPage from "./components/dashboard/pages/TasksPage";
+import TasksPageNew from "./components/dashboard/pages/TasksPageNew";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
 import FAQPage from "./components/dashboard/pages/FAQPage";
 import FamilyDashboard from "./components/dashboard/pages/FamilyDashboard";
@@ -136,6 +137,14 @@ const App = () => {
             element={
               <RequireAuth>
                 <TasksPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/tasks-new"
+            element={
+              <RequireAuth>
+                <TasksPageNew />
               </RequireAuth>
             }
           />
