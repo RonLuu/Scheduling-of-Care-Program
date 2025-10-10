@@ -1137,7 +1137,7 @@ function DashboardContent({ client, jwt }) {
           }
         });
 
-        // Find budget items that are at 80%+ of their budget AND have 50%+ time remaining
+        // Find budget items that need warnings
         const itemWarnings = [];
         if (budgetPlan) {
           // Calculate time remaining if budget period dates are available
@@ -1160,8 +1160,11 @@ function DashboardContent({ client, jwt }) {
 
               if (allocated > 0 && spent > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                // Only warn if: 80%+ spent AND (50%+ time remaining OR no period dates)
-                if (percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart)) {
+                // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
+                const isOverBudget = percentSpent >= 100;
+                const isHighSpendingWithTimeLeft = percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart);
+
+                if (isOverBudget || isHighSpendingWithTimeLeft) {
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,
@@ -1395,7 +1398,7 @@ function OverviewSection_OLD({ client, jwt }) {
           }
         });
 
-        // Find budget items that are at 80%+ of their budget AND have 50%+ time remaining
+        // Find budget items that need warnings
         const itemWarnings = [];
         if (budgetPlan) {
           // Calculate time remaining if budget period dates are available
@@ -1418,8 +1421,11 @@ function OverviewSection_OLD({ client, jwt }) {
 
               if (allocated > 0 && spent > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                // Only warn if: 80%+ spent AND (50%+ time remaining OR no period dates)
-                if (percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart)) {
+                // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
+                const isOverBudget = percentSpent >= 100;
+                const isHighSpendingWithTimeLeft = percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart);
+
+                if (isOverBudget || isHighSpendingWithTimeLeft) {
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,

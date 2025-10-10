@@ -46,7 +46,12 @@ function BudgetPlanningPage() {
     { id: 'home', name: 'Home Modifications', emoji: '🏠', description: 'Accessibility improvements, safety equipment' }
   ];
 
-  // Load budget period from saved budget plan - runs ONCE when budgetPlan loads
+  // Reset flag when budgetPlan changes (new client selected or data reloaded)
+  React.useEffect(() => {
+    setHasLoadedSavedPeriod(false);
+  }, [budgetPlan?._id, selectedClient?._id]);
+
+  // Load budget period from saved budget plan - runs ONCE per budgetPlan
   React.useEffect(() => {
     if (budgetPlan?.budgetPeriodStart && budgetPlan?.budgetPeriodEnd && !hasLoadedSavedPeriod) {
       const startDate = new Date(budgetPlan.budgetPeriodStart);
@@ -455,15 +460,14 @@ function BudgetPlanningPage() {
         <div className="budget-planning-container">
           {/* Header */}
           <div className="budget-header">
-            <h2>💰 Budget Planning</h2>
-            <p>Plan your yearly care budget for better financial management</p>
+            <h2>💰 Budget Report</h2>
           </div>
 
           {/* Client Selection */}
           <div className="client-selection">
             <div className="client-selection-row">
               <div className="client-select-wrapper">
-                <label htmlFor="client-select">Planning budget for:</label>
+                <label htmlFor="client-select">Showing budget report for:</label>
                 <select
                   id="client-select"
                   value={selectedClient?._id || ""}
@@ -554,7 +558,7 @@ function BudgetPlanningPage() {
                     >
                       <option value="calendar">Calendar Year (Jan - Dec)</option>
                       <option value="financial">Financial Year (Jul - Jun)</option>
-                      <option value="rolling">Start from today (Today - Same Date Next Year)</option>
+                      <option value="rolling">12 Months Starting from today</option>
                     </select>
                     {budgetPeriod && (
                       <div className="budget-period-info">
