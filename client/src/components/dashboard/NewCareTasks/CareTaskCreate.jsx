@@ -34,9 +34,12 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         // Get current year
         const currentYear = new Date().getFullYear();
 
-        const response = await fetch(`/api/budget-plans?personId=${selectedClient}&year=${currentYear}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const response = await fetch(
+          `/api/budget-plans?personId=${selectedClient}&year=${currentYear}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
         if (response.ok) {
           const data = await response.json();
           setCategories(data.budgetPlan?.categories || []);
@@ -83,7 +86,10 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       return;
     }
 
-    if (taskData.scheduleType === "Timed" && (!taskData.startAt || !taskData.endAt)) {
+    if (
+      taskData.scheduleType === "Timed" &&
+      (!taskData.startAt || !taskData.endAt)
+    ) {
       setError("Please set start and end times for timed tasks");
       return;
     }
@@ -106,13 +112,21 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         title: taskData.title.trim(),
         dueDate: taskData.dueDate,
         scheduleType: taskData.scheduleType,
-        startAt: taskData.scheduleType === "Timed" ? taskData.startAt : undefined,
+        startAt:
+          taskData.scheduleType === "Timed" ? taskData.startAt : undefined,
         endAt: taskData.scheduleType === "Timed" ? taskData.endAt : undefined,
         assignedToUserId: taskData.assignedToUserId || undefined,
         isRecurring: taskData.isRecurring,
-        recurrencePattern: taskData.isRecurring ? taskData.recurrencePattern : undefined,
-        recurrenceInterval: taskData.isRecurring ? taskData.recurrenceInterval : undefined,
-        recurrenceEndDate: taskData.isRecurring && taskData.recurrenceEndDate ? taskData.recurrenceEndDate : undefined,
+        recurrencePattern: taskData.isRecurring
+          ? taskData.recurrencePattern
+          : undefined,
+        recurrenceInterval: taskData.isRecurring
+          ? taskData.recurrenceInterval
+          : undefined,
+        recurrenceEndDate:
+          taskData.isRecurring && taskData.recurrenceEndDate
+            ? taskData.recurrenceEndDate
+            : undefined,
         budgetCategoryId: budgetCategoryId,
         budgetItemId: budgetItemId,
       };
@@ -134,7 +148,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       const result = await response.json();
       setSuccess(
         taskData.isRecurring
-          ? `Successfully created recurring task! ${result.tasksCreated || 1} task(s) created.`
+          ? `Successfully created recurring task! ${
+              result.tasksCreated || 1
+            } task(s) created.`
           : "Task created successfully!"
       );
 
@@ -171,7 +187,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         <h3>Create New Task</h3>
       </div>
       <p className="form-description">
-        Create a one-time or recurring care task. Costs can be added after the task is completed.
+        Create a one-time or recurring care task. Costs can be added after the
+        task is completed.
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -192,123 +209,6 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
             ))}
           </select>
         </div>
-
-        {/* Task Title */}
-        <div className="form-group">
-          <label htmlFor="title">Task Title *</label>
-          <input
-            type="text"
-            id="title"
-            value={taskData.title}
-            onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
-            placeholder="e.g., Doctor appointment, Buy medication, Exercise"
-            required
-          />
-        </div>
-
-        {/* Due Date */}
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="dueDate">Due Date *</label>
-            <input
-              type="date"
-              id="dueDate"
-              value={taskData.dueDate}
-              onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="scheduleType">Schedule Type</label>
-            <select
-              id="scheduleType"
-              value={taskData.scheduleType}
-              onChange={(e) => setTaskData({ ...taskData, scheduleType: e.target.value })}
-            >
-              <option value="AllDay">All Day</option>
-              <option value="Timed">Specific Time</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Time Range (if Timed) */}
-        {taskData.scheduleType === "Timed" && (
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="startAt">Start Time *</label>
-              <input
-                type="time"
-                id="startAt"
-                value={taskData.startAt}
-                onChange={(e) => setTaskData({ ...taskData, startAt: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="endAt">End Time *</label>
-              <input
-                type="time"
-                id="endAt"
-                value={taskData.endAt}
-                onChange={(e) => setTaskData({ ...taskData, endAt: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Recurring Task Option */}
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={taskData.isRecurring}
-              onChange={(e) => setTaskData({ ...taskData, isRecurring: e.target.checked })}
-            />
-            <span>Make this a recurring task</span>
-          </label>
-        </div>
-
-        {/* Recurrence Settings */}
-        {taskData.isRecurring && (
-          <div className="recurrence-settings">
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="recurrencePattern">Repeat</label>
-                <select
-                  id="recurrencePattern"
-                  value={taskData.recurrencePattern}
-                  onChange={(e) => setTaskData({ ...taskData, recurrencePattern: e.target.value })}
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="recurrenceInterval">Every</label>
-                <input
-                  type="number"
-                  id="recurrenceInterval"
-                  min="1"
-                  value={taskData.recurrenceInterval}
-                  onChange={(e) => setTaskData({ ...taskData, recurrenceInterval: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label htmlFor="recurrenceEndDate">End Date (Optional)</label>
-              <input
-                type="date"
-                id="recurrenceEndDate"
-                value={taskData.recurrenceEndDate}
-                onChange={(e) => setTaskData({ ...taskData, recurrenceEndDate: e.target.value })}
-              />
-              <small>Leave blank for indefinite recurrence</small>
-            </div>
-          </div>
-        )}
 
         {/* Budget Category Selection */}
         <div className="budget-settings">
@@ -358,6 +258,106 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
             </span>
           </div>
         </div>
+
+        {/* Task Title */}
+        <div className="form-group">
+          <label htmlFor="title">Task Title *</label>
+          <input
+            type="text"
+            id="title"
+            value={taskData.title}
+            onChange={(e) =>
+              setTaskData({ ...taskData, title: e.target.value })
+            }
+            placeholder="e.g., Doctor appointment, Buy medication, Exercise"
+            required
+          />
+        </div>
+
+        {/* Due Date */}
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="dueDate">Due Date *</label>
+            <input
+              type="date"
+              id="dueDate"
+              value={taskData.dueDate}
+              onChange={(e) =>
+                setTaskData({ ...taskData, dueDate: e.target.value })
+              }
+              required
+            />
+          </div>
+        </div>
+
+        {/* Recurring Task Option */}
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={taskData.isRecurring}
+              onChange={(e) =>
+                setTaskData({ ...taskData, isRecurring: e.target.checked })
+              }
+            />
+            <span>Make this a recurring task</span>
+          </label>
+        </div>
+
+        {/* Recurrence Settings */}
+        {taskData.isRecurring && (
+          <div className="recurrence-settings">
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="recurrencePattern">Repeat</label>
+                <select
+                  id="recurrencePattern"
+                  value={taskData.recurrencePattern}
+                  onChange={(e) =>
+                    setTaskData({
+                      ...taskData,
+                      recurrencePattern: e.target.value,
+                    })
+                  }
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="recurrenceInterval">Every</label>
+                <input
+                  type="number"
+                  id="recurrenceInterval"
+                  min="1"
+                  value={taskData.recurrenceInterval}
+                  onChange={(e) =>
+                    setTaskData({
+                      ...taskData,
+                      recurrenceInterval: parseInt(e.target.value) || 1,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="recurrenceEndDate">End Date (Optional)</label>
+              <input
+                type="date"
+                id="recurrenceEndDate"
+                value={taskData.recurrenceEndDate}
+                onChange={(e) =>
+                  setTaskData({
+                    ...taskData,
+                    recurrenceEndDate: e.target.value,
+                  })
+                }
+              />
+              <small>Leave blank for indefinite recurrence</small>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         {error && <div className="error-message">{error}</div>}

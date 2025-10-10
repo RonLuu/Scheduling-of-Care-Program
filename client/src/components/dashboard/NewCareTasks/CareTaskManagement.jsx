@@ -279,10 +279,14 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
   const [budgetItemName, setBudgetItemName] = React.useState("");
   const [editedTask, setEditedTask] = React.useState({
     title: task.title,
-    dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+    dueDate: task.dueDate
+      ? new Date(task.dueDate).toISOString().split("T")[0]
+      : "",
     scheduleType: task.scheduleType,
-    startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
-    endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
+    startAt: task.startAt
+      ? new Date(task.startAt).toTimeString().slice(0, 5)
+      : "",
+    endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
   });
 
   // Load budget category and item names
@@ -294,9 +298,12 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
         // Get current year
         const currentYear = new Date().getFullYear();
 
-        const response = await fetch(`/api/budget-plans?personId=${task.personId}&year=${currentYear}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const response = await fetch(
+          `/api/budget-plans?personId=${task.personId}&year=${currentYear}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
@@ -304,13 +311,17 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
           // Find category name
           if (task.budgetCategoryId) {
-            const category = categories.find(c => c.id === task.budgetCategoryId);
+            const category = categories.find(
+              (c) => c.id === task.budgetCategoryId
+            );
             if (category) {
               setBudgetCategoryName(category.name);
 
               // Find budget item name within that category
               if (task.budgetItemId) {
-                const item = category.items?.find(i => String(i._id) === String(task.budgetItemId));
+                const item = category.items?.find(
+                  (i) => String(i._id) === String(task.budgetItemId)
+                );
                 if (item) {
                   setBudgetItemName(item.name);
                 }
@@ -334,18 +345,24 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
       setLoadingDetails(true);
       try {
         // Load comments
-        const commentsResponse = await fetch(`/api/comments?careTaskId=${task._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const commentsResponse = await fetch(
+          `/api/comments?careTaskId=${task._id}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
         if (commentsResponse.ok) {
           const commentsData = await commentsResponse.json();
           setComments(commentsData);
         }
 
         // Load files - both direct uploads and referenced files
-        const filesResponse = await fetch(`/api/file-upload?scope=CareTask&targetId=${task._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const filesResponse = await fetch(
+          `/api/file-upload?scope=CareTask&targetId=${task._id}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         let allFiles = [];
         if (filesResponse.ok) {
@@ -355,13 +372,13 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
         // Also load files from fileRefs (shared receipts)
         if (task.fileRefs && task.fileRefs.length > 0) {
-          const refsPromises = task.fileRefs.map(fileId =>
+          const refsPromises = task.fileRefs.map((fileId) =>
             fetch(`/api/file-upload/${fileId}`, {
               headers: { Authorization: `Bearer ${jwt}` },
-            }).then(res => res.ok ? res.json() : null)
+            }).then((res) => (res.ok ? res.json() : null))
           );
           const refsFiles = await Promise.all(refsPromises);
-          allFiles = [...allFiles, ...refsFiles.filter(f => f !== null)];
+          allFiles = [...allFiles, ...refsFiles.filter((f) => f !== null)];
         }
 
         setFiles(allFiles);
@@ -405,7 +422,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
       return;
     }
 
-    if (editedTask.scheduleType === "Timed" && (!editedTask.startAt || !editedTask.endAt)) {
+    if (
+      editedTask.scheduleType === "Timed" &&
+      (!editedTask.startAt || !editedTask.endAt)
+    ) {
       alert("Start and end times are required for timed tasks");
       return;
     }
@@ -417,7 +437,7 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
       const combineDateTime = (dateStr, timeStr) => {
         if (!dateStr || !timeStr) return undefined;
         const date = new Date(dateStr);
-        const [hours, minutes] = timeStr.split(':');
+        const [hours, minutes] = timeStr.split(":");
         date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         return date.toISOString();
       };
@@ -431,7 +451,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
       // Only add time fields if schedule type is Timed
       if (editedTask.scheduleType === "Timed") {
-        payload.startAt = combineDateTime(editedTask.dueDate, editedTask.startAt);
+        payload.startAt = combineDateTime(
+          editedTask.dueDate,
+          editedTask.startAt
+        );
         payload.endAt = combineDateTime(editedTask.dueDate, editedTask.endAt);
       } else {
         // Clear time fields if changing from Timed to AllDay
@@ -469,15 +492,20 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
     // Reset to original values
     setEditedTask({
       title: task.title,
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      dueDate: task.dueDate
+        ? new Date(task.dueDate).toISOString().split("T")[0]
+        : "",
       scheduleType: task.scheduleType,
-      startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
-      endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
+      startAt: task.startAt
+        ? new Date(task.startAt).toTimeString().slice(0, 5)
+        : "",
+      endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
     });
     setIsEditing(false);
   };
 
-  const isOverdue = task.status === "Scheduled" && new Date(task.dueDate) < new Date();
+  const isOverdue =
+    task.status === "Scheduled" && new Date(task.dueDate) < new Date();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -493,13 +521,19 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                 type="text"
                 className="edit-input title-input"
                 value={editedTask.title}
-                onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
+                onChange={(e) =>
+                  setEditedTask({ ...editedTask, title: e.target.value })
+                }
                 placeholder="Task title"
               />
             ) : (
               <>
                 <h3 className="task-title">{task.title}</h3>
-                <span className={`status-badge ${task.status.toLowerCase()} ${isOverdue ? "overdue" : ""}`}>
+                <span
+                  className={`status-badge ${task.status.toLowerCase()} ${
+                    isOverdue ? "overdue" : ""
+                  }`}
+                >
                   {isOverdue ? "Overdue" : task.status}
                 </span>
               </>
@@ -513,63 +547,14 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                 type="date"
                 className="edit-input"
                 value={editedTask.dueDate}
-                onChange={(e) => setEditedTask({ ...editedTask, dueDate: e.target.value })}
+                onChange={(e) =>
+                  setEditedTask({ ...editedTask, dueDate: e.target.value })
+                }
               />
             ) : (
               <span className="detail-value">{formatDate(task.dueDate)}</span>
             )}
           </div>
-
-          <div className="detail-row">
-            <span className="detail-label">Schedule Type:</span>
-            {isEditing ? (
-              <select
-                className="edit-input"
-                value={editedTask.scheduleType}
-                onChange={(e) => setEditedTask({ ...editedTask, scheduleType: e.target.value })}
-              >
-                <option value="AllDay">All Day</option>
-                <option value="Timed">Specific Time</option>
-              </select>
-            ) : (
-              <span className="detail-value">{task.scheduleType}</span>
-            )}
-          </div>
-
-          {(isEditing ? editedTask.scheduleType === "Timed" : task.scheduleType === "Timed") && (
-            <>
-              <div className="detail-row">
-                <span className="detail-label">Start Time:</span>
-                {isEditing ? (
-                  <input
-                    type="time"
-                    className="edit-input"
-                    value={editedTask.startAt}
-                    onChange={(e) => setEditedTask({ ...editedTask, startAt: e.target.value })}
-                  />
-                ) : task.startAt ? (
-                  <span className="detail-value">{formatTime(task.startAt)}</span>
-                ) : (
-                  <span className="detail-value">—</span>
-                )}
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">End Time:</span>
-                {isEditing ? (
-                  <input
-                    type="time"
-                    className="edit-input"
-                    value={editedTask.endAt}
-                    onChange={(e) => setEditedTask({ ...editedTask, endAt: e.target.value })}
-                  />
-                ) : task.endAt ? (
-                  <span className="detail-value">{formatTime(task.endAt)}</span>
-                ) : (
-                  <span className="detail-value">—</span>
-                )}
-              </div>
-            </>
-          )}
 
           {task.assignedToUserId && (
             <div className="detail-row">
@@ -594,25 +579,35 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
             </div>
           )}
 
-          {task.expectedCost !== undefined && task.expectedCost !== null && task.status !== "Completed" && (
-            <div className="detail-row">
-              <span className="detail-label">Expected Cost:</span>
-              <span className="detail-value cost">${task.expectedCost.toFixed(2)}</span>
-            </div>
-          )}
+          {task.expectedCost !== undefined &&
+            task.expectedCost !== null &&
+            task.status !== "Completed" && (
+              <div className="detail-row">
+                <span className="detail-label">Expected Cost:</span>
+                <span className="detail-value cost">
+                  ${task.expectedCost.toFixed(2)}
+                </span>
+              </div>
+            )}
 
-          {task.cost !== undefined && task.cost !== null && task.status === "Completed" && (
-            <div className="detail-row">
-              <span className="detail-label">Cost:</span>
-              <span className="detail-value cost">${task.cost.toFixed(2)}</span>
-            </div>
-          )}
+          {task.cost !== undefined &&
+            task.cost !== null &&
+            task.status === "Completed" && (
+              <div className="detail-row">
+                <span className="detail-label">Cost:</span>
+                <span className="detail-value cost">
+                  ${task.cost.toFixed(2)}
+                </span>
+              </div>
+            )}
 
           {/* Completion Details for Completed Tasks */}
           {task.status === "Completed" && (
             <>
               {loadingDetails && (
-                <div className="loading-details">Loading completion details...</div>
+                <div className="loading-details">
+                  Loading completion details...
+                </div>
               )}
 
               {/* Comments Section */}
@@ -624,7 +619,11 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                       <div key={comment._id} className="comment-item">
                         <div className="comment-meta">
                           <span className="comment-author">
-                            {comment.author?.name || comment.author?.email || comment.authorUserId?.name || comment.authorUserId?.email || "User"}
+                            {comment.author?.name ||
+                              comment.author?.email ||
+                              comment.authorUserId?.name ||
+                              comment.authorUserId?.email ||
+                              "User"}
                           </span>
                           <span className="comment-date">
                             {new Date(comment.createdAt).toLocaleDateString()}
@@ -647,7 +646,6 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                     {files.map((file) => (
                       <div key={file._id} className="file-item">
                         <div className="file-info">
-
                           <div className="file-details">
                             <span className="file-name">{file.filename}</span>
                             <span className="file-meta">
@@ -685,22 +683,36 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
         <div className="modal-footer">
           {isEditing ? (
             <>
-              <button className="btn-save" onClick={handleSaveEdit} disabled={isSaving}>
+              <button
+                className="btn-save"
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+              >
                 {isSaving ? "Saving..." : "Save Changes"}
               </button>
-              <button className="btn-close" onClick={handleCancelEdit} disabled={isSaving}>
+              <button
+                className="btn-close"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+              >
                 Cancel
               </button>
             </>
           ) : (
             <>
               {task.status !== "Completed" && (
-                <button className="btn-complete" onClick={() => navigate(`/tasks/${task._id}/complete`)}>
+                <button
+                  className="btn-complete"
+                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                >
                   Complete Task
                 </button>
               )}
               {task.status !== "Completed" && (
-                <button className="btn-reschedule" onClick={() => setIsEditing(true)}>
+                <button
+                  className="btn-reschedule"
+                  onClick={() => setIsEditing(true)}
+                >
                   Reschedule
                 </button>
               )}
