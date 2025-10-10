@@ -22,8 +22,10 @@ jobs:
           PR_NUMBER=${{ github.event.pull_request.number }}
           BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g' | cut -c1-30)
           APP_NAME="sched-care-pr-${PR_NUMBER}"
+          CLOUDINARY_FOLDER="scheduling-of-care-review-pr-${PR_NUMBER}"
           echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "cloudinary_folder=${CLOUDINARY_FOLDER}" >> $GITHUB_OUTPUT
           echo "📦 Review app name: ${APP_NAME}"
           echo "📁 Cloudinary folder: ${CLOUDINARY_FOLDER}"
 
@@ -65,7 +67,7 @@ jobs:
             CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
             CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
             CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}" \
-            CLOUDINARY_FOLDER_PREFIX="scheduling-of-care-review-pr-${{ github.event.pull_request.number }}" \
+            CLOUDINARY_FOLDER_PREFIX="${{ steps.app-name.outputs.cloudinary_folder }}" \
             MONGODB_URI="${{ secrets.REVIEW_DATABASE_URL }}" \
             --app ${{ steps.app-name.outputs.app_name }}
         env:
@@ -155,7 +157,7 @@ jobs:
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           APP_NAME="sched-care-pr-${PR_NUMBER}"
-          CLOUDINARY_FOLDER="scheduling-of-are-review-pr-${PR_NUMBER}"
+          CLOUDINARY_FOLDER="scheduling-of-care-review-pr-${PR_NUMBER}"
           echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
           echo "cloudinary_folder=${CLOUDINARY_FOLDER}" >> $GITHUB_OUTPUT
 
@@ -167,6 +169,7 @@ jobs:
       - name: Cleanup Cloudinary Files
         run: |
           echo "🗑️ Cleaning up Cloudinary files for PR ${{ github.event.pull_request.number }}"
+          echo "🗑️ Folder: ${{ steps.app-name.outputs.cloudinary_folder }}"
           npm install cloudinary
           node -e "
           const cloudinary = require('cloudinary').v2;
@@ -176,6 +179,7 @@ jobs:
             api_secret: '${{ secrets.CLOUDINARY_API_SECRET }}'
           });
           const folder = '${{ steps.app-name.outputs.cloudinary_folder }}';
+          console.log('Deleting Cloudinary folder:', folder);
           Promise.all([
             cloudinary.api.delete_resources_by_prefix(folder + '/', { resource_type: 'image' }),
             cloudinary.api.delete_resources_by_prefix(folder + '/', { resource_type: 'raw' }),
