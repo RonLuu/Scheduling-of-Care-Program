@@ -1856,7 +1856,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
               </div>
             </div>
           </div>
-          <a href="/faq" className="guidance-cta-btn">
+          <a href="/budget-and-reports" className="guidance-cta-btn">
             Create Budget Plan →
           </a>
         </div>

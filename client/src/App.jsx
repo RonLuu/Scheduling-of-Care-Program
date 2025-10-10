@@ -18,7 +18,7 @@ import TasksPage from "./components/dashboard/pages/TasksPage";
 import TasksPageNew from "./components/dashboard/pages/TasksPageNew";
 import TaskCompletionPage from "./components/dashboard/pages/TaskCompletionPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
-import FAQPage from "./components/dashboard/pages/FAQPage";
+import BudgetAndReportsPage from "./components/dashboard/pages/BudgetAndReportsPage";
 import FamilyDashboard from "./components/dashboard/pages/FamilyDashboard";
 
 import PrintButton from "./components/PrintButton";
@@ -183,14 +183,13 @@ const App = () => {
             }
           />
           <Route
-            path="/faq"
+            path="/budget-and-reports"
             element={
               <RequireAuth>
-                <FAQPage />
+                <BudgetAndReportsPage />
               </RequireAuth>
             }
           />
-          <Route path="/faq" element={<FAQPage />} />
 
           {/* Redirects */}
           {/* Catch-all route based on user role */}

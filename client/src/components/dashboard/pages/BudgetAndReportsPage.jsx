@@ -141,18 +141,38 @@ function BudgetPlanningPage() {
 
   // Load custom categories and deleted categories from budget plan
   React.useEffect(() => {
-    if (!budgetPlan?.categories) return;
+    // If no budget plan exists at all, reset to show all predefined categories
+    if (budgetPlan === null || budgetPlan === undefined) {
+      setCustomCategories([]);
+      setDeletedCategories([]);
+      return;
+    }
 
+    // If budget plan exists but has no categories array yet, also reset
+    if (!budgetPlan.categories || !Array.isArray(budgetPlan.categories)) {
+      setCustomCategories([]);
+      setDeletedCategories([]);
+      return;
+    }
+
+    // Budget plan exists and has categories array (even if empty)
     // Extract custom categories from budget plan
     const customCats = budgetPlan.categories.filter(cat => cat.isCustom);
     setCustomCategories(customCats);
 
     // Find which predefined categories are NOT in the budget plan
-    const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
-    const deletedPredefinedIds = predefinedCategories
-      .map(cat => cat.id)
-      .filter(id => !budgetCategoryIds.includes(id));
-    setDeletedCategories(deletedPredefinedIds);
+    // If categories array is empty, we treat it as "not yet configured"
+    // so we don't mark anything as deleted
+    if (budgetPlan.categories.length === 0) {
+      setDeletedCategories([]);
+    } else {
+      // Only mark predefined categories as deleted if user has selected some categories
+      const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
+      const deletedPredefinedIds = predefinedCategories
+        .map(cat => cat.id)
+        .filter(id => !budgetCategoryIds.includes(id));
+      setDeletedCategories(deletedPredefinedIds);
+    }
   }, [budgetPlan]);
 
   const handleSaveYearlyBudget = async () => {
@@ -477,8 +497,8 @@ function BudgetPlanningPage() {
                     // Reset wizard state when switching clients
                     setShowWizard(false);
                     setCategoriesSaved(false);
-                    setCustomCategories([]);
-                    setDeletedCategories([]);
+                    // Don't reset customCategories and deletedCategories here
+                    // They will be updated by the useEffect when budgetPlan changes
                     setNewCategoryName("");
                     setNewCategoryDescription("");
                     setShowAddCategory(false);

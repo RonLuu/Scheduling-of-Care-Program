@@ -99,9 +99,9 @@ const NavigationTab = () => {
                 Dashboard
               </NavItem>
             )}
-            <NavItem to="/faq">
+            <NavItem to="/budget-and-reports">
               <BiDollarCircle className="navigationtab-icon" />
-              Budget Planning
+              Budget & Reports
             </NavItem>
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
