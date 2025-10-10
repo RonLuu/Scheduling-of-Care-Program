@@ -14,10 +14,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     recurrenceEndDate: "",
     assignedToUserId: "",
   });
-  const [hasBudgetCost, setHasBudgetCost] = React.useState(false);
   const [budgetCategoryId, setBudgetCategoryId] = React.useState("");
   const [budgetItemId, setBudgetItemId] = React.useState("");
-  const [expectedCost, setExpectedCost] = React.useState("");
   const [categories, setCategories] = React.useState([]);
   const [budgetItems, setBudgetItems] = React.useState([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -90,6 +88,16 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       return;
     }
 
+    if (!budgetCategoryId) {
+      setError("Please select a budget category");
+      return;
+    }
+
+    if (!budgetItemId) {
+      setError("Please select an item type");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -105,9 +113,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrencePattern: taskData.isRecurring ? taskData.recurrencePattern : undefined,
         recurrenceInterval: taskData.isRecurring ? taskData.recurrenceInterval : undefined,
         recurrenceEndDate: taskData.isRecurring && taskData.recurrenceEndDate ? taskData.recurrenceEndDate : undefined,
-        budgetCategoryId: hasBudgetCost && budgetCategoryId ? budgetCategoryId : undefined,
-        budgetItemId: hasBudgetCost && budgetItemId ? budgetItemId : undefined,
-        expectedCost: hasBudgetCost && expectedCost ? parseFloat(expectedCost) : undefined,
+        budgetCategoryId: budgetCategoryId,
+        budgetItemId: budgetItemId,
       };
 
       const response = await fetch("/api/care-tasks/standalone", {
@@ -144,10 +151,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrenceEndDate: "",
         assignedToUserId: "",
       });
-      setHasBudgetCost(false);
       setBudgetCategoryId("");
       setBudgetItemId("");
-      setExpectedCost("");
 
       // Notify parent to reload tasks
       if (onTaskCreated) {
@@ -305,69 +310,54 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           </div>
         )}
 
-        {/* Budget Tracking */}
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={hasBudgetCost}
-              onChange={(e) => setHasBudgetCost(e.target.checked)}
-            />
-            <span>Track budget for this task</span>
-          </label>
-        </div>
+        {/* Budget Category Selection */}
+        <div className="budget-settings">
+          <div className="form-group">
+            <label htmlFor="budgetCategory">Select a category *</label>
+            <select
+              id="budgetCategory"
+              value={budgetCategoryId}
+              onChange={(e) => setBudgetCategoryId(e.target.value)}
+              required
+            >
+              <option value="">Select a category...</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {hasBudgetCost && (
-          <div className="budget-settings">
+          {budgetCategoryId && (
             <div className="form-group">
-              <label htmlFor="budgetCategory">Budget Category</label>
+              <label htmlFor="budgetItem">Select item type *</label>
               <select
-                id="budgetCategory"
-                value={budgetCategoryId}
-                onChange={(e) => setBudgetCategoryId(e.target.value)}
+                id="budgetItem"
+                value={budgetItemId}
+                onChange={(e) => setBudgetItemId(e.target.value)}
+                required
               >
-                <option value="">Select a category...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
+                <option value="">Select an item type...</option>
+                {budgetItems.map((item) => (
+                  <option key={item._id} value={item._id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
             </div>
+          )}
 
-            {budgetCategoryId && (
-              <div className="form-group">
-                <label htmlFor="budgetItem">Budget Item</label>
-                <select
-                  id="budgetItem"
-                  value={budgetItemId}
-                  onChange={(e) => setBudgetItemId(e.target.value)}
-                >
-                  <option value="">Select a budget item...</option>
-                  {budgetItems.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="expectedCost">Expected Cost (Optional)</label>
-              <input
-                type="number"
-                id="expectedCost"
-                min="0"
-                step="0.01"
-                value={expectedCost}
-                onChange={(e) => setExpectedCost(e.target.value)}
-                placeholder="0.00"
-              />
-              <small>Enter the estimated cost for this task</small>
-            </div>
+          <div className="tip-box">
+            <span className="tip-icon">💡</span>
+            <span className="tip-text">
+              Can't find a suitable category/item?{" "}
+              <a href="/budget-and-reports" className="tip-link">
+                Add a new one to your budget plan
+              </a>
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Messages */}
         {error && <div className="error-message">{error}</div>}
@@ -486,6 +476,38 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           display: flex;
           flex-direction: column;
           gap: 1rem;
+        }
+
+        .tip-box {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem;
+          background: #fef3c7;
+          border: 1px solid #fde68a;
+          border-radius: 6px;
+          font-size: 0.875rem;
+        }
+
+        .tip-icon {
+          font-size: 1.1rem;
+          flex-shrink: 0;
+        }
+
+        .tip-text {
+          color: #92400e;
+          line-height: 1.5;
+        }
+
+        .tip-link {
+          color: #b45309;
+          font-weight: 600;
+          text-decoration: underline;
+          transition: color 0.2s;
+        }
+
+        .tip-link:hover {
+          color: #92400e;
         }
 
         small {

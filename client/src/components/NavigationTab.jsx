@@ -99,6 +99,10 @@ const NavigationTab = () => {
                 Dashboard
               </NavItem>
             )}
+            <NavItem to="/tasks">
+              <BiTask className="navigationtab-icon" />
+              Tasks
+            </NavItem>
             <NavItem to="/budget-and-reports">
               <BiDollarCircle className="navigationtab-icon" />
               Budget & Reports
@@ -106,14 +110,6 @@ const NavigationTab = () => {
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
               Profile
-            </NavItem>
-            <NavItem to="/organization">
-              <BiBuilding className="navigationtab-icon" />
-              Organization
-            </NavItem>
-            <NavItem to="/access">
-              <BiLockAlt className="navigationtab-icon" />
-              Access
             </NavItem>
             <NavItem to="/clients">
               <BiGroup className="navigationtab-icon" />
@@ -126,14 +122,6 @@ const NavigationTab = () => {
             <NavItem to="/sub-elements">
               <BiGitBranch className="navigationtab-icon" />
               Sub-elements
-            </NavItem>
-            <NavItem to="/tasks">
-              <BiTask className="navigationtab-icon" />
-              Tasks
-            </NavItem>
-            <NavItem to="/budget-reports">
-              <BiBarChartSquare className="navigationtab-icon" />
-              Budget Reports
             </NavItem>
 
             {/* Log Out as a button but styled like links */}

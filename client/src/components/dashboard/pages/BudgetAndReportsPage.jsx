@@ -161,18 +161,19 @@ function BudgetPlanningPage() {
     setCustomCategories(customCats);
 
     // Find which predefined categories are NOT in the budget plan
-    // If categories array is empty, we treat it as "not yet configured"
-    // so we don't mark anything as deleted
+    // If categories array is empty, we DON'T override deletedCategories
+    // This allows users to delete categories even before allocating any budget
     if (budgetPlan.categories.length === 0) {
-      setDeletedCategories([]);
-    } else {
-      // Only mark predefined categories as deleted if user has selected some categories
-      const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
-      const deletedPredefinedIds = predefinedCategories
-        .map(cat => cat.id)
-        .filter(id => !budgetCategoryIds.includes(id));
-      setDeletedCategories(deletedPredefinedIds);
+      // Don't change deletedCategories - preserve any manual deletions
+      return;
     }
+
+    // Only mark predefined categories as deleted if user has selected some categories
+    const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
+    const deletedPredefinedIds = predefinedCategories
+      .map(cat => cat.id)
+      .filter(id => !budgetCategoryIds.includes(id));
+    setDeletedCategories(deletedPredefinedIds);
   }, [budgetPlan]);
 
   const handleSaveYearlyBudget = async () => {
@@ -283,6 +284,16 @@ function BudgetPlanningPage() {
   };
 
   const handleDeleteCategory = async (categoryId) => {
+    // If it's a predefined category, add to deleted list IMMEDIATELY (before backend save)
+    // This prevents the category from showing in the UI while we wait for the backend
+    const predefinedCategory = predefinedCategories.find(cat => cat.id === categoryId);
+    if (predefinedCategory) {
+      setDeletedCategories(prev => [...prev, categoryId]);
+    } else {
+      // If it's a custom category, remove from custom categories IMMEDIATELY
+      setCustomCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    }
+
     // Remove from backend categories if it has budget allocated
     const updatedCategories = (budgetPlan?.categories || []).filter(cat => cat.id !== categoryId);
 
@@ -291,17 +302,18 @@ function BudgetPlanningPage() {
         yearlyBudget: budgetPlan?.yearlyBudget || 0,
         categories: updatedCategories,
       });
-
-      // If it's a predefined category, add to deleted list
-      const predefinedCategory = predefinedCategories.find(cat => cat.id === categoryId);
-      if (predefinedCategory) {
-        setDeletedCategories(prev => [...prev, categoryId]);
-      } else {
-        // If it's a custom category, remove from custom categories
-        setCustomCategories(prev => prev.filter(cat => cat.id !== categoryId));
-      }
     } catch (error) {
       console.error('Error deleting category:', error);
+      // Rollback the UI changes if backend save failed
+      if (predefinedCategory) {
+        setDeletedCategories(prev => prev.filter(id => id !== categoryId));
+      } else {
+        // Re-add the custom category if save failed
+        const categoryToRestore = customCategories.find(cat => cat.id === categoryId);
+        if (categoryToRestore) {
+          setCustomCategories(prev => [...prev, categoryToRestore]);
+        }
+      }
     }
   };
 

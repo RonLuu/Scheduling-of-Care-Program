@@ -154,7 +154,7 @@ const App = () => {
             path="/tasks"
             element={
               <RequireAuth>
-                <TasksPage />
+                <TasksPageNew />
               </RequireAuth>
             }
           />
