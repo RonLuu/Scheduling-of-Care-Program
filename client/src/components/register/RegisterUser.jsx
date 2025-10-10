@@ -58,7 +58,12 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      navigate("/profile");
+      // Redirect based on user role
+      if (data?.user?.role === "Family") {
+        navigate("/dashboard");
+      } else {
+        navigate("/profile");
+      }
     } catch {
       setErr("Network error. Please try again.");
     } finally {

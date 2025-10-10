@@ -215,6 +215,7 @@ async function completeTask(req, res) {
         return res.status(400).json({ error: "INVALID_STATUS" });
       }
       patch.status = req.body.status;
+      nextStatus = req.body.status; // Update nextStatus when status is changed
       if (req.body.status === "Completed") {
         patch.completedAt = req.body.completedAt
           ? new Date(req.body.completedAt)
@@ -291,5 +292,202 @@ async function sweepOverdue(req, res) {
     res.status(400).json({ error: e.message });
   }
 }
+
+// NEW: Get tasks for a specific client
+router.get("/client/:personId", requireAuth, async (req, res) => {
+  try {
+    const { personId } = req.params;
+
+    // Check if user has access to this person
+    const perm = await ensureCanManagePerson(req.user, personId);
+    if (!perm.ok) {
+      // If not manager, check if they're a staff member with access
+      const link = await PersonUserLink.findOne({
+        userId: req.user.id,
+        personId,
+        active: true,
+      }).lean();
+
+      if (!link && req.user.role !== "Admin") {
+        return res.status(403).json({ error: "NOT_AUTHORIZED" });
+      }
+    }
+
+    const tasks = await CareTask.find({ personId })
+      .populate("assignedToUserId", "name email role")
+      .populate("completedByUserId", "name email role")
+      .sort({ dueDate: 1 })
+      .lean();
+
+    res.json(tasks);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// NEW: Create standalone task (not linked to careNeedItem)
+router.post(
+  "/standalone",
+  requireAuth,
+  requireRole("Admin", "Family", "PoA"),
+  async (req, res) => {
+    try {
+      const {
+        personId,
+        title,
+        dueDate,
+        scheduleType,
+        startAt,
+        endAt,
+        assignedToUserId,
+        isRecurring,
+        recurrencePattern,
+        recurrenceInterval,
+        recurrenceEndDate,
+        budgetCategoryId,
+        budgetItemId,
+        expectedCost,
+      } = req.body;
+
+      // Validate access
+      const perm = await ensureCanManagePerson(req.user, personId);
+      if (!perm.ok) return res.status(403).json({ error: perm.code });
+
+      // Validate assignee (if provided)
+      if (assignedToUserId) {
+        const u = await User.findById(assignedToUserId);
+        if (!u || String(u.organizationId) !== String(perm.person.organizationId)) {
+          return res.status(400).json({ error: "ASSIGNEE_ORG_MISMATCH" });
+        }
+      }
+
+      const tasksToCreate = [];
+
+      // Helper function to combine date and time
+      const combineDateTime = (dateStr, timeStr) => {
+        if (!dateStr || !timeStr) return undefined;
+        const date = new Date(dateStr);
+        const [hours, minutes] = timeStr.split(':');
+        date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        return date;
+      };
+
+      if (isRecurring && recurrencePattern) {
+        // Generate recurring tasks
+        const startDate = new Date(dueDate);
+        const endDate = recurrenceEndDate ? new Date(recurrenceEndDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+        let currentDate = new Date(startDate);
+        let count = 0;
+        const maxTasks = 365; // Limit to prevent infinite loops
+
+        while (currentDate <= endDate && count < maxTasks) {
+          const currentDateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+          const taskDoc = {
+            personId,
+            organizationId: perm.person.organizationId,
+            title,
+            dueDate: new Date(currentDate),
+            scheduleType: scheduleType || "AllDay",
+            status: "Scheduled",
+            assignedToUserId: assignedToUserId || undefined,
+          };
+
+          // Only add time fields if it's a timed task
+          if (scheduleType === "Timed") {
+            if (startAt) taskDoc.startAt = combineDateTime(currentDateStr, startAt);
+            if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
+          }
+
+          // Add budget fields if provided
+          if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
+          if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
+          if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
+
+          tasksToCreate.push(taskDoc);
+
+          // Increment date based on pattern
+          if (recurrencePattern === "daily") {
+            currentDate.setDate(currentDate.getDate() + (recurrenceInterval || 1));
+          } else if (recurrencePattern === "weekly") {
+            currentDate.setDate(currentDate.getDate() + (7 * (recurrenceInterval || 1)));
+          } else if (recurrencePattern === "monthly") {
+            currentDate.setMonth(currentDate.getMonth() + (recurrenceInterval || 1));
+          }
+
+          count++;
+        }
+      } else {
+        // Single task
+        const taskDoc = {
+          personId,
+          organizationId: perm.person.organizationId,
+          title,
+          dueDate: new Date(dueDate),
+          scheduleType: scheduleType || "AllDay",
+          status: "Scheduled",
+          assignedToUserId: assignedToUserId || undefined,
+        };
+
+        // Only add time fields if it's a timed task
+        if (scheduleType === "Timed") {
+          if (startAt) taskDoc.startAt = combineDateTime(dueDate, startAt);
+          if (endAt) taskDoc.endAt = combineDateTime(dueDate, endAt);
+        }
+
+        // Add budget fields if provided
+        if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
+        if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
+        if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
+
+        tasksToCreate.push(taskDoc);
+      }
+
+      const createdTasks = await CareTask.insertMany(tasksToCreate);
+
+      res.status(201).json({
+        success: true,
+        tasksCreated: createdTasks.length,
+        tasks: createdTasks,
+      });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  }
+);
+
+// NEW: Update task cost
+router.patch("/:taskId/cost", requireAuth, async (req, res) => {
+  try {
+    const task = await CareTask.findById(req.params.taskId);
+    if (!task) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const perm = await canManageTask(req.user, task);
+    if (!perm.ok) return res.status(403).json({ error: perm.code });
+
+    const { cost } = req.body;
+    const numCost = Number(cost);
+
+    if (Number.isNaN(numCost) || numCost < 0) {
+      return res.status(400).json({ error: "INVALID_COST" });
+    }
+
+    // Allow cost update for completed tasks
+    if (task.status !== "Completed") {
+      return res.status(400).json({ error: "TASK_MUST_BE_COMPLETED" });
+    }
+
+    task.cost = numCost;
+    await task.save();
+
+    const updated = await CareTask.findById(task._id)
+      .populate("assignedToUserId", "name email role")
+      .populate("completedByUserId", "name email role");
+
+    res.json(updated);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 export default router;

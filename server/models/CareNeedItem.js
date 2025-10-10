@@ -1,5 +1,11 @@
 import { Schema, model } from "mongoose";
 
+// Helper to round monetary values to 2 decimal places
+function roundToTwoDecimals(value) {
+  if (value === null || value === undefined) return value;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 const TimeWindowSchema = new Schema(
   {
     startTime: { type: String, match: /^[0-2]\d:[0-5]\d$/ },
@@ -11,7 +17,11 @@ const TimeWindowSchema = new Schema(
 const YearBudgetSchema = new Schema(
   {
     year: { type: Number, required: true }, // e.g., 2025
-    amount: { type: Number, default: 0 }, // annual budget for that year
+    amount: {
+      type: Number,
+      default: 0,
+      set: roundToTwoDecimals  // Round on save
+    }, // annual budget for that year
   },
   { _id: false }
 );
@@ -66,13 +76,25 @@ const CareNeedItemSchema = new Schema(
     category: { type: String, required: true, trim: true },
 
     // Budgets / costs
-    budgetCost: { type: Number, default: 0 }, //  default annual budget
+    budgetCost: {
+      type: Number,
+      default: 0,
+      set: roundToTwoDecimals  // Round on save
+    }, //  default annual budget
 
     // actual per-year budgets
     budgets: { type: [YearBudgetSchema], default: [] },
 
-    purchaseCost: { type: Number, default: 0 }, // one-off spent at purchase
-    occurrenceCost: { type: Number, default: 0 }, // per generated occurrence
+    purchaseCost: {
+      type: Number,
+      default: 0,
+      set: roundToTwoDecimals  // Round on save
+    }, // one-off spent at purchase
+    occurrenceCost: {
+      type: Number,
+      default: 0,
+      set: roundToTwoDecimals  // Round on save
+    }, // per generated occurrence
 
     // attachments
     files: [{ type: Schema.Types.ObjectId, ref: "FileUpload", index: true }], // direct uploads to this item

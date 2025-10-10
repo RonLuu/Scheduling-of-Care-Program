@@ -31,7 +31,7 @@ const MockShiftPage = () => <div>Shift Allocation Page</div>;
 const MockSubElementsPage = () => <div>Sub-elements Page</div>;
 const MockTasksPage = () => <div>Tasks Page</div>;
 const MockBudgetPage = () => <div>Budget Reports Page</div>;
-const MockFAQPage = () => <div>FAQ Page</div>;
+const MockBudgetAndReportsPage = () => <div>Budget & Reports Page</div>;
 
 // Mock fetch to not have actual API calls during tests
 global.fetch = vi.fn(() =>
@@ -65,7 +65,7 @@ const TestWrapper = ({ children, initialEntries = ["/"] }) => (
     <MemoryRouter initialEntries={initialEntries}>
       <Routes>
         <Route path="/" element={<div>Home</div>} />
-        <Route path="/faq" element={<MockFAQPage />} />
+        <Route path="/budget-and-reports" element={<MockBudgetAndReportsPage />} />
         <Route path="/profile" element={<MockProfilePage />} />
         <Route path="/access" element={<MockAccessPage />} />
         <Route path="/clients" element={<MockClientsPage />} />
@@ -159,7 +159,7 @@ describe("NavigationTab", () => {
     await user.click(document.querySelector(".navigationtab-button-menu"));
 
     // Check for all expected navigation items
-    expect(screen.getByText("FAQ")).toBeInTheDocument();
+    expect(screen.getByText("Budget & Reports")).toBeInTheDocument();
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText("Access")).toBeInTheDocument();
     expect(screen.getByText("Clients")).toBeInTheDocument();
@@ -170,8 +170,8 @@ describe("NavigationTab", () => {
     expect(screen.getByText("Log Out")).toBeInTheDocument();
   });
 
-  // Integration test: FAQ link navigates correctly
-  it("navigates to FAQ page when FAQ link is clicked", async () => {
+  // Integration test: Budget & Reports link navigates correctly
+  it("navigates to Budget & Reports page when Budget & Reports link is clicked", async () => {
     const user = userEvent.setup();
 
     const { container } = render(
@@ -194,17 +194,17 @@ describe("NavigationTab", () => {
       expect(panelElement).toBeInTheDocument();
     });
 
-    // Look for FAQ text within our specific container
+    // Look for Budget & Reports text within our specific container
     await waitFor(() => {
-      const faqText = container.querySelector('.navigationtab-link-wrapper a[href="/faq"]');
-      expect(faqText).toBeInTheDocument();
+      const budgetAndReportsText = container.querySelector('.navigationtab-link-wrapper a[href="/budget-and-reports"]');
+      expect(budgetAndReportsText).toBeInTheDocument();
     });
 
-    const faqLink = container.querySelector('a[href="/faq"]');
-    expect(faqLink).toHaveAttribute("href", "/faq");
+    const budgetAndReportsLink = container.querySelector('a[href="/budget-and-reports"]');
+    expect(budgetAndReportsLink).toHaveAttribute("href", "/budget-and-reports");
 
-    await user.click(faqLink);
-    expect(screen.getByText("FAQ Page")).toBeInTheDocument();
+    await user.click(budgetAndReportsLink);
+    expect(screen.getByText("Budget & Reports Page")).toBeInTheDocument();
   });
 
   // Integration test: profile link navigates correctly

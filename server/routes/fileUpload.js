@@ -318,11 +318,27 @@ router.post("/upload", requireAuth, (req, res) => {
         if (!access.ok) return res.status(403).json({ error: access.code });
       }
 
-      const publicUrl = isProd
-        ? req.file.path // Cloudinary secure URL
-        : `/uploads/${folderForScope(scope)}/${req.file.filename}`;
+      // For local development, the file might be in wrong folder due to multer limitation
+      // So we need to move it to the correct folder based on actual scope
+      let publicUrl;
+      if (isProd) {
+        publicUrl = req.file.path; // Cloudinary secure URL
+      } else {
+        const correctFolder = folderForScope(scope);
+        const correctDir = path.join(UPLOAD_DIR, correctFolder);
+        const correctPath = path.join(correctDir, req.file.filename);
 
-      console.log("[UPLOAD] Saved:", req.file.path, "->", publicUrl);
+        // If file is in wrong folder, move it
+        if (req.file.path !== correctPath) {
+          fs.mkdirSync(correctDir, { recursive: true });
+          fs.renameSync(req.file.path, correctPath);
+          console.log("[UPLOAD] Moved file from", req.file.path, "to", correctPath);
+        }
+
+        publicUrl = `/uploads/${correctFolder}/${req.file.filename}`;
+      }
+
+      console.log("[UPLOAD] Final URL:", publicUrl);
 
       const doc = await FileUpload.create({
         scope,
@@ -472,6 +488,53 @@ router.get("/buckets", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/file-upload/shared?personId=...&startDate=...&endDate=...
+// Fetch shared receipts for a person within a date range
+router.get("/shared", requireAuth, async (req, res) => {
+  try {
+    const { personId, startDate, endDate } = req.query;
+
+    if (!personId) {
+      return res.status(400).json({ error: "MISSING_PERSON_ID" });
+    }
+
+    // Build date filter for createdAt (when the file was actually uploaded)
+    const dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    // Find all buckets for this person
+    const bucketFilter = { personId };
+    const buckets = await ReceiptBucket.find(bucketFilter).lean();
+
+    if (buckets.length === 0) {
+      return res.json([]);
+    }
+
+    const bucketIds = buckets.map(b => b._id);
+
+    // Find all files in these buckets
+    // Filter by createdAt instead of effectiveDate to match rolling time ranges
+    const fileFilter = {
+      scope: "Shared",
+      bucketId: { $in: bucketIds }
+    };
+
+    // Use createdAt field for filtering since that's when the file was actually uploaded
+    if (Object.keys(dateFilter).length > 0) {
+      fileFilter.createdAt = dateFilter;
+    }
+
+    const files = await FileUpload.find(fileFilter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(files);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ============ Reference a shared file to a care-need item ============
 // POST /api/file-upload/shared/reference  { careNeedItemId, fileId }
 router.post("/shared/reference", requireAuth, async (req, res) => {
@@ -484,6 +547,35 @@ router.post("/shared/reference", requireAuth, async (req, res) => {
     // push fileId into care-need item's fileRefs
     await CareNeedItem.updateOne(
       { _id: careNeedItemId },
+      { $addToSet: { fileRefs: f._id } }
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ============ Reference a shared file to a care task ============
+// POST /api/file-upload/shared/reference-to-task  { careTaskId, fileId }
+router.post("/shared/reference-to-task", requireAuth, async (req, res) => {
+  try {
+    const { careTaskId, fileId } = req.body;
+
+    // Verify file exists and is shared
+    const f = await FileUpload.findById(fileId);
+    if (!f || f.scope !== "Shared")
+      return res.status(400).json({ error: "NOT_A_SHARED_FILE" });
+
+    // Verify task exists and user has access
+    const task = await CareTask.findById(careTaskId);
+    if (!task) return res.status(400).json({ error: "INVALID_TASK" });
+
+    const access = await ensureCanWorkOnTask(req.user, task);
+    if (!access.ok) return res.status(403).json({ error: access.code });
+
+    // Add fileId to task's fileRefs
+    await CareTask.updateOne(
+      { _id: careTaskId },
       { $addToSet: { fileRefs: f._id } }
     );
     res.json({ ok: true });

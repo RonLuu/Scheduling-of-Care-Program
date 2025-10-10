@@ -15,8 +15,10 @@ import ClientsPage from "./components/dashboard/pages/ClientsPage";
 import ShiftPage from "./components/dashboard/pages/ShiftPage";
 import SubElementsPage from "./components/dashboard/pages/SubElementsPage";
 import TasksPage from "./components/dashboard/pages/TasksPage";
+import TasksPageNew from "./components/dashboard/pages/TasksPageNew";
+import TaskCompletionPage from "./components/dashboard/pages/TaskCompletionPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
-import FAQPage from "./components/dashboard/pages/FAQPage";
+import BudgetAndReportsPage from "./components/dashboard/pages/BudgetAndReportsPage";
 import FamilyDashboard from "./components/dashboard/pages/FamilyDashboard";
 
 import PrintButton from "./components/PrintButton";
@@ -41,6 +43,23 @@ const App = () => {
     !["/login", "/registeruser", "/registerorganization"].includes(
       location.pathname
     );
+
+  // Prevent mouse wheel from changing number input values
+  React.useEffect(() => {
+    const preventNumberInputScroll = (e) => {
+      // Check if the active element is a number input
+      if (document.activeElement.type === 'number') {
+        e.preventDefault();
+      }
+    };
+
+    // Add event listener to prevent wheel events on focused number inputs
+    document.addEventListener('wheel', preventNumberInputScroll, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', preventNumberInputScroll);
+    };
+  }, []);
 
   const RequireAuth = ({ children }) => {
     if (!isReady) return null; // or a spinner component
@@ -135,7 +154,23 @@ const App = () => {
             path="/tasks"
             element={
               <RequireAuth>
-                <TasksPage />
+                <TasksPageNew />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/tasks-new"
+            element={
+              <RequireAuth>
+                <TasksPageNew />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/tasks/:taskId/complete"
+            element={
+              <RequireAuth>
+                <TaskCompletionPage />
               </RequireAuth>
             }
           />
@@ -148,22 +183,25 @@ const App = () => {
             }
           />
           <Route
-            path="/faq"
+            path="/budget-and-reports"
             element={
               <RequireAuth>
-                <FAQPage />
+                <BudgetAndReportsPage />
               </RequireAuth>
             }
           />
-          <Route path="/faq" element={<FAQPage />} />
 
           {/* Redirects */}
-          {/* If logged in and they hit root again, push to /profile */}
+          {/* Catch-all route based on user role */}
           <Route
             path="*"
             element={
               me ? (
-                <Navigate to="/profile" replace />
+                me.role === "Family" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/profile" replace />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
