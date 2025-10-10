@@ -193,12 +193,16 @@ const App = () => {
           <Route path="/faq" element={<FAQPage />} />
 
           {/* Redirects */}
-          {/* If logged in and they hit root again, push to /profile */}
+          {/* Catch-all route based on user role */}
           <Route
             path="*"
             element={
               me ? (
-                <Navigate to="/profile" replace />
+                me.role === "Family" ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/profile" replace />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
