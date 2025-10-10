@@ -23,7 +23,8 @@ function BudgetPlanningPage() {
   const [customCategories, setCustomCategories] = React.useState([]);
   const [deletedCategories, setDeletedCategories] = React.useState([]);
   const [budgetItems, setBudgetItems] = React.useState({});
-  const [showWizard, setShowWizard] = React.useState(false);
+  // Start with wizard mode by default - will be auto-adjusted based on budget plan completeness
+  const [showWizard, setShowWizard] = React.useState(true);
   const [categoriesSaved, setCategoriesSaved] = React.useState(false);
   const [hasLoadedSavedPeriod, setHasLoadedSavedPeriod] = React.useState(false);
 
@@ -141,40 +142,51 @@ function BudgetPlanningPage() {
 
   // Load custom categories and deleted categories from budget plan
   React.useEffect(() => {
-    // If no budget plan exists at all, reset to show all predefined categories
+    // If no budget plan exists at all, keep existing custom categories (they're local-only)
+    // but reset deleted categories
     if (budgetPlan === null || budgetPlan === undefined) {
-      setCustomCategories([]);
+      // Don't reset customCategories here - they're stored locally until saved
       setDeletedCategories([]);
       return;
     }
 
-    // If budget plan exists but has no categories array yet, also reset
+    // If budget plan exists but has no categories array yet, keep local custom categories
     if (!budgetPlan.categories || !Array.isArray(budgetPlan.categories)) {
-      setCustomCategories([]);
+      // Don't reset customCategories here either
       setDeletedCategories([]);
       return;
     }
 
     // Budget plan exists and has categories array (even if empty)
-    // Extract custom categories from budget plan
-    const customCats = budgetPlan.categories.filter(cat => cat.isCustom);
-    setCustomCategories(customCats);
+    // Extract custom categories from budget plan and merge with local ones
+    const customCatsFromBackend = budgetPlan.categories.filter(cat => cat.isCustom);
 
-    // Find which predefined categories are NOT in the budget plan
-    // If categories array is empty, we DON'T override deletedCategories
-    // This allows users to delete categories even before allocating any budget
-    if (budgetPlan.categories.length === 0) {
-      // Don't change deletedCategories - preserve any manual deletions
-      return;
+    // IMPORTANT: Merge with existing customCategories to preserve locally-added categories
+    // that haven't been saved to the backend yet
+    setCustomCategories(prevCustom => {
+      // Get IDs of categories from budget plan
+      const budgetPlanCustomIds = new Set(customCatsFromBackend.map(cat => cat.id));
+
+      // Keep local custom categories that aren't in the budget plan yet
+      const localOnly = prevCustom.filter(cat => !budgetPlanCustomIds.has(cat.id));
+
+      // Combine: budget plan custom categories take precedence, then add local-only ones
+      return [...customCatsFromBackend, ...localOnly];
+    });
+
+    // Load deleted categories from the budget plan if they exist
+    // Only categories that were explicitly marked as deleted in the backend should be hidden
+    if (budgetPlan.deletedCategories && Array.isArray(budgetPlan.deletedCategories)) {
+      setDeletedCategories(budgetPlan.deletedCategories);
+    } else {
+      // If no deletedCategories in budget plan, reset to empty (show all predefined categories)
+      setDeletedCategories([]);
     }
-
-    // Only mark predefined categories as deleted if user has selected some categories
-    const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
-    const deletedPredefinedIds = predefinedCategories
-      .map(cat => cat.id)
-      .filter(id => !budgetCategoryIds.includes(id));
-    setDeletedCategories(deletedPredefinedIds);
   }, [budgetPlan]);
+
+  // Track if user manually opened wizard
+  // This prevents any automatic closing - ONLY the Finish Planning button should close wizard
+  const userOpenedWizard = React.useRef(true);
 
   const handleSaveYearlyBudget = async () => {
     // Use tempYearlyBudget if user entered something, otherwise use existing budgetPlan.yearlyBudget
@@ -191,6 +203,7 @@ function BudgetPlanningPage() {
         budgetPeriodStart: budgetPeriod?.startDate,
         budgetPeriodEnd: budgetPeriod?.endDate,
         categories: budgetPlan?.categories || [],
+        deletedCategories: budgetPlan?.deletedCategories || [],
       });
       alert(`Yearly budget of $${parseFloat(budgetToSave).toLocaleString()} saved!`);
     } catch (error) {
@@ -217,6 +230,7 @@ function BudgetPlanningPage() {
     saveBudgetPlan({
       yearlyBudget: budgetPlan?.yearlyBudget || 0,
       categories: updatedCategories,
+      deletedCategories: budgetPlan?.deletedCategories || deletedCategories,
     }).catch(error => {
       console.error('Error saving category budget:', error);
     });
@@ -287,8 +301,11 @@ function BudgetPlanningPage() {
     // If it's a predefined category, add to deleted list IMMEDIATELY (before backend save)
     // This prevents the category from showing in the UI while we wait for the backend
     const predefinedCategory = predefinedCategories.find(cat => cat.id === categoryId);
+    let updatedDeletedCategories = deletedCategories;
+
     if (predefinedCategory) {
-      setDeletedCategories(prev => [...prev, categoryId]);
+      updatedDeletedCategories = [...deletedCategories, categoryId];
+      setDeletedCategories(updatedDeletedCategories);
     } else {
       // If it's a custom category, remove from custom categories IMMEDIATELY
       setCustomCategories(prev => prev.filter(cat => cat.id !== categoryId));
@@ -301,6 +318,7 @@ function BudgetPlanningPage() {
       await saveBudgetPlan({
         yearlyBudget: budgetPlan?.yearlyBudget || 0,
         categories: updatedCategories,
+        deletedCategories: updatedDeletedCategories,
       });
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -366,10 +384,15 @@ function BudgetPlanningPage() {
       return cat;
     });
 
+    // Set the flag to indicate user is actively working in the wizard
+    // This prevents auto-close when adding items
+    userOpenedWizard.current = true;
+
     try {
       await saveBudgetPlan({
         yearlyBudget: budgetPlan?.yearlyBudget || 0,
         categories: updatedCategories,
+        deletedCategories: budgetPlan?.deletedCategories || deletedCategories,
       });
 
       // Clear the form
@@ -400,6 +423,7 @@ function BudgetPlanningPage() {
       await saveBudgetPlan({
         yearlyBudget: budgetPlan?.yearlyBudget || 0,
         categories: updatedCategories,
+        deletedCategories: budgetPlan?.deletedCategories || deletedCategories,
       });
     } catch (error) {
       console.error('Error deleting budget item:', error);
@@ -536,7 +560,10 @@ function BudgetPlanningPage() {
                 const shouldShowOverview = isBudgetPlanComplete && !showWizard;
 
                 return shouldShowOverview && (
-                  <button className="reconfigure-btn" onClick={() => setShowWizard(true)}>
+                  <button className="reconfigure-btn" onClick={() => {
+                    userOpenedWizard.current = true;
+                    setShowWizard(true);
+                  }}>
                     ✏️ Edit Budget Plan
                   </button>
                 );
@@ -566,7 +593,10 @@ function BudgetPlanningPage() {
                     budgetPlan={budgetPlan}
                     jwt={jwt}
                     budgetPeriod={budgetPeriod}
-                    onReconfigure={() => setShowWizard(true)}
+                    onReconfigure={() => {
+                      userOpenedWizard.current = true;
+                      setShowWizard(true);
+                    }}
                   />
                 ) : (
                 // Show 3-step wizard
@@ -940,8 +970,11 @@ function BudgetPlanningPage() {
                   <button
                     className="finish-planning-btn"
                     onClick={() => {
+                      // Reset the flag to allow auto-switch to overview mode
+                      userOpenedWizard.current = false;
+                      // Close the wizard to show overview
+                      setShowWizard(false);
                       alert('Budget planning complete! You can now view your budget overview and track spending.');
-                      window.location.reload();
                     }}
                   >
                     ✅ Finish Planning

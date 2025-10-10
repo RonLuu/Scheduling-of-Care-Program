@@ -67,6 +67,7 @@ const BudgetPlanSchema = new Schema(
       set: roundToTwoDecimals  // Round on save
     },
     categories: { type: [BudgetCategorySchema], default: [] },
+    deletedCategories: { type: [String], default: [] },
     status: {
       type: String,
       enum: ["Draft", "Active", "Archived"],
