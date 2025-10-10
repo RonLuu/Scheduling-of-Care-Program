@@ -58,6 +58,8 @@ const BudgetPlanSchema = new Schema(
       required: true,
     },
     year: { type: Number, required: true },
+    budgetPeriodStart: { type: Date },
+    budgetPeriodEnd: { type: Date },
     yearlyBudget: {
       type: Number,
       required: true,

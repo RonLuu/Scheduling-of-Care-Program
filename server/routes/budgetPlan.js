@@ -35,7 +35,7 @@ router.post("/", requireAuth, async (req, res) => {
       user: req.user ? { _id: req.user._id, organizationId: req.user.organizationId } : null
     });
 
-    const { personId, year, yearlyBudget, categories } = req.body;
+    const { personId, year, yearlyBudget, categories, budgetPeriodStart, budgetPeriodEnd } = req.body;
 
     if (!personId || !year || yearlyBudget === undefined) {
       console.log("Missing required fields:", { personId: !!personId, year: !!year, yearlyBudget: yearlyBudget !== undefined });
@@ -63,6 +63,8 @@ router.post("/", requireAuth, async (req, res) => {
       createdByUserId: req.user.id,
       year: parseInt(year),
       yearlyBudget: parseFloat(yearlyBudget),
+      budgetPeriodStart: budgetPeriodStart || undefined,
+      budgetPeriodEnd: budgetPeriodEnd || undefined,
       categories: categories || [],
       status: "Active",
     });
@@ -84,7 +86,7 @@ router.post("/", requireAuth, async (req, res) => {
 // PUT /api/budget-plans - Update existing budget plan
 router.put("/", requireAuth, async (req, res) => {
   try {
-    const { personId, year, yearlyBudget, categories } = req.body;
+    const { personId, year, yearlyBudget, categories, budgetPeriodStart, budgetPeriodEnd } = req.body;
 
     if (!personId || !year) {
       return res.status(400).json({
@@ -101,6 +103,8 @@ router.put("/", requireAuth, async (req, res) => {
       {
         yearlyBudget: yearlyBudget !== undefined ? parseFloat(yearlyBudget) : undefined,
         categories: categories || undefined,
+        budgetPeriodStart: budgetPeriodStart || undefined,
+        budgetPeriodEnd: budgetPeriodEnd || undefined,
         status: "Active",
       },
       {

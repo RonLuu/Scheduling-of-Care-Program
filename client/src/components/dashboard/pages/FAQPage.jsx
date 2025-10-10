@@ -12,6 +12,8 @@ function BudgetPlanningPage() {
 
   const [selectedClient, setSelectedClient] = React.useState(null);
   const [year] = React.useState(new Date().getFullYear());
+  const [budgetYearType, setBudgetYearType] = React.useState('calendar'); // 'calendar' or 'financial'
+  const [budgetPeriod, setBudgetPeriod] = React.useState(null); // Will store { startDate, endDate, label }
   const [newCategoryName, setNewCategoryName] = React.useState("");
   const [newCategoryDescription, setNewCategoryDescription] = React.useState("");
   const [showAddCategory, setShowAddCategory] = React.useState(false);
@@ -23,6 +25,7 @@ function BudgetPlanningPage() {
   const [budgetItems, setBudgetItems] = React.useState({});
   const [showWizard, setShowWizard] = React.useState(false);
   const [categoriesSaved, setCategoriesSaved] = React.useState(false);
+  const [hasLoadedSavedPeriod, setHasLoadedSavedPeriod] = React.useState(false);
 
   // Use the budget plan hook
   const { budgetPlan, loading: budgetLoading, error: budgetError, saveBudgetPlan } = useBudgetPlan(
@@ -42,6 +45,87 @@ function BudgetPlanningPage() {
     { id: 'transportation', name: 'Transportation', emoji: '🚗', description: 'Medical transport, vehicle modifications' },
     { id: 'home', name: 'Home Modifications', emoji: '🏠', description: 'Accessibility improvements, safety equipment' }
   ];
+
+  // Load budget period from saved budget plan - runs ONCE when budgetPlan loads
+  React.useEffect(() => {
+    if (budgetPlan?.budgetPeriodStart && budgetPlan?.budgetPeriodEnd && !hasLoadedSavedPeriod) {
+      const startDate = new Date(budgetPlan.budgetPeriodStart);
+      const endDate = new Date(budgetPlan.budgetPeriodEnd);
+
+      // Determine the budget year type based on the dates
+      const startMonth = startDate.getMonth();
+      const endMonth = endDate.getMonth();
+
+      let yearType = 'calendar'; // default
+      let label = '';
+
+      // Check if it's a financial year (July-June)
+      if (startMonth === 6 && endMonth === 5) {
+        yearType = 'financial';
+        const fyStartYear = startDate.getFullYear();
+        const fyEndYear = endDate.getFullYear();
+        label = `FY ${fyStartYear}/${fyEndYear}`;
+      }
+      // Check if it's calendar year (Jan-Dec)
+      else if (startMonth === 0 && endMonth === 11) {
+        yearType = 'calendar';
+        label = `Calendar Year ${startDate.getFullYear()}`;
+      }
+      // Otherwise it's a rolling period
+      else {
+        yearType = 'rolling';
+        label = `12-Month Period`;
+      }
+
+      setBudgetYearType(yearType);
+      setBudgetPeriod({ startDate, endDate, label });
+      setHasLoadedSavedPeriod(true); // Mark as loaded so this doesn't run again
+    }
+  }, [budgetPlan?.budgetPeriodStart, budgetPlan?.budgetPeriodEnd, hasLoadedSavedPeriod]);
+
+  // Calculate budget period based on year type - runs when user changes dropdown
+  React.useEffect(() => {
+    // Skip if we haven't loaded saved data yet (let the load effect run first)
+    if (budgetPlan?.budgetPeriodStart && budgetPlan?.budgetPeriodEnd && !hasLoadedSavedPeriod) {
+      return;
+    }
+
+    const today = new Date();
+    let startDate, endDate, label;
+
+    if (budgetYearType === 'calendar') {
+      // Calendar year: Jan 1 - Dec 31 of current year
+      const currentYear = today.getFullYear();
+      startDate = new Date(currentYear, 0, 1); // Jan 1
+      endDate = new Date(currentYear, 11, 31); // Dec 31
+      label = `Calendar Year ${currentYear}`;
+    } else if (budgetYearType === 'financial') {
+      // Financial year: July 1 - June 30
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+
+      if (currentMonth >= 6) {
+        // After June (July-Dec): This FY is July current year to June next year
+        startDate = new Date(currentYear, 6, 1); // July 1 this year
+        endDate = new Date(currentYear + 1, 5, 30); // June 30 next year
+        label = `FY ${currentYear}/${currentYear + 1}`;
+      } else {
+        // Before July (Jan-June): This FY is July last year to June this year
+        startDate = new Date(currentYear - 1, 6, 1); // July 1 last year
+        endDate = new Date(currentYear, 5, 30); // June 30 this year
+        label = `FY ${currentYear - 1}/${currentYear}`;
+      }
+    } else if (budgetYearType === 'rolling') {
+      // Rolling 12-month period from today
+      startDate = new Date(today);
+      endDate = new Date(today);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      endDate.setDate(endDate.getDate() - 1); // 365 days from today
+      label = `12-Month Period`;
+    }
+
+    setBudgetPeriod({ startDate, endDate, label });
+  }, [budgetYearType, hasLoadedSavedPeriod]);
 
   // Auto-select first client when clients load
   React.useEffect(() => {
@@ -67,17 +151,22 @@ function BudgetPlanningPage() {
   }, [budgetPlan]);
 
   const handleSaveYearlyBudget = async () => {
-    if (!tempYearlyBudget || isNaN(tempYearlyBudget) || parseFloat(tempYearlyBudget) <= 0) {
+    // Use tempYearlyBudget if user entered something, otherwise use existing budgetPlan.yearlyBudget
+    const budgetToSave = tempYearlyBudget || budgetPlan?.yearlyBudget;
+
+    if (!budgetToSave || isNaN(budgetToSave) || parseFloat(budgetToSave) <= 0) {
       alert("Please enter a valid yearly budget amount");
       return;
     }
 
     try {
       await saveBudgetPlan({
-        yearlyBudget: parseFloat(tempYearlyBudget),
+        yearlyBudget: parseFloat(budgetToSave),
+        budgetPeriodStart: budgetPeriod?.startDate,
+        budgetPeriodEnd: budgetPeriod?.endDate,
         categories: budgetPlan?.categories || [],
       });
-      alert(`Yearly budget of $${parseFloat(tempYearlyBudget).toLocaleString()} saved!`);
+      alert(`Yearly budget of $${parseFloat(budgetToSave).toLocaleString()} saved!`);
     } catch (error) {
       alert(`Error saving budget: ${error.message}`);
     }
@@ -372,33 +461,51 @@ function BudgetPlanningPage() {
 
           {/* Client Selection */}
           <div className="client-selection">
-            <label htmlFor="client-select">Planning budget for:</label>
-            <select
-              id="client-select"
-              value={selectedClient?._id || ""}
-              onChange={(e) => {
-                const client = clients.find(c => c._id === e.target.value);
-                setSelectedClient(client);
-                // Reset wizard state when switching clients
-                setShowWizard(false);
-                setCategoriesSaved(false);
-                setCustomCategories([]);
-                setDeletedCategories([]);
-                setNewCategoryName("");
-                setNewCategoryDescription("");
-                setShowAddCategory(false);
-                setBudgetItems({});
-                setExpandedCategory(null);
-                setNewItemForms({});
-                setTempYearlyBudget("");
-              }}
-            >
-              {clients.map((client) => (
-                <option key={client._id} value={client._id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
+            <div className="client-selection-row">
+              <div className="client-select-wrapper">
+                <label htmlFor="client-select">Planning budget for:</label>
+                <select
+                  id="client-select"
+                  value={selectedClient?._id || ""}
+                  onChange={(e) => {
+                    const client = clients.find(c => c._id === e.target.value);
+                    setSelectedClient(client);
+                    // Reset wizard state when switching clients
+                    setShowWizard(false);
+                    setCategoriesSaved(false);
+                    setCustomCategories([]);
+                    setDeletedCategories([]);
+                    setNewCategoryName("");
+                    setNewCategoryDescription("");
+                    setShowAddCategory(false);
+                    setBudgetItems({});
+                    setExpandedCategory(null);
+                    setNewItemForms({});
+                    setTempYearlyBudget("");
+                    setHasLoadedSavedPeriod(false); // Reset so saved period loads for new client
+                  }}
+                >
+                  {clients.map((client) => (
+                    <option key={client._id} value={client._id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(() => {
+                const isBudgetPlanComplete =
+                  budgetPlan?.yearlyBudget &&
+                  budgetPlan?.categories?.length > 0 &&
+                  budgetPlan?.categories?.some(cat => cat.items && cat.items.length > 0);
+                const shouldShowOverview = isBudgetPlanComplete && !showWizard;
+
+                return shouldShowOverview && (
+                  <button className="reconfigure-btn" onClick={() => setShowWizard(true)}>
+                    ✏️ Edit Budget Plan
+                  </button>
+                );
+              })()}
+            </div>
           </div>
 
           {selectedClient && (
@@ -422,6 +529,7 @@ function BudgetPlanningPage() {
                   <BudgetOverviewView
                     budgetPlan={budgetPlan}
                     jwt={jwt}
+                    budgetPeriod={budgetPeriod}
                     onReconfigure={() => setShowWizard(true)}
                   />
                 ) : (
@@ -435,8 +543,28 @@ function BudgetPlanningPage() {
                 </div>
 
                 <div className="yearly-budget-form">
+                  {/* Budget Year Type Selection */}
                   <div className="budget-input-group">
-                    <label htmlFor="yearly-budget">Total Yearly Budget</label>
+                    <label htmlFor="budget-year-type">Budget Period</label>
+                    <select
+                      id="budget-year-type"
+                      value={budgetYearType}
+                      onChange={(e) => setBudgetYearType(e.target.value)}
+                      className="year-type-select"
+                    >
+                      <option value="calendar">Calendar Year (Jan - Dec)</option>
+                      <option value="financial">Financial Year (Jul - Jun)</option>
+                      <option value="rolling">Start from today (Today - Same Date Next Year)</option>
+                    </select>
+                    {budgetPeriod && (
+                      <div className="budget-period-info">
+                        📆 {budgetPeriod.label}: {budgetPeriod.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {budgetPeriod.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="budget-input-group">
+                    <label htmlFor="yearly-budget">Total Budget for {budgetPeriod?.label || 'Period'}</label>
                     <div className="input-with-currency">
                       <span className="currency-symbol">$</span>
                       <input
@@ -756,6 +884,16 @@ function BudgetPlanningPage() {
                       </div>
                     </div>
 
+                    {/* Save Budget Items Button */}
+                    <div className="save-items-section">
+                      <button
+                        className="save-items-btn"
+                        onClick={handleSaveBudgetItems}
+                      >
+                        Save Budget Items
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               )}
@@ -765,7 +903,10 @@ function BudgetPlanningPage() {
                 <div className="finish-planning-section">
                   <button
                     className="finish-planning-btn"
-                    onClick={handleSaveBudgetItems}
+                    onClick={() => {
+                      alert('Budget planning complete! You can now view your budget overview and track spending.');
+                      window.location.reload();
+                    }}
                   >
                     ✅ Finish Planning
                   </button>
@@ -823,6 +964,18 @@ function BudgetPlanningPage() {
           border-bottom: 1px solid #e2e8f0;
         }
 
+        .client-selection-row {
+          display: flex;
+          align-items: flex-end;
+          gap: 1.5rem;
+        }
+
+        .client-select-wrapper {
+          flex: 0 0 auto;
+          width: 400px;
+          max-width: 100%;
+        }
+
         .client-selection label {
           display: block;
           font-weight: 600;
@@ -832,7 +985,6 @@ function BudgetPlanningPage() {
 
         .client-selection select {
           width: 100%;
-          max-width: 400px;
           padding: 0.75rem;
           border: 2px solid #d1d5db;
           border-radius: 8px;
@@ -845,6 +997,24 @@ function BudgetPlanningPage() {
           outline: none;
           border-color: #10b981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .reconfigure-btn {
+          padding: 0.75rem 1.25rem;
+          background: #6b7280;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .reconfigure-btn:hover {
+          background: #4b5563;
+          transform: translateY(-1px);
         }
 
         .budget-step {
@@ -870,7 +1040,7 @@ function BudgetPlanningPage() {
 
         .yearly-budget-form {
           margin-top: 1.5rem;
-          max-width: 500px;
+          max-width: 600px;
         }
 
         .budget-input-group {
@@ -882,6 +1052,34 @@ function BudgetPlanningPage() {
           font-weight: 600;
           color: #374151;
           margin-bottom: 0.5rem;
+        }
+
+        .year-type-select {
+          width: 100%;
+          padding: 0.75rem;
+          border: 2px solid #d1d5db;
+          border-radius: 8px;
+          background: white;
+          font-size: 1rem;
+          transition: border-color 0.2s;
+          cursor: pointer;
+        }
+
+        .year-type-select:focus {
+          outline: none;
+          border-color: #10b981;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .budget-period-info {
+          margin-top: 0.75rem;
+          padding: 0.75rem 1rem;
+          background: #ecfdf5;
+          border: 1px solid #d1fae5;
+          border-radius: 6px;
+          color: #065f46;
+          font-size: 0.875rem;
+          font-weight: 500;
         }
 
         .input-with-currency {

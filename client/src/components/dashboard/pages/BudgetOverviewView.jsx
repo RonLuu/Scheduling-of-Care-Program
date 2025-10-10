@@ -1,6 +1,6 @@
 import React from "react";
 
-function BudgetOverviewView({ budgetPlan, jwt, onReconfigure }) {
+function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [expandedCategories, setExpandedCategories] = React.useState(new Set());
   const [actualSpending, setActualSpending] = React.useState({});
   const [isLoadingSpending, setIsLoadingSpending] = React.useState(true);
@@ -93,17 +93,12 @@ function BudgetOverviewView({ budgetPlan, jwt, onReconfigure }) {
 
   return (
     <div className="budget-overview">
-      {/* Header with Actions */}
+      {/* Header */}
       <div className="overview-header">
-        <div>
-          <h2>Budget Plan {budgetPlan?.year}</h2>
-          <p className="overview-subtitle">
-            Manage your budget categories, items, and track spending
-          </p>
+        <div className="overview-header-text">
+          <h2>Budget Plan for {budgetPeriod.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {budgetPeriod.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </h2>
         </div>
-        <button className="btn-secondary" onClick={onReconfigure}>
-          ⚙️ Reconfigure
-        </button>
       </div>
 
       {/* Summary Cards */}
@@ -244,12 +239,26 @@ function BudgetOverviewView({ budgetPlan, jwt, onReconfigure }) {
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 2rem;
+          gap: 2rem;
+        }
+
+        .overview-header-text {
+          flex: 1;
+          max-width: 700px;
         }
 
         .overview-header h2 {
           margin: 0 0 0.5rem 0;
           color: #1f2937;
           font-size: 1.75rem;
+          text-align: left;
+        }
+
+        .budget-period-dates {
+          margin: 0.5rem 0;
+          color: #2c3f70;
+          font-size: 0.95rem;
+          font-weight: 600;
         }
 
         .overview-subtitle {

@@ -1137,9 +1137,21 @@ function DashboardContent({ client, jwt }) {
           }
         });
 
-        // Find budget items that are at 80%+ of their budget
+        // Find budget items that are at 80%+ of their budget AND have 50%+ time remaining
         const itemWarnings = [];
         if (budgetPlan) {
+          // Calculate time remaining if budget period dates are available
+          let hasSignificantTimeRemaining = false;
+          if (budgetPlan.budgetPeriodStart && budgetPlan.budgetPeriodEnd) {
+            const now = new Date();
+            const start = new Date(budgetPlan.budgetPeriodStart);
+            const end = new Date(budgetPlan.budgetPeriodEnd);
+            const totalDuration = end - start;
+            const timeRemaining = end - now;
+            const percentTimeRemaining = (timeRemaining / totalDuration) * 100;
+            hasSignificantTimeRemaining = percentTimeRemaining >= 50;
+          }
+
           (budgetPlan.categories || []).forEach(category => {
             (category.items || []).forEach(item => {
               const itemId = String(item._id);
@@ -1148,7 +1160,8 @@ function DashboardContent({ client, jwt }) {
 
               if (allocated > 0 && spent > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                if (percentSpent >= 80) {
+                // Only warn if: 80%+ spent AND (50%+ time remaining OR no period dates)
+                if (percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart)) {
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,
@@ -1382,9 +1395,21 @@ function OverviewSection_OLD({ client, jwt }) {
           }
         });
 
-        // Find budget items that are at 80%+ of their budget
+        // Find budget items that are at 80%+ of their budget AND have 50%+ time remaining
         const itemWarnings = [];
         if (budgetPlan) {
+          // Calculate time remaining if budget period dates are available
+          let hasSignificantTimeRemaining = false;
+          if (budgetPlan.budgetPeriodStart && budgetPlan.budgetPeriodEnd) {
+            const now = new Date();
+            const start = new Date(budgetPlan.budgetPeriodStart);
+            const end = new Date(budgetPlan.budgetPeriodEnd);
+            const totalDuration = end - start;
+            const timeRemaining = end - now;
+            const percentTimeRemaining = (timeRemaining / totalDuration) * 100;
+            hasSignificantTimeRemaining = percentTimeRemaining >= 50;
+          }
+
           (budgetPlan.categories || []).forEach(category => {
             (category.items || []).forEach(item => {
               const itemId = String(item._id);
@@ -1393,7 +1418,8 @@ function OverviewSection_OLD({ client, jwt }) {
 
               if (allocated > 0 && spent > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                if (percentSpent >= 80) {
+                // Only warn if: 80%+ spent AND (50%+ time remaining OR no period dates)
+                if (percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart)) {
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,
