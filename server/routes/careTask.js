@@ -210,6 +210,7 @@ async function completeTask(req, res) {
         "Missed",
         "Skipped",
         "Cancelled",
+        "Returned",
       ];
       if (!allowed.includes(req.body.status)) {
         return res.status(400).json({ error: "INVALID_STATUS" });
@@ -356,7 +357,10 @@ router.post(
       // Validate assignee (if provided)
       if (assignedToUserId) {
         const u = await User.findById(assignedToUserId);
-        if (!u || String(u.organizationId) !== String(perm.person.organizationId)) {
+        if (
+          !u ||
+          String(u.organizationId) !== String(perm.person.organizationId)
+        ) {
           return res.status(400).json({ error: "ASSIGNEE_ORG_MISMATCH" });
         }
       }
@@ -367,7 +371,7 @@ router.post(
       const combineDateTime = (dateStr, timeStr) => {
         if (!dateStr || !timeStr) return undefined;
         const date = new Date(dateStr);
-        const [hours, minutes] = timeStr.split(':');
+        const [hours, minutes] = timeStr.split(":");
         date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         return date;
       };
@@ -375,13 +379,19 @@ router.post(
       if (isRecurring && recurrencePattern) {
         // Generate recurring tasks
         const startDate = new Date(dueDate);
-        const endDate = recurrenceEndDate ? new Date(recurrenceEndDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+        const endDate = recurrenceEndDate
+          ? new Date(recurrenceEndDate)
+          : new Date(
+              startDate.getFullYear() + 1,
+              startDate.getMonth(),
+              startDate.getDate()
+            );
         let currentDate = new Date(startDate);
         let count = 0;
         const maxTasks = 365; // Limit to prevent infinite loops
 
         while (currentDate <= endDate && count < maxTasks) {
-          const currentDateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+          const currentDateStr = currentDate.toISOString().split("T")[0]; // YYYY-MM-DD format
 
           const taskDoc = {
             personId,
@@ -395,24 +405,32 @@ router.post(
 
           // Only add time fields if it's a timed task
           if (scheduleType === "Timed") {
-            if (startAt) taskDoc.startAt = combineDateTime(currentDateStr, startAt);
+            if (startAt)
+              taskDoc.startAt = combineDateTime(currentDateStr, startAt);
             if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
           }
 
           // Add budget fields if provided
           if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
           if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
-          if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
+          if (expectedCost !== undefined)
+            taskDoc.expectedCost = Number(expectedCost);
 
           tasksToCreate.push(taskDoc);
 
           // Increment date based on pattern
           if (recurrencePattern === "daily") {
-            currentDate.setDate(currentDate.getDate() + (recurrenceInterval || 1));
+            currentDate.setDate(
+              currentDate.getDate() + (recurrenceInterval || 1)
+            );
           } else if (recurrencePattern === "weekly") {
-            currentDate.setDate(currentDate.getDate() + (7 * (recurrenceInterval || 1)));
+            currentDate.setDate(
+              currentDate.getDate() + 7 * (recurrenceInterval || 1)
+            );
           } else if (recurrencePattern === "monthly") {
-            currentDate.setMonth(currentDate.getMonth() + (recurrenceInterval || 1));
+            currentDate.setMonth(
+              currentDate.getMonth() + (recurrenceInterval || 1)
+            );
           }
 
           count++;
@@ -438,7 +456,8 @@ router.post(
         // Add budget fields if provided
         if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
         if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
-        if (expectedCost !== undefined) taskDoc.expectedCost = Number(expectedCost);
+        if (expectedCost !== undefined)
+          taskDoc.expectedCost = Number(expectedCost);
 
         tasksToCreate.push(taskDoc);
       }
