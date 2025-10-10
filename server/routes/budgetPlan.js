@@ -32,15 +32,29 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     console.log("POST /api/budget-plans received:", {
       body: req.body,
-      user: req.user ? { _id: req.user._id, organizationId: req.user.organizationId } : null
+      user: req.user
+        ? { _id: req.user._id, organizationId: req.user.organizationId }
+        : null,
     });
 
-    const { personId, year, yearlyBudget, categories, budgetPeriodStart, budgetPeriodEnd, deletedCategories } = req.body;
+    const {
+      personId,
+      year,
+      yearlyBudget,
+      categories,
+      budgetPeriodStart,
+      budgetPeriodEnd,
+      deletedCategories,
+    } = req.body;
 
     if (!personId || !year || yearlyBudget === undefined) {
-      console.log("Missing required fields:", { personId: !!personId, year: !!year, yearlyBudget: yearlyBudget !== undefined });
+      console.log("Missing required fields:", {
+        personId: !!personId,
+        year: !!year,
+        yearlyBudget: yearlyBudget !== undefined,
+      });
       return res.status(400).json({
-        error: "personId, year, and yearlyBudget are required"
+        error: "personId, year, and yearlyBudget are required",
       });
     }
 
@@ -53,7 +67,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     if (existing) {
       return res.status(409).json({
-        error: "Budget plan already exists for this person and year"
+        error: "Budget plan already exists for this person and year",
       });
     }
 
@@ -77,9 +91,14 @@ router.post("/", requireAuth, async (req, res) => {
     console.error("Error creating budget plan:", error);
     console.error("Error stack:", error.stack);
     if (error.code === 11000) {
-      res.status(409).json({ error: "Budget plan already exists for this person and year" });
+      res
+        .status(409)
+        .json({ error: "Budget plan already exists for this person and year" });
     } else {
-      res.status(500).json({ error: "Failed to create budget plan", details: error.message });
+      res.status(500).json({
+        error: "Failed to create budget plan",
+        details: error.message,
+      });
     }
   }
 });
@@ -87,11 +106,19 @@ router.post("/", requireAuth, async (req, res) => {
 // PUT /api/budget-plans - Update existing budget plan
 router.put("/", requireAuth, async (req, res) => {
   try {
-    const { personId, year, yearlyBudget, categories, budgetPeriodStart, budgetPeriodEnd, deletedCategories } = req.body;
+    const {
+      personId,
+      year,
+      yearlyBudget,
+      categories,
+      budgetPeriodStart,
+      budgetPeriodEnd,
+      deletedCategories,
+    } = req.body;
 
     if (!personId || !year) {
       return res.status(400).json({
-        error: "personId and year are required"
+        error: "personId and year are required",
       });
     }
 
@@ -102,9 +129,11 @@ router.put("/", requireAuth, async (req, res) => {
         organizationId: req.user.organizationId,
       },
       {
-        yearlyBudget: yearlyBudget !== undefined ? parseFloat(yearlyBudget) : undefined,
+        yearlyBudget:
+          yearlyBudget !== undefined ? parseFloat(yearlyBudget) : undefined,
         categories: categories || undefined,
-        deletedCategories: deletedCategories !== undefined ? deletedCategories : undefined,
+        deletedCategories:
+          deletedCategories !== undefined ? deletedCategories : undefined,
         budgetPeriodStart: budgetPeriodStart || undefined,
         budgetPeriodEnd: budgetPeriodEnd || undefined,
         status: "Active",
@@ -154,7 +183,7 @@ router.delete("/", requireAuth, async (req, res) => {
 });
 
 // GET /api/budget-plans/:personId/spending?year=2024
-// Calculate actual spending from completed care tasks
+// Calculate actual spending and returns from care tasks
 router.get("/:personId/spending", requireAuth, async (req, res) => {
   try {
     const { personId } = req.params;
@@ -169,7 +198,7 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
     const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59);
 
     // Find all completed care tasks with budget tracking for this person and year
-    const tasks = await CareTask.find({
+    const completedTasks = await CareTask.find({
       personId,
       organizationId: req.user.organizationId,
       status: "Completed",
@@ -179,10 +208,21 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       completedAt: { $gte: startDate, $lte: endDate },
     });
 
-    // Aggregate spending by category and item
-    const spending = {};
+    // Find all returned care tasks with budget tracking for this person and year
+    const returnedTasks = await CareTask.find({
+      personId,
+      organizationId: req.user.organizationId,
+      status: "Returned",
+      cost: { $exists: true, $ne: null },
+      budgetCategoryId: { $exists: true, $ne: null },
+      budgetItemId: { $exists: true, $ne: null },
+      // For returned tasks, we check completedAt as it was originally completed before being returned
+      completedAt: { $gte: startDate, $lte: endDate },
+    });
 
-    for (const task of tasks) {
+    // Aggregate spending by category and item for completed tasks
+    const spending = {};
+    for (const task of completedTasks) {
       const categoryId = task.budgetCategoryId;
       const itemId = task.budgetItemId.toString();
       const cost = task.cost || 0;
@@ -198,7 +238,39 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       spending[categoryId].items[itemId] += cost;
     }
 
-    res.json({ spending });
+    // Aggregate returned amounts by category and item
+    const returned = {};
+    for (const task of returnedTasks) {
+      const categoryId = task.budgetCategoryId;
+      const itemId = task.budgetItemId.toString();
+      const cost = task.cost || 0;
+
+      if (!returned[categoryId]) {
+        returned[categoryId] = { items: {} };
+      }
+
+      if (!returned[categoryId].items[itemId]) {
+        returned[categoryId].items[itemId] = 0;
+      }
+
+      returned[categoryId].items[itemId] += cost;
+
+      // Also add to spending if not already there (as returned items were initially spent)
+      if (!spending[categoryId]) {
+        spending[categoryId] = { items: {} };
+      }
+      if (!spending[categoryId].items[itemId]) {
+        spending[categoryId].items[itemId] = 0;
+      }
+      spending[categoryId].items[itemId] += cost;
+    }
+    console.log("Completed Tasks:");
+    console.log(completedTasks);
+    console.log("Returned Tasks:");
+    console.log(returnedTasks);
+    console.log(returned);
+
+    res.json({ spending, returned });
   } catch (error) {
     console.error("Error calculating spending:", error);
     res.status(500).json({ error: "Failed to calculate spending" });

@@ -222,7 +222,7 @@ async function completeTask(req, res) {
           ? new Date(req.body.completedAt)
           : new Date();
         patch.completedByUserId = req.user.id;
-      } else {
+      } else if (req.body.status !== "Returned") {
         patch.completedAt = null;
         patch.completedByUserId = null;
       }
