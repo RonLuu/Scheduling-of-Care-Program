@@ -25,9 +25,12 @@ jobs:
           echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
           echo "📦 Review app name: ${APP_NAME}"
+          echo "📁 Cloudinary folder: ${CLOUDINARY_FOLDER}"
 
       - name: Install Heroku CLI
-        run: curl https://cli-assets.heroku.com/install.sh | sh
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+          heroku --version
 
       - name: Check if Review App Exists
         id: check-app
@@ -52,11 +55,29 @@ jobs:
           region: "us"
           branch: ${{ github.head_ref }}
 
-      - name: Add to Pipeline (if not exists)
+      - name: Set Review App Config Vars
+        run: |
+          echo "⚙️ Setting environment variables for review app..."
+          heroku config:set \
+            NODE_ENV=production \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            TOKEN_PEPPER="${{ secrets.TOKEN_PEPPER }}" \
+            CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
+            CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
+            CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}" \
+            CLOUDINARY_FOLDER_PREFIX="scheduling-of-care-review-pr-${{ github.event.pull_request.number }}" \
+            MONGODB_URI="${{ secrets.REVIEW_DATABASE_URL }}" \
+            --app ${{ steps.app-name.outputs.app_name }}
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Add to Pipeline (review stage)
         if: steps.check-app.outputs.exists == 'false'
         run: |
-          # Try to add to pipeline, ignore if pipeline doesn't exist
-          heroku pipelines:add scheduling-of-care-pipeline --stage development --app ${{ steps.app-name.outputs.app_name }} || echo "⚠️ Could not add to pipeline (may not exist)"
+          echo "📦 Adding app to pipeline as review app..."
+          heroku pipelines:add scheduling-of-care-pipeline \
+            --stage review \
+            --app ${{ steps.app-name.outputs.app_name }} || echo "⚠️ Could not add to pipeline (app may already be in pipeline)"
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
 
@@ -78,6 +99,7 @@ jobs:
             const appName = '${{ steps.app-name.outputs.app_name }}';
             const appUrl = '${{ steps.app-url.outputs.url }}';
             const prNumber = context.issue.number;
+            const commitSha = '${{ github.sha }}';
 
             // Find existing comment
             const comments = await github.rest.issues.listComments({
@@ -94,9 +116,9 @@ jobs:
             const body = `## 🚀 Review App Deployed!
 
             **App Name:** \`${appName}\`  
-            **URL:** ${appUrl}  
+            **URL:** [${appUrl}](${appUrl})  
             **Branch:** \`${{ github.head_ref }}\`  
-            **Commit:** \`${{ github.sha }}\`.substring(0, 7)
+            **Commit:** \`${commitSha.substring(0, 7)}\`
 
             ✅ Your changes are now available for review!
 
@@ -133,10 +155,43 @@ jobs:
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           APP_NAME="sched-care-pr-${PR_NUMBER}"
+          CLOUDINARY_FOLDER="scheduling-of-are-review-pr-${PR_NUMBER}"
           echo "app_name=${APP_NAME}" >> $GITHUB_OUTPUT
+          echo "cloudinary_folder=${CLOUDINARY_FOLDER}" >> $GITHUB_OUTPUT
 
       - name: Install Heroku CLI
-        run: curl https://cli-assets.heroku.com/install.sh | sh
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+          heroku --version
+
+      - name: Cleanup Cloudinary Files
+        run: |
+          echo "🗑️ Cleaning up Cloudinary files for PR ${{ github.event.pull_request.number }}"
+          npm install cloudinary
+          node -e "
+          const cloudinary = require('cloudinary').v2;
+          cloudinary.config({
+            cloud_name: '${{ secrets.CLOUDINARY_CLOUD_NAME }}',
+            api_key: '${{ secrets.CLOUDINARY_API_KEY }}',
+            api_secret: '${{ secrets.CLOUDINARY_API_SECRET }}'
+          });
+          const folder = '${{ steps.app-name.outputs.cloudinary_folder }}';
+          Promise.all([
+            cloudinary.api.delete_resources_by_prefix(folder + '/', { resource_type: 'image' }),
+            cloudinary.api.delete_resources_by_prefix(folder + '/', { resource_type: 'raw' }),
+            cloudinary.api.delete_resources_by_prefix(folder + '/', { resource_type: 'video' })
+          ])
+          .then(() => cloudinary.api.delete_folder(folder))
+          .then(() => console.log('✅ Cloudinary cleanup complete'))
+          .catch(err => console.warn('⚠️ Cloudinary cleanup failed:', err.message));
+          "
+
+      - name: Remove from Pipeline
+        run: |
+          echo "📦 Removing app from pipeline..."
+          heroku pipelines:remove --app ${{ steps.app-name.outputs.app_name }} || echo "⚠️ App may not be in pipeline"
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
 
       - name: Destroy Review App
         run: |
@@ -150,10 +205,11 @@ jobs:
         with:
           script: |
             const appName = '${{ steps.app-name.outputs.app_name }}';
+            const folder = '${{ steps.app-name.outputs.cloudinary_folder }}';
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## 🗑️ Review App Destroyed\n\n**App Name:** \`${appName}\`\n\n✅ Resources have been cleaned up.`
+              body: `## 🗑️ Review App Destroyed\n\n**App Name:** \`${appName}\`\n**Cloudinary Folder:** \`${folder}\`\n\n✅ Resources have been cleaned up.`
             });
