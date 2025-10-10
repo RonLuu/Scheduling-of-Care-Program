@@ -1627,7 +1627,7 @@ function OverviewSection_OLD({ client, jwt }) {
                 ${budget.allocated.toLocaleString()}
               </span>
             ) : (
-              <a href="/faq" className="create-budget-link">
+              <a href="/budget-and-reports" className="create-budget-link">
                 Create Budget →
               </a>
             )}
@@ -1650,7 +1650,7 @@ function OverviewSection_OLD({ client, jwt }) {
                 <span className="budget-value">{budget.itemsCount}</span>
               </div>
               <div className="budget-actions">
-                <a href="/faq" className="manage-budget-btn">
+                <a href="/budget-and-reports" className="manage-budget-btn">
                   Manage Budget →
                 </a>
               </div>
@@ -3175,7 +3175,7 @@ function BudgetWidget({ budget, client }) {
     <div className="widget budget-widget">
       <div className="widget-header">
         <h4>💰 Budget Overview</h4>
-        <a href="/faq" className="widget-link">
+        <a href="/budget-and-reports" className="widget-link">
           {budget.allocated > 0 ? "Manage →" : "Create →"}
         </a>
       </div>
@@ -3253,7 +3253,7 @@ function BudgetWidget({ budget, client }) {
                     : `You've used ${percentSpent.toFixed(
                         1
                       )}% of your budget. Monitor your spending in `}
-                  <a href="/faq">Budget Planning</a>
+                  <a href="/budget-and-reports">Budget Planning</a>
                 </div>
               </div>
             </div>
@@ -3301,7 +3301,8 @@ function BudgetWidget({ budget, client }) {
                 ))}
               </div>
               <div className="item-warnings-footer">
-                Review and adjust in <a href="/faq">Budget Planning</a>
+                Review and adjust in{" "}
+                <a href="/budget-and-reports">Budget Planning</a>
               </div>
             </div>
           )}
@@ -3312,7 +3313,7 @@ function BudgetWidget({ budget, client }) {
           <p className="empty-description">
             Create a yearly budget to track care expenses
           </p>
-          <a href="/faq" className="widget-action-btn">
+          <a href="/budget-and-reports" className="widget-action-btn">
             Create Budget →
           </a>
         </div>
