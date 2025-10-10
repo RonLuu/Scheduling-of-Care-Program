@@ -44,6 +44,23 @@ const App = () => {
       location.pathname
     );
 
+  // Prevent mouse wheel from changing number input values
+  React.useEffect(() => {
+    const preventNumberInputScroll = (e) => {
+      // Check if the active element is a number input
+      if (document.activeElement.type === 'number') {
+        e.preventDefault();
+      }
+    };
+
+    // Add event listener to prevent wheel events on focused number inputs
+    document.addEventListener('wheel', preventNumberInputScroll, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', preventNumberInputScroll);
+    };
+  }, []);
+
   const RequireAuth = ({ children }) => {
     if (!isReady) return null; // or a spinner component
     return me ? children : <Navigate to="/login" replace />;

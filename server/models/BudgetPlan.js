@@ -1,10 +1,21 @@
 import { Schema, model } from "mongoose";
 
+// Helper to round monetary values to 2 decimal places
+function roundToTwoDecimals(value) {
+  if (value === null || value === undefined) return value;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 const BudgetItemSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
-    budget: { type: Number, required: true, min: 0 },
+    budget: {
+      type: Number,
+      required: true,
+      min: 0,
+      set: roundToTwoDecimals  // Round on save
+    },
   },
   { _id: true }
 );
@@ -15,7 +26,12 @@ const BudgetCategorySchema = new Schema(
     name: { type: String, required: true, trim: true },
     emoji: { type: String, default: '📋' },
     description: { type: String, trim: true },
-    budget: { type: Number, required: true, min: 0 },
+    budget: {
+      type: Number,
+      required: true,
+      min: 0,
+      set: roundToTwoDecimals  // Round on save
+    },
     isCustom: { type: Boolean, default: false },
     items: { type: [BudgetItemSchema], default: [] },
   },
@@ -42,7 +58,12 @@ const BudgetPlanSchema = new Schema(
       required: true,
     },
     year: { type: Number, required: true },
-    yearlyBudget: { type: Number, required: true, min: 0 },
+    yearlyBudget: {
+      type: Number,
+      required: true,
+      min: 0,
+      set: roundToTwoDecimals  // Round on save
+    },
     categories: { type: [BudgetCategorySchema], default: [] },
     status: {
       type: String,

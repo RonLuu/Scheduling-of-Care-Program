@@ -3,6 +3,7 @@ import NavigationTab from "../../NavigationTab";
 import useAuth from "../hooks/useAuth";
 import { useClients } from "../hooks/useClients";
 import { useBudgetPlan } from "../hooks/useBudgetPlan";
+import BudgetOverviewView from "./BudgetOverviewView";
 
 function BudgetPlanningPage() {
   const { me } = useAuth();
@@ -20,6 +21,8 @@ function BudgetPlanningPage() {
   const [customCategories, setCustomCategories] = React.useState([]);
   const [deletedCategories, setDeletedCategories] = React.useState([]);
   const [budgetItems, setBudgetItems] = React.useState({});
+  const [showWizard, setShowWizard] = React.useState(false);
+  const [categoriesSaved, setCategoriesSaved] = React.useState(false);
 
   // Use the budget plan hook
   const { budgetPlan, loading: budgetLoading, error: budgetError, saveBudgetPlan } = useBudgetPlan(
@@ -46,6 +49,22 @@ function BudgetPlanningPage() {
       setSelectedClient(clients[0]);
     }
   }, [clients, selectedClient]);
+
+  // Load custom categories and deleted categories from budget plan
+  React.useEffect(() => {
+    if (!budgetPlan?.categories) return;
+
+    // Extract custom categories from budget plan
+    const customCats = budgetPlan.categories.filter(cat => cat.isCustom);
+    setCustomCategories(customCats);
+
+    // Find which predefined categories are NOT in the budget plan
+    const budgetCategoryIds = budgetPlan.categories.map(cat => cat.id);
+    const deletedPredefinedIds = predefinedCategories
+      .map(cat => cat.id)
+      .filter(id => !budgetCategoryIds.includes(id));
+    setDeletedCategories(deletedPredefinedIds);
+  }, [budgetPlan]);
 
   const handleSaveYearlyBudget = async () => {
     if (!tempYearlyBudget || isNaN(tempYearlyBudget) || parseFloat(tempYearlyBudget) <= 0) {
@@ -93,16 +112,30 @@ function BudgetPlanningPage() {
     const totalAllocated = getTotalAllocated();
     const yearlyAmount = budgetPlan?.yearlyBudget || 0;
 
-    if (totalAllocated > yearlyAmount) {
-      alert(`Total allocated budget ($${totalAllocated.toLocaleString()}) exceeds yearly budget ($${yearlyAmount.toLocaleString()})`);
-      return;
-    }
-
     if (categories.length === 0) {
       alert("Please allocate budget to at least one category");
       return;
     }
 
+    if (totalAllocated > yearlyAmount) {
+      alert(`Total allocated budget ($${totalAllocated.toLocaleString()}) exceeds yearly budget ($${yearlyAmount.toLocaleString()})`);
+      return;
+    }
+
+    // Enforce full allocation of yearly budget
+    if (totalAllocated < yearlyAmount) {
+      const remaining = yearlyAmount - totalAllocated;
+      alert(
+        `You must allocate your entire yearly budget.\n\n` +
+        `Yearly Budget: $${yearlyAmount.toLocaleString()}\n` +
+        `Allocated to Categories: $${totalAllocated.toLocaleString()}\n` +
+        `Remaining: $${remaining.toLocaleString()}\n\n` +
+        `Please allocate the remaining $${remaining.toLocaleString()} to categories before saving.`
+      );
+      return;
+    }
+
+    setCategoriesSaved(true);
     alert(`Budget categories saved! Allocated: $${totalAllocated.toLocaleString()} of $${yearlyAmount.toLocaleString()}`);
   };
 
@@ -172,6 +205,22 @@ function BudgetPlanningPage() {
     if (!itemBudget || isNaN(itemBudget) || parseFloat(itemBudget) <= 0) {
       alert("Please enter a valid budget amount");
       return;
+    }
+
+    // Check if adding this item would exceed the category budget
+    const category = (budgetPlan?.categories || []).find(cat => cat.id === categoryId);
+    if (category) {
+      const currentItemsTotal = (category.items || []).reduce((sum, item) => sum + (item.budget || 0), 0);
+      const newItemBudget = parseFloat(itemBudget);
+      const newTotal = currentItemsTotal + newItemBudget;
+
+      if (newTotal > category.budget) {
+        alert(
+          `Cannot add this item. Total items budget ($${newTotal.toLocaleString()}) would exceed category budget ($${category.budget.toLocaleString()}). ` +
+          `Current items total: $${currentItemsTotal.toLocaleString()}, Remaining: $${(category.budget - currentItemsTotal).toLocaleString()}`
+        );
+        return;
+      }
     }
 
     const newItem = {
@@ -246,7 +295,32 @@ function BudgetPlanningPage() {
       return;
     }
 
-    alert(`Budget items saved! Total items budget: $${totalItems.toLocaleString()}`);
+    // Check for unallocated budget in categories - now enforce full allocation
+    const categoriesWithUnallocated = (budgetPlan?.categories || [])
+      .filter(cat => cat.budget > 0)
+      .map(cat => {
+        const itemsTotal = (cat.items || []).reduce((sum, item) => sum + (item.budget || 0), 0);
+        const remaining = cat.budget - itemsTotal;
+        return { ...cat, remaining };
+      })
+      .filter(cat => cat.remaining > 0);
+
+    if (categoriesWithUnallocated.length > 0) {
+      const totalUnallocated = categoriesWithUnallocated.reduce((sum, cat) => sum + cat.remaining, 0);
+      const categoryList = categoriesWithUnallocated
+        .map(cat => `  • ${cat.emoji} ${cat.name}: $${cat.remaining.toLocaleString()} remaining`)
+        .join('\n');
+
+      alert(
+        `You must allocate the entire budget for each category to specific items.\n\n` +
+        `Unallocated budget in ${categoriesWithUnallocated.length} ${categoriesWithUnallocated.length === 1 ? 'category' : 'categories'} ($${totalUnallocated.toLocaleString()} total):\n\n` +
+        `${categoryList}\n\n` +
+        `Please add budget items to fully allocate the remaining amounts before saving.`
+      );
+      return;
+    }
+
+    alert(`Budget items saved! Total items budget: $${totalItems.toLocaleString()}. Your budget plan is complete!`);
   };
 
   if (loading) {
@@ -305,10 +379,8 @@ function BudgetPlanningPage() {
               onChange={(e) => {
                 const client = clients.find(c => c._id === e.target.value);
                 setSelectedClient(client);
-                // Reset budget when switching clients
-                setYearlyBudget("");
-                setBudgetSaved(false);
-                setCategories([]);
+                // Reset wizard state when switching clients
+                setShowWizard(false);
                 setCategoriesSaved(false);
                 setCustomCategories([]);
                 setDeletedCategories([]);
@@ -316,9 +388,9 @@ function BudgetPlanningPage() {
                 setNewCategoryDescription("");
                 setShowAddCategory(false);
                 setBudgetItems({});
-                setItemsSaved(false);
                 setExpandedCategory(null);
                 setNewItemForms({});
+                setTempYearlyBudget("");
               }}
             >
               {clients.map((client) => (
@@ -331,6 +403,30 @@ function BudgetPlanningPage() {
 
           {selectedClient && (
             <>
+              {/* Determine if budget plan is complete based on backend data */}
+              {(() => {
+                // A budget plan is complete if it has:
+                // 1. A yearly budget set
+                // 2. At least one category with budget allocated
+                // 3. At least one category has items (meaning setup was completed)
+                const isBudgetPlanComplete =
+                  budgetPlan?.yearlyBudget &&
+                  budgetPlan?.categories?.length > 0 &&
+                  budgetPlan?.categories?.some(cat => cat.items && cat.items.length > 0);
+
+                // Show overview if budget plan is complete AND user hasn't clicked Reconfigure
+                const shouldShowOverview = isBudgetPlanComplete && !showWizard;
+
+                return shouldShowOverview ? (
+                  // Show comprehensive overview view
+                  <BudgetOverviewView
+                    budgetPlan={budgetPlan}
+                    jwt={jwt}
+                    onReconfigure={() => setShowWizard(true)}
+                  />
+                ) : (
+                // Show 3-step wizard
+                <>
               {/* Step 1: Yearly Budget */}
               <div className="budget-step">
                 <div className="step-header">
@@ -379,72 +475,78 @@ function BudgetPlanningPage() {
                   </div>
 
                   <div className="categories-form">
-                    {/* Budget Summary */}
-                    <div className="budget-summary">
-                      <div className="summary-row">
-                        <span>Total Yearly Budget:</span>
-                        <span className="budget-amount">${(budgetPlan?.yearlyBudget || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span>Allocated:</span>
-                        <span className="allocated-amount">${getTotalAllocated().toLocaleString()}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span>Remaining:</span>
-                        <span className={`remaining-amount ${getRemainingBudget() < 0 ? 'over-budget' : ''}`}>
-                          ${getRemainingBudget().toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Add Custom Category Button */}
-                    <div className="add-category-section">
-                      {!showAddCategory ? (
-                        <button
-                          className="add-category-btn"
-                          onClick={() => setShowAddCategory(true)}
-                        >
-                          ➕ Add Custom Category
-                        </button>
-                      ) : (
-                        <div className="add-category-form">
-                          <div className="add-category-inputs">
-                            <input
-                              type="text"
-                              value={newCategoryName}
-                              onChange={(e) => setNewCategoryName(e.target.value)}
-                              placeholder="Category name (e.g., Entertainment)"
-                              className="category-name-input"
-                            />
-                            <input
-                              type="text"
-                              value={newCategoryDescription}
-                              onChange={(e) => setNewCategoryDescription(e.target.value)}
-                              placeholder="Description (optional)"
-                              className="category-description-input"
-                            />
+                    {/* Two Column Layout: Summary + Categories */}
+                    <div className="categories-layout">
+                      {/* Left: Budget Summary */}
+                      <div className="budget-summary-sidebar">
+                        <div className="budget-summary">
+                          <div className="summary-row">
+                            <span>Total Yearly Budget:</span>
+                            <span className="budget-amount">${(budgetPlan?.yearlyBudget || 0).toLocaleString()}</span>
                           </div>
-                          <div className="add-category-buttons">
-                            <button className="save-custom-category-btn" onClick={handleAddCustomCategory}>
-                              ✅ Add
-                            </button>
-                            <button
-                              className="cancel-custom-category-btn"
-                              onClick={() => {
-                                setShowAddCategory(false);
-                                setNewCategoryName("");
-                                setNewCategoryDescription("");
-                              }}
-                            >
-                              ❌ Cancel
-                            </button>
+                          <div className="summary-row">
+                            <span>Allocated:</span>
+                            <span className="allocated-amount">${getTotalAllocated().toLocaleString()}</span>
+                          </div>
+                          <div className="summary-row">
+                            <span>Remaining:</span>
+                            <span className={`remaining-amount ${getRemainingBudget() < 0 ? 'over-budget' : ''}`}>
+                              ${getRemainingBudget().toLocaleString()}
+                            </span>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Category Grid */}
-                    <div className="categories-grid">
+                      {/* Right: Categories Grid */}
+                      <div className="categories-grid-container">
+                        {/* Add Custom Category Button */}
+                        <div className="add-category-section">
+                          {!showAddCategory ? (
+                            <button
+                              className="add-category-btn"
+                              onClick={() => setShowAddCategory(true)}
+                            >
+                              ➕ Add Custom Category
+                            </button>
+                          ) : (
+                            <div className="add-category-form">
+                              <div className="add-category-inputs">
+                                <input
+                                  type="text"
+                                  value={newCategoryName}
+                                  onChange={(e) => setNewCategoryName(e.target.value)}
+                                  placeholder="Category name (e.g., Entertainment)"
+                                  className="category-name-input"
+                                />
+                                <input
+                                  type="text"
+                                  value={newCategoryDescription}
+                                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                                  placeholder="Description (optional)"
+                                  className="category-description-input"
+                                />
+                              </div>
+                              <div className="add-category-buttons">
+                                <button className="save-custom-category-btn" onClick={handleAddCustomCategory}>
+                                  ✅ Add
+                                </button>
+                                <button
+                                  className="cancel-custom-category-btn"
+                                  onClick={() => {
+                                    setShowAddCategory(false);
+                                    setNewCategoryName("");
+                                    setNewCategoryDescription("");
+                                  }}
+                                >
+                                  ❌ Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Category Grid */}
+                        <div className="categories-grid">
                       {getAllAvailableCategories().map((category) => {
                         const categoryBudget = (budgetPlan?.categories || []).find(cat => cat.id === category.id)?.budget || '';
                         return (
@@ -484,6 +586,8 @@ function BudgetPlanningPage() {
                           </div>
                         );
                       })}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Save Categories Button */}
@@ -496,7 +600,7 @@ function BudgetPlanningPage() {
                         Save Budget Categories
                       </button>
 
-                      {(budgetPlan?.categories || []).length > 0 && (
+                      {categoriesSaved && (
                         <div className="categories-saved-indicator">
                           ✅ Budget categories saved! You can now add specific items to each category.
                         </div>
@@ -515,26 +619,31 @@ function BudgetPlanningPage() {
                   </div>
 
                   <div className="budget-items-form">
-                    {/* Items Summary */}
-                    <div className="items-summary">
-                      <div className="summary-row">
-                        <span>Total Categories Budget:</span>
-                        <span className="budget-amount">${getTotalAllocated().toLocaleString()}</span>
+                    {/* Two Column Layout: Summary + Items */}
+                    <div className="items-layout">
+                      {/* Left: Items Summary */}
+                      <div className="items-summary-sidebar">
+                        <div className="items-summary">
+                          <div className="summary-row">
+                            <span>Total Categories Budget:</span>
+                            <span className="budget-amount">${getTotalAllocated().toLocaleString()}</span>
+                          </div>
+                          <div className="summary-row">
+                            <span>Total Items Budget:</span>
+                            <span className="allocated-amount">${getTotalItemsBudget().toLocaleString()}</span>
+                          </div>
+                          <div className="summary-row">
+                            <span>Remaining to Allocate:</span>
+                            <span className={`remaining-amount ${(getTotalItemsBudget() - getTotalAllocated()) > 0 ? 'over-budget' : ''}`}>
+                              ${(getTotalAllocated() - getTotalItemsBudget()).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="summary-row">
-                        <span>Total Items Budget:</span>
-                        <span className="allocated-amount">${getTotalItemsBudget().toLocaleString()}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span>Remaining to Allocate:</span>
-                        <span className={`remaining-amount ${(getTotalItemsBudget() - getTotalAllocated()) > 0 ? 'over-budget' : ''}`}>
-                          ${(getTotalAllocated() - getTotalItemsBudget()).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Categories with Items */}
-                    <div className="categories-items-list">
+                      {/* Right: Categories with Items */}
+                      <div className="categories-items-container">
+                        <div className="categories-items-list">
                       {(budgetPlan?.categories || []).filter(cat => cat.budget > 0).map((category) => {
                         const categoryItems = category.items || [];
                         const itemsTotal = categoryItems.reduce((sum, item) => sum + (item.budget || 0), 0);
@@ -643,26 +752,28 @@ function BudgetPlanningPage() {
                           </div>
                         );
                       })}
-                    </div>
-
-                    {/* Save Items Button */}
-                    <div className="save-items-section">
-                      <button
-                        className="save-items-btn"
-                        onClick={handleSaveBudgetItems}
-                      >
-                        Save Budget Items
-                      </button>
-
-                      {getTotalItemsBudget() > 0 && (
-                        <div className="items-saved-indicator">
-                          ✅ Budget items saved! Your budget plan is complete.
                         </div>
-                      )}
+                      </div>
                     </div>
+
                   </div>
                 </div>
               )}
+
+              {/* Finish Planning Button - Show after both steps are visible */}
+              {budgetPlan?.yearlyBudget && (budgetPlan?.categories || []).some(cat => cat.budget > 0) && (
+                <div className="finish-planning-section">
+                  <button
+                    className="finish-planning-btn"
+                    onClick={handleSaveBudgetItems}
+                  >
+                    ✅ Finish Planning
+                  </button>
+                </div>
+              )}
+              </>
+                );
+              })()}
             </>
           )}
         </div>
@@ -833,27 +944,53 @@ function BudgetPlanningPage() {
           margin-top: 1.5rem;
         }
 
+        .categories-layout {
+          display: grid;
+          grid-template-columns: 350px 1fr;
+          gap: 2rem;
+          margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+          .categories-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .budget-summary-sidebar {
+          position: sticky;
+          top: 2rem;
+          align-self: start;
+        }
+
         .budget-summary {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 1rem;
-          margin-bottom: 2rem;
+          padding: 1.5rem;
         }
 
         .summary-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
           font-size: 1rem;
         }
 
         .summary-row:last-child {
           margin-bottom: 0;
-          padding-top: 0.5rem;
-          border-top: 1px solid #e2e8f0;
+          margin-top: 1rem;
+          padding-top: 1.25rem;
+          border-top: 2px solid #e2e8f0;
           font-weight: 600;
+          font-size: 1.1rem;
+        }
+
+        @media (min-width: 768px) {
+          .budget-summary .summary-row {
+            padding: 0 1rem;
+          }
         }
 
         .budget-amount {
@@ -875,11 +1012,20 @@ function BudgetPlanningPage() {
           color: #dc2626;
         }
 
+        .categories-grid-container {
+          flex: 1;
+        }
+
         .categories-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1rem;
-          margin-bottom: 2rem;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+          .categories-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .category-card:hover {
@@ -967,7 +1113,7 @@ function BudgetPlanningPage() {
         .add-category-section {
           margin-bottom: 1.5rem;
           display: flex;
-          justify-content: center;
+          justify-content: flex-start;
         }
 
         .add-category-btn {
@@ -1109,12 +1255,39 @@ function BudgetPlanningPage() {
           margin-top: 1.5rem;
         }
 
+        .items-layout {
+          display: grid;
+          grid-template-columns: 350px 1fr;
+          gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+          .items-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .items-summary-sidebar {
+          position: sticky;
+          top: 2rem;
+          align-self: start;
+        }
+
         .items-summary {
           background: #f0f9ff;
           border: 1px solid #bae6fd;
           border-radius: 8px;
-          padding: 1rem;
-          margin-bottom: 2rem;
+          padding: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+          .items-summary .summary-row {
+            padding: 0 1rem;
+          }
+        }
+
+        .categories-items-container {
+          flex: 1;
         }
 
         .remaining-positive {
@@ -1123,7 +1296,9 @@ function BudgetPlanningPage() {
         }
 
         .categories-items-list {
-          margin-bottom: 2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
         }
 
         .category-items-card {
@@ -1256,9 +1431,15 @@ function BudgetPlanningPage() {
 
         .add-item-inputs {
           display: grid;
-          grid-template-columns: 1fr 1fr 150px;
+          grid-template-columns: 2fr 2fr 1fr;
           gap: 0.75rem;
           margin-bottom: 1rem;
+        }
+
+        @media (min-width: 1024px) {
+          .add-item-inputs {
+            grid-template-columns: 1.5fr 2fr 150px;
+          }
         }
 
         .item-name-input,
@@ -1358,6 +1539,40 @@ function BudgetPlanningPage() {
           text-align: center;
         }
 
+        .finish-planning-section {
+          padding: 2rem;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: #f8fafc;
+          border-top: 2px solid #e5e7eb;
+        }
+
+        .finish-planning-btn {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          padding: 1rem 3rem;
+          font-size: 1.1rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .finish-planning-btn:hover {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .finish-planning-btn:active {
+          transform: translateY(0);
+        }
+
         .btn {
           background: #10b981;
           color: white;
@@ -1389,6 +1604,11 @@ function BudgetPlanningPage() {
 
           .categories-grid {
             grid-template-columns: 1fr;
+          }
+
+          .finish-planning-btn {
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
           }
 
           .category-budget-input .input-with-currency {

@@ -1084,7 +1084,7 @@ function DashboardContent({ client, jwt }) {
           fetch(`/api/care-tasks/client/${client._id}`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }),
-          fetch(`/api/care-need-items/client/${client._id}`, {
+          fetch(`/api/care-need-items?personId=${client._id}`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }),
           fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
@@ -1117,14 +1117,61 @@ function DashboardContent({ client, jwt }) {
 
         // Process budget data
         const budgetPlan = budget?.budgetPlan;
+
+        // Calculate actual spending from completed tasks (only current year)
+        const currentYear = new Date().getFullYear();
+        const completedTasks = tasks.filter(t => {
+          if (t.status !== 'Completed' || !t.cost) return false;
+          const taskDate = t.completedAt ? new Date(t.completedAt) : new Date(t.dueDate);
+          return taskDate.getFullYear() === currentYear;
+        });
+
+        const totalSpent = completedTasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+
+        // Calculate spending per budget item
+        const itemSpending = {};
+        completedTasks.forEach(task => {
+          if (task.budgetItemId) {
+            const itemId = String(task.budgetItemId);
+            itemSpending[itemId] = (itemSpending[itemId] || 0) + (task.cost || 0);
+          }
+        });
+
+        // Find budget items that are at 80%+ of their budget
+        const itemWarnings = [];
+        if (budgetPlan) {
+          (budgetPlan.categories || []).forEach(category => {
+            (category.items || []).forEach(item => {
+              const itemId = String(item._id);
+              const spent = itemSpending[itemId] || 0;
+              const allocated = item.budget || 0;
+
+              if (allocated > 0 && spent > 0) {
+                const percentSpent = (spent / allocated) * 100;
+                if (percentSpent >= 80) {
+                  itemWarnings.push({
+                    categoryName: category.name,
+                    itemName: item.name,
+                    spent,
+                    allocated,
+                    percentSpent,
+                    isOver: spent > allocated
+                  });
+                }
+              }
+            });
+          });
+        }
+
         const budgetStats = budgetPlan ? {
           allocated: budgetPlan.yearlyBudget || 0,
-          spent: 0,
-          remaining: budgetPlan.yearlyBudget || 0,
+          spent: totalSpent,
+          remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
           categories: budgetPlan.categories || [],
           categoryCount: (budgetPlan.categories || []).length,
-          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0)
-        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0 };
+          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0),
+          itemWarnings: itemWarnings
+        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0, itemWarnings: [] };
 
         // Generate recent activity
         const recentActivity = [
@@ -1189,34 +1236,21 @@ function DashboardContent({ client, jwt }) {
         <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
       )}
 
-      {/* Getting Started Guidance or Today's Schedule - Full Width */}
-      <GettingStartedOrSchedule
-        client={client}
-        jwt={jwt}
-        hasBudget={budget.allocated > 0}
-        hasTasks={tasks.total > 0}
-      />
-
-      {/* Two Column Layout for Widgets */}
-      <div className="widget-grid">
-        {/* Left Column */}
-        <div className="widget-column">
-          {/* Task Summary Widget */}
-          <TaskSummaryWidget tasks={tasks} client={client} />
-
-          {/* Supplies Widget */}
-          <SuppliesWidget supplies={supplies} client={client} />
+      {/* Horizontal Layout for Main Content */}
+      <div className="dashboard-content">
+        {/* Left: Getting Started / Schedule */}
+        <div className="content-left">
+          <GettingStartedOrSchedule
+            client={client}
+            jwt={jwt}
+            hasBudget={budget.allocated > 0}
+            hasTasks={tasks.total > 0}
+          />
         </div>
 
-        {/* Right Column */}
-        <div className="widget-column">
-          {/* Budget Widget */}
+        {/* Right: Budget Widget */}
+        <div className="content-right">
           <BudgetWidget budget={budget} client={client} />
-
-          {/* Recent Activity Widget */}
-          {recentActivity.length > 0 && (
-            <RecentActivityWidget activity={recentActivity} />
-          )}
         </div>
       </div>
 
@@ -1227,16 +1261,19 @@ function DashboardContent({ client, jwt }) {
           gap: 1.5rem;
         }
 
-        .widget-grid {
+        .dashboard-content {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1.5rem;
+          align-items: start;
         }
 
-        .widget-column {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
+        .content-left {
+          min-width: 0;
+        }
+
+        .content-right {
+          min-width: 0;
         }
 
         .dashboard-loading,
@@ -1257,8 +1294,8 @@ function DashboardContent({ client, jwt }) {
           cursor: pointer;
         }
 
-        @media (max-width: 968px) {
-          .widget-grid {
+        @media (max-width: 1024px) {
+          .dashboard-content {
             grid-template-columns: 1fr;
           }
         }
@@ -1292,7 +1329,7 @@ function OverviewSection_OLD({ client, jwt }) {
           fetch(`/api/care-tasks/client/${client._id}`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }),
-          fetch(`/api/care-need-items/client/${client._id}`, {
+          fetch(`/api/care-need-items?personId=${client._id}`, {
             headers: { Authorization: `Bearer ${jwt}` }
           }),
           fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
@@ -1325,14 +1362,61 @@ function OverviewSection_OLD({ client, jwt }) {
 
         // Process budget data from budget planning
         const budgetPlan = budget?.budgetPlan;
+
+        // Calculate actual spending from completed tasks (only current year)
+        const currentYear = new Date().getFullYear();
+        const completedTasks = tasks.filter(t => {
+          if (t.status !== 'Completed' || !t.cost) return false;
+          const taskDate = t.completedAt ? new Date(t.completedAt) : new Date(t.dueDate);
+          return taskDate.getFullYear() === currentYear;
+        });
+
+        const totalSpent = completedTasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+
+        // Calculate spending per budget item
+        const itemSpending = {};
+        completedTasks.forEach(task => {
+          if (task.budgetItemId) {
+            const itemId = String(task.budgetItemId);
+            itemSpending[itemId] = (itemSpending[itemId] || 0) + (task.cost || 0);
+          }
+        });
+
+        // Find budget items that are at 80%+ of their budget
+        const itemWarnings = [];
+        if (budgetPlan) {
+          (budgetPlan.categories || []).forEach(category => {
+            (category.items || []).forEach(item => {
+              const itemId = String(item._id);
+              const spent = itemSpending[itemId] || 0;
+              const allocated = item.budget || 0;
+
+              if (allocated > 0 && spent > 0) {
+                const percentSpent = (spent / allocated) * 100;
+                if (percentSpent >= 80) {
+                  itemWarnings.push({
+                    categoryName: category.name,
+                    itemName: item.name,
+                    spent,
+                    allocated,
+                    percentSpent,
+                    isOver: spent > allocated
+                  });
+                }
+              }
+            });
+          });
+        }
+
         const budgetStats = budgetPlan ? {
           allocated: budgetPlan.yearlyBudget || 0,
-          spent: 0, // We don't track spending yet, but could be calculated from care tasks
-          remaining: budgetPlan.yearlyBudget || 0,
+          spent: totalSpent,
+          remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
           categories: budgetPlan.categories || [],
           categoryCount: (budgetPlan.categories || []).length,
-          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0)
-        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0 };
+          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0),
+          itemWarnings: itemWarnings
+        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0, itemWarnings: [] };
 
         // Generate recent activity
         const recentActivity = [
@@ -1665,7 +1749,11 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
     const fetchScheduleData = async () => {
       try {
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        // Get today's date in local timezone (YYYY-MM-DD)
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
 
         const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
           headers: { Authorization: `Bearer ${jwt}` }
@@ -1675,9 +1763,16 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
 
         const todaysTasks = allTasks.filter(task => {
           if (!task.dueDate && !task.scheduledDate) return false;
-          const taskDate = task.scheduledDate
-            ? new Date(task.scheduledDate).toISOString().split('T')[0]
-            : new Date(task.dueDate).toISOString().split('T')[0];
+          const taskDateObj = task.scheduledDate
+            ? new Date(task.scheduledDate)
+            : new Date(task.dueDate);
+
+          // Get task date in local timezone
+          const taskYear = taskDateObj.getFullYear();
+          const taskMonth = String(taskDateObj.getMonth() + 1).padStart(2, '0');
+          const taskDay = String(taskDateObj.getDate()).padStart(2, '0');
+          const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
+
           return taskDate === todayStr;
         }).slice(0, 5);
 
@@ -2072,7 +2167,7 @@ function TodaysScheduleWidget({ scheduleData, client }) {
     <div className="todays-schedule">
       <div className="schedule-header">
         <h4>📅 Today's Schedule</h4>
-        <a href="/shift-allocation" className="view-more-btn">
+        <a href="/tasks-new" className="view-more-btn">
           View Full Schedule →
         </a>
       </div>
@@ -2247,9 +2342,12 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
 
     const fetchScheduleData = async () => {
       try {
-        // Get today's date
+        // Get today's date in local timezone
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
 
         // Fetch all tasks for this client
         const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
@@ -2261,9 +2359,16 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
         // Filter for today's tasks
         const todaysTasks = allTasks.filter(task => {
           if (!task.dueDate && !task.scheduledDate) return false;
-          const taskDate = task.scheduledDate
-            ? new Date(task.scheduledDate).toISOString().split('T')[0]
-            : new Date(task.dueDate).toISOString().split('T')[0];
+          const taskDateObj = task.scheduledDate
+            ? new Date(task.scheduledDate)
+            : new Date(task.dueDate);
+
+          // Get task date in local timezone
+          const taskYear = taskDateObj.getFullYear();
+          const taskMonth = String(taskDateObj.getMonth() + 1).padStart(2, '0');
+          const taskDay = String(taskDateObj.getDate()).padStart(2, '0');
+          const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
+
           return taskDate === todayStr;
         }).slice(0, 5); // Limit to 5 tasks
 
@@ -2413,7 +2518,7 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
     <div className="todays-schedule">
       <div className="schedule-header">
         <h4>Today's Schedule</h4>
-        <a href="/shift-allocation" className="view-more-btn">
+        <a href="/tasks-new" className="view-more-btn">
           View Full Schedule →
         </a>
       </div>
@@ -2874,10 +2979,28 @@ function SuppliesWidget({ supplies, client }) {
 
 // Budget Widget
 function BudgetWidget({ budget, client }) {
+  const percentSpent = budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
+  const isOverBudget = budget.spent > budget.allocated;
+  const isNearLimit = percentSpent >= 80 && !isOverBudget;
+
+  // Get status
+  const getStatus = () => {
+    if (isOverBudget) return { text: 'Over Budget', color: '#ef4444' };
+    if (isNearLimit) return { text: 'Near Limit', color: '#f59e0b' };
+    return { text: 'On Track', color: '#10b981' };
+  };
+
+  const status = getStatus();
+
+  // Check for budget items that are at warning levels (80%+)
+  // This would need actual spending data per category/item from backend
+  // For now, we'll check if categories exist and show a placeholder
+  const hasCategories = (budget.categories || []).length > 0;
+
   return (
     <div className="widget budget-widget">
       <div className="widget-header">
-        <h4>💰 Budget Planning</h4>
+        <h4>💰 Budget Overview</h4>
         <a href="/faq" className="widget-link">
           {budget.allocated > 0 ? 'Manage →' : 'Create →'}
         </a>
@@ -2885,21 +3008,102 @@ function BudgetWidget({ budget, client }) {
 
       {budget.allocated > 0 ? (
         <div className="budget-info">
-          <div className="budget-main">
-            <div className="budget-amount">${budget.allocated.toLocaleString()}</div>
-            <div className="budget-label">Yearly Budget</div>
+          {/* Status Badge */}
+          <div className="budget-status" style={{ backgroundColor: status.color }}>
+            {status.text}
           </div>
 
-          <div className="budget-breakdown">
-            <div className="breakdown-item">
-              <span className="breakdown-label">Categories</span>
-              <span className="breakdown-value">{budget.categoryCount}</span>
-            </div>
-            <div className="breakdown-item">
-              <span className="breakdown-label">Budget Items</span>
-              <span className="breakdown-value">{budget.itemsCount}</span>
+          {/* Main Budget Summary */}
+          <div className="budget-summary">
+            <div className="summary-row">
+              <div className="summary-item">
+                <div className="summary-label">Total Budget</div>
+                <div className="summary-value">${budget.allocated.toLocaleString()}</div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-label">Spent</div>
+                <div className="summary-value spent">${budget.spent.toLocaleString()}</div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-label">Remaining</div>
+                <div className="summary-value remaining">${budget.remaining.toLocaleString()}</div>
+              </div>
             </div>
           </div>
+
+          {/* Progress Bar */}
+          <div className="budget-progress">
+            <div className="progress-header">
+              <span className="progress-label">Budget Used</span>
+              <span className="progress-percentage">{percentSpent.toFixed(1)}%</span>
+            </div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{
+                  width: `${Math.min(percentSpent, 100)}%`,
+                  backgroundColor: status.color
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Budget Warnings - Show when approaching or over budget */}
+          {(isNearLimit || isOverBudget) && (
+            <div className={`budget-warning ${isOverBudget ? 'over-budget' : 'near-limit'}`}>
+              <div className="warning-icon">
+                {isOverBudget ? '🚨' : '⚠️'}
+              </div>
+              <div className="warning-content">
+                <div className="warning-title">
+                  {isOverBudget ? 'Budget Exceeded!' : 'Budget Alert'}
+                </div>
+                <div className="warning-message">
+                  {isOverBudget
+                    ? `You've exceeded your budget by $${(budget.spent - budget.allocated).toLocaleString()}. Review your spending in `
+                    : `You've used ${percentSpent.toFixed(1)}% of your budget. Monitor your spending in `
+                  }
+                  <a href="/faq">Budget Planning</a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Item-Level Budget Warnings - Show individual items at 80%+ */}
+          {budget.itemWarnings && budget.itemWarnings.length > 0 && (
+            <div className="item-warnings-container">
+              <div className="item-warnings-header">
+                <span className="warning-icon">⚠️</span>
+                <span className="item-warnings-title">Budget Items Need Attention</span>
+              </div>
+              <div className="item-warnings-list">
+                {budget.itemWarnings.map((warning, idx) => (
+                  <div
+                    key={idx}
+                    className={`item-warning ${warning.isOver ? 'item-over' : 'item-near'}`}
+                  >
+                    <div className="item-warning-header">
+                      <span className="item-warning-name">
+                        {warning.itemName}
+                        <span className="item-warning-category"> ({warning.categoryName})</span>
+                      </span>
+                      <span className="item-warning-percent">
+                        {warning.percentSpent.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="item-warning-details">
+                      <span className="item-warning-spent">${warning.spent.toFixed(2)}</span>
+                      <span className="item-warning-separator"> / </span>
+                      <span className="item-warning-allocated">${warning.allocated.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="item-warnings-footer">
+                Review and adjust in <a href="/faq">Budget Planning</a>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="widget-empty">
@@ -2949,54 +3153,363 @@ function BudgetWidget({ budget, client }) {
           gap: 1.5rem;
         }
 
-        .budget-main {
-          text-align: center;
-          padding: 1.5rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 8px;
+        .budget-status {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
           color: white;
-        }
-
-        .budget-amount {
-          font-size: 2.5rem;
-          font-weight: 700;
-          margin-bottom: 0.25rem;
-        }
-
-        .budget-label {
           font-size: 0.875rem;
-          opacity: 0.9;
+          font-weight: 600;
+          text-align: center;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          width: fit-content;
         }
 
-        .budget-breakdown {
-          display: flex;
-          gap: 1rem;
+        .budget-summary {
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 1.25rem;
         }
 
-        .breakdown-item {
-          flex: 1;
+        .summary-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+        }
+
+        .summary-item {
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 1rem;
-          background: #f8fafc;
+          text-align: center;
+        }
+
+        .summary-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .summary-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .summary-value.spent {
+          color: #ef4444;
+        }
+
+        .summary-value.remaining {
+          color: #10b981;
+        }
+
+        .budget-progress {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .progress-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .progress-label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .progress-percentage {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .progress-bar {
+          height: 12px;
+          background: #e5e7eb;
+          border-radius: 6px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .progress-fill {
+          height: 100%;
+          transition: width 0.3s ease;
           border-radius: 6px;
         }
 
-        .breakdown-label {
-          font-size: 0.75rem;
-          color: #6b7280;
-          margin-bottom: 0.5rem;
+        .top-categories {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .categories-header {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: #374151;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
-        .breakdown-value {
-          font-size: 1.5rem;
-          font-weight: 700;
+        .category-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .category-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .category-name {
+          font-size: 0.875rem;
           color: #1f2937;
+          font-weight: 600;
+        }
+
+        .category-amount {
+          font-size: 0.875rem;
+          color: #6b7280;
+          font-weight: 600;
+        }
+
+        .category-bar {
+          height: 6px;
+          background: #e5e7eb;
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        .category-fill {
+          height: 100%;
+          background: #667eea;
+          border-radius: 3px;
+          transition: width 0.3s ease;
+        }
+
+        .category-bar-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .category-legend {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .legend-text {
+          font-size: 0.75rem;
+          color: #9ca3af;
+        }
+
+        .budget-warning {
+          display: flex;
+          gap: 0.75rem;
+          padding: 1rem;
+          border-radius: 8px;
+          border: 2px solid;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        .budget-warning.near-limit {
+          background: #fef3c7;
+          border-color: #f59e0b;
+        }
+
+        .budget-warning.over-budget {
+          background: #fee2e2;
+          border-color: #ef4444;
+        }
+
+        .warning-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+          line-height: 1;
+        }
+
+        .warning-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .warning-title {
+          font-weight: 700;
+          font-size: 0.875rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .budget-warning.near-limit .warning-title {
+          color: #92400e;
+        }
+
+        .budget-warning.over-budget .warning-title {
+          color: #991b1b;
+        }
+
+        .warning-message {
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+
+        .budget-warning.near-limit .warning-message {
+          color: #78350f;
+        }
+
+        .budget-warning.over-budget .warning-message {
+          color: #7f1d1d;
+        }
+
+        .warning-message a {
+          font-weight: 600;
+          text-decoration: underline;
+        }
+
+        .budget-warning.near-limit .warning-message a {
+          color: #78350f;
+        }
+
+        .budget-warning.over-budget .warning-message a {
+          color: #7f1d1d;
+        }
+
+        .warning-message a:hover {
+          opacity: 0.8;
+        }
+
+        .item-warnings-container {
+          border: 2px solid #d97706;
+          background: #fef3c7;
+          border-radius: 8px;
+          overflow: hidden;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        .item-warnings-header {
+          padding: 0.75rem 1rem;
+          background: #fbbf24;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .item-warnings-title {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: #78350f;
+        }
+
+        .item-warnings-list {
+          padding: 0.75rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .item-warning {
+          background: white;
+          border-radius: 6px;
+          padding: 0.75rem;
+          border-left: 4px solid;
+        }
+
+        .item-warning.item-near {
+          border-left-color: #f59e0b;
+        }
+
+        .item-warning.item-over {
+          border-left-color: #ef4444;
+          background: #fef2f2;
+        }
+
+        .item-warning-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.25rem;
+        }
+
+        .item-warning-name {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .item-warning-category {
+          font-size: 0.75rem;
+          font-weight: 400;
+          color: #6b7280;
+        }
+
+        .item-warning-percent {
+          font-size: 0.875rem;
+          font-weight: 700;
+        }
+
+        .item-warning.item-near .item-warning-percent {
+          color: #d97706;
+        }
+
+        .item-warning.item-over .item-warning-percent {
+          color: #dc2626;
+        }
+
+        .item-warning-details {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+
+        .item-warning-spent {
+          font-weight: 600;
+          color: #ef4444;
+        }
+
+        .item-warning-separator {
+          color: #9ca3af;
+        }
+
+        .item-warning-allocated {
+          color: #6b7280;
+        }
+
+        .item-warnings-footer {
+          padding: 0.75rem 1rem;
+          background: #fef3c7;
+          font-size: 0.75rem;
+          color: #78350f;
+          border-top: 1px solid #fbbf24;
+        }
+
+        .item-warnings-footer a {
+          font-weight: 600;
+          color: #78350f;
+          text-decoration: underline;
+        }
+
+        .item-warnings-footer a:hover {
+          opacity: 0.8;
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .widget-empty {
@@ -3027,6 +3540,17 @@ function BudgetWidget({ budget, client }) {
 
         .widget-action-btn:hover {
           background: #5a67d8;
+        }
+
+        @media (max-width: 640px) {
+          .summary-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          .summary-value {
+            font-size: 1.25rem;
+          }
         }
       `}</style>
     </div>

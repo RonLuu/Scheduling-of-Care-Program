@@ -12,7 +12,7 @@ export const connectDB = async () => {
   if (!mongoUri) {
     throw new Error("MongoDB connection string is not set");
   }
-  await mongoose.connect(mongoUri);
+  await mongoose.connect(mongoUri, { autoIndex: false });
   console.log("MongoDB connected successfully");
 };
 

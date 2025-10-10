@@ -1,5 +1,11 @@
 import { Schema, model } from "mongoose";
 
+// Helper to round monetary values to 2 decimal places
+function roundToTwoDecimals(value) {
+  if (value === null || value === undefined) return value;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 /**
  * CareTask: a scheduled/instantiated occurrence from a CareNeedItem.
  * - No verification/approvals.
@@ -61,10 +67,16 @@ const CareTaskSchema = new Schema(
       required: false,
       index: true,
     },
-    expectedCost: { type: Number }, // Expected/planned cost
+    expectedCost: {
+      type: Number,
+      set: roundToTwoDecimals  // Round on save
+    }, // Expected/planned cost
 
     // Actual spend recorded when completed
-    cost: { type: Number },
+    cost: {
+      type: Number,
+      set: roundToTwoDecimals  // Round on save
+    },
 
     // File references to shared receipts from ReceiptBuckets
     fileRefs: [{ type: Schema.Types.ObjectId, ref: "FileUpload", index: true }],
@@ -74,10 +86,7 @@ const CareTaskSchema = new Schema(
 
 CareTaskSchema.index({ organizationId: 1, status: 1, dueDate: 1 });
 CareTaskSchema.index({ assignedToUserId: 1, dueDate: 1 });
-// Only enforce uniqueness when careNeedItemId exists (for backward compatibility with old system)
-CareTaskSchema.index(
-  { careNeedItemId: 1, dueDate: 1 },
-  { unique: true, sparse: true }
-);
+// Note: careNeedItemId + dueDate index removed to allow multiple tasks on same date
+// If you need it for performance, add it manually without unique constraint
 
 export default model("CareTask", CareTaskSchema);

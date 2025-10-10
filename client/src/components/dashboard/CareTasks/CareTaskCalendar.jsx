@@ -25,6 +25,9 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           return "#6b7280"; // Gray fallback
         };
 
+        // Determine color based on status
+        const color = getColor();
+
         // Timed event
         if (t.scheduleType === "Timed" && t.startAt && t.endAt) {
           return {
@@ -33,8 +36,10 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
             start: t.startAt,
             end: t.endAt,
             allDay: false,
-            backgroundColor: getColor(),
-            borderColor: "transparent",
+            backgroundColor: color,
+            borderColor: color,
+            textColor: "#ffffff",
+            display: "block", // Force block display instead of dot
           };
         }
 
@@ -52,8 +57,9 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           start: d.toISOString().slice(0, 10),
           end: end.toISOString().slice(0, 10),
           allDay: true,
-          backgroundColor: getColor(),
-          borderColor: "transparent",
+          backgroundColor: color,
+          borderColor: color,
+          textColor: "#ffffff",
         };
       })
       .filter(Boolean);
@@ -74,6 +80,8 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
       height: "auto",
       nowIndicator: true,
       timeZone: "local",
+      eventDisplay: "block", // Display all events as blocks instead of dots
+      displayEventTime: false, // Don't display event time in month view
       eventClick: (info) => {
         const taskId = info.event.id;
         const task = tasks.find((t) => t._id === taskId);
@@ -183,6 +191,12 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           .legend-label {
             font-size: 0.8125rem;
           }
+        }
+
+        /* Hide time prefix in month view for timed events */
+        :global(.fc-daygrid-event .fc-event-time),
+        :global(.fc-event-time) {
+          display: none !important;
         }
       `}</style>
     </div>
