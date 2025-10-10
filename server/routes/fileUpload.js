@@ -46,7 +46,8 @@ if (isProd) {
     cloudinary,
     params: async (req, file) => {
       const scope = req.body?.scope || "General";
-      const folder = `scheduling-of-care/${folderForScope(scope)}`;
+      const folderPrefix = process.env.CLOUDINARY_FOLDER_PREFIX || "production";
+      const folder = `${folderPrefix}/${folderForScope(scope)}`;
 
       // For UserProfile, only allow images
       if (scope === "UserProfile") {
