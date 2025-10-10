@@ -32,9 +32,11 @@ function ClientInfoManager({ me, jwt, clients }) {
     if (value) loadAccessLinks(value);
   };
 
-  const getMedicalInfoDisplay = (medicalInfo) => {
+  const getMedicalInfoDisplay = (medicalInfo, customFields = []) => {
     if (!medicalInfo || typeof medicalInfo !== "object") return null;
     const info = [];
+
+    // Standard medical fields
     if (medicalInfo.problems)
       info.push({ label: "Medical Problems", value: medicalInfo.problems });
     if (medicalInfo.allergies)
@@ -50,7 +52,23 @@ function ClientInfoManager({ me, jwt, clients }) {
       });
     if (medicalInfo.dietaryRequirements)
       info.push({ label: "Dietary", value: medicalInfo.dietaryRequirements });
+
+    // Add custom medical fields
+    const medicalCustomFields = customFields.filter(
+      (f) => f.category === "Medical"
+    );
+    medicalCustomFields.forEach((field) => {
+      info.push({ label: field.title, value: field.value });
+    });
+
     return info;
+  };
+
+  const getAdditionalInfoDisplay = (customFields = []) => {
+    // Get only additional (non-medical) custom fields
+    return customFields.filter(
+      (f) => f.category === "Additional" || !f.category
+    );
   };
 
   const getAddressDisplay = (address) => {
@@ -166,6 +184,17 @@ function ClientInfoManager({ me, jwt, clients }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
+  const medicalInfoDisplay = selectedClient
+    ? getMedicalInfoDisplay(
+        selectedClient.medicalInfo,
+        selectedClient.customFields || []
+      )
+    : null;
+
+  const additionalInfoDisplay = selectedClient
+    ? getAdditionalInfoDisplay(selectedClient.customFields || [])
+    : null;
+
   return (
     <div className="client-info-manager">
       <div className="card">
@@ -248,40 +277,50 @@ function ClientInfoManager({ me, jwt, clients }) {
                 </div>
 
                 {/* Medical Information */}
-                {getMedicalInfoDisplay(selectedClient.medicalInfo)?.length >
-                  0 && (
+                {medicalInfoDisplay && medicalInfoDisplay.length > 0 && (
                   <div className="info-block full-width">
                     <h4>Medical Information</h4>
-                    {getMedicalInfoDisplay(selectedClient.medicalInfo).map(
-                      (item, index) => (
-                        <div key={index} className="info-row">
-                          <span className="label">{item.label}:</span>
-                          <span className="value">{item.value}</span>
-                        </div>
-                      )
-                    )}
+                    <p className="block-description">
+                      Includes standard medical fields and any custom medical
+                      information added for this client.
+                    </p>
+                    {medicalInfoDisplay.map((item, index) => (
+                      <div key={index} className="info-row">
+                        <span className="label">{item.label}:</span>
+                        <span className="value">{item.value}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* Custom Fields */}
-                {selectedClient.customFields &&
-                  selectedClient.customFields.length > 0 && (
-                    <div className="info-block full-width">
-                      <h4>Additional Information</h4>
-                      {selectedClient.customFields.map((field, index) => (
-                        <div key={index} className="info-row">
-                          <span className="label">{field.title}:</span>
-                          <span className="value">{field.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                {/* Additional Information */}
+                {additionalInfoDisplay && additionalInfoDisplay.length > 0 && (
+                  <div className="info-block full-width">
+                    <h4>Additional Information</h4>
+                    <p className="block-description">
+                      Custom information and notes specific to this client.
+                    </p>
+                    {additionalInfoDisplay.map((field, index) => (
+                      <div key={index} className="info-row">
+                        <span className="label">{field.title}:</span>
+                        <span className="value">{field.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Access Management Section */}
             <div className="access-section">
-              <h3>Access Management</h3>
+              <h3>Access to Client</h3>
+              <p className="access-description">
+                This section shows all users who currently have access to view
+                this client's information. This includes family members, Power
+                of Attorney (PoA), administrators, and general care staff
+                assigned to this client. Authorized users can revoke access as
+                needed.
+              </p>
 
               {accessErr && (
                 <div className="error-message">
@@ -433,12 +472,19 @@ function ClientInfoManager({ me, jwt, clients }) {
         }
 
         .info-block h4 {
-          margin: 0 0 0.75rem 0;
+          margin: 0 0 0.5rem 0;
           color: #4b5563;
           font-size: 0.875rem;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+        }
+
+        .block-description {
+          color: #9ca3af;
+          font-size: 0.75rem;
+          margin: 0 0 0.75rem 0;
+          font-style: italic;
         }
 
         .info-row {
@@ -455,7 +501,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           font-weight: 500;
           color: #6b7280;
           margin-right: 0.5rem;
-          min-width: 120px;
+          min-width: 140px;
           font-size: 0.875rem;
         }
 
@@ -566,6 +612,17 @@ function ClientInfoManager({ me, jwt, clients }) {
           color: #6b7280;
           padding: 1.5rem;
           font-style: italic;
+        }
+
+        .access-description {
+          color: #6b7280;
+          font-size: 0.875rem;
+          line-height: 1.5;
+          margin: 0 0 1.25rem 0;
+          padding: 0.75rem;
+          background: #f9fafb;
+          border-left: 3px solid #3b82f6;
+          border-radius: 0.25rem;
         }
 
         @media (max-width: 768px) {

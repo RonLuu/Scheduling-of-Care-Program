@@ -11,7 +11,8 @@ function FamilyDashboard() {
   const [selectedClient, setSelectedClient] = React.useState(null);
   const [showCreateTokenModal, setShowCreateTokenModal] = React.useState(false);
   const [showEnterTokenModal, setShowEnterTokenModal] = React.useState(false);
-  const [showOrganizationModal, setShowOrganizationModal] = React.useState(false);
+  const [showOrganizationModal, setShowOrganizationModal] =
+    React.useState(false);
   const [organizationData, setOrganizationData] = React.useState(null);
 
   // Check if user has joined an organization
@@ -30,9 +31,12 @@ function FamilyDashboard() {
 
     const fetchOrganizationData = async () => {
       try {
-        const response = await fetch(`/api/organizations/${me.organizationId}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
-        });
+        const response = await fetch(
+          `/api/organizations/${me.organizationId}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         if (response.ok) {
           const orgData = await response.json();
@@ -91,54 +95,70 @@ function FamilyDashboard() {
 
             {/* Content Section */}
             <div className="onboarding-content">
+              <div className="onboarding-steps">
+                <div
+                  className={`step ${hasJoinedOrganization ? "completed" : ""}`}
+                >
+                  <div className="step-number">
+                    {hasJoinedOrganization ? "✓" : "1"}
+                  </div>
+                  <div className="step-content">
+                    <h3>Join an Organization</h3>
+                    <p>
+                      {hasJoinedOrganization
+                        ? "You have successfully joined an organization and can now proceed to add clients."
+                        : "First, you need to join a care organization that manages clients. This is required before you can add or access any clients."}
+                    </p>
+                    {!hasJoinedOrganization && (
+                      <a href="/organization" className="step-button">
+                        Join Organization
+                      </a>
+                    )}
+                    {hasJoinedOrganization && (
+                      <a href="/organization" className="step-button secondary">
+                        Manage Organization
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-            <div className="onboarding-steps">
-              <div className={`step ${hasJoinedOrganization ? 'completed' : ''}`}>
-                <div className="step-number">{hasJoinedOrganization ? '✓' : '1'}</div>
-                <div className="step-content">
-                  <h3>Join an Organization</h3>
-                  <p>
-                    {hasJoinedOrganization
-                      ? 'You have successfully joined an organization and can now proceed to add clients.'
-                      : 'First, you need to join a care organization that manages clients. This is required before you can add or access any clients.'
-                    }
-                  </p>
-                  {!hasJoinedOrganization && (
-                    <a href="/organization" className="step-button">
-                      Join Organization
+                <div className="step">
+                  <div className="step-number">2</div>
+                  <div className="step-content">
+                    <h3>Add Your First Client</h3>
+                    <p>
+                      Once you've joined an organization, you can add clients to
+                      start managing their care.
+                    </p>
+                    <a
+                      href="/clients"
+                      className={`step-button ${
+                        !hasJoinedOrganization ? "disabled" : ""
+                      }`}
+                    >
+                      Add Client
                     </a>
-                  )}
-                  {hasJoinedOrganization && (
-                    <a href="/organization" className="step-button secondary">
-                      Manage Organization
-                    </a>
-                  )}
+                  </div>
+                </div>
+
+                <div className="step">
+                  <div className="step-number">3</div>
+                  <div className="step-content">
+                    <h3>Start Managing Care</h3>
+                    <p>
+                      With clients added, you'll be able to manage tasks,
+                      supplies, schedules, and budgets from this dashboard.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="step">
-                <div className="step-number">2</div>
-                <div className="step-content">
-                  <h3>Add Your First Client</h3>
-                  <p>Once you've joined an organization, you can add clients to start managing their care.</p>
-                  <a href="/clients" className={`step-button ${!hasJoinedOrganization ? 'disabled' : ''}`}>
-                    Add Client
-                  </a>
-                </div>
+              <div className="help-note">
+                <p>
+                  <strong>Need help?</strong> Contact your care organization
+                  administrator if you're unsure about the joining process.
+                </p>
               </div>
-
-              <div className="step">
-                <div className="step-number">3</div>
-                <div className="step-content">
-                  <h3>Start Managing Care</h3>
-                  <p>With clients added, you'll be able to manage tasks, supplies, schedules, and budgets from this dashboard.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="help-note">
-              <p><strong>Need help?</strong> Contact your care organization administrator if you're unsure about the joining process.</p>
-            </div>
             </div>
           </div>
         </div>
@@ -227,7 +247,7 @@ function FamilyDashboard() {
           }
 
           .step::before {
-            content: '';
+            content: "";
             position: absolute;
             top: 0;
             left: 0;
@@ -255,13 +275,14 @@ function FamilyDashboard() {
           }
 
           .step-number::after {
-            content: '';
+            content: "";
             position: absolute;
             inset: -2px;
             padding: 2px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 50%;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box,
+              linear-gradient(#fff 0 0);
             mask-composite: exclude;
           }
 
@@ -319,7 +340,7 @@ function FamilyDashboard() {
           }
 
           .step-button::after {
-            content: '→';
+            content: "→";
             font-size: 1.2rem;
             transition: transform 0.3s ease;
           }
@@ -348,7 +369,7 @@ function FamilyDashboard() {
           }
 
           .help-note::before {
-            content: '💡';
+            content: "💡";
             font-size: 1.5rem;
             position: absolute;
             top: -0.75rem;
@@ -471,7 +492,7 @@ function FamilyDashboard() {
                 id="client-select"
                 value={selectedClient?._id || ""}
                 onChange={(e) => {
-                  const client = clients.find(c => c._id === e.target.value);
+                  const client = clients.find((c) => c._id === e.target.value);
                   setSelectedClient(client);
                 }}
                 className="client-dropdown"
@@ -857,7 +878,7 @@ function FamilyDashboard() {
         }
 
         .step::before {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
@@ -885,7 +906,7 @@ function FamilyDashboard() {
         }
 
         .step-number::after {
-          content: '';
+          content: "";
           position: absolute;
           inset: -2px;
           padding: 2px;
@@ -944,7 +965,7 @@ function FamilyDashboard() {
         }
 
         .step-button::after {
-          content: '→';
+          content: "→";
           font-size: 1.2rem;
           transition: transform 0.3s ease;
         }
@@ -964,7 +985,7 @@ function FamilyDashboard() {
         }
 
         .help-note::before {
-          content: '💡';
+          content: "💡";
           font-size: 1.5rem;
           position: absolute;
           top: -0.75rem;
@@ -1068,7 +1089,7 @@ function DashboardContent({ client, jwt }) {
     recentActivity: [],
     accessRequests: [],
     loading: true,
-    error: null
+    error: null,
   });
 
   // Fetch overview data for the selected client
@@ -1076,43 +1097,51 @@ function DashboardContent({ client, jwt }) {
     if (!client?._id || !jwt) return;
 
     const fetchOverviewData = async () => {
-      setOverviewData(prev => ({ ...prev, loading: true, error: null }));
+      setOverviewData((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
         // Fetch multiple endpoints in parallel
-        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] = await Promise.all([
-          fetch(`/api/care-tasks/client/${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/care-need-items?personId=${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })),
-          fetch(`/api/access-requests/incoming`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false }))
-        ]);
+        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] =
+          await Promise.all([
+            fetch(`/api/care-tasks/client/${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(`/api/care-need-items?personId=${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(
+              `/api/budget-plans?personId=${
+                client._id
+              }&year=${new Date().getFullYear()}`,
+              {
+                headers: { Authorization: `Bearer ${jwt}` },
+              }
+            ).catch(() => ({ ok: false })),
+            fetch(`/api/access-requests/incoming`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }).catch(() => ({ ok: false })),
+          ]);
 
         const tasks = tasksRes.ok ? await tasksRes.json() : [];
         const supplies = suppliesRes.ok ? await suppliesRes.json() : [];
         const budget = budgetRes?.ok ? await budgetRes.json() : null;
-        const accessRequests = accessRequestsRes?.ok ? await accessRequestsRes.json() : [];
+        const accessRequests = accessRequestsRes?.ok
+          ? await accessRequestsRes.json()
+          : [];
 
         // Process tasks data
         const taskStats = {
           total: tasks.length,
-          completed: tasks.filter(t => t.status === 'Complete').length,
-          pending: tasks.filter(t => t.status === 'Scheduled').length,
-          overdue: tasks.filter(t => t.status === 'Missed').length
+          completed: tasks.filter((t) => t.status === "Complete").length,
+          pending: tasks.filter((t) => t.status === "Scheduled").length,
+          overdue: tasks.filter((t) => t.status === "Missed").length,
         };
 
         // Process supplies data
         const supplyStats = {
           total: supplies.length,
-          needsPurchase: supplies.filter(s => s.status === 'pending').length,
-          lowStock: supplies.filter(s => s.priority === 'high').length
+          needsPurchase: supplies.filter((s) => s.status === "pending").length,
+          lowStock: supplies.filter((s) => s.priority === "high").length,
         };
 
         // Process budget data
@@ -1120,20 +1149,26 @@ function DashboardContent({ client, jwt }) {
 
         // Calculate actual spending from completed tasks (only current year)
         const currentYear = new Date().getFullYear();
-        const completedTasks = tasks.filter(t => {
-          if (t.status !== 'Completed' || !t.cost) return false;
-          const taskDate = t.completedAt ? new Date(t.completedAt) : new Date(t.dueDate);
+        const completedTasks = tasks.filter((t) => {
+          if (t.status !== "Completed" || !t.cost) return false;
+          const taskDate = t.completedAt
+            ? new Date(t.completedAt)
+            : new Date(t.dueDate);
           return taskDate.getFullYear() === currentYear;
         });
 
-        const totalSpent = completedTasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+        const totalSpent = completedTasks.reduce(
+          (sum, t) => sum + (t.cost || 0),
+          0
+        );
 
         // Calculate spending per budget item
         const itemSpending = {};
-        completedTasks.forEach(task => {
+        completedTasks.forEach((task) => {
           if (task.budgetItemId) {
             const itemId = String(task.budgetItemId);
-            itemSpending[itemId] = (itemSpending[itemId] || 0) + (task.cost || 0);
+            itemSpending[itemId] =
+              (itemSpending[itemId] || 0) + (task.cost || 0);
           }
         });
 
@@ -1152,8 +1187,8 @@ function DashboardContent({ client, jwt }) {
             hasSignificantTimeRemaining = percentTimeRemaining >= 50;
           }
 
-          (budgetPlan.categories || []).forEach(category => {
-            (category.items || []).forEach(item => {
+          (budgetPlan.categories || []).forEach((category) => {
+            (category.items || []).forEach((item) => {
               const itemId = String(item._id);
               const spent = itemSpending[itemId] || 0;
               const allocated = item.budget || 0;
@@ -1162,7 +1197,10 @@ function DashboardContent({ client, jwt }) {
                 const percentSpent = (spent / allocated) * 100;
                 // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
                 const isOverBudget = percentSpent >= 100;
-                const isHighSpendingWithTimeLeft = percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart);
+                const isHighSpendingWithTimeLeft =
+                  percentSpent >= 80 &&
+                  (hasSignificantTimeRemaining ||
+                    !budgetPlan.budgetPeriodStart);
 
                 if (isOverBudget || isHighSpendingWithTimeLeft) {
                   itemWarnings.push({
@@ -1171,7 +1209,7 @@ function DashboardContent({ client, jwt }) {
                     spent,
                     allocated,
                     percentSpent,
-                    isOver: spent > allocated
+                    isOver: spent > allocated,
                   });
                 }
               }
@@ -1179,29 +1217,46 @@ function DashboardContent({ client, jwt }) {
           });
         }
 
-        const budgetStats = budgetPlan ? {
-          allocated: budgetPlan.yearlyBudget || 0,
-          spent: totalSpent,
-          remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
-          categories: budgetPlan.categories || [],
-          categoryCount: (budgetPlan.categories || []).length,
-          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0),
-          itemWarnings: itemWarnings
-        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0, itemWarnings: [] };
+        const budgetStats = budgetPlan
+          ? {
+              allocated: budgetPlan.yearlyBudget || 0,
+              spent: totalSpent,
+              remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
+              categories: budgetPlan.categories || [],
+              categoryCount: (budgetPlan.categories || []).length,
+              itemsCount: (budgetPlan.categories || []).reduce(
+                (total, cat) => total + (cat.items || []).length,
+                0
+              ),
+              itemWarnings: itemWarnings,
+            }
+          : {
+              allocated: 0,
+              spent: 0,
+              remaining: 0,
+              categories: [],
+              categoryCount: 0,
+              itemsCount: 0,
+              itemWarnings: [],
+            };
 
         // Generate recent activity
         const recentActivity = [
-          ...tasks.slice(0, 3).map(t => ({
-            type: 'task',
-            message: `Task "${t.title}" ${t.status === 'Complete' ? 'completed' : 'updated'}`,
-            time: new Date(t.updatedAt || t.createdAt).toLocaleString()
+          ...tasks.slice(0, 3).map((t) => ({
+            type: "task",
+            message: `Task "${t.title}" ${
+              t.status === "Complete" ? "completed" : "updated"
+            }`,
+            time: new Date(t.updatedAt || t.createdAt).toLocaleString(),
           })),
-          ...supplies.slice(0, 2).map(s => ({
-            type: 'supply',
+          ...supplies.slice(0, 2).map((s) => ({
+            type: "supply",
             message: `Supply "${s.name}" needs attention`,
-            time: new Date(s.updatedAt || s.createdAt).toLocaleString()
-          }))
-        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
+            time: new Date(s.updatedAt || s.createdAt).toLocaleString(),
+          })),
+        ]
+          .sort((a, b) => new Date(b.time) - new Date(a.time))
+          .slice(0, 5);
 
         setOverviewData({
           tasks: taskStats,
@@ -1210,15 +1265,14 @@ function DashboardContent({ client, jwt }) {
           recentActivity,
           accessRequests,
           loading: false,
-          error: null
+          error: null,
         });
-
       } catch (error) {
-        console.error('Error fetching overview data:', error);
-        setOverviewData(prev => ({
+        console.error("Error fetching overview data:", error);
+        setOverviewData((prev) => ({
           ...prev,
           loading: false,
-          error: 'Failed to load overview data'
+          error: "Failed to load overview data",
         }));
       }
     };
@@ -1243,13 +1297,18 @@ function DashboardContent({ client, jwt }) {
     );
   }
 
-  const { tasks, supplies, budget, recentActivity, accessRequests } = overviewData;
+  const { tasks, supplies, budget, recentActivity, accessRequests } =
+    overviewData;
 
   return (
     <div className="widgets-container">
       {/* Access Requests - Full Width Alert */}
       {accessRequests.length > 0 && (
-        <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
+        <AccessRequestsWidget
+          requests={accessRequests}
+          jwt={jwt}
+          onUpdate={() => window.location.reload()}
+        />
       )}
 
       {/* Horizontal Layout for Main Content */}
@@ -1329,7 +1388,7 @@ function OverviewSection_OLD({ client, jwt }) {
     recentActivity: [],
     accessRequests: [],
     loading: true,
-    error: null
+    error: null,
   });
 
   // Fetch overview data for the selected client
@@ -1337,43 +1396,51 @@ function OverviewSection_OLD({ client, jwt }) {
     if (!client?._id || !jwt) return;
 
     const fetchOverviewData = async () => {
-      setOverviewData(prev => ({ ...prev, loading: true, error: null }));
+      setOverviewData((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
         // Fetch multiple endpoints in parallel
-        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] = await Promise.all([
-          fetch(`/api/care-tasks/client/${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/care-need-items?personId=${client._id}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }),
-          fetch(`/api/budget-plans?personId=${client._id}&year=${new Date().getFullYear()}`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })), // Budget planning endpoint
-          fetch(`/api/access-requests/incoming`, {
-            headers: { Authorization: `Bearer ${jwt}` }
-          }).catch(() => ({ ok: false })) // Access requests might fail
-        ]);
+        const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] =
+          await Promise.all([
+            fetch(`/api/care-tasks/client/${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(`/api/care-need-items?personId=${client._id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }),
+            fetch(
+              `/api/budget-plans?personId=${
+                client._id
+              }&year=${new Date().getFullYear()}`,
+              {
+                headers: { Authorization: `Bearer ${jwt}` },
+              }
+            ).catch(() => ({ ok: false })), // Budget planning endpoint
+            fetch(`/api/access-requests/incoming`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }).catch(() => ({ ok: false })), // Access requests might fail
+          ]);
 
         const tasks = tasksRes.ok ? await tasksRes.json() : [];
         const supplies = suppliesRes.ok ? await suppliesRes.json() : [];
         const budget = budgetRes?.ok ? await budgetRes.json() : null;
-        const accessRequests = accessRequestsRes?.ok ? await accessRequestsRes.json() : [];
+        const accessRequests = accessRequestsRes?.ok
+          ? await accessRequestsRes.json()
+          : [];
 
         // Process tasks data
         const taskStats = {
           total: tasks.length,
-          completed: tasks.filter(t => t.status === 'Complete').length,
-          pending: tasks.filter(t => t.status === 'Scheduled').length,
-          overdue: tasks.filter(t => t.status === 'Missed').length
+          completed: tasks.filter((t) => t.status === "Complete").length,
+          pending: tasks.filter((t) => t.status === "Scheduled").length,
+          overdue: tasks.filter((t) => t.status === "Missed").length,
         };
 
         // Process supplies data
         const supplyStats = {
           total: supplies.length,
-          needsPurchase: supplies.filter(s => s.status === 'pending').length,
-          lowStock: supplies.filter(s => s.priority === 'high').length
+          needsPurchase: supplies.filter((s) => s.status === "pending").length,
+          lowStock: supplies.filter((s) => s.priority === "high").length,
         };
 
         // Process budget data from budget planning
@@ -1381,20 +1448,26 @@ function OverviewSection_OLD({ client, jwt }) {
 
         // Calculate actual spending from completed tasks (only current year)
         const currentYear = new Date().getFullYear();
-        const completedTasks = tasks.filter(t => {
-          if (t.status !== 'Completed' || !t.cost) return false;
-          const taskDate = t.completedAt ? new Date(t.completedAt) : new Date(t.dueDate);
+        const completedTasks = tasks.filter((t) => {
+          if (t.status !== "Completed" || !t.cost) return false;
+          const taskDate = t.completedAt
+            ? new Date(t.completedAt)
+            : new Date(t.dueDate);
           return taskDate.getFullYear() === currentYear;
         });
 
-        const totalSpent = completedTasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+        const totalSpent = completedTasks.reduce(
+          (sum, t) => sum + (t.cost || 0),
+          0
+        );
 
         // Calculate spending per budget item
         const itemSpending = {};
-        completedTasks.forEach(task => {
+        completedTasks.forEach((task) => {
           if (task.budgetItemId) {
             const itemId = String(task.budgetItemId);
-            itemSpending[itemId] = (itemSpending[itemId] || 0) + (task.cost || 0);
+            itemSpending[itemId] =
+              (itemSpending[itemId] || 0) + (task.cost || 0);
           }
         });
 
@@ -1413,8 +1486,8 @@ function OverviewSection_OLD({ client, jwt }) {
             hasSignificantTimeRemaining = percentTimeRemaining >= 50;
           }
 
-          (budgetPlan.categories || []).forEach(category => {
-            (category.items || []).forEach(item => {
+          (budgetPlan.categories || []).forEach((category) => {
+            (category.items || []).forEach((item) => {
               const itemId = String(item._id);
               const spent = itemSpending[itemId] || 0;
               const allocated = item.budget || 0;
@@ -1423,7 +1496,10 @@ function OverviewSection_OLD({ client, jwt }) {
                 const percentSpent = (spent / allocated) * 100;
                 // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
                 const isOverBudget = percentSpent >= 100;
-                const isHighSpendingWithTimeLeft = percentSpent >= 80 && (hasSignificantTimeRemaining || !budgetPlan.budgetPeriodStart);
+                const isHighSpendingWithTimeLeft =
+                  percentSpent >= 80 &&
+                  (hasSignificantTimeRemaining ||
+                    !budgetPlan.budgetPeriodStart);
 
                 if (isOverBudget || isHighSpendingWithTimeLeft) {
                   itemWarnings.push({
@@ -1432,7 +1508,7 @@ function OverviewSection_OLD({ client, jwt }) {
                     spent,
                     allocated,
                     percentSpent,
-                    isOver: spent > allocated
+                    isOver: spent > allocated,
                   });
                 }
               }
@@ -1440,30 +1516,46 @@ function OverviewSection_OLD({ client, jwt }) {
           });
         }
 
-        const budgetStats = budgetPlan ? {
-          allocated: budgetPlan.yearlyBudget || 0,
-          spent: totalSpent,
-          remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
-          categories: budgetPlan.categories || [],
-          categoryCount: (budgetPlan.categories || []).length,
-          itemsCount: (budgetPlan.categories || []).reduce((total, cat) => total + (cat.items || []).length, 0),
-          itemWarnings: itemWarnings
-        } : { allocated: 0, spent: 0, remaining: 0, categories: [], categoryCount: 0, itemsCount: 0, itemWarnings: [] };
+        const budgetStats = budgetPlan
+          ? {
+              allocated: budgetPlan.yearlyBudget || 0,
+              spent: totalSpent,
+              remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
+              categories: budgetPlan.categories || [],
+              categoryCount: (budgetPlan.categories || []).length,
+              itemsCount: (budgetPlan.categories || []).reduce(
+                (total, cat) => total + (cat.items || []).length,
+                0
+              ),
+              itemWarnings: itemWarnings,
+            }
+          : {
+              allocated: 0,
+              spent: 0,
+              remaining: 0,
+              categories: [],
+              categoryCount: 0,
+              itemsCount: 0,
+              itemWarnings: [],
+            };
 
         // Generate recent activity
         const recentActivity = [
-          ...tasks.slice(0, 3).map(t => ({
-            type: 'task',
-            message: `Task "${t.title}" ${t.status === 'Complete' ? 'completed' : 'updated'}`,
-            time: new Date(t.updatedAt || t.createdAt).toLocaleString()
+          ...tasks.slice(0, 3).map((t) => ({
+            type: "task",
+            message: `Task "${t.title}" ${
+              t.status === "Complete" ? "completed" : "updated"
+            }`,
+            time: new Date(t.updatedAt || t.createdAt).toLocaleString(),
           })),
-          ...supplies.slice(0, 2).map(s => ({
-            type: 'supply',
+          ...supplies.slice(0, 2).map((s) => ({
+            type: "supply",
             message: `Supply "${s.name}" needs attention`,
-            time: new Date(s.updatedAt || s.createdAt).toLocaleString()
-          }))
-        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
-
+            time: new Date(s.updatedAt || s.createdAt).toLocaleString(),
+          })),
+        ]
+          .sort((a, b) => new Date(b.time) - new Date(a.time))
+          .slice(0, 5);
 
         setOverviewData({
           tasks: taskStats,
@@ -1472,15 +1564,14 @@ function OverviewSection_OLD({ client, jwt }) {
           recentActivity,
           accessRequests,
           loading: false,
-          error: null
+          error: null,
         });
-
       } catch (error) {
-        console.error('Error fetching overview data:', error);
-        setOverviewData(prev => ({
+        console.error("Error fetching overview data:", error);
+        setOverviewData((prev) => ({
           ...prev,
           loading: false,
-          error: 'Failed to load overview data'
+          error: "Failed to load overview data",
         }));
       }
     };
@@ -1507,7 +1598,8 @@ function OverviewSection_OLD({ client, jwt }) {
     );
   }
 
-  const { tasks, supplies, budget, recentActivity, accessRequests } = overviewData;
+  const { tasks, supplies, budget, recentActivity, accessRequests } =
+    overviewData;
 
   return (
     <div className="overview-section">
@@ -1515,7 +1607,11 @@ function OverviewSection_OLD({ client, jwt }) {
 
       {/* Access Requests Widget - Only show if there are pending requests */}
       {accessRequests.length > 0 && (
-        <AccessRequestsWidget requests={accessRequests} jwt={jwt} onUpdate={() => window.location.reload()} />
+        <AccessRequestsWidget
+          requests={accessRequests}
+          jwt={jwt}
+          onUpdate={() => window.location.reload()}
+        />
       )}
 
       {/* Today's Schedule or Task Creation Guidance */}
@@ -1527,9 +1623,13 @@ function OverviewSection_OLD({ client, jwt }) {
           <div className="budget-header">
             <h4>💰 Budget Planning</h4>
             {budget.allocated > 0 ? (
-              <span className="budget-total">${budget.allocated.toLocaleString()}</span>
+              <span className="budget-total">
+                ${budget.allocated.toLocaleString()}
+              </span>
             ) : (
-              <a href="/faq" className="create-budget-link">Create Budget →</a>
+              <a href="/faq" className="create-budget-link">
+                Create Budget →
+              </a>
             )}
           </div>
 
@@ -1537,7 +1637,9 @@ function OverviewSection_OLD({ client, jwt }) {
             <div className="budget-breakdown">
               <div className="budget-item">
                 <span className="budget-label">Yearly Budget</span>
-                <span className="budget-value">${budget.allocated.toLocaleString()}</span>
+                <span className="budget-value">
+                  ${budget.allocated.toLocaleString()}
+                </span>
               </div>
               <div className="budget-item">
                 <span className="budget-label">Categories</span>
@@ -1548,20 +1650,22 @@ function OverviewSection_OLD({ client, jwt }) {
                 <span className="budget-value">{budget.itemsCount}</span>
               </div>
               <div className="budget-actions">
-                <a href="/faq" className="manage-budget-btn">Manage Budget →</a>
+                <a href="/faq" className="manage-budget-btn">
+                  Manage Budget →
+                </a>
               </div>
             </div>
           ) : (
             <div className="no-budget">
               <p>No budget plan created yet</p>
               <p className="budget-description">
-                Create a yearly budget plan with categories and specific items to better manage {client.name}'s care expenses.
+                Create a yearly budget plan with categories and specific items
+                to better manage {client.name}'s care expenses.
               </p>
             </div>
           )}
         </div>
       </div>
-
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
@@ -1571,7 +1675,7 @@ function OverviewSection_OLD({ client, jwt }) {
             {recentActivity.map((activity, index) => (
               <div key={index} className="activity-item">
                 <span className="activity-icon">
-                  {activity.type === 'task' ? '📋' : '🛒'}
+                  {activity.type === "task" ? "📋" : "🛒"}
                 </span>
                 <div className="activity-content">
                   <span className="activity-message">{activity.message}</span>
@@ -1600,7 +1704,8 @@ function OverviewSection_OLD({ client, jwt }) {
           font-size: 1.2rem;
         }
 
-        .overview-loading, .overview-error {
+        .overview-loading,
+        .overview-error {
           text-align: center;
           padding: 2rem;
           color: #6b7280;
@@ -1662,8 +1767,12 @@ function OverviewSection_OLD({ client, jwt }) {
           font-size: 0.875rem;
         }
 
-        .budget-value.success { color: #10b981; }
-        .budget-value.error { color: #ef4444; }
+        .budget-value.success {
+          color: #10b981;
+        }
+        .budget-value.error {
+          color: #ef4444;
+        }
 
         .create-budget-link {
           color: #10b981;
@@ -1772,7 +1881,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
   const [scheduleData, setScheduleData] = React.useState({
     todaysTasks: [],
     loading: true,
-    error: null
+    error: null,
   });
 
   React.useEffect(() => {
@@ -1783,42 +1892,47 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
         const today = new Date();
         // Get today's date in local timezone (YYYY-MM-DD)
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
         const todayStr = `${year}-${month}-${day}`;
 
         const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
+          headers: { Authorization: `Bearer ${jwt}` },
         });
 
         const allTasks = tasksRes.ok ? await tasksRes.json() : [];
 
-        const todaysTasks = allTasks.filter(task => {
-          if (!task.dueDate && !task.scheduledDate) return false;
-          const taskDateObj = task.scheduledDate
-            ? new Date(task.scheduledDate)
-            : new Date(task.dueDate);
+        const todaysTasks = allTasks
+          .filter((task) => {
+            if (!task.dueDate && !task.scheduledDate) return false;
+            const taskDateObj = task.scheduledDate
+              ? new Date(task.scheduledDate)
+              : new Date(task.dueDate);
 
-          // Get task date in local timezone
-          const taskYear = taskDateObj.getFullYear();
-          const taskMonth = String(taskDateObj.getMonth() + 1).padStart(2, '0');
-          const taskDay = String(taskDateObj.getDate()).padStart(2, '0');
-          const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
+            // Get task date in local timezone
+            const taskYear = taskDateObj.getFullYear();
+            const taskMonth = String(taskDateObj.getMonth() + 1).padStart(
+              2,
+              "0"
+            );
+            const taskDay = String(taskDateObj.getDate()).padStart(2, "0");
+            const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
 
-          return taskDate === todayStr;
-        }).slice(0, 5);
+            return taskDate === todayStr;
+          })
+          .slice(0, 5);
 
         setScheduleData({
           todaysTasks,
           loading: false,
-          error: null
+          error: null,
         });
       } catch (error) {
-        console.error('Error fetching schedule data:', error);
+        console.error("Error fetching schedule data:", error);
         setScheduleData({
           todaysTasks: [],
           loading: false,
-          error: 'Failed to load schedule'
+          error: "Failed to load schedule",
         });
       }
     };
@@ -1837,7 +1951,8 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
           <div className="guidance-message">
             <p className="guidance-description">
               Start by creating a yearly budget plan for {client.name}. <br />
-              Once your budget is set up, you can then create care tasks and track spending.
+              Once your budget is set up, you can then create care tasks and
+              track spending.
             </p>
             <div className="guidance-steps">
               <div className="step-indicator">
@@ -2005,8 +2120,9 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
         <div className="guidance-content">
           <div className="guidance-message">
             <p className="guidance-description">
-              Budget planning is complete! Now create specific care tasks for {client.name} such as
-              medication reminders, appointments, daily activities, or supply purchases.
+              Budget planning is complete! Now create specific care tasks for{" "}
+              {client.name} such as medication reminders, appointments, daily
+              activities, or supply purchases.
             </p>
             <div className="guidance-steps">
               <div className="step-indicator">
@@ -2213,14 +2329,18 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           {todaysTasks.map((task, index) => (
             <div key={task._id || index} className="schedule-item">
               <div className="schedule-time">
-                {task.scheduledTime || 'All day'}
+                {task.scheduledTime || "All day"}
               </div>
               <div className="schedule-content">
                 <div className="schedule-title">{task.title}</div>
                 <div className="schedule-details">
-                  {task.assignedTo && <span className="assigned-to">👤 {task.assignedTo}</span>}
-                  <span className={`status-badge ${task.status?.toLowerCase()}`}>
-                    {task.status || 'Scheduled'}
+                  {task.assignedTo && (
+                    <span className="assigned-to">👤 {task.assignedTo}</span>
+                  )}
+                  <span
+                    className={`status-badge ${task.status?.toLowerCase()}`}
+                  >
+                    {task.status || "Scheduled"}
                   </span>
                 </div>
               </div>
@@ -2366,7 +2486,7 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
     allTasks: [],
     hasAnyTasks: false,
     loading: true,
-    error: null
+    error: null,
   });
 
   React.useEffect(() => {
@@ -2377,32 +2497,37 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
         // Get today's date in local timezone
         const today = new Date();
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
         const todayStr = `${year}-${month}-${day}`;
 
         // Fetch all tasks for this client
         const tasksRes = await fetch(`/api/care-tasks/client/${client._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
+          headers: { Authorization: `Bearer ${jwt}` },
         });
 
         const allTasks = tasksRes.ok ? await tasksRes.json() : [];
 
         // Filter for today's tasks
-        const todaysTasks = allTasks.filter(task => {
-          if (!task.dueDate && !task.scheduledDate) return false;
-          const taskDateObj = task.scheduledDate
-            ? new Date(task.scheduledDate)
-            : new Date(task.dueDate);
+        const todaysTasks = allTasks
+          .filter((task) => {
+            if (!task.dueDate && !task.scheduledDate) return false;
+            const taskDateObj = task.scheduledDate
+              ? new Date(task.scheduledDate)
+              : new Date(task.dueDate);
 
-          // Get task date in local timezone
-          const taskYear = taskDateObj.getFullYear();
-          const taskMonth = String(taskDateObj.getMonth() + 1).padStart(2, '0');
-          const taskDay = String(taskDateObj.getDate()).padStart(2, '0');
-          const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
+            // Get task date in local timezone
+            const taskYear = taskDateObj.getFullYear();
+            const taskMonth = String(taskDateObj.getMonth() + 1).padStart(
+              2,
+              "0"
+            );
+            const taskDay = String(taskDateObj.getDate()).padStart(2, "0");
+            const taskDate = `${taskYear}-${taskMonth}-${taskDay}`;
 
-          return taskDate === todayStr;
-        }).slice(0, 5); // Limit to 5 tasks
+            return taskDate === todayStr;
+          })
+          .slice(0, 5); // Limit to 5 tasks
 
         setScheduleData({
           todaysTasks,
@@ -2410,17 +2535,17 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           hasAnyTasks: allTasks.length > 0,
           shifts: [], // We can add shifts later
           loading: false,
-          error: null
+          error: null,
         });
       } catch (error) {
-        console.error('Error fetching schedule data:', error);
+        console.error("Error fetching schedule data:", error);
         setScheduleData({
           todaysTasks: [],
           allTasks: [],
           hasAnyTasks: false,
           shifts: [],
           loading: false,
-          error: 'Failed to load schedule'
+          error: "Failed to load schedule",
         });
       }
     };
@@ -2457,10 +2582,14 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
         </div>
         <div className="guidance-content">
           <div className="guidance-message">
-            <p>Start creating care tasks for <strong>{client.name}</strong></p>
+            <p>
+              Start creating care tasks for <strong>{client.name}</strong>
+            </p>
             <p className="guidance-description">
-              Care tasks are automatically generated from your care need items.<br />
-              Set up recurring needs like medications, hygiene products, or daily activities.
+              Care tasks are automatically generated from your care need items.
+              <br />
+              Set up recurring needs like medications, hygiene products, or
+              daily activities.
             </p>
           </div>
           <a href="/sub-elements" className="guidance-btn">
@@ -2564,14 +2693,18 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           {todaysTasks.map((task, index) => (
             <div key={task._id || index} className="schedule-item">
               <div className="schedule-time">
-                {task.scheduledTime || 'All day'}
+                {task.scheduledTime || "All day"}
               </div>
               <div className="schedule-content">
                 <div className="schedule-title">{task.title}</div>
                 <div className="schedule-details">
-                  {task.assignedTo && <span className="assigned-to">👤 {task.assignedTo}</span>}
-                  <span className={`status-badge ${task.status?.toLowerCase()}`}>
-                    {task.status || 'Scheduled'}
+                  {task.assignedTo && (
+                    <span className="assigned-to">👤 {task.assignedTo}</span>
+                  )}
+                  <span
+                    className={`status-badge ${task.status?.toLowerCase()}`}
+                  >
+                    {task.status || "Scheduled"}
                   </span>
                 </div>
               </div>
@@ -2715,7 +2848,9 @@ function TaskSummaryWidget({ tasks, client }) {
     <div className="widget task-summary-widget">
       <div className="widget-header">
         <h4>📋 Care Tasks</h4>
-        <a href="/tasks-new" className="widget-link">View All →</a>
+        <a href="/tasks-new" className="widget-link">
+          View All →
+        </a>
       </div>
 
       <div className="task-stats">
@@ -2740,7 +2875,9 @@ function TaskSummaryWidget({ tasks, client }) {
       {tasks.total === 0 && (
         <div className="widget-empty">
           <p>No care tasks yet</p>
-          <a href="/tasks-new" className="widget-action-btn">Create Care Tasks →</a>
+          <a href="/tasks-new" className="widget-action-btn">
+            Create Care Tasks →
+          </a>
         </div>
       )}
 
@@ -2875,7 +3012,9 @@ function SuppliesWidget({ supplies, client }) {
     <div className="widget supplies-widget">
       <div className="widget-header">
         <h4>🛒 Supplies & Purchases</h4>
-        <a href="/tasks-new" className="widget-link">Manage →</a>
+        <a href="/tasks-new" className="widget-link">
+          Manage →
+        </a>
       </div>
 
       <div className="supplies-summary">
@@ -2896,7 +3035,9 @@ function SuppliesWidget({ supplies, client }) {
       {supplies.total === 0 && (
         <div className="widget-empty">
           <p>No supplies tracked yet</p>
-          <a href="/tasks-new" className="widget-action-btn">Add Supplies →</a>
+          <a href="/tasks-new" className="widget-action-btn">
+            Add Supplies →
+          </a>
         </div>
       )}
 
@@ -3011,15 +3152,16 @@ function SuppliesWidget({ supplies, client }) {
 
 // Budget Widget
 function BudgetWidget({ budget, client }) {
-  const percentSpent = budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
+  const percentSpent =
+    budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
   const isOverBudget = budget.spent > budget.allocated;
   const isNearLimit = percentSpent >= 80 && !isOverBudget;
 
   // Get status
   const getStatus = () => {
-    if (isOverBudget) return { text: 'Over Budget', color: '#ef4444' };
-    if (isNearLimit) return { text: 'Near Limit', color: '#f59e0b' };
-    return { text: 'On Track', color: '#10b981' };
+    if (isOverBudget) return { text: "Over Budget", color: "#ef4444" };
+    if (isNearLimit) return { text: "Near Limit", color: "#f59e0b" };
+    return { text: "On Track", color: "#10b981" };
   };
 
   const status = getStatus();
@@ -3034,14 +3176,17 @@ function BudgetWidget({ budget, client }) {
       <div className="widget-header">
         <h4>💰 Budget Overview</h4>
         <a href="/faq" className="widget-link">
-          {budget.allocated > 0 ? 'Manage →' : 'Create →'}
+          {budget.allocated > 0 ? "Manage →" : "Create →"}
         </a>
       </div>
 
       {budget.allocated > 0 ? (
         <div className="budget-info">
           {/* Status Badge */}
-          <div className="budget-status" style={{ backgroundColor: status.color }}>
+          <div
+            className="budget-status"
+            style={{ backgroundColor: status.color }}
+          >
             {status.text}
           </div>
 
@@ -3050,15 +3195,21 @@ function BudgetWidget({ budget, client }) {
             <div className="summary-row">
               <div className="summary-item">
                 <div className="summary-label">Total Budget</div>
-                <div className="summary-value">${budget.allocated.toLocaleString()}</div>
+                <div className="summary-value">
+                  ${budget.allocated.toLocaleString()}
+                </div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Spent</div>
-                <div className="summary-value spent">${budget.spent.toLocaleString()}</div>
+                <div className="summary-value spent">
+                  ${budget.spent.toLocaleString()}
+                </div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Remaining</div>
-                <div className="summary-value remaining">${budget.remaining.toLocaleString()}</div>
+                <div className="summary-value remaining">
+                  ${budget.remaining.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
@@ -3067,14 +3218,16 @@ function BudgetWidget({ budget, client }) {
           <div className="budget-progress">
             <div className="progress-header">
               <span className="progress-label">Budget Used</span>
-              <span className="progress-percentage">{percentSpent.toFixed(1)}%</span>
+              <span className="progress-percentage">
+                {percentSpent.toFixed(1)}%
+              </span>
             </div>
             <div className="progress-bar">
               <div
                 className="progress-fill"
                 style={{
                   width: `${Math.min(percentSpent, 100)}%`,
-                  backgroundColor: status.color
+                  backgroundColor: status.color,
                 }}
               />
             </div>
@@ -3082,19 +3235,24 @@ function BudgetWidget({ budget, client }) {
 
           {/* Budget Warnings - Show when approaching or over budget */}
           {(isNearLimit || isOverBudget) && (
-            <div className={`budget-warning ${isOverBudget ? 'over-budget' : 'near-limit'}`}>
-              <div className="warning-icon">
-                {isOverBudget ? '🚨' : '⚠️'}
-              </div>
+            <div
+              className={`budget-warning ${
+                isOverBudget ? "over-budget" : "near-limit"
+              }`}
+            >
+              <div className="warning-icon">{isOverBudget ? "🚨" : "⚠️"}</div>
               <div className="warning-content">
                 <div className="warning-title">
-                  {isOverBudget ? 'Budget Exceeded!' : 'Budget Alert'}
+                  {isOverBudget ? "Budget Exceeded!" : "Budget Alert"}
                 </div>
                 <div className="warning-message">
                   {isOverBudget
-                    ? `You've exceeded your budget by $${(budget.spent - budget.allocated).toLocaleString()}. Review your spending in `
-                    : `You've used ${percentSpent.toFixed(1)}% of your budget. Monitor your spending in `
-                  }
+                    ? `You've exceeded your budget by $${(
+                        budget.spent - budget.allocated
+                      ).toLocaleString()}. Review your spending in `
+                    : `You've used ${percentSpent.toFixed(
+                        1
+                      )}% of your budget. Monitor your spending in `}
                   <a href="/faq">Budget Planning</a>
                 </div>
               </div>
@@ -3106,27 +3264,38 @@ function BudgetWidget({ budget, client }) {
             <div className="item-warnings-container">
               <div className="item-warnings-header">
                 <span className="warning-icon">⚠️</span>
-                <span className="item-warnings-title">Budget Items Need Attention</span>
+                <span className="item-warnings-title">
+                  Budget Items Need Attention
+                </span>
               </div>
               <div className="item-warnings-list">
                 {budget.itemWarnings.map((warning, idx) => (
                   <div
                     key={idx}
-                    className={`item-warning ${warning.isOver ? 'item-over' : 'item-near'}`}
+                    className={`item-warning ${
+                      warning.isOver ? "item-over" : "item-near"
+                    }`}
                   >
                     <div className="item-warning-header">
                       <span className="item-warning-name">
                         {warning.itemName}
-                        <span className="item-warning-category"> ({warning.categoryName})</span>
+                        <span className="item-warning-category">
+                          {" "}
+                          ({warning.categoryName})
+                        </span>
                       </span>
                       <span className="item-warning-percent">
                         {warning.percentSpent.toFixed(0)}%
                       </span>
                     </div>
                     <div className="item-warning-details">
-                      <span className="item-warning-spent">${warning.spent.toFixed(2)}</span>
+                      <span className="item-warning-spent">
+                        ${warning.spent.toFixed(2)}
+                      </span>
                       <span className="item-warning-separator"> / </span>
-                      <span className="item-warning-allocated">${warning.allocated.toFixed(2)}</span>
+                      <span className="item-warning-allocated">
+                        ${warning.allocated.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -3140,8 +3309,12 @@ function BudgetWidget({ budget, client }) {
       ) : (
         <div className="widget-empty">
           <p>No budget plan yet</p>
-          <p className="empty-description">Create a yearly budget to track care expenses</p>
-          <a href="/faq" className="widget-action-btn">Create Budget →</a>
+          <p className="empty-description">
+            Create a yearly budget to track care expenses
+          </p>
+          <a href="/faq" className="widget-action-btn">
+            Create Budget →
+          </a>
         </div>
       )}
 
@@ -3601,7 +3774,7 @@ function RecentActivityWidget({ activity }) {
         {activity.map((item, index) => (
           <div key={index} className="activity-item">
             <span className="activity-icon">
-              {item.type === 'task' ? '📋' : '🛒'}
+              {item.type === "task" ? "📋" : "🛒"}
             </span>
             <div className="activity-content">
               <div className="activity-message">{item.message}</div>
@@ -3682,14 +3855,17 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
   const handleDecision = async (requestId, approve) => {
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/access-requests/${requestId}/decision`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ approve }),
-      });
+      const response = await fetch(
+        `/api/access-requests/${requestId}/decision`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({ approve }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -3700,7 +3876,7 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
       // Refresh the data
       onUpdate();
     } catch (error) {
-      alert("Failed to process request");
+      alert("Failed to process request: " + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -3709,7 +3885,10 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
   return (
     <div className="access-requests-widget">
       <div className="widget-header">
-        <h4>{requests.length} Access Request{requests.length !== 1 ? 's' : ''} Awaiting Your Review</h4>
+        <h4>
+          {requests.length} Access Request{requests.length !== 1 ? "s" : ""}{" "}
+          Awaiting Your Review
+        </h4>
       </div>
 
       <div className="requests-list">
@@ -3717,13 +3896,25 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           <div key={request._id} className="request-item">
             <div className="request-info">
               <div className="requester">
-                <span className="name">{request.requesterName || request.requesterEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                <span className="name">
+                  {request.requesterName ||
+                    request.requesterEmail
+                      .split("@")[0]
+                      .replace(/[._]/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                </span>
                 <span className="role-badge">{request.requesterRole}</span>
               </div>
               <div className="request-details">
                 <span className="email">{request.requesterEmail}</span>
-                {request.organizationName && <span className="organization">from {request.organizationName}</span>}
-                {request.message && <span className="message">"{request.message}"</span>}
+                {request.organizationName && (
+                  <span className="organization">
+                    from {request.organizationName}
+                  </span>
+                )}
+                {request.message && (
+                  <span className="message">"{request.message}"</span>
+                )}
               </div>
             </div>
 
@@ -3847,7 +4038,8 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           gap: 0.5rem;
         }
 
-        .approve-btn, .reject-btn {
+        .approve-btn,
+        .reject-btn {
           padding: 0.5rem 1rem;
           border: none;
           border-radius: 6px;
@@ -3875,7 +4067,8 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
           background: #dc2626;
         }
 
-        .approve-btn:disabled, .reject-btn:disabled {
+        .approve-btn:disabled,
+        .reject-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
@@ -3957,7 +4150,9 @@ function SuppliesSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>🛒 Supplies & Purchases for {client.name}</h3>
       <p>Care supplies and purchase planning will be integrated here.</p>
-      <a href="/sub-elements" className="legacy-link">→ View in current Sub-elements page</a>
+      <a href="/sub-elements" className="legacy-link">
+        → View in current Sub-elements page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -3989,7 +4184,9 @@ function ScheduleSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>📅 Schedule & Shifts for {client.name}</h3>
       <p>Shift scheduling and care calendar will be integrated here.</p>
-      <a href="/shift-allocation" className="legacy-link">→ View in current Shift Allocation page</a>
+      <a href="/shift-allocation" className="legacy-link">
+        → View in current Shift Allocation page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -4021,7 +4218,9 @@ function BudgetSection({ client, jwt }) {
     <div className="section-placeholder">
       <h3>💰 Budget & Reports for {client.name}</h3>
       <p>Financial tracking and budget reports will be integrated here.</p>
-      <a href="/budget-reports" className="legacy-link">→ View in current Budget Reports page</a>
+      <a href="/budget-reports" className="legacy-link">
+        → View in current Budget Reports page
+      </a>
 
       <style jsx>{`
         .section-placeholder {
@@ -4051,7 +4250,7 @@ function BudgetSection({ client, jwt }) {
 // Create Token Modal Component
 function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
   const [tokenType, setTokenType] = React.useState("FAMILY_TOKEN");
-  const [maxUses, setMaxUses] = React.useState(1);
+  // const [maxUses, setMaxUses] = React.useState(1);
   const [expiresInDays, setExpiresInDays] = React.useState(7);
   const [generatedToken, setGeneratedToken] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -4061,6 +4260,7 @@ function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
       alert("Please select a client first");
       return;
     }
+    const maxUses = 1; // Always limit to 1 use for security
 
     setIsGenerating(true);
     try {
@@ -4105,32 +4305,29 @@ function CreateTokenModal({ isOpen, onClose, selectedClient, jwt, user }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Create Invite Token</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
           {!generatedToken ? (
             <>
-              <p>Create an invite token for <strong>{selectedClient?.name}</strong></p>
+              <p>
+                Create an invite token for{" "}
+                <strong>{selectedClient?.name}</strong>
+              </p>
 
               <div className="form-group">
                 <label>Token Type:</label>
-                <select value={tokenType} onChange={(e) => setTokenType(e.target.value)}>
+                <select
+                  value={tokenType}
+                  onChange={(e) => setTokenType(e.target.value)}
+                >
                   <option value="FAMILY_TOKEN">Family Token</option>
                   <option value="MANAGER_TOKEN">Manager Token</option>
                   <option value="STAFF_TOKEN">Staff Token</option>
                 </select>
-              </div>
-
-              <div className="form-group">
-                <label>Maximum Uses:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={maxUses}
-                  onChange={(e) => setMaxUses(parseInt(e.target.value))}
-                />
               </div>
 
               <div className="form-group">
@@ -4350,7 +4547,9 @@ function EnterTokenModal({ isOpen, onClose, jwt, onSuccess }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Enter Invite Token</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -4478,15 +4677,22 @@ function EnterTokenModal({ isOpen, onClose, jwt, onSuccess }) {
 }
 
 // Organization Management Modal Component
-function OrganizationManagementModal({ isOpen, onClose, organizationData, user, jwt, onSuccess }) {
+function OrganizationManagementModal({
+  isOpen,
+  onClose,
+  organizationData,
+  user,
+  jwt,
+  onSuccess,
+}) {
   const [isLeaving, setIsLeaving] = React.useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = React.useState(false);
   const [showChangeOrg, setShowChangeOrg] = React.useState(false);
-  const [newOrgId, setNewOrgId] = React.useState('');
+  const [newOrgId, setNewOrgId] = React.useState("");
   const [isChanging, setIsChanging] = React.useState(false);
   const [organizations, setOrganizations] = React.useState([]);
   const [loadingOrgs, setLoadingOrgs] = React.useState(false);
-  const [orgError, setOrgError] = React.useState('');
+  const [orgError, setOrgError] = React.useState("");
 
   // Fetch organizations when user clicks "Change Organization"
   React.useEffect(() => {
@@ -4494,16 +4700,16 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
 
     const fetchOrganizations = async () => {
       setLoadingOrgs(true);
-      setOrgError('');
+      setOrgError("");
       try {
-        const response = await fetch('/api/organizations');
+        const response = await fetch("/api/organizations");
         if (!response.ok) {
-          throw new Error('Failed to load organizations');
+          throw new Error("Failed to load organizations");
         }
         const data = await response.json();
         setOrganizations(data);
       } catch (error) {
-        setOrgError(error.message || 'Failed to load organizations');
+        setOrgError(error.message || "Failed to load organizations");
       } finally {
         setLoadingOrgs(false);
       }
@@ -4515,20 +4721,20 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
   const handleLeaveOrganization = async () => {
     setIsLeaving(true);
     try {
-      const response = await fetch('/api/organizations/leave', {
-        method: 'POST',
+      const response = await fetch("/api/organizations/leave", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to leave organization');
+        throw new Error(error.error || "Failed to leave organization");
       }
 
-      alert('Successfully left organization');
+      alert("Successfully left organization");
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -4540,7 +4746,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
 
   const handleChangeOrganization = async () => {
     if (!newOrgId) {
-      alert('Please select an organization');
+      alert("Please select an organization");
       return;
     }
 
@@ -4551,10 +4757,12 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
     }
 
     // Confirm with user
-    const selectedOrgName = organizations.find(o => o._id === newOrgId)?.name || 'the selected organization';
+    const selectedOrgName =
+      organizations.find((o) => o._id === newOrgId)?.name ||
+      "the selected organization";
     const confirmChange = window.confirm(
       `Are you sure you want to change to "${selectedOrgName}"?\n\n` +
-      `This will move all your clients to the new organization.`
+        `This will move all your clients to the new organization.`
     );
 
     if (!confirmChange) {
@@ -4564,10 +4772,10 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
     setIsChanging(true);
     try {
       // Use the same endpoint as OrganizationPage
-      const response = await fetch('/api/users/me/organization', {
-        method: 'PATCH',
+      const response = await fetch("/api/users/me/organization", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
         body: JSON.stringify({
@@ -4578,7 +4786,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to change organization');
+        throw new Error(error.error || "Failed to change organization");
       }
 
       const data = await response.json();
@@ -4588,8 +4796,8 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
         const c = data.cascade;
         alert(
           `Successfully changed to "${selectedOrgName}".\n\n` +
-          `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks.\n` +
-          `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
+            `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks.\n` +
+            `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
         );
       } else {
         alert(`Successfully joined "${selectedOrgName}".`);
@@ -4601,7 +4809,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
     } finally {
       setIsChanging(false);
       setShowChangeOrg(false);
-      setNewOrgId('');
+      setNewOrgId("");
     }
   };
 
@@ -4612,7 +4820,9 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Manage Organization</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -4638,7 +4848,8 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
             <div className="action-section">
               <h4>Actions</h4>
               <p className="action-description">
-                You can change to a different organization, or leave your current organization.
+                You can change to a different organization, or leave your
+                current organization.
               </p>
 
               <div className="action-buttons">
@@ -4653,10 +4864,14 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                 ) : (
                   <div className="change-org-form">
                     <h5>Change Organization</h5>
-                    <p className="form-description">Select the organization you want to join:</p>
+                    <p className="form-description">
+                      Select the organization you want to join:
+                    </p>
 
                     {loadingOrgs ? (
-                      <div className="loading-orgs">Loading organizations...</div>
+                      <div className="loading-orgs">
+                        Loading organizations...
+                      </div>
                     ) : orgError ? (
                       <div className="org-error">Error: {orgError}</div>
                     ) : (
@@ -4675,15 +4890,20 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                           ))}
                         </select>
 
-                        {(user?.role === 'Family' || user?.role === 'PoA') &&
+                        {(user?.role === "Family" || user?.role === "PoA") &&
                           newOrgId &&
                           newOrgId !== String(user.organizationId) && (
                             <div className="migration-warning">
-                              <strong>Important:</strong> Changing organizations will:
+                              <strong>Important:</strong> Changing organizations
+                              will:
                               <ul>
-                                <li>Move all your clients to the new organization</li>
+                                <li>
+                                  Move all your clients to the new organization
+                                </li>
                                 <li>Transfer associated family/PoA members</li>
-                                <li>Revoke all staff/admin access to your clients</li>
+                                <li>
+                                  Revoke all staff/admin access to your clients
+                                </li>
                               </ul>
                             </div>
                           )}
@@ -4696,13 +4916,13 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                         onClick={handleChangeOrganization}
                         disabled={isChanging || !newOrgId || loadingOrgs}
                       >
-                        {isChanging ? 'Changing...' : 'Change Organization'}
+                        {isChanging ? "Changing..." : "Change Organization"}
                       </button>
                       <button
                         className="cancel-change-btn"
                         onClick={() => {
                           setShowChangeOrg(false);
-                          setNewOrgId('');
+                          setNewOrgId("");
                         }}
                         disabled={isChanging}
                       >
@@ -4723,8 +4943,9 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                 ) : (
                   <div className="leave-confirm">
                     <p className="warning-text">
-                      ⚠️ Are you sure you want to leave "{organizationData?.name}"?
-                      This will remove your access to all clients and data in this organization.
+                      ⚠️ Are you sure you want to leave "
+                      {organizationData?.name}"? This will remove your access to
+                      all clients and data in this organization.
                     </p>
                     <div className="confirm-actions">
                       <button
@@ -4732,7 +4953,7 @@ function OrganizationManagementModal({ isOpen, onClose, organizationData, user, 
                         onClick={handleLeaveOrganization}
                         disabled={isLeaving}
                       >
-                        {isLeaving ? 'Leaving...' : 'Yes, Leave Organization'}
+                        {isLeaving ? "Leaving..." : "Yes, Leave Organization"}
                       </button>
                       <button
                         className="cancel-leave-btn"

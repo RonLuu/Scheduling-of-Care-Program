@@ -62,8 +62,14 @@ router.post("/register", async (req, res) => {
 });
 
 // POST /api/auth/login { email, password }
-router.post("/login", requireLocal, (req, res) => {
+router.post("/login", requireLocal, async (req, res) => {
   const u = req.user;
+
+  // Populate avatarFileId to get the full file object
+  const populatedUser = await User.findById(u._id)
+    .populate("avatarFileId")
+    .lean();
+
   const jwtToken = jwt.sign(
     { sub: u._id, role: u.role, org: u.organizationId },
     process.env.JWT_SECRET,
@@ -72,7 +78,7 @@ router.post("/login", requireLocal, (req, res) => {
 
   res.json({
     session: { jwt: jwtToken, expiresIn: 3600 },
-    user: sanitizeUser(u),
+    user: sanitizeUser(populatedUser || u), // Use populated user
   });
 });
 

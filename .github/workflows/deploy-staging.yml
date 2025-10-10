@@ -56,6 +56,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Heroku CLI
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+          heroku --version
+
       - name: Deploy to Heroku Staging
         uses: akhileshns/heroku-deploy@v3.14.15
         with:
