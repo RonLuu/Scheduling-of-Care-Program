@@ -189,7 +189,6 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
   try {
     const { personId } = req.params;
     const { year } = req.query;
-    console.log("Calculating spending for:", { personId, year });
 
     if (!year) {
       return res.status(400).json({ error: "year is required" });

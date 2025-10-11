@@ -1155,7 +1155,6 @@ function DashboardContent({ client, jwt }) {
           const taskDate = new Date(t.dueDate);
           return taskDate.getFullYear() === currentYear;
         });
-        console.log(completedTasks);
 
         const totalSpent = completedTasks.reduce(
           (sum, t) => sum + (t.cost || 0),
