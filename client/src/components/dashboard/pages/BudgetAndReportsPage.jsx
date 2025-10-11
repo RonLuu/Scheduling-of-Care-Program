@@ -325,26 +325,115 @@ function BudgetPlanningPage() {
   };
 
   const handleDeleteBudgetItem = async (categoryId, itemIndex) => {
-    let updatedCategories = (budgetPlan?.categories || []).map((cat) => {
-      if (cat.id === categoryId) {
-        const updatedItems = [...(cat.items || [])];
-        updatedItems.splice(itemIndex, 1);
-        return { ...cat, items: updatedItems };
-      }
-      return cat;
-    });
-    updatedCategories = updatedCategories.map((cat) => ({
-      ...cat,
-      budget: (cat.items || []).reduce(
-        (sum, item) => sum + (parseFloat(item.budget) || 0),
-        0
-      ),
-    }));
-    const yearlyBudget = updatedCategories.reduce(
-      (sum, cat) => sum + cat.budget,
-      0
+    // Get the item being deleted
+    const category = (budgetPlan?.categories || []).find(
+      (cat) => cat.id === categoryId
     );
+    const itemToDelete = category?.items?.[itemIndex];
+
+    if (!itemToDelete) {
+      alert("Item not found");
+      return;
+    }
+
+    const itemId = itemToDelete._id;
+    const itemName = itemToDelete.name;
+
     try {
+      // Find all tasks associated with this budget item in the current year
+      const yearStart = new Date(selectedYear, 0, 1);
+      const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59);
+
+      // Get all tasks for this person in the selected year
+      const tasksResponse = await fetch(
+        `/api/care-tasks/client/${selectedClient._id}`,
+        {
+          headers: { Authorization: `Bearer ${jwt}` },
+        }
+      );
+
+      let taskCount = 0;
+      if (tasksResponse.ok) {
+        const allTasks = await tasksResponse.json();
+
+        // Filter tasks that match this budget item and are in the selected year
+        const tasksToDelete = allTasks.filter((task) => {
+          const taskDate = new Date(task.dueDate);
+          return (
+            task.budgetCategoryId === categoryId &&
+            String(task.budgetItemId) === String(itemId) &&
+            taskDate >= yearStart &&
+            taskDate <= yearEnd
+          );
+        });
+        console.log("Task to delete: ", tasksToDelete);
+
+        taskCount = tasksToDelete.length;
+
+        // Show confirmation with task count
+        const confirmMessage =
+          taskCount > 0
+            ? `Delete "${itemName}"?\n\nThis will also delete ${taskCount} associated task${
+                taskCount !== 1 ? "s" : ""
+              } in ${selectedYear}.`
+            : `Delete "${itemName}"?`;
+
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+
+        // Delete each task
+        if (tasksToDelete.length > 0) {
+          const deleteResults = await Promise.allSettled(
+            tasksToDelete.map((task) =>
+              fetch(`/api/care-tasks/${task._id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${jwt}` },
+              })
+            )
+          );
+
+          // Check if any deletions failed
+          const failedDeletions = deleteResults.filter(
+            (result) =>
+              result.status === "rejected" ||
+              (result.status === "fulfilled" && !result.value.ok)
+          );
+
+          if (failedDeletions.length > 0) {
+            console.error("Some task deletions failed:", failedDeletions);
+            throw new Error(
+              `Failed to delete ${failedDeletions.length} task(s)`
+            );
+          }
+
+          console.log(`Deleted ${tasksToDelete.length} associated task(s)`);
+        }
+      }
+
+      // Now delete the budget item
+      let updatedCategories = (budgetPlan?.categories || []).map((cat) => {
+        if (cat.id === categoryId) {
+          const updatedItems = [...(cat.items || [])];
+          updatedItems.splice(itemIndex, 1);
+          return { ...cat, items: updatedItems };
+        }
+        return cat;
+      });
+
+      updatedCategories = updatedCategories.map((cat) => ({
+        ...cat,
+        budget: (cat.items || []).reduce(
+          (sum, item) => sum + (parseFloat(item.budget) || 0),
+          0
+        ),
+      }));
+
+      const yearlyBudget = updatedCategories.reduce(
+        (sum, cat) => sum + cat.budget,
+        0
+      );
+
       await saveBudgetPlan({
         yearlyBudget,
         categories: updatedCategories,
@@ -352,8 +441,22 @@ function BudgetPlanningPage() {
         budgetPeriodStart: budgetPeriod.startDate,
         budgetPeriodEnd: budgetPeriod.endDate,
       });
+
+      // Success message with task count
+      if (taskCount > 0) {
+        alert(
+          `Successfully deleted "${itemName}" and ${taskCount} associated task${
+            taskCount !== 1 ? "s" : ""
+          }`
+        );
+      }
     } catch (error) {
       console.error("Error deleting budget item:", error);
+      alert(
+        `Failed to delete item: ${
+          error.message || "Unknown error"
+        }. Please try again.`
+      );
     }
   };
 
@@ -931,14 +1034,16 @@ function BudgetPlanningPage() {
                                       </button>
                                     </div>
                                   )}
-                                  <button
-                                    className="delete-category-btn"
-                                    onClick={() =>
-                                      handleDeleteCategory(category.id)
-                                    }
-                                  >
-                                    Remove
-                                  </button>
+                                  {itemCount === 0 && (
+                                    <button
+                                      className="delete-category-btn"
+                                      onClick={() =>
+                                        handleDeleteCategory(category.id)
+                                      }
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1646,7 +1751,7 @@ function BudgetPlanningPage() {
         }
         .delete-category-btn {
           background: #fca5a5;
-          color: #991b1b;
+          color: #991b1b !important;
           border: 1px solid #f87171;
           border-radius: 4px;
           padding: 0.375rem 0.625rem;
