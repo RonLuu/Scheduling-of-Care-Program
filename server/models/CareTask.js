@@ -92,8 +92,8 @@ const CareTaskSchema = new Schema(
   { timestamps: true }
 );
 
-CareTaskSchema.index({ organizationId: 1, status: 1, dueDate: 1 });
-CareTaskSchema.index({ assignedToUserId: 1, dueDate: 1 });
+// CareTaskSchema.index({ organizationId: 1, status: 1, dueDate: 1 });
+// CareTaskSchema.index({ assignedToUserId: 1, dueDate: 1 });
 // Note: careNeedItemId + dueDate index removed to allow multiple tasks on same date
 // If you need it for performance, add it manually without unique constraint
 

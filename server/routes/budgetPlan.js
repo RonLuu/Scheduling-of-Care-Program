@@ -264,11 +264,6 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       }
       spending[categoryId].items[itemId] += cost;
     }
-    console.log("Completed Tasks:");
-    console.log(completedTasks);
-    console.log("Returned Tasks:");
-    console.log(returnedTasks);
-    console.log(returned);
 
     res.json({ spending, returned });
   } catch (error) {

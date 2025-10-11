@@ -11,6 +11,8 @@ import { connectDB } from "./models/index.js";
 import routes from "./routes/index.js";
 import "./middleware/passport.js";
 
+import CareTask from "./models/CareTask.js"; // ensure indexes are created
+
 dotenv.config();
 
 const app = express();
@@ -73,6 +75,14 @@ if (IS_PROD) {
 const start = async () => {
   try {
     await connectDB();
+    (async () => {
+      try {
+        // Will create indexes defined in the schema AND drop any extras not in the schema
+        await CareTask.syncIndexes();
+      } catch (e) {
+        console.error("syncIndexes failed for CareTask:", e);
+      }
+    })();
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
