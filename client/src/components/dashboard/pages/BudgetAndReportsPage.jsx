@@ -52,20 +52,23 @@ function BudgetPlanningPage() {
     );
   }, [budgetPlan]);
 
-  // Initialize showWizard based on budget plan completeness
-  const [showWizard, setShowWizard] = React.useState(!isBudgetPlanComplete);
+  // Initialize showWizard - only set on first load
+  const [showWizard, setShowWizard] = React.useState(true);
+  const [hasInitialized, setHasInitialized] = React.useState(false);
 
-  // Update showWizard when budget plan changes
+  // Only auto-switch to overview on initial load if budget is complete
   React.useEffect(() => {
-    if (budgetPlan !== null && budgetPlan !== undefined) {
+    if (budgetPlan !== null && budgetPlan !== undefined && !hasInitialized) {
       setShowWizard(!isBudgetPlanComplete);
+      setHasInitialized(true);
     }
-  }, [budgetPlan, isBudgetPlanComplete]);
+  }, [budgetPlan, isBudgetPlanComplete, hasInitialized]);
 
   React.useEffect(() => {
     setPlanCopyYear(selectedYear + 1);
     setCategoryCopyYears({});
     setItemCopyYears({});
+    setHasInitialized(false); // Reset initialization when year changes
   }, [selectedYear]);
 
   const predefinedCategories = [
@@ -675,6 +678,7 @@ function BudgetPlanningPage() {
                       (c) => c._id === e.target.value
                     );
                     setSelectedClient(client);
+                    setHasInitialized(false); // Reset initialization when client changes
                     setNewCategoryName("");
                     setNewCategoryDescription("");
                     setShowAddCategory(false);
@@ -923,20 +927,18 @@ function BudgetPlanningPage() {
                                         }
                                         title="Copy all items to selected year"
                                       >
-                                        Copy category ⤴️
+                                        ⤴️
                                       </button>
                                     </div>
                                   )}
-                                  {itemCount === 0 && (
-                                    <button
-                                      className="delete-category-btn"
-                                      onClick={() =>
-                                        handleDeleteCategory(category.id)
-                                      }
-                                    >
-                                      Remove
-                                    </button>
-                                  )}
+                                  <button
+                                    className="delete-category-btn"
+                                    onClick={() =>
+                                      handleDeleteCategory(category.id)
+                                    }
+                                  >
+                                    Remove
+                                  </button>
                                 </div>
                               </div>
                             </div>
