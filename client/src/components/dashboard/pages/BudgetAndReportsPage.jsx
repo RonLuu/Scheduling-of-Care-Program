@@ -1636,7 +1636,7 @@ function BudgetPlanningPage() {
           color: white;
           border: none;
           border-radius: 4px;
-          font-size: 0.7rem;
+          font-size: 0.7rem !important;
           cursor: pointer;
         }
         .copy-btn-sm:hover {
