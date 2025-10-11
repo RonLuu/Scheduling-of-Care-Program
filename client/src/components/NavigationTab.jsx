@@ -119,10 +119,6 @@ const NavigationTab = () => {
               <BiCalendar className="navigationtab-icon" />
               Shift Allocation
             </NavItem>
-            <NavItem to="/sub-elements">
-              <BiGitBranch className="navigationtab-icon" />
-              Sub-elements
-            </NavItem>
 
             {/* Log Out as a button but styled like links */}
             <NavItem onClick={handleLogout}>
