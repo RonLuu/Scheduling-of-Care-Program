@@ -1150,12 +1150,12 @@ function DashboardContent({ client, jwt }) {
         // Calculate actual spending from completed tasks (only current year)
         const currentYear = new Date().getFullYear();
         const completedTasks = tasks.filter((t) => {
-          if (t.status !== "Completed" || !t.cost) return false;
-          const taskDate = t.completedAt
-            ? new Date(t.completedAt)
-            : new Date(t.dueDate);
+          if (t.status !== "Completed" || !t.cost || !t.budgetCategoryId)
+            return false;
+          const taskDate = new Date(t.dueDate);
           return taskDate.getFullYear() === currentYear;
         });
+        console.log(completedTasks);
 
         const totalSpent = completedTasks.reduce(
           (sum, t) => sum + (t.cost || 0),
