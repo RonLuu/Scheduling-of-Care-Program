@@ -189,6 +189,7 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
   try {
     const { personId } = req.params;
     const { year } = req.query;
+    console.log("Calculating spending for:", { personId, year });
 
     if (!year) {
       return res.status(400).json({ error: "year is required" });
@@ -206,7 +207,8 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       cost: { $exists: true, $ne: null },
       budgetCategoryId: { $exists: true, $ne: null },
       budgetItemId: { $exists: true, $ne: null },
-      completedAt: { $gte: startDate, $lte: endDate },
+      //completedAt: { $gte: startDate, $lte: endDate },
+      dueDate: { $gte: startDate, $lte: endDate }, // Use dueDate to capture tasks completed in different years
     });
 
     // Find all returned care tasks with budget tracking for this person and year
@@ -218,7 +220,8 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       budgetCategoryId: { $exists: true, $ne: null },
       budgetItemId: { $exists: true, $ne: null },
       // For returned tasks, we check completedAt as it was originally completed before being returned
-      completedAt: { $gte: startDate, $lte: endDate },
+      //completedAt: { $gte: startDate, $lte: endDate },
+      dueDate: { $gte: startDate, $lte: endDate }, // Use dueDate to capture tasks completed in different years
     });
 
     // Aggregate spending by category and item for completed tasks

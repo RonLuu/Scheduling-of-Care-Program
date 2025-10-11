@@ -352,7 +352,7 @@ async function getOrCreatePlan({ personId, orgId, year, userId }) {
 function findCategoryByIdOrName(plan, { id, name }) {
   if (!plan?.categories) return null;
   let cat = plan.categories.find((c) => c.id === id);
-  if (!cat) {
+  if (!cat && name) {
     cat = plan.categories.find(
       (c) =>
         (c.name || "").trim().toLowerCase() ===
@@ -367,8 +367,10 @@ function upsertCategory(plan, sourceCategory) {
     id: sourceCategory.id,
     name: sourceCategory.name,
   });
+
   if (!cat) {
-    cat = {
+    // Push the new category
+    plan.categories.push({
       id: sourceCategory.id,
       name: sourceCategory.name,
       emoji: sourceCategory.emoji || "📋",
@@ -376,39 +378,55 @@ function upsertCategory(plan, sourceCategory) {
       isCustom: !!sourceCategory.isCustom,
       items: [],
       budget: 0,
-    };
-    plan.categories.push(cat);
+    });
+
+    // CRITICAL FIX: Get reference to the actual Mongoose subdocument
+    // that was just added, not the plain object we pushed
+    cat = plan.categories.find((c) => c.id === sourceCategory.id);
+
+    if (!cat) {
+      throw new Error(`Failed to create category: ${sourceCategory.name}`);
+    }
   } else {
-    // keep name/emoji/description in sync (minimal)
+    // Update existing category metadata (but preserve items and budget)
     cat.name = sourceCategory.name;
     cat.emoji = sourceCategory.emoji || cat.emoji || "📋";
     cat.description = sourceCategory.description || cat.description || "";
     cat.isCustom = !!sourceCategory.isCustom;
   }
+
   return cat;
 }
 
 function upsertItemByName(cat, sourceItem) {
+  if (!cat || !sourceItem) {
+    throw new Error("Category and sourceItem are required");
+  }
+
   const nm = (sourceItem.name || "").trim().toLowerCase();
   let item = (cat.items || []).find(
     (it) => (it.name || "").trim().toLowerCase() === nm
   );
 
   if (!item) {
-    // Create new with source values
-    item = {
+    // Create new item with source values
+    cat.items.push({
       name: sourceItem.name,
       description: sourceItem.description || "",
       budget: Number(sourceItem.budget) || 0,
-    };
-    cat.items.push(item);
-    // Recompute category budget only if we added a new item
-    cat.budget = (cat.items || []).reduce(
-      (s, it) => s + (Number(it.budget) || 0),
+    });
+
+    // Get reference to the newly added item subdocument
+    item = cat.items[cat.items.length - 1];
+
+    // Recalculate category budget
+    cat.budget = cat.items.reduce(
+      (sum, it) => sum + (Number(it.budget) || 0),
       0
     );
   }
-  // If the item already exists, leave its existing description/budget AS-IS.
+  // If item exists, leave its budget/description unchanged
+
   return item;
 }
 
@@ -420,6 +438,60 @@ function addInterval(date, pattern, interval) {
   else if (pattern === "monthly") d.setMonth(d.getMonth() + step);
   else d.setDate(d.getDate() + step);
   return d;
+}
+
+async function ensureLinkForDate(
+  jsDate,
+  personId,
+  orgId,
+  userId,
+  sourceCategory,
+  sourceItem
+) {
+  const yr = jsDate.getFullYear();
+
+  const plan = await getOrCreatePlan({
+    personId,
+    orgId,
+    year: yr,
+    userId,
+  });
+
+  // Upsert category and item in the plan
+  const cat = upsertCategory(plan, sourceCategory);
+  const item = upsertItemByName(cat, sourceItem);
+
+  // Mark as modified and save
+  plan.markModified("categories");
+  await plan.save();
+
+  // After save, the subdocuments should have their IDs
+  // Reload to ensure we have fresh data with all IDs
+  const freshPlan = await BudgetPlan.findById(plan._id);
+  const freshCat = freshPlan.categories.find((c) => c.id === sourceCategory.id);
+
+  if (!freshCat) {
+    throw new Error(
+      `Category ${sourceCategory.name} not found after save for year ${yr}`
+    );
+  }
+
+  const freshItem = freshCat.items.find(
+    (it) =>
+      (it.name || "").trim().toLowerCase() ===
+      (sourceItem.name || "").trim().toLowerCase()
+  );
+
+  if (!freshItem || !freshItem._id) {
+    throw new Error(
+      `Item ${sourceItem.name} not found or missing ID after save for year ${yr}`
+    );
+  }
+
+  return {
+    budgetCategoryId: freshCat.id,
+    budgetItemId: freshItem._id,
+  };
 }
 
 // Create standalone task (not linked to careNeedItem)
@@ -450,7 +522,7 @@ router.post(
       const perm = await ensureCanManagePerson(req.user, personId);
       if (!perm.ok) return res.status(403).json({ error: perm.code });
 
-      // Validate assignee (if provided)
+      // Validate assignee
       if (assignedToUserId) {
         const u = await User.findById(assignedToUserId);
         if (
@@ -461,10 +533,11 @@ router.post(
         }
       }
 
-      // We need the source category+item template from the "source year" plan (based on start date)
+      // Get source budget plan and validate category/item
       if (!budgetCategoryId || !budgetItemId) {
         return res.status(400).json({ error: "MISSING_BUDGET_LINK" });
       }
+
       const start = new Date(dueDate);
       const sourceYear = start.getFullYear();
 
@@ -475,9 +548,9 @@ router.post(
       }).lean();
 
       if (!sourcePlan) {
-        return res
-          .status(400)
-          .json({ error: "SOURCE_BUDGET_PLAN_NOT_FOUND_FOR_START_YEAR" });
+        return res.status(400).json({
+          error: `Budget plan not found for year ${sourceYear}. Please create a budget plan for ${sourceYear} first.`,
+        });
       }
 
       const sourceCategory = (sourcePlan.categories || []).find(
@@ -486,6 +559,7 @@ router.post(
       if (!sourceCategory) {
         return res.status(400).json({ error: "SOURCE_CATEGORY_NOT_FOUND" });
       }
+
       const sourceItem = (sourceCategory.items || []).find(
         (it) => String(it._id) === String(budgetItemId)
       );
@@ -504,38 +578,7 @@ router.post(
         return date;
       };
 
-      // Given a target date, ensure we have that year's plan/category/item and return their ids to attach
-      const ensureLinkForDate = async (jsDate) => {
-        const yr = jsDate.getFullYear();
-        const plan = await getOrCreatePlan({
-          personId,
-          orgId: perm.person.organizationId,
-          year: yr,
-          userId: req.user.id,
-        });
-
-        // Mongoose subdocs — use plain object, modify, then save the parent plan
-        const cat = upsertCategory(plan, sourceCategory);
-        const item = upsertItemByName(cat, sourceItem);
-        await plan.save();
-
-        // `cat.id` is string; `item._id` exists after save
-        const savedPlan = await BudgetPlan.findById(plan._id).lean();
-        const realCat = (savedPlan.categories || []).find(
-          (c) => c.id === cat.id
-        );
-        const realItem = (realCat?.items || []).find(
-          (it) =>
-            (it.name || "").trim().toLowerCase() ===
-            (sourceItem.name || "").trim().toLowerCase()
-        );
-
-        return {
-          budgetCategoryId: realCat?.id,
-          budgetItemId: realItem?._id,
-        };
-      };
-
+      // Create tasks
       if (isRecurring && recurrencePattern) {
         const endDate = recurrenceEndDate
           ? new Date(recurrenceEndDate)
@@ -544,41 +587,60 @@ router.post(
               recurrencePattern,
               Math.max(1, recurrenceInterval || 1) * 9999
             );
+
         let currentDate = new Date(start);
         let count = 0;
-        const maxTasks = 10000; // safety cap
+        const maxTasks = 10000;
+        const yearsProcessed = new Set();
 
         while (currentDate <= endDate && count < maxTasks) {
           const currentDateStr = currentDate.toISOString().split("T")[0];
+          const currentYear = currentDate.getFullYear();
 
-          const link = await ensureLinkForDate(currentDate);
-          if (!link.budgetCategoryId || !link.budgetItemId) {
-            throw new Error("FAILED_TO_LINK_BUDGET_ITEM_FOR_DATE");
+          try {
+            // Track which years we're creating tasks for
+            yearsProcessed.add(currentYear);
+
+            const link = await ensureLinkForDate(
+              currentDate,
+              personId,
+              perm.person.organizationId,
+              req.user.id,
+              sourceCategory,
+              sourceItem
+            );
+
+            const taskDoc = {
+              personId,
+              organizationId: perm.person.organizationId,
+              title,
+              dueDate: new Date(currentDate),
+              scheduleType: scheduleType || "AllDay",
+              status: "Scheduled",
+              assignedToUserId: assignedToUserId || undefined,
+              budgetCategoryId: link.budgetCategoryId,
+              budgetItemId: link.budgetItemId,
+            };
+
+            if (scheduleType === "Timed") {
+              if (startAt)
+                taskDoc.startAt = combineDateTime(currentDateStr, startAt);
+              if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
+            }
+
+            if (expectedCost !== undefined) {
+              taskDoc.expectedCost = Number(expectedCost);
+            }
+
+            tasksToCreate.push(taskDoc);
+          } catch (err) {
+            console.error(
+              `[care-tasks] Error creating budget link for ${currentDateStr}:`,
+              err.message
+            );
+            // Continue with next date instead of failing completely
           }
 
-          const taskDoc = {
-            personId,
-            organizationId: perm.person.organizationId,
-            title,
-            dueDate: new Date(currentDate),
-            scheduleType: "AllDay",
-            status: "Scheduled",
-            assignedToUserId: assignedToUserId || undefined,
-            budgetCategoryId: link.budgetCategoryId,
-            budgetItemId: link.budgetItemId,
-          };
-
-          if (scheduleType === "Timed") {
-            if (startAt)
-              taskDoc.startAt = combineDateTime(currentDateStr, startAt);
-            if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
-          }
-          if (expectedCost !== undefined)
-            taskDoc.expectedCost = Number(expectedCost);
-
-          tasksToCreate.push(taskDoc);
-
-          // next date
           currentDate = addInterval(
             currentDate,
             recurrencePattern,
@@ -586,18 +648,40 @@ router.post(
           );
           count++;
         }
+
+        if (tasksToCreate.length === 0) {
+          return res.status(400).json({
+            error:
+              "Failed to create any tasks. Check budget plans exist for all years.",
+          });
+        }
+
+        const createdTasks = await CareTask.insertMany(tasksToCreate);
+        const yearsAffected = Array.from(yearsProcessed).sort().join(", ");
+
+        res.status(201).json({
+          success: true,
+          tasksCreated: createdTasks.length,
+          tasks: createdTasks,
+          message: `Created ${createdTasks.length} recurring task(s) across years: ${yearsAffected}`,
+        });
       } else {
-        // Single task (can be past or future)
-        const link = await (async () => {
-          return ensureLinkForDate(new Date(dueDate));
-        })();
+        // Single task
+        const link = await ensureLinkForDate(
+          new Date(dueDate),
+          personId,
+          perm.person.organizationId,
+          req.user.id,
+          sourceCategory,
+          sourceItem
+        );
 
         const taskDoc = {
           personId,
           organizationId: perm.person.organizationId,
           title,
           dueDate: new Date(dueDate),
-          scheduleType: "AllDay",
+          scheduleType: scheduleType || "AllDay",
           status: "Scheduled",
           assignedToUserId: assignedToUserId || undefined,
           budgetCategoryId: link.budgetCategoryId,
@@ -608,22 +692,27 @@ router.post(
           if (startAt) taskDoc.startAt = combineDateTime(dueDate, startAt);
           if (endAt) taskDoc.endAt = combineDateTime(dueDate, endAt);
         }
-        if (expectedCost !== undefined)
+
+        if (expectedCost !== undefined) {
           taskDoc.expectedCost = Number(expectedCost);
+        }
 
         tasksToCreate.push(taskDoc);
+        const createdTasks = await CareTask.insertMany(tasksToCreate);
+
+        res.status(201).json({
+          success: true,
+          tasksCreated: 1,
+          tasks: createdTasks,
+          message: "Task created successfully",
+        });
       }
-
-      const createdTasks = await CareTask.insertMany(tasksToCreate);
-
-      res.status(201).json({
-        success: true,
-        tasksCreated: createdTasks.length,
-        tasks: createdTasks,
-      });
     } catch (e) {
       console.error("standalone-create error:", e);
-      res.status(400).json({ error: e.message });
+      res.status(400).json({
+        error: e.message || "Failed to create task",
+        details: process.env.NODE_ENV === "development" ? e.stack : undefined,
+      });
     }
   }
 );

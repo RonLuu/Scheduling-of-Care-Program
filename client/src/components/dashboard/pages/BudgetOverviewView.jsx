@@ -29,6 +29,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("Spending data:", data);
           setActualSpending(data.spending || {});
           setReturnedAmounts(data.returned || {});
         }
@@ -103,11 +104,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   };
 
   const getItemSpent = (categoryId, itemId) => {
-    return actualSpending[categoryId]?.items?.[itemId] || 0;
+    const cat = actualSpending?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
   };
 
   const getItemReturned = (categoryId, itemId) => {
-    return returnedAmounts[categoryId]?.items?.[itemId] || 0;
+    const cat = returnedAmounts?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
   };
 
   const formatCurrency = (amount) => {
