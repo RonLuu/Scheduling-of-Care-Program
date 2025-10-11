@@ -1,9 +1,11 @@
+// careTask.js
 import { Router } from "express";
 import CareTask from "../models/CareTask.js";
 import CareNeedItem from "../models/CareNeedItem.js";
 import Person from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
 import PersonUserLink from "../models/PersonUserLink.js";
+import BudgetPlan from "../models/BudgetPlan.js";
 import FileUpload from "../models/FileUpload.js";
 import Comment from "../models/Comment.js";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
@@ -326,7 +328,101 @@ router.get("/client/:personId", requireAuth, async (req, res) => {
   }
 });
 
-// NEW: Create standalone task (not linked to careNeedItem)
+async function getOrCreatePlan({ personId, orgId, year, userId }) {
+  let plan = await BudgetPlan.findOne({
+    personId,
+    organizationId: orgId,
+    year,
+  });
+  if (!plan) {
+    plan = await BudgetPlan.create({
+      personId,
+      organizationId: orgId,
+      createdByUserId: userId,
+      year,
+      yearlyBudget: 0,
+      categories: [],
+      deletedCategories: [],
+      status: "Active",
+    });
+  }
+  return plan;
+}
+
+function findCategoryByIdOrName(plan, { id, name }) {
+  if (!plan?.categories) return null;
+  let cat = plan.categories.find((c) => c.id === id);
+  if (!cat) {
+    cat = plan.categories.find(
+      (c) =>
+        (c.name || "").trim().toLowerCase() ===
+        (name || "").trim().toLowerCase()
+    );
+  }
+  return cat || null;
+}
+
+function upsertCategory(plan, sourceCategory) {
+  let cat = findCategoryByIdOrName(plan, {
+    id: sourceCategory.id,
+    name: sourceCategory.name,
+  });
+  if (!cat) {
+    cat = {
+      id: sourceCategory.id,
+      name: sourceCategory.name,
+      emoji: sourceCategory.emoji || "📋",
+      description: sourceCategory.description || "",
+      isCustom: !!sourceCategory.isCustom,
+      items: [],
+      budget: 0,
+    };
+    plan.categories.push(cat);
+  } else {
+    // keep name/emoji/description in sync (minimal)
+    cat.name = sourceCategory.name;
+    cat.emoji = sourceCategory.emoji || cat.emoji || "📋";
+    cat.description = sourceCategory.description || cat.description || "";
+    cat.isCustom = !!sourceCategory.isCustom;
+  }
+  return cat;
+}
+
+function upsertItemByName(cat, sourceItem) {
+  const nm = (sourceItem.name || "").trim().toLowerCase();
+  let item = (cat.items || []).find(
+    (it) => (it.name || "").trim().toLowerCase() === nm
+  );
+
+  if (!item) {
+    // Create new with source values
+    item = {
+      name: sourceItem.name,
+      description: sourceItem.description || "",
+      budget: Number(sourceItem.budget) || 0,
+    };
+    cat.items.push(item);
+    // Recompute category budget only if we added a new item
+    cat.budget = (cat.items || []).reduce(
+      (s, it) => s + (Number(it.budget) || 0),
+      0
+    );
+  }
+  // If the item already exists, leave its existing description/budget AS-IS.
+  return item;
+}
+
+function addInterval(date, pattern, interval) {
+  const step = Math.max(1, Number(interval) || 1);
+  const d = new Date(date);
+  if (pattern === "daily") d.setDate(d.getDate() + step);
+  else if (pattern === "weekly") d.setDate(d.getDate() + 7 * step);
+  else if (pattern === "monthly") d.setMonth(d.getMonth() + step);
+  else d.setDate(d.getDate() + step);
+  return d;
+}
+
+// Create standalone task (not linked to careNeedItem)
 router.post(
   "/standalone",
   requireAuth,
@@ -365,9 +461,41 @@ router.post(
         }
       }
 
+      // We need the source category+item template from the "source year" plan (based on start date)
+      if (!budgetCategoryId || !budgetItemId) {
+        return res.status(400).json({ error: "MISSING_BUDGET_LINK" });
+      }
+      const start = new Date(dueDate);
+      const sourceYear = start.getFullYear();
+
+      const sourcePlan = await BudgetPlan.findOne({
+        personId,
+        organizationId: perm.person.organizationId,
+        year: sourceYear,
+      }).lean();
+
+      if (!sourcePlan) {
+        return res
+          .status(400)
+          .json({ error: "SOURCE_BUDGET_PLAN_NOT_FOUND_FOR_START_YEAR" });
+      }
+
+      const sourceCategory = (sourcePlan.categories || []).find(
+        (c) => c.id === budgetCategoryId
+      );
+      if (!sourceCategory) {
+        return res.status(400).json({ error: "SOURCE_CATEGORY_NOT_FOUND" });
+      }
+      const sourceItem = (sourceCategory.items || []).find(
+        (it) => String(it._id) === String(budgetItemId)
+      );
+      if (!sourceItem) {
+        return res.status(400).json({ error: "SOURCE_ITEM_NOT_FOUND" });
+      }
+
       const tasksToCreate = [];
 
-      // Helper function to combine date and time
+      // Helper to combine date and time
       const combineDateTime = (dateStr, timeStr) => {
         if (!dateStr || !timeStr) return undefined;
         const date = new Date(dateStr);
@@ -376,86 +504,110 @@ router.post(
         return date;
       };
 
+      // Given a target date, ensure we have that year's plan/category/item and return their ids to attach
+      const ensureLinkForDate = async (jsDate) => {
+        const yr = jsDate.getFullYear();
+        const plan = await getOrCreatePlan({
+          personId,
+          orgId: perm.person.organizationId,
+          year: yr,
+          userId: req.user.id,
+        });
+
+        // Mongoose subdocs — use plain object, modify, then save the parent plan
+        const cat = upsertCategory(plan, sourceCategory);
+        const item = upsertItemByName(cat, sourceItem);
+        await plan.save();
+
+        // `cat.id` is string; `item._id` exists after save
+        const savedPlan = await BudgetPlan.findById(plan._id).lean();
+        const realCat = (savedPlan.categories || []).find(
+          (c) => c.id === cat.id
+        );
+        const realItem = (realCat?.items || []).find(
+          (it) =>
+            (it.name || "").trim().toLowerCase() ===
+            (sourceItem.name || "").trim().toLowerCase()
+        );
+
+        return {
+          budgetCategoryId: realCat?.id,
+          budgetItemId: realItem?._id,
+        };
+      };
+
       if (isRecurring && recurrencePattern) {
-        // Generate recurring tasks
-        const startDate = new Date(dueDate);
         const endDate = recurrenceEndDate
           ? new Date(recurrenceEndDate)
-          : new Date(
-              startDate.getFullYear() + 1,
-              startDate.getMonth(),
-              startDate.getDate()
+          : addInterval(
+              start,
+              recurrencePattern,
+              Math.max(1, recurrenceInterval || 1) * 9999
             );
-        let currentDate = new Date(startDate);
+        let currentDate = new Date(start);
         let count = 0;
-        const maxTasks = 365; // Limit to prevent infinite loops
+        const maxTasks = 10000; // safety cap
 
         while (currentDate <= endDate && count < maxTasks) {
-          const currentDateStr = currentDate.toISOString().split("T")[0]; // YYYY-MM-DD format
+          const currentDateStr = currentDate.toISOString().split("T")[0];
+
+          const link = await ensureLinkForDate(currentDate);
+          if (!link.budgetCategoryId || !link.budgetItemId) {
+            throw new Error("FAILED_TO_LINK_BUDGET_ITEM_FOR_DATE");
+          }
 
           const taskDoc = {
             personId,
             organizationId: perm.person.organizationId,
             title,
             dueDate: new Date(currentDate),
-            scheduleType: scheduleType || "AllDay",
+            scheduleType: "AllDay",
             status: "Scheduled",
             assignedToUserId: assignedToUserId || undefined,
+            budgetCategoryId: link.budgetCategoryId,
+            budgetItemId: link.budgetItemId,
           };
 
-          // Only add time fields if it's a timed task
           if (scheduleType === "Timed") {
             if (startAt)
               taskDoc.startAt = combineDateTime(currentDateStr, startAt);
             if (endAt) taskDoc.endAt = combineDateTime(currentDateStr, endAt);
           }
-
-          // Add budget fields if provided
-          if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
-          if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
           if (expectedCost !== undefined)
             taskDoc.expectedCost = Number(expectedCost);
 
           tasksToCreate.push(taskDoc);
 
-          // Increment date based on pattern
-          if (recurrencePattern === "daily") {
-            currentDate.setDate(
-              currentDate.getDate() + (recurrenceInterval || 1)
-            );
-          } else if (recurrencePattern === "weekly") {
-            currentDate.setDate(
-              currentDate.getDate() + 7 * (recurrenceInterval || 1)
-            );
-          } else if (recurrencePattern === "monthly") {
-            currentDate.setMonth(
-              currentDate.getMonth() + (recurrenceInterval || 1)
-            );
-          }
-
+          // next date
+          currentDate = addInterval(
+            currentDate,
+            recurrencePattern,
+            recurrenceInterval || 1
+          );
           count++;
         }
       } else {
-        // Single task
+        // Single task (can be past or future)
+        const link = await (async () => {
+          return ensureLinkForDate(new Date(dueDate));
+        })();
+
         const taskDoc = {
           personId,
           organizationId: perm.person.organizationId,
           title,
           dueDate: new Date(dueDate),
-          scheduleType: scheduleType || "AllDay",
+          scheduleType: "AllDay",
           status: "Scheduled",
           assignedToUserId: assignedToUserId || undefined,
+          budgetCategoryId: link.budgetCategoryId,
+          budgetItemId: link.budgetItemId,
         };
 
-        // Only add time fields if it's a timed task
         if (scheduleType === "Timed") {
           if (startAt) taskDoc.startAt = combineDateTime(dueDate, startAt);
           if (endAt) taskDoc.endAt = combineDateTime(dueDate, endAt);
         }
-
-        // Add budget fields if provided
-        if (budgetCategoryId) taskDoc.budgetCategoryId = budgetCategoryId;
-        if (budgetItemId) taskDoc.budgetItemId = budgetItemId;
         if (expectedCost !== undefined)
           taskDoc.expectedCost = Number(expectedCost);
 
@@ -470,6 +622,7 @@ router.post(
         tasks: createdTasks,
       });
     } catch (e) {
+      console.error("standalone-create error:", e);
       res.status(400).json({ error: e.message });
     }
   }
