@@ -220,7 +220,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         personId: selectedClient,
         title: taskData.title.trim(),
         dueDate: taskData.dueDate,
-        scheduleType: "AllDay", // Always AllDay as per requirement
+        scheduleType: "AllDay", // Always AllDay
         assignedToUserId: taskData.assignedToUserId || undefined,
         isRecurring: taskData.isRecurring,
         recurrencePattern: taskData.isRecurring
