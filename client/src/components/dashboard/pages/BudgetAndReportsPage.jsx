@@ -31,12 +31,24 @@ function BudgetPlanningPage() {
     description: "",
   });
 
+  // COPY: small state for copy-target years (plan/category/item)
+  const nextYearDefault = selectedYear + 1;
+  const [planCopyYear, setPlanCopyYear] = React.useState(nextYearDefault);
+  const [categoryCopyYears, setCategoryCopyYears] = React.useState({}); // { [categoryId]: year }
+  const [itemCopyYears, setItemCopyYears] = React.useState({}); // { [`${categoryId}:${index}`]: year }
+  React.useEffect(() => {
+    setPlanCopyYear(selectedYear + 1);
+    setCategoryCopyYears({});
+    setItemCopyYears({});
+  }, [selectedYear]);
+
   // Use the budget plan hook
   const {
     budgetPlan,
     loading: budgetLoading,
     error: budgetError,
     saveBudgetPlan,
+    refresh,
   } = useBudgetPlan(selectedClient?._id, selectedYear, jwt);
 
   // Predefined categories with emojis
@@ -93,8 +105,8 @@ function BudgetPlanningPage() {
 
   // Calculate budget period for calendar year
   const budgetPeriod = React.useMemo(() => {
-    const startDate = new Date(selectedYear, 0, 1); // Jan 1
-    const endDate = new Date(selectedYear, 11, 31); // Dec 31
+    const startDate = new Date(selectedYear, 0, 1);
+    const endDate = new Date(selectedYear, 11, 31);
     const label = `Calendar Year ${selectedYear}`;
     return { startDate, endDate, label };
   }, [selectedYear]);
@@ -112,16 +124,13 @@ function BudgetPlanningPage() {
       setDeletedCategories([]);
       return;
     }
-
     if (!budgetPlan.categories || !Array.isArray(budgetPlan.categories)) {
       setDeletedCategories([]);
       return;
     }
-
     const customCatsFromBackend = budgetPlan.categories.filter(
       (cat) => cat.isCustom
     );
-
     setCustomCategories((prevCustom) => {
       const budgetPlanCustomIds = new Set(
         customCatsFromBackend.map((cat) => cat.id)
@@ -131,7 +140,6 @@ function BudgetPlanningPage() {
       );
       return [...customCatsFromBackend, ...localOnly];
     });
-
     if (
       budgetPlan.deletedCategories &&
       Array.isArray(budgetPlan.deletedCategories)
@@ -167,7 +175,6 @@ function BudgetPlanningPage() {
       alert("Please enter a category name");
       return;
     }
-
     const newCategory = {
       id: `custom_${Date.now()}`,
       name: newCategoryName.trim(),
@@ -175,7 +182,6 @@ function BudgetPlanningPage() {
       description: newCategoryDescription.trim() || "Custom category",
       isCustom: true,
     };
-
     const updatedCustomCategories = [...customCategories, newCategory];
     setCustomCategories(updatedCustomCategories);
     setNewCategoryName("");
@@ -188,7 +194,6 @@ function BudgetPlanningPage() {
       (cat) => cat.id === categoryId
     );
     let updatedDeletedCategories = deletedCategories;
-
     if (predefinedCategory) {
       updatedDeletedCategories = [...deletedCategories, categoryId];
       setDeletedCategories(updatedDeletedCategories);
@@ -197,12 +202,9 @@ function BudgetPlanningPage() {
         prev.filter((cat) => cat.id !== categoryId)
       );
     }
-
     const updatedCategories = (budgetPlan?.categories || []).filter(
       (cat) => cat.id !== categoryId
     );
-
-    // Recalculate yearly budget
     const yearlyBudget = updatedCategories.reduce((sum, cat) => {
       const catBudget = (cat.items || []).reduce(
         (itemSum, item) => itemSum + (parseFloat(item.budget) || 0),
@@ -210,7 +212,6 @@ function BudgetPlanningPage() {
       );
       return sum + catBudget;
     }, 0);
-
     try {
       await saveBudgetPlan({
         yearlyBudget,
@@ -251,31 +252,25 @@ function BudgetPlanningPage() {
       alert("Please enter an item name");
       return;
     }
-
     if (!itemBudget || isNaN(itemBudget) || parseFloat(itemBudget) <= 0) {
       alert("Please enter a valid budget amount");
       return;
     }
-
     const newItem = {
       name: itemName.trim(),
       budget: parseFloat(itemBudget),
       description: itemDescription.trim(),
     };
-
-    // Update the category with the new item
     let updatedCategories = [...(budgetPlan?.categories || [])];
     const categoryIndex = updatedCategories.findIndex(
       (cat) => cat.id === categoryId
     );
-
     if (categoryIndex >= 0) {
       updatedCategories[categoryIndex] = {
         ...updatedCategories[categoryIndex],
         items: [...(updatedCategories[categoryIndex].items || []), newItem],
       };
     } else {
-      // Category doesn't exist yet, create it
       const categoryData = getAllAvailableCategories().find(
         (cat) => cat.id === categoryId
       );
@@ -287,8 +282,6 @@ function BudgetPlanningPage() {
         });
       }
     }
-
-    // Recalculate category budgets and yearly budget
     updatedCategories = updatedCategories.map((cat) => ({
       ...cat,
       budget: (cat.items || []).reduce(
@@ -296,12 +289,10 @@ function BudgetPlanningPage() {
         0
       ),
     }));
-
     const yearlyBudget = updatedCategories.reduce(
       (sum, cat) => sum + cat.budget,
       0
     );
-
     try {
       await saveBudgetPlan({
         yearlyBudget,
@@ -310,8 +301,6 @@ function BudgetPlanningPage() {
         budgetPeriodStart: budgetPeriod.startDate,
         budgetPeriodEnd: budgetPeriod.endDate,
       });
-
-      // Clear the form
       setNewItemForms((prev) => ({
         ...prev,
         [categoryId]: { name: "", budget: "", description: "" },
@@ -326,15 +315,10 @@ function BudgetPlanningPage() {
       if (cat.id === categoryId) {
         const updatedItems = [...(cat.items || [])];
         updatedItems.splice(itemIndex, 1);
-        return {
-          ...cat,
-          items: updatedItems,
-        };
+        return { ...cat, items: updatedItems };
       }
       return cat;
     });
-
-    // Recalculate category budgets and yearly budget
     updatedCategories = updatedCategories.map((cat) => ({
       ...cat,
       budget: (cat.items || []).reduce(
@@ -342,12 +326,10 @@ function BudgetPlanningPage() {
         0
       ),
     }));
-
     const yearlyBudget = updatedCategories.reduce(
       (sum, cat) => sum + cat.budget,
       0
     );
-
     try {
       await saveBudgetPlan({
         yearlyBudget,
@@ -369,18 +351,15 @@ function BudgetPlanningPage() {
       description: item.description || "",
     });
   };
-
   const handleCancelEditItem = () => {
     setEditingItem(null);
     setEditItemData({ name: "", budget: "", description: "" });
   };
-
   const handleSaveEditItem = async (categoryId, itemIndex) => {
     if (!editItemData.name.trim()) {
       alert("Please enter an item name");
       return;
     }
-
     if (
       !editItemData.budget ||
       isNaN(editItemData.budget) ||
@@ -389,7 +368,6 @@ function BudgetPlanningPage() {
       alert("Please enter a valid budget amount");
       return;
     }
-
     let updatedCategories = (budgetPlan?.categories || []).map((cat) => {
       if (cat.id === categoryId) {
         const updatedItems = [...(cat.items || [])];
@@ -399,15 +377,10 @@ function BudgetPlanningPage() {
           budget: parseFloat(editItemData.budget),
           description: editItemData.description.trim(),
         };
-        return {
-          ...cat,
-          items: updatedItems,
-        };
+        return { ...cat, items: updatedItems };
       }
       return cat;
     });
-
-    // Recalculate category budgets and yearly budget
     updatedCategories = updatedCategories.map((cat) => ({
       ...cat,
       budget: (cat.items || []).reduce(
@@ -415,12 +388,10 @@ function BudgetPlanningPage() {
         0
       ),
     }));
-
     const yearlyBudget = updatedCategories.reduce(
       (sum, cat) => sum + cat.budget,
       0
     );
-
     try {
       await saveBudgetPlan({
         yearlyBudget,
@@ -429,8 +400,6 @@ function BudgetPlanningPage() {
         budgetPeriodStart: budgetPeriod.startDate,
         budgetPeriodEnd: budgetPeriod.endDate,
       });
-
-      // Clear editing state
       setEditingItem(null);
       setEditItemData({ name: "", budget: "", description: "" });
     } catch (error) {
@@ -446,6 +415,196 @@ function BudgetPlanningPage() {
       years.push(i);
     }
     return years;
+  };
+
+  // COPY: build future-year choices (next 10 years starting from selectedYear)
+  const getFutureYears = () => {
+    const years = [];
+    for (let y = selectedYear + 1; y <= selectedYear + 10; y++) years.push(y);
+    return years;
+  };
+
+  // COPY: API helpers to load and upsert the target-year plan without disturbing current page state
+  const apiGetPlan = async (personId, year) => {
+    const resp = await fetch(
+      `/api/budget-plans?personId=${encodeURIComponent(
+        personId
+      )}&year=${encodeURIComponent(year)}`,
+      { headers: { Authorization: `Bearer ${jwt}` } }
+    );
+    const data = await resp.json();
+    if (!resp.ok)
+      throw new Error(data.error || "Failed to load target budget plan");
+    return data.budgetPlan || null;
+  };
+
+  const apiUpsertPlan = async (personId, year, payload, hasExistingPlan) => {
+    const resp = await fetch("/api/budget-plans", {
+      method: hasExistingPlan ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ personId, year, ...payload }),
+    });
+    const data = await resp.json();
+    if (!resp.ok)
+      throw new Error(data.error || "Failed to save target budget plan");
+    return data.budgetPlan;
+  };
+
+  // COPY: merge logic — do NOT delete anything that already exists
+  const sumItemBudgets = (items = []) =>
+    items.reduce((s, it) => s + (parseFloat(it.budget) || 0), 0);
+
+  const recomputeTotals = (categories = []) => {
+    const cats = categories.map((c) => ({
+      ...c,
+      budget: sumItemBudgets(c.items || []),
+    }));
+    const yearlyBudget = cats.reduce((s, c) => s + (c.budget || 0), 0);
+    return { categories: cats, yearlyBudget };
+  };
+
+  const ensureCategoryInTarget = (targetCategories, sourceCatMeta) => {
+    const idx = targetCategories.findIndex((c) => c.id === sourceCatMeta.id);
+    if (idx >= 0) {
+      // keep existing meta; do not remove anything
+      return targetCategories[idx];
+    }
+    const newCat = {
+      id: sourceCatMeta.id,
+      name: sourceCatMeta.name,
+      emoji: sourceCatMeta.emoji || "📋",
+      description: sourceCatMeta.description || "",
+      isCustom: !!sourceCatMeta.isCustom,
+      items: [],
+      budget: 0,
+    };
+    targetCategories.push(newCat);
+    return newCat;
+  };
+
+  const upsertItemByName = (categoryObj, item) => {
+    const existingIdx = (categoryObj.items || []).findIndex(
+      (it) => it.name === item.name
+    );
+    const clean = {
+      name: item.name,
+      description: item.description || "",
+      budget: parseFloat(item.budget) || 0,
+    };
+    if (existingIdx >= 0) {
+      categoryObj.items[existingIdx] = clean; // override by same name
+    } else {
+      categoryObj.items.push(clean); // create new
+    }
+  };
+
+  // COPY: core actions
+  const copySingleItem = async (categoryId, item, targetYear) => {
+    if (!selectedClient || !budgetPlan) return;
+    try {
+      const target = await apiGetPlan(selectedClient._id, targetYear);
+      const baseCategories = target?.categories ? [...target.categories] : [];
+      const srcCategoryMeta =
+        (budgetPlan.categories || []).find((c) => c.id === categoryId) ||
+        getAllAvailableCategories().find((c) => c.id === categoryId);
+
+      const targetCat = ensureCategoryInTarget(baseCategories, srcCategoryMeta);
+      upsertItemByName(targetCat, item);
+
+      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
+      const payload = {
+        categories,
+        yearlyBudget,
+        deletedCategories: target?.deletedCategories || [],
+        budgetPeriodStart: new Date(targetYear, 0, 1),
+        budgetPeriodEnd: new Date(targetYear, 11, 31),
+      };
+      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
+      alert(
+        `Copied “${item.name}” to ${targetYear} in “${srcCategoryMeta.name}”.`
+      );
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Failed to copy item");
+    }
+  };
+
+  const copyWholeCategory = async (categoryId, targetYear) => {
+    if (!selectedClient || !budgetPlan) return;
+    const src = (budgetPlan.categories || []).find((c) => c.id === categoryId);
+    if (!src || !src.items || src.items.length === 0) {
+      alert("This category has no items to copy.");
+      return;
+    }
+    try {
+      const target = await apiGetPlan(selectedClient._id, targetYear);
+      const baseCategories = target?.categories ? [...target.categories] : [];
+
+      const targetCat = ensureCategoryInTarget(baseCategories, src);
+      (src.items || []).forEach((it) => upsertItemByName(targetCat, it));
+
+      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
+      const payload = {
+        categories,
+        yearlyBudget,
+        deletedCategories: target?.deletedCategories || [],
+        budgetPeriodStart: new Date(targetYear, 0, 1),
+        budgetPeriodEnd: new Date(targetYear, 11, 31),
+      };
+      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
+      alert(
+        `Copied category “${src.name}” (${src.items.length} item${
+          src.items.length !== 1 ? "s" : ""
+        }) to ${targetYear}.`
+      );
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Failed to copy category");
+    }
+  };
+
+  const copyWholePlan = async (targetYear) => {
+    if (!selectedClient || !budgetPlan) return;
+    const srcCats = (budgetPlan.categories || []).filter(
+      (c) => (c.items || []).length > 0
+    );
+    if (srcCats.length === 0) {
+      alert("There are no items in this budget plan to copy.");
+      return;
+    }
+    try {
+      const target = await apiGetPlan(selectedClient._id, targetYear);
+      const baseCategories = target?.categories ? [...target.categories] : [];
+
+      srcCats.forEach((srcCat) => {
+        const tcat = ensureCategoryInTarget(baseCategories, srcCat);
+        (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
+      });
+
+      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
+      const payload = {
+        categories,
+        yearlyBudget,
+        deletedCategories: target?.deletedCategories || [],
+        budgetPeriodStart: new Date(targetYear, 0, 1),
+        budgetPeriodEnd: new Date(targetYear, 11, 31),
+      };
+      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
+      alert(
+        `Copied ${srcCats.reduce(
+          (s, c) => s + (c.items?.length || 0),
+          0
+        )} item(s) across ${srcCats.length} categor${
+          srcCats.length === 1 ? "y" : "ies"
+        } to ${targetYear}.`
+      );
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Failed to copy budget plan");
+    }
   };
 
   if (loading) {
@@ -553,17 +712,55 @@ function BudgetPlanningPage() {
                 const shouldShowOverview = isBudgetPlanComplete && !showWizard;
 
                 return (
-                  shouldShowOverview && (
-                    <button
-                      className="reconfigure-btn"
-                      onClick={() => setShowWizard(true)}
-                    >
-                      ✏️ Edit Budget Plan
-                    </button>
-                  )
+                  <>
+                    {shouldShowOverview && (
+                      <button
+                        className="reconfigure-btn"
+                        onClick={() => setShowWizard(true)}
+                      >
+                        ✏️ Edit Budget Plan
+                      </button>
+                    )}
+
+                    {/* COPY: Plan-level copy controls */}
+                    {selectedClient && (
+                      <div
+                        className="copy-plan-controls"
+                        title="Copy the entire plan to a future year"
+                      >
+                        <label>
+                          Copy whole plan to:{" "}
+                          <select
+                            value={planCopyYear}
+                            onChange={(e) =>
+                              setPlanCopyYear(parseInt(e.target.value))
+                            }
+                          >
+                            {getFutureYears().map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          className="copy-plan-btn"
+                          onClick={() => copyWholePlan(planCopyYear)}
+                        >
+                          ⤴️ Copy Plan
+                        </button>
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </div>
+            <p className="copy-tip">
+              <strong>Tip:</strong> Copy items, categories, or the whole plan to
+              a future year. Existing items in the destination year are{" "}
+              <em>not deleted</em>; items with the same name in the same
+              category are <em>updated</em>.
+            </p>
           </div>
 
           {selectedClient && (
@@ -596,16 +793,17 @@ function BudgetPlanningPage() {
                       <ol>
                         <li>
                           <strong>Review Categories:</strong> Select from
-                          predefined categories or add custom ones for your
-                          specific needs.
+                          predefined categories or add custom ones.
                         </li>
                         <li>
-                          <strong>Add Budget Items:</strong> Within each
-                          category, add specific items and their budgets. The
-                          category and yearly budgets are automatically
-                          calculated.
+                          <strong>Add Budget Items:</strong> Add items and their
+                          budgets. Totals are automatic.
                         </li>
                       </ol>
+                      <p className="instructions-copy-note">
+                        Need to carry this plan forward? Use the “Copy…”
+                        controls to move items to next year(s).
+                      </p>
                     </div>
 
                     {/* Budget Summary */}
@@ -715,6 +913,9 @@ function BudgetPlanningPage() {
                               budgetPlan?.categories || []
                             ).find((cat) => cat.id === category.id);
                             const itemCount = categoryData?.items?.length || 0;
+                            const targetYearForCat =
+                              categoryCopyYears[category.id] ||
+                              selectedYear + 1;
 
                             return (
                               <div key={category.id} className="category-card">
@@ -751,6 +952,44 @@ function BudgetPlanningPage() {
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* COPY: Category-level controls (only if has items) */}
+                                  {itemCount > 0 && (
+                                    <div className="copy-category-controls">
+                                      <label>
+                                        Copy to{" "}
+                                        <select
+                                          value={targetYearForCat}
+                                          onChange={(e) =>
+                                            setCategoryCopyYears((prev) => ({
+                                              ...prev,
+                                              [category.id]: parseInt(
+                                                e.target.value
+                                              ),
+                                            }))
+                                          }
+                                        >
+                                          {getFutureYears().map((y) => (
+                                            <option key={y} value={y}>
+                                              {y}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                      <button
+                                        className="copy-category-btn"
+                                        onClick={() =>
+                                          copyWholeCategory(
+                                            category.id,
+                                            targetYearForCat
+                                          )
+                                        }
+                                      >
+                                        ⤴️ Copy Category
+                                      </button>
+                                    </div>
+                                  )}
+
                                   <button
                                     className="delete-category-btn"
                                     onClick={() =>
@@ -775,7 +1014,12 @@ function BudgetPlanningPage() {
                         <p>
                           Add specific items and their budgets within each
                           category. Category budgets are automatically
-                          calculated from items.
+                          calculated.
+                          <br />
+                          <em>
+                            You can also copy an individual item to a future
+                            year using the “Copy” control on each row.
+                          </em>
                         </p>
                       </div>
 
@@ -838,6 +1082,10 @@ function BudgetPlanningPage() {
                                           editingItem?.categoryId ===
                                             category.id &&
                                           editingItem?.itemIndex === itemIndex;
+                                        const key = `${category.id}:${itemIndex}`;
+                                        const itemTargetYear =
+                                          itemCopyYears[key] ||
+                                          selectedYear + 1;
 
                                         return (
                                           <div
@@ -845,7 +1093,6 @@ function BudgetPlanningPage() {
                                             className="budget-item"
                                           >
                                             {isEditing ? (
-                                              // Edit mode
                                               <>
                                                 <div className="budget-item-edit-form">
                                                   <input
@@ -928,7 +1175,6 @@ function BudgetPlanningPage() {
                                                 </div>
                                               </>
                                             ) : (
-                                              // View mode
                                               <>
                                                 <div className="budget-item-info">
                                                   <div className="budget-item-name">
@@ -945,6 +1191,49 @@ function BudgetPlanningPage() {
                                                     $
                                                     {item.budget.toLocaleString()}
                                                   </span>
+
+                                                  {/* COPY: item-level controls */}
+                                                  <label className="copy-item-control">
+                                                    Copy to{" "}
+                                                    <select
+                                                      value={itemTargetYear}
+                                                      onChange={(e) =>
+                                                        setItemCopyYears(
+                                                          (prev) => ({
+                                                            ...prev,
+                                                            [key]: parseInt(
+                                                              e.target.value
+                                                            ),
+                                                          })
+                                                        )
+                                                      }
+                                                    >
+                                                      {getFutureYears().map(
+                                                        (y) => (
+                                                          <option
+                                                            key={y}
+                                                            value={y}
+                                                          >
+                                                            {y}
+                                                          </option>
+                                                        )
+                                                      )}
+                                                    </select>
+                                                  </label>
+                                                  <button
+                                                    className="copy-item-btn"
+                                                    onClick={() =>
+                                                      copySingleItem(
+                                                        category.id,
+                                                        item,
+                                                        itemTargetYear
+                                                      )
+                                                    }
+                                                    title="Copy this item to the selected year"
+                                                  >
+                                                    ⤴️ Copy
+                                                  </button>
+
                                                   <button
                                                     className="edit-item-btn"
                                                     onClick={() =>
@@ -1085,27 +1374,23 @@ function BudgetPlanningPage() {
           min-height: 100vh;
           background: #f8fafc;
         }
-
         .page-main {
           max-width: 1200px;
           margin: 0 auto;
           padding: 2rem 1rem;
         }
-
         .budget-planning-container {
           background: white;
           border-radius: 12px;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
           overflow: hidden;
         }
-
         .budget-header {
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
           padding: 2rem;
           text-align: center;
         }
-
         .budget-header h2 {
           margin: 0;
           font-size: 2rem;
@@ -1117,27 +1402,23 @@ function BudgetPlanningPage() {
           background: #f8fafc;
           border-bottom: 1px solid #e2e8f0;
         }
-
         .client-selection-row {
           display: flex;
           align-items: flex-end;
           gap: 1.5rem;
           flex-wrap: wrap;
         }
-
         .client-select-wrapper,
         .year-select-wrapper {
           flex: 0 0 auto;
           min-width: 200px;
         }
-
         .client-selection label {
           display: block;
           font-weight: 600;
           color: #374151;
           margin-bottom: 0.5rem;
         }
-
         .client-selection select {
           width: 100%;
           padding: 0.75rem;
@@ -1147,13 +1428,11 @@ function BudgetPlanningPage() {
           font-size: 1rem;
           transition: border-color 0.2s;
         }
-
         .client-selection select:focus {
           outline: none;
           border-color: #10b981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
-
         .reconfigure-btn {
           padding: 0.75rem 1.25rem;
           background: #6b7280;
@@ -1166,9 +1445,39 @@ function BudgetPlanningPage() {
           transition: all 0.2s;
           white-space: nowrap;
         }
-
         .reconfigure-btn:hover {
           background: #4b5563;
+          transform: translateY(-1px);
+        }
+        .copy-tip {
+          width: 100%;
+          margin-top: 0.75rem;
+          color: #374151;
+        }
+
+        /* COPY: plan-level controls */
+        .copy-plan-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .copy-plan-controls select {
+          margin-left: 0.25rem;
+        }
+        .copy-plan-btn {
+          padding: 0.5rem 0.75rem;
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+        .copy-plan-btn:hover {
+          background: #1d4ed8;
           transform: translateY(-1px);
         }
 
@@ -1177,28 +1486,28 @@ function BudgetPlanningPage() {
           background: #eff6ff;
           border-bottom: 1px solid #dbeafe;
         }
-
         .instructions-section h3 {
           margin: 0 0 0.75rem 0;
           color: #1e40af;
           font-size: 1.25rem;
         }
-
         .instructions-section p {
           margin: 0 0 1rem 0;
           color: #1e3a8a;
           line-height: 1.6;
         }
-
         .instructions-section ol {
           margin: 0;
           padding-left: 1.5rem;
           color: #1e3a8a;
         }
-
         .instructions-section li {
           margin-bottom: 0.5rem;
           line-height: 1.6;
+        }
+        .instructions-copy-note {
+          margin-top: 0.75rem;
+          color: #1e3a8a;
         }
 
         .budget-summary-card {
@@ -1206,30 +1515,25 @@ function BudgetPlanningPage() {
           background: #f0fdf4;
           border-bottom: 1px solid #d1fae5;
         }
-
         .summary-row-header h3 {
           margin: 0 0 1rem 0;
           color: #065f46;
           font-size: 1.25rem;
         }
-
         .summary-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 1.5rem;
         }
-
         .summary-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-
         .summary-label {
           color: #047857;
           font-weight: 600;
         }
-
         .summary-value {
           color: #065f46;
           font-size: 1.25rem;
@@ -1240,17 +1544,14 @@ function BudgetPlanningPage() {
           padding: 2rem;
           border-bottom: 1px solid #e5e7eb;
         }
-
         .budget-step:last-child {
           border-bottom: none;
         }
-
         .step-header h3 {
           margin: 0 0 0.5rem 0;
           color: #374151;
           font-size: 1.5rem;
         }
-
         .step-header p {
           margin: 0;
           color: #6b7280;
@@ -1260,13 +1561,11 @@ function BudgetPlanningPage() {
         .categories-section {
           margin-top: 1.5rem;
         }
-
         .add-category-section {
           margin-bottom: 1.5rem;
           display: flex;
           justify-content: flex-start;
         }
-
         .add-category-btn {
           background: #3b82f6;
           color: white;
@@ -1278,12 +1577,10 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .add-category-btn:hover {
           background: #2563eb;
           transform: translateY(-1px);
         }
-
         .add-category-form {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
@@ -1293,70 +1590,11 @@ function BudgetPlanningPage() {
           max-width: 500px;
         }
 
-        .add-category-inputs {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin-bottom: 1rem;
-        }
-
-        .category-name-input,
-        .category-description-input {
-          padding: 0.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-
-        .category-name-input:focus,
-        .category-description-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .add-category-buttons {
-          display: flex;
-          gap: 0.5rem;
-          justify-content: center;
-        }
-
-        .save-custom-category-btn,
-        .cancel-custom-category-btn {
-          padding: 0.5rem 1rem;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .save-custom-category-btn {
-          background: #10b981;
-          color: white;
-        }
-
-        .save-custom-category-btn:hover {
-          background: #059669;
-        }
-
-        .cancel-custom-category-btn {
-          background: #f3f4f6;
-          color: #374151;
-        }
-
-        .cancel-custom-category-btn:hover {
-          background: #e5e7eb;
-        }
-
         .categories-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 1.25rem;
         }
-
         .category-card {
           background: #f9fafb;
           border: 1px solid #e5e7eb;
@@ -1364,28 +1602,23 @@ function BudgetPlanningPage() {
           padding: 1rem;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
-
         .category-card:hover {
           border-color: #10b981;
           box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
         }
-
         .category-header {
           display: flex;
           align-items: flex-start;
           margin-bottom: 1rem;
         }
-
         .category-emoji {
           font-size: 1.5rem;
           margin-right: 0.75rem;
           margin-top: 0.25rem;
         }
-
         .category-info {
           flex: 1;
         }
-
         .category-name {
           margin: 0 0 0.25rem 0;
           font-size: 1rem;
@@ -1395,14 +1628,12 @@ function BudgetPlanningPage() {
           align-items: center;
           gap: 0.5rem;
         }
-
         .category-description {
           margin: 0;
           font-size: 0.875rem;
           color: #6b7280;
           line-height: 1.4;
         }
-
         .custom-badge {
           background: #dbeafe;
           color: #1d4ed8;
@@ -1411,7 +1642,6 @@ function BudgetPlanningPage() {
           border-radius: 12px;
           font-weight: 500;
         }
-
         .category-footer {
           display: flex;
           justify-content: space-between;
@@ -1420,31 +1650,49 @@ function BudgetPlanningPage() {
           padding-top: 0.75rem;
           border-top: 1px solid #e5e7eb;
         }
-
         .category-budget-display {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
           flex: 1;
         }
-
         .budget-label {
           font-size: 0.75rem;
           color: #6b7280;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-
         .budget-amount {
           font-size: 1.1rem;
           font-weight: 700;
           color: #10b981;
         }
-
         .item-count-badge {
           font-size: 0.75rem;
           color: #6b7280;
           margin-top: 0.25rem;
+        }
+
+        /* COPY: category controls */
+        .copy-category-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .copy-category-btn {
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 0.4rem 0.6rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+        .copy-category-btn:hover {
+          background: #1d4ed8;
         }
 
         .delete-category-btn {
@@ -1459,7 +1707,6 @@ function BudgetPlanningPage() {
           transition: all 0.2s;
           white-space: nowrap;
         }
-
         .delete-category-btn:hover {
           background: #f87171;
           border-color: #ef4444;
@@ -1473,14 +1720,12 @@ function BudgetPlanningPage() {
           flex-direction: column;
           gap: 1rem;
         }
-
         .category-items-card {
           background: white;
           border: 1px solid #e5e7eb;
           border-radius: 8px;
           overflow: hidden;
         }
-
         .category-items-header {
           padding: 1rem;
           cursor: pointer;
@@ -1491,33 +1736,27 @@ function BudgetPlanningPage() {
           border-bottom: 1px solid #e5e7eb;
           transition: background-color 0.2s;
         }
-
         .category-items-header:hover {
           background: #f3f4f6;
         }
-
         .category-items-info {
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
-
         .category-items-details {
           flex: 1;
         }
-
         .category-items-name {
           margin: 0 0 0.25rem 0;
           font-size: 1.1rem;
           font-weight: 600;
           color: #374151;
         }
-
         .category-items-budget {
           font-size: 0.85rem;
           color: #6b7280;
         }
-
         .expand-icon {
           font-size: 1.2rem;
           font-weight: bold;
@@ -1525,15 +1764,12 @@ function BudgetPlanningPage() {
           width: 2rem;
           text-align: center;
         }
-
         .category-items-content {
           padding: 1rem;
         }
-
         .existing-items {
           margin-bottom: 1.5rem;
         }
-
         .budget-item {
           display: flex;
           justify-content: space-between;
@@ -1546,40 +1782,33 @@ function BudgetPlanningPage() {
           flex-wrap: wrap;
           gap: 0.75rem;
         }
-
         .budget-item:last-child {
           margin-bottom: 0;
         }
-
         .budget-item-info {
           flex: 1;
           min-width: 200px;
         }
-
         .budget-item-name {
           font-weight: 600;
           color: #374151;
           margin-bottom: 0.25rem;
         }
-
         .budget-item-description {
           font-size: 0.85rem;
           color: #6b7280;
         }
-
         .budget-item-actions {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
           flex-wrap: wrap;
         }
-
         .budget-item-amount {
           font-weight: 600;
           color: #059669;
           font-size: 0.9rem;
         }
-
         .edit-item-btn {
           background: #3b82f6;
           color: white;
@@ -1591,12 +1820,10 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .edit-item-btn:hover {
           background: #2563eb;
           border-color: #1d4ed8;
         }
-
         .delete-item-btn {
           background: #fca5a5;
           color: #991b1b;
@@ -1608,11 +1835,29 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .delete-item-btn:hover {
           background: #f87171;
           border-color: #ef4444;
           color: #7f1d1d;
+        }
+
+        /* COPY: item controls */
+        .copy-item-control select {
+          margin-left: 0.25rem;
+        }
+        .copy-item-btn {
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 0.25rem 0.5rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .copy-item-btn:hover {
+          background: #1d4ed8;
         }
 
         .budget-item-edit-form {
@@ -1622,7 +1867,6 @@ function BudgetPlanningPage() {
           flex: 1;
           width: 100%;
         }
-
         .edit-item-name-input,
         .edit-item-description-input {
           padding: 0.5rem;
@@ -1632,19 +1876,16 @@ function BudgetPlanningPage() {
           outline: none;
           transition: border-color 0.2s;
         }
-
         .edit-item-name-input:focus,
         .edit-item-description-input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
-
         .edit-item-budget-input {
           position: relative;
           display: flex;
           align-items: center;
         }
-
         .edit-item-budget-input .currency-symbol {
           position: absolute;
           left: 0.5rem;
@@ -1652,7 +1893,6 @@ function BudgetPlanningPage() {
           font-weight: 600;
           z-index: 1;
         }
-
         .edit-item-budget-input input {
           width: 100%;
           padding: 0.5rem 0.5rem 0.5rem 1.5rem;
@@ -1662,7 +1902,6 @@ function BudgetPlanningPage() {
           outline: none;
           transition: border-color 0.2s;
         }
-
         .edit-item-budget-input input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -1675,7 +1914,6 @@ function BudgetPlanningPage() {
           width: 100%;
           justify-content: flex-end;
         }
-
         .save-edit-btn {
           background: #10b981;
           color: white;
@@ -1687,12 +1925,10 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .save-edit-btn:hover {
           background: #059669;
           border-color: #047857;
         }
-
         .cancel-edit-btn {
           background: #f3f4f6;
           color: #374151;
@@ -1704,7 +1940,6 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .cancel-edit-btn:hover {
           background: #e5e7eb;
           border-color: #9ca3af;
@@ -1716,20 +1951,17 @@ function BudgetPlanningPage() {
           border-radius: 8px;
           padding: 1rem;
         }
-
         .add-item-inputs {
           display: grid;
           grid-template-columns: 1.5fr 2fr 150px;
           gap: 0.75rem;
           margin-bottom: 1rem;
         }
-
         @media (max-width: 1024px) {
           .add-item-inputs {
             grid-template-columns: 1fr;
           }
         }
-
         .item-name-input,
         .item-description-input {
           padding: 0.5rem;
@@ -1739,19 +1971,16 @@ function BudgetPlanningPage() {
           outline: none;
           transition: border-color 0.2s;
         }
-
         .item-name-input:focus,
         .item-description-input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
-
         .item-budget-input {
           position: relative;
           display: flex;
           align-items: center;
         }
-
         .item-budget-input .currency-symbol {
           position: absolute;
           left: 0.5rem;
@@ -1759,7 +1988,6 @@ function BudgetPlanningPage() {
           font-weight: 600;
           z-index: 1;
         }
-
         .item-budget-input input {
           width: 100%;
           padding: 0.5rem 0.5rem 0.5rem 1.5rem;
@@ -1769,7 +1997,6 @@ function BudgetPlanningPage() {
           outline: none;
           transition: border-color 0.2s;
         }
-
         .item-budget-input input:focus {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -1786,7 +2013,6 @@ function BudgetPlanningPage() {
           cursor: pointer;
           transition: all 0.2s;
         }
-
         .add-item-btn:hover {
           background: #2563eb;
           transform: translateY(-1px);
@@ -1800,7 +2026,6 @@ function BudgetPlanningPage() {
           background: #f8fafc;
           border-top: 2px solid #e5e7eb;
         }
-
         .finish-planning-btn {
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
@@ -1813,7 +2038,6 @@ function BudgetPlanningPage() {
           transition: all 0.3s;
           box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
-
         .finish-planning-btn:hover {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
           transform: translateY(-2px);
@@ -1830,7 +2054,6 @@ function BudgetPlanningPage() {
           display: inline-block;
           transition: background-color 0.2s;
         }
-
         .btn:hover {
           background: #059669;
           text-decoration: none;
@@ -1840,16 +2063,13 @@ function BudgetPlanningPage() {
           .budget-header {
             padding: 1.5rem;
           }
-
           .budget-header h2 {
             font-size: 1.5rem;
           }
-
           .client-selection,
           .budget-step {
             padding: 1.5rem;
           }
-
           .categories-grid {
             grid-template-columns: 1fr;
           }
