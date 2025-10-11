@@ -1,4 +1,3 @@
-// BudgetAndReportsPage.jsx
 import React from "react";
 import NavigationTab from "../../NavigationTab";
 import useAuth from "../hooks/useAuth";
@@ -23,26 +22,19 @@ function BudgetPlanningPage() {
   const [newItemForms, setNewItemForms] = React.useState({});
   const [customCategories, setCustomCategories] = React.useState([]);
   const [deletedCategories, setDeletedCategories] = React.useState([]);
-  const [showWizard, setShowWizard] = React.useState(true);
-  const [editingItem, setEditingItem] = React.useState(null); // { categoryId, itemIndex }
+  const [editingItem, setEditingItem] = React.useState(null);
   const [editItemData, setEditItemData] = React.useState({
     name: "",
     budget: "",
     description: "",
   });
+  const [openActionMenu, setOpenActionMenu] = React.useState(null);
 
-  // COPY: small state for copy-target years (plan/category/item)
   const nextYearDefault = selectedYear + 1;
   const [planCopyYear, setPlanCopyYear] = React.useState(nextYearDefault);
-  const [categoryCopyYears, setCategoryCopyYears] = React.useState({}); // { [categoryId]: year }
-  const [itemCopyYears, setItemCopyYears] = React.useState({}); // { [`${categoryId}:${index}`]: year }
-  React.useEffect(() => {
-    setPlanCopyYear(selectedYear + 1);
-    setCategoryCopyYears({});
-    setItemCopyYears({});
-  }, [selectedYear]);
+  const [categoryCopyYears, setCategoryCopyYears] = React.useState({});
+  const [itemCopyYears, setItemCopyYears] = React.useState({});
 
-  // Use the budget plan hook
   const {
     budgetPlan,
     loading: budgetLoading,
@@ -51,7 +43,31 @@ function BudgetPlanningPage() {
     refresh,
   } = useBudgetPlan(selectedClient?._id, selectedYear, jwt);
 
-  // Predefined categories with emojis
+  // Check if budget plan is complete
+  const isBudgetPlanComplete = React.useMemo(() => {
+    return (
+      budgetPlan?.yearlyBudget &&
+      budgetPlan?.categories?.length > 0 &&
+      budgetPlan?.categories?.some((cat) => cat.items && cat.items.length > 0)
+    );
+  }, [budgetPlan]);
+
+  // Initialize showWizard based on budget plan completeness
+  const [showWizard, setShowWizard] = React.useState(!isBudgetPlanComplete);
+
+  // Update showWizard when budget plan changes
+  React.useEffect(() => {
+    if (budgetPlan !== null && budgetPlan !== undefined) {
+      setShowWizard(!isBudgetPlanComplete);
+    }
+  }, [budgetPlan, isBudgetPlanComplete]);
+
+  React.useEffect(() => {
+    setPlanCopyYear(selectedYear + 1);
+    setCategoryCopyYears({});
+    setItemCopyYears({});
+  }, [selectedYear]);
+
   const predefinedCategories = [
     {
       id: "health",
@@ -103,7 +119,6 @@ function BudgetPlanningPage() {
     },
   ];
 
-  // Calculate budget period for calendar year
   const budgetPeriod = React.useMemo(() => {
     const startDate = new Date(selectedYear, 0, 1);
     const endDate = new Date(selectedYear, 11, 31);
@@ -111,14 +126,12 @@ function BudgetPlanningPage() {
     return { startDate, endDate, label };
   }, [selectedYear]);
 
-  // Auto-select first client when clients load
   React.useEffect(() => {
     if (clients.length > 0 && !selectedClient) {
       setSelectedClient(clients[0]);
     }
   }, [clients, selectedClient]);
 
-  // Load custom categories and deleted categories from budget plan
   React.useEffect(() => {
     if (budgetPlan === null || budgetPlan === undefined) {
       setDeletedCategories([]);
@@ -150,7 +163,6 @@ function BudgetPlanningPage() {
     }
   }, [budgetPlan]);
 
-  // Calculate total item budgets for a category
   const getCategoryBudget = (categoryId) => {
     const category = (budgetPlan?.categories || []).find(
       (cat) => cat.id === categoryId
@@ -162,7 +174,6 @@ function BudgetPlanningPage() {
     );
   };
 
-  // Calculate total yearly budget (sum of all categories)
   const getTotalYearlyBudget = () => {
     return getAllAvailableCategories().reduce(
       (sum, cat) => sum + getCategoryBudget(cat.id),
@@ -351,10 +362,12 @@ function BudgetPlanningPage() {
       description: item.description || "",
     });
   };
+
   const handleCancelEditItem = () => {
     setEditingItem(null);
     setEditItemData({ name: "", budget: "", description: "" });
   };
+
   const handleSaveEditItem = async (categoryId, itemIndex) => {
     if (!editItemData.name.trim()) {
       alert("Please enter an item name");
@@ -407,7 +420,6 @@ function BudgetPlanningPage() {
     }
   };
 
-  // Generate year options (current year ± 5 years)
   const getYearOptions = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
@@ -417,14 +429,12 @@ function BudgetPlanningPage() {
     return years;
   };
 
-  // COPY: build future-year choices (next 10 years starting from selectedYear)
   const getFutureYears = () => {
     const years = [];
     for (let y = selectedYear + 1; y <= selectedYear + 10; y++) years.push(y);
     return years;
   };
 
-  // COPY: API helpers to load and upsert the target-year plan without disturbing current page state
   const apiGetPlan = async (personId, year) => {
     const resp = await fetch(
       `/api/budget-plans?personId=${encodeURIComponent(
@@ -453,7 +463,6 @@ function BudgetPlanningPage() {
     return data.budgetPlan;
   };
 
-  // COPY: merge logic — do NOT delete anything that already exists
   const sumItemBudgets = (items = []) =>
     items.reduce((s, it) => s + (parseFloat(it.budget) || 0), 0);
 
@@ -469,7 +478,6 @@ function BudgetPlanningPage() {
   const ensureCategoryInTarget = (targetCategories, sourceCatMeta) => {
     const idx = targetCategories.findIndex((c) => c.id === sourceCatMeta.id);
     if (idx >= 0) {
-      // keep existing meta; do not remove anything
       return targetCategories[idx];
     }
     const newCat = {
@@ -495,13 +503,12 @@ function BudgetPlanningPage() {
       budget: parseFloat(item.budget) || 0,
     };
     if (existingIdx >= 0) {
-      categoryObj.items[existingIdx] = clean; // override by same name
+      categoryObj.items[existingIdx] = clean;
     } else {
-      categoryObj.items.push(clean); // create new
+      categoryObj.items.push(clean);
     }
   };
 
-  // COPY: core actions
   const copySingleItem = async (categoryId, item, targetYear) => {
     if (!selectedClient || !budgetPlan) return;
     try {
@@ -524,7 +531,7 @@ function BudgetPlanningPage() {
       };
       await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
       alert(
-        `Copied “${item.name}” to ${targetYear} in “${srcCategoryMeta.name}”.`
+        `Copied "${item.name}" to ${targetYear} in "${srcCategoryMeta.name}".`
       );
     } catch (e) {
       console.error(e);
@@ -556,7 +563,7 @@ function BudgetPlanningPage() {
       };
       await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
       alert(
-        `Copied category “${src.name}” (${src.items.length} item${
+        `Copied category "${src.name}" (${src.items.length} item${
           src.items.length !== 1 ? "s" : ""
         }) to ${targetYear}.`
       );
@@ -645,17 +652,17 @@ function BudgetPlanningPage() {
     );
   }
 
+  const shouldShowOverview = isBudgetPlanComplete && !showWizard;
+
   return (
     <div className="page">
       <NavigationTab />
       <div className="page-main">
         <div className="budget-planning-container">
-          {/* Header */}
           <div className="budget-header">
             <h2>💰 Budget Planning</h2>
           </div>
 
-          {/* Client and Year Selection */}
           <div className="client-selection">
             <div className="client-selection-row">
               <div className="client-select-wrapper">
@@ -668,7 +675,6 @@ function BudgetPlanningPage() {
                       (c) => c._id === e.target.value
                     );
                     setSelectedClient(client);
-                    setShowWizard(false);
                     setNewCategoryName("");
                     setNewCategoryDescription("");
                     setShowAddCategory(false);
@@ -685,14 +691,11 @@ function BudgetPlanningPage() {
               </div>
 
               <div className="year-select-wrapper">
-                <label htmlFor="year-select">Budget Year:</label>
+                <label htmlFor="year-select">Year:</label>
                 <select
                   id="year-select"
                   value={selectedYear}
-                  onChange={(e) => {
-                    setSelectedYear(parseInt(e.target.value));
-                    setShowWizard(false);
-                  }}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 >
                   {getYearOptions().map((year) => (
                     <option key={year} value={year}>
@@ -702,668 +705,598 @@ function BudgetPlanningPage() {
                 </select>
               </div>
 
-              {(() => {
-                const isBudgetPlanComplete =
-                  budgetPlan?.yearlyBudget &&
-                  budgetPlan?.categories?.length > 0 &&
-                  budgetPlan?.categories?.some(
-                    (cat) => cat.items && cat.items.length > 0
-                  );
-                const shouldShowOverview = isBudgetPlanComplete && !showWizard;
+              {shouldShowOverview && (
+                <button
+                  className="reconfigure-btn"
+                  onClick={() => setShowWizard(true)}
+                >
+                  ✏️ Edit Plan
+                </button>
+              )}
 
-                return (
-                  <>
-                    {shouldShowOverview && (
-                      <button
-                        className="reconfigure-btn"
-                        onClick={() => setShowWizard(true)}
-                      >
-                        ✏️ Edit Budget Plan
-                      </button>
-                    )}
-
-                    {/* COPY: Plan-level copy controls */}
-                    {selectedClient && (
-                      <div
-                        className="copy-plan-controls"
-                        title="Copy the entire plan to a future year"
-                      >
-                        <label>
-                          Copy whole plan to:{" "}
-                          <select
-                            value={planCopyYear}
-                            onChange={(e) =>
-                              setPlanCopyYear(parseInt(e.target.value))
-                            }
-                          >
-                            {getFutureYears().map((y) => (
-                              <option key={y} value={y}>
-                                {y}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <button
-                          className="copy-plan-btn"
-                          onClick={() => copyWholePlan(planCopyYear)}
-                        >
-                          ⤴️ Copy Plan
-                        </button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              {selectedClient && isBudgetPlanComplete && (
+                <div className="copy-plan-controls">
+                  <select
+                    value={planCopyYear}
+                    onChange={(e) => setPlanCopyYear(parseInt(e.target.value))}
+                    className="year-copy-select"
+                  >
+                    {getFutureYears().map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="copy-btn copy-plan-btn"
+                    onClick={() => copyWholePlan(planCopyYear)}
+                    title={`Copy entire plan to ${planCopyYear}`}
+                  >
+                    ⤴️ Copy Plan
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="copy-tip">
-              <strong>Tip:</strong> Copy items, categories, or the whole plan to
-              a future year. Existing items in the destination year are{" "}
-              <em>not deleted</em>; items with the same name in the same
-              category are <em>updated</em>.
-            </p>
+
+            {isBudgetPlanComplete && (
+              <p className="copy-hint">
+                💡 Copy to future years: existing items won't be deleted,
+                same-name items will be updated
+              </p>
+            )}
           </div>
 
           {selectedClient && (
             <>
-              {(() => {
-                const isBudgetPlanComplete =
-                  budgetPlan?.yearlyBudget &&
-                  budgetPlan?.categories?.length > 0 &&
-                  budgetPlan?.categories?.some(
-                    (cat) => cat.items && cat.items.length > 0
-                  );
+              {shouldShowOverview ? (
+                <BudgetOverviewView
+                  budgetPlan={budgetPlan}
+                  jwt={jwt}
+                  budgetPeriod={budgetPeriod}
+                  onReconfigure={() => setShowWizard(true)}
+                />
+              ) : (
+                <>
+                  <div className="instructions-section">
+                    <h3>📋 Budget Plan Setup</h3>
+                    <ol>
+                      <li>Select budget categories (or add custom ones)</li>
+                      <li>Add items with budgets to each category</li>
+                      <li>Use copy controls to plan for future years</li>
+                    </ol>
+                  </div>
 
-                const shouldShowOverview = isBudgetPlanComplete && !showWizard;
-
-                return shouldShowOverview ? (
-                  <BudgetOverviewView
-                    budgetPlan={budgetPlan}
-                    jwt={jwt}
-                    budgetPeriod={budgetPeriod}
-                    onReconfigure={() => setShowWizard(true)}
-                  />
-                ) : (
-                  <>
-                    {/* Instructions */}
-                    <div className="instructions-section">
-                      <h3>📋 How to Create Your Budget Plan</h3>
-                      <p>
-                        Create a comprehensive budget plan in 2 simple steps:
-                      </p>
-                      <ol>
-                        <li>
-                          <strong>Review Categories:</strong> Select from
-                          predefined categories or add custom ones.
-                        </li>
-                        <li>
-                          <strong>Add Budget Items:</strong> Add items and their
-                          budgets. Totals are automatic.
-                        </li>
-                      </ol>
-                      <p className="instructions-copy-note">
-                        Need to carry this plan forward? Use the “Copy…”
-                        controls to move items to next year(s).
-                      </p>
-                    </div>
-
-                    {/* Budget Summary */}
-                    <div className="budget-summary-card">
-                      <div className="summary-row-header">
-                        <h3>Budget Summary for {selectedYear}</h3>
+                  <div className="budget-summary-card">
+                    <h3>Budget Summary for {selectedYear}</h3>
+                    <div className="summary-grid">
+                      <div className="summary-item">
+                        <span className="summary-label">Total Budget:</span>
+                        <span className="summary-value">
+                          ${getTotalYearlyBudget().toLocaleString()}
+                        </span>
                       </div>
-                      <div className="summary-grid">
-                        <div className="summary-item">
-                          <span className="summary-label">
-                            Total Yearly Budget:
-                          </span>
-                          <span className="summary-value">
-                            ${getTotalYearlyBudget().toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="summary-item">
-                          <span className="summary-label">Budget Period:</span>
-                          <span className="summary-value">
-                            {budgetPeriod.startDate.toLocaleDateString(
-                              "en-US",
-                              { month: "short", day: "numeric" }
-                            )}{" "}
-                            -{" "}
-                            {budgetPeriod.endDate.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
+                      <div className="summary-item">
+                        <span className="summary-label">Period:</span>
+                        <span className="summary-value">
+                          {budgetPeriod.startDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}{" "}
+                          -{" "}
+                          {budgetPeriod.endDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Step 1: Select Categories */}
-                    <div className="budget-step">
-                      <div className="step-header">
-                        <h3>📂 Step 1: Select Budget Categories</h3>
-                        <p>
-                          Choose the categories relevant to{" "}
-                          {selectedClient.name}'s care needs, or add custom
-                          categories.
-                        </p>
-                      </div>
+                  <div className="budget-step">
+                    <div className="step-header">
+                      <h3>📂 Step 1: Select Categories</h3>
+                    </div>
 
-                      <div className="categories-section">
-                        {/* Add Custom Category Button */}
-                        <div className="add-category-section">
-                          {!showAddCategory ? (
-                            <button
-                              className="add-category-btn"
-                              onClick={() => setShowAddCategory(true)}
-                            >
-                              ➕ Add Custom Category
-                            </button>
-                          ) : (
-                            <div className="add-category-form">
-                              <div className="add-category-inputs">
-                                <input
-                                  type="text"
-                                  value={newCategoryName}
-                                  onChange={(e) =>
-                                    setNewCategoryName(e.target.value)
-                                  }
-                                  placeholder="Category name (e.g., Entertainment)"
-                                  className="category-name-input"
-                                />
-                                <input
-                                  type="text"
-                                  value={newCategoryDescription}
-                                  onChange={(e) =>
-                                    setNewCategoryDescription(e.target.value)
-                                  }
-                                  placeholder="Description (optional)"
-                                  className="category-description-input"
-                                />
-                              </div>
-                              <div className="add-category-buttons">
-                                <button
-                                  className="save-custom-category-btn"
-                                  onClick={handleAddCustomCategory}
-                                >
-                                  ✅ Add
-                                </button>
-                                <button
-                                  className="cancel-custom-category-btn"
-                                  onClick={() => {
-                                    setShowAddCategory(false);
-                                    setNewCategoryName("");
-                                    setNewCategoryDescription("");
-                                  }}
-                                >
-                                  ❌ Cancel
-                                </button>
-                              </div>
+                    <div className="categories-section">
+                      <div className="add-category-section">
+                        {!showAddCategory ? (
+                          <button
+                            className="add-category-btn"
+                            onClick={() => setShowAddCategory(true)}
+                          >
+                            ➕ Add Custom Category
+                          </button>
+                        ) : (
+                          <div className="add-category-form">
+                            <input
+                              type="text"
+                              value={newCategoryName}
+                              onChange={(e) =>
+                                setNewCategoryName(e.target.value)
+                              }
+                              placeholder="Category name"
+                              className="category-input"
+                            />
+                            <input
+                              type="text"
+                              value={newCategoryDescription}
+                              onChange={(e) =>
+                                setNewCategoryDescription(e.target.value)
+                              }
+                              placeholder="Description (optional)"
+                              className="category-input"
+                            />
+                            <div className="form-actions">
+                              <button
+                                className="btn-save"
+                                onClick={handleAddCustomCategory}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                className="btn-cancel"
+                                onClick={() => {
+                                  setShowAddCategory(false);
+                                  setNewCategoryName("");
+                                  setNewCategoryDescription("");
+                                }}
+                              >
+                                ✕
+                              </button>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                      </div>
 
-                        {/* Categories Grid */}
-                        <div className="categories-grid">
-                          {getAllAvailableCategories().map((category) => {
-                            const categoryBudget = getCategoryBudget(
-                              category.id
-                            );
-                            const categoryData = (
-                              budgetPlan?.categories || []
-                            ).find((cat) => cat.id === category.id);
-                            const itemCount = categoryData?.items?.length || 0;
-                            const targetYearForCat =
-                              categoryCopyYears[category.id] ||
-                              selectedYear + 1;
+                      <div className="categories-grid">
+                        {getAllAvailableCategories().map((category) => {
+                          const categoryBudget = getCategoryBudget(category.id);
+                          const categoryData = (
+                            budgetPlan?.categories || []
+                          ).find((cat) => cat.id === category.id);
+                          const itemCount = categoryData?.items?.length || 0;
+                          const targetYearForCat =
+                            categoryCopyYears[category.id] || selectedYear + 1;
 
-                            return (
-                              <div key={category.id} className="category-card">
-                                <div className="category-header">
-                                  <span className="category-emoji">
-                                    {category.emoji}
-                                  </span>
-                                  <div className="category-info">
-                                    <h4 className="category-name">
-                                      {category.name}
-                                      {category.isCustom && (
-                                        <span className="custom-badge">
-                                          Custom
-                                        </span>
-                                      )}
-                                    </h4>
-                                    <p className="category-description">
-                                      {category.description}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="category-footer">
-                                  <div className="category-budget-display">
-                                    <span className="budget-label">
-                                      Budget:
-                                    </span>
-                                    <span className="budget-amount">
-                                      ${categoryBudget.toLocaleString()}
-                                    </span>
-                                    {itemCount > 0 && (
-                                      <span className="item-count-badge">
-                                        {itemCount} item
-                                        {itemCount !== 1 ? "s" : ""}
+                          return (
+                            <div key={category.id} className="category-card">
+                              <div className="category-header">
+                                <span className="category-emoji">
+                                  {category.emoji}
+                                </span>
+                                <div className="category-info">
+                                  <h4 className="category-name">
+                                    {category.name}
+                                    {category.isCustom && (
+                                      <span className="custom-badge">
+                                        Custom
                                       </span>
                                     )}
-                                  </div>
-
-                                  {/* COPY: Category-level controls (only if has items) */}
+                                  </h4>
+                                  <p className="category-description">
+                                    {category.description}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="category-footer">
+                                <div className="category-budget-display">
+                                  <span className="budget-amount">
+                                    ${categoryBudget.toLocaleString()}
+                                  </span>
                                   {itemCount > 0 && (
-                                    <div className="copy-category-controls">
-                                      <label>
-                                        Copy to{" "}
-                                        <select
-                                          value={targetYearForCat}
-                                          onChange={(e) =>
-                                            setCategoryCopyYears((prev) => ({
-                                              ...prev,
-                                              [category.id]: parseInt(
-                                                e.target.value
-                                              ),
-                                            }))
-                                          }
-                                        >
-                                          {getFutureYears().map((y) => (
-                                            <option key={y} value={y}>
-                                              {y}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
+                                    <span className="item-count">
+                                      {itemCount} item
+                                      {itemCount !== 1 ? "s" : ""}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="category-actions">
+                                  {itemCount > 0 && (
+                                    <div className="copy-controls">
+                                      <select
+                                        value={targetYearForCat}
+                                        onChange={(e) =>
+                                          setCategoryCopyYears((prev) => ({
+                                            ...prev,
+                                            [category.id]: parseInt(
+                                              e.target.value
+                                            ),
+                                          }))
+                                        }
+                                        className="year-copy-select-sm"
+                                      >
+                                        {getFutureYears().map((y) => (
+                                          <option key={y} value={y}>
+                                            {y}
+                                          </option>
+                                        ))}
+                                      </select>
                                       <button
-                                        className="copy-category-btn"
+                                        className="copy-btn-sm"
                                         onClick={() =>
                                           copyWholeCategory(
                                             category.id,
                                             targetYearForCat
                                           )
                                         }
+                                        title="Copy all items to selected year"
                                       >
-                                        ⤴️ Copy Category
+                                        Copy category ⤴️
                                       </button>
                                     </div>
                                   )}
-
-                                  <button
-                                    className="delete-category-btn"
-                                    onClick={() =>
-                                      handleDeleteCategory(category.id)
-                                    }
-                                    title="Remove category"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Add Budget Items */}
-                    <div className="budget-step">
-                      <div className="step-header">
-                        <h3>📝 Step 2: Add Budget Items</h3>
-                        <p>
-                          Add specific items and their budgets within each
-                          category. Category budgets are automatically
-                          calculated.
-                          <br />
-                          <em>
-                            You can also copy an individual item to a future
-                            year using the “Copy” control on each row.
-                          </em>
-                        </p>
-                      </div>
-
-                      <div className="budget-items-section">
-                        {getAllAvailableCategories().map((category) => {
-                          const categoryData = (
-                            budgetPlan?.categories || []
-                          ).find((cat) => cat.id === category.id);
-                          const categoryItems = categoryData?.items || [];
-                          const categoryBudget = getCategoryBudget(category.id);
-                          const isExpanded = expandedCategory === category.id;
-                          const newItemForm = newItemForms[category.id] || {
-                            name: "",
-                            budget: "",
-                            description: "",
-                          };
-
-                          return (
-                            <div
-                              key={category.id}
-                              className="category-items-card"
-                            >
-                              <div
-                                className="category-items-header"
-                                onClick={() =>
-                                  setExpandedCategory(
-                                    isExpanded ? null : category.id
-                                  )
-                                }
-                              >
-                                <div className="category-items-info">
-                                  <span className="category-emoji">
-                                    {category.emoji}
-                                  </span>
-                                  <div className="category-items-details">
-                                    <h4 className="category-items-name">
-                                      {category.name}
-                                    </h4>
-                                    <div className="category-items-budget">
-                                      Budget: ${categoryBudget.toLocaleString()}
-                                      {categoryItems.length > 0 &&
-                                        ` • ${categoryItems.length} item${
-                                          categoryItems.length !== 1 ? "s" : ""
-                                        }`}
-                                    </div>
-                                  </div>
-                                </div>
-                                <span className="expand-icon">
-                                  {isExpanded ? "−" : "+"}
-                                </span>
-                              </div>
-
-                              {isExpanded && (
-                                <div className="category-items-content">
-                                  {/* Existing Items */}
-                                  {categoryItems.length > 0 && (
-                                    <div className="existing-items">
-                                      {categoryItems.map((item, itemIndex) => {
-                                        const isEditing =
-                                          editingItem?.categoryId ===
-                                            category.id &&
-                                          editingItem?.itemIndex === itemIndex;
-                                        const key = `${category.id}:${itemIndex}`;
-                                        const itemTargetYear =
-                                          itemCopyYears[key] ||
-                                          selectedYear + 1;
-
-                                        return (
-                                          <div
-                                            key={itemIndex}
-                                            className="budget-item"
-                                          >
-                                            {isEditing ? (
-                                              <>
-                                                <div className="budget-item-edit-form">
-                                                  <input
-                                                    type="text"
-                                                    value={editItemData.name}
-                                                    onChange={(e) =>
-                                                      setEditItemData(
-                                                        (prev) => ({
-                                                          ...prev,
-                                                          name: e.target.value,
-                                                        })
-                                                      )
-                                                    }
-                                                    placeholder="Item name"
-                                                    className="edit-item-name-input"
-                                                  />
-                                                  <input
-                                                    type="text"
-                                                    value={
-                                                      editItemData.description
-                                                    }
-                                                    onChange={(e) =>
-                                                      setEditItemData(
-                                                        (prev) => ({
-                                                          ...prev,
-                                                          description:
-                                                            e.target.value,
-                                                        })
-                                                      )
-                                                    }
-                                                    placeholder="Description (optional)"
-                                                    className="edit-item-description-input"
-                                                  />
-                                                  <div className="edit-item-budget-input">
-                                                    <span className="currency-symbol">
-                                                      $
-                                                    </span>
-                                                    <input
-                                                      type="number"
-                                                      value={
-                                                        editItemData.budget
-                                                      }
-                                                      onChange={(e) =>
-                                                        setEditItemData(
-                                                          (prev) => ({
-                                                            ...prev,
-                                                            budget:
-                                                              e.target.value,
-                                                          })
-                                                        )
-                                                      }
-                                                      placeholder="Budget"
-                                                      min="0"
-                                                      step="10"
-                                                    />
-                                                  </div>
-                                                </div>
-                                                <div className="budget-item-edit-actions">
-                                                  <button
-                                                    className="save-edit-btn"
-                                                    onClick={() =>
-                                                      handleSaveEditItem(
-                                                        category.id,
-                                                        itemIndex
-                                                      )
-                                                    }
-                                                    title="Save changes"
-                                                  >
-                                                    ✓ Save
-                                                  </button>
-                                                  <button
-                                                    className="cancel-edit-btn"
-                                                    onClick={
-                                                      handleCancelEditItem
-                                                    }
-                                                    title="Cancel editing"
-                                                  >
-                                                    ✕ Cancel
-                                                  </button>
-                                                </div>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <div className="budget-item-info">
-                                                  <div className="budget-item-name">
-                                                    {item.name}
-                                                  </div>
-                                                  {item.description && (
-                                                    <div className="budget-item-description">
-                                                      {item.description}
-                                                    </div>
-                                                  )}
-                                                </div>
-                                                <div className="budget-item-actions">
-                                                  <span className="budget-item-amount">
-                                                    $
-                                                    {item.budget.toLocaleString()}
-                                                  </span>
-
-                                                  {/* COPY: item-level controls */}
-                                                  <label className="copy-item-control">
-                                                    Copy to{" "}
-                                                    <select
-                                                      value={itemTargetYear}
-                                                      onChange={(e) =>
-                                                        setItemCopyYears(
-                                                          (prev) => ({
-                                                            ...prev,
-                                                            [key]: parseInt(
-                                                              e.target.value
-                                                            ),
-                                                          })
-                                                        )
-                                                      }
-                                                    >
-                                                      {getFutureYears().map(
-                                                        (y) => (
-                                                          <option
-                                                            key={y}
-                                                            value={y}
-                                                          >
-                                                            {y}
-                                                          </option>
-                                                        )
-                                                      )}
-                                                    </select>
-                                                  </label>
-                                                  <button
-                                                    className="copy-item-btn"
-                                                    onClick={() =>
-                                                      copySingleItem(
-                                                        category.id,
-                                                        item,
-                                                        itemTargetYear
-                                                      )
-                                                    }
-                                                    title="Copy this item to the selected year"
-                                                  >
-                                                    ⤴️ Copy
-                                                  </button>
-
-                                                  <button
-                                                    className="edit-item-btn"
-                                                    onClick={() =>
-                                                      handleStartEditItem(
-                                                        category.id,
-                                                        itemIndex,
-                                                        item
-                                                      )
-                                                    }
-                                                    title="Edit item"
-                                                  >
-                                                    Edit
-                                                  </button>
-                                                  <button
-                                                    className="delete-item-btn"
-                                                    onClick={() =>
-                                                      handleDeleteBudgetItem(
-                                                        category.id,
-                                                        itemIndex
-                                                      )
-                                                    }
-                                                    title="Delete item"
-                                                  >
-                                                    Delete
-                                                  </button>
-                                                </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {/* Add New Item Form */}
-                                  <div className="add-item-form">
-                                    <div className="add-item-inputs">
-                                      <input
-                                        type="text"
-                                        value={newItemForm.name}
-                                        onChange={(e) =>
-                                          setNewItemForms((prev) => ({
-                                            ...prev,
-                                            [category.id]: {
-                                              ...newItemForm,
-                                              name: e.target.value,
-                                            },
-                                          }))
-                                        }
-                                        placeholder="Item name (e.g., Toothpaste, Doctor visit)"
-                                        className="item-name-input"
-                                      />
-                                      <input
-                                        type="text"
-                                        value={newItemForm.description}
-                                        onChange={(e) =>
-                                          setNewItemForms((prev) => ({
-                                            ...prev,
-                                            [category.id]: {
-                                              ...newItemForm,
-                                              description: e.target.value,
-                                            },
-                                          }))
-                                        }
-                                        placeholder="Description (optional)"
-                                        className="item-description-input"
-                                      />
-                                      <div className="item-budget-input">
-                                        <span className="currency-symbol">
-                                          $
-                                        </span>
-                                        <input
-                                          type="number"
-                                          value={newItemForm.budget}
-                                          onChange={(e) =>
-                                            setNewItemForms((prev) => ({
-                                              ...prev,
-                                              [category.id]: {
-                                                ...newItemForm,
-                                                budget: e.target.value,
-                                              },
-                                            }))
-                                          }
-                                          placeholder="Budget"
-                                          min="0"
-                                          step="10"
-                                        />
-                                      </div>
-                                    </div>
+                                  {itemCount === 0 && (
                                     <button
-                                      className="add-item-btn"
+                                      className="delete-category-btn"
                                       onClick={() =>
-                                        handleAddBudgetItem(
-                                          category.id,
-                                          newItemForm.name,
-                                          newItemForm.budget,
-                                          newItemForm.description
-                                        )
+                                        handleDeleteCategory(category.id)
                                       }
                                     >
-                                      ➕ Add Item
+                                      Remove
                                     </button>
-                                  </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Finish Planning Button */}
-                    {getTotalYearlyBudget() > 0 && (
-                      <div className="finish-planning-section">
-                        <button
-                          className="finish-planning-btn"
-                          onClick={() => {
-                            setShowWizard(false);
-                            alert(
-                              "Budget planning complete! You can now view your budget overview and track spending."
-                            );
-                          }}
-                        >
-                          ✅ Finish Planning & View Overview
-                        </button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                  <div className="budget-step">
+                    <div className="step-header">
+                      <h3>📝 Step 2: Add Budget Items</h3>
+                      <p className="step-description">
+                        Add items with budgets. Use the ⋮ menu for
+                        copy/edit/delete actions.
+                      </p>
+                    </div>
+
+                    <div className="budget-items-section">
+                      {getAllAvailableCategories().map((category) => {
+                        const categoryData = (
+                          budgetPlan?.categories || []
+                        ).find((cat) => cat.id === category.id);
+                        const categoryItems = categoryData?.items || [];
+                        const categoryBudget = getCategoryBudget(category.id);
+                        const isExpanded = expandedCategory === category.id;
+                        const newItemForm = newItemForms[category.id] || {
+                          name: "",
+                          budget: "",
+                          description: "",
+                        };
+
+                        return (
+                          <div
+                            key={category.id}
+                            className="category-items-card"
+                          >
+                            <div
+                              className="category-items-header"
+                              onClick={() =>
+                                setExpandedCategory(
+                                  isExpanded ? null : category.id
+                                )
+                              }
+                            >
+                              <div className="category-items-info">
+                                <span className="category-emoji">
+                                  {category.emoji}
+                                </span>
+                                <div>
+                                  <h4>{category.name}</h4>
+                                  <div className="category-meta">
+                                    ${categoryBudget.toLocaleString()}
+                                    {categoryItems.length > 0 &&
+                                      ` • ${categoryItems.length} item${
+                                        categoryItems.length !== 1 ? "s" : ""
+                                      }`}
+                                  </div>
+                                </div>
+                              </div>
+                              <span className="expand-icon">
+                                {isExpanded ? "−" : "+"}
+                              </span>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="category-items-content">
+                                {categoryItems.length > 0 && (
+                                  <div className="existing-items">
+                                    {categoryItems.map((item, itemIndex) => {
+                                      const isEditing =
+                                        editingItem?.categoryId ===
+                                          category.id &&
+                                        editingItem?.itemIndex === itemIndex;
+                                      const key = `${category.id}:${itemIndex}`;
+                                      const itemTargetYear =
+                                        itemCopyYears[key] || selectedYear + 1;
+                                      const isMenuOpen = openActionMenu === key;
+
+                                      return (
+                                        <div
+                                          key={itemIndex}
+                                          className="budget-item"
+                                        >
+                                          {isEditing ? (
+                                            <>
+                                              <div className="edit-form">
+                                                <input
+                                                  type="text"
+                                                  value={editItemData.name}
+                                                  onChange={(e) =>
+                                                    setEditItemData((prev) => ({
+                                                      ...prev,
+                                                      name: e.target.value,
+                                                    }))
+                                                  }
+                                                  placeholder="Item name"
+                                                  className="edit-input"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  value={
+                                                    editItemData.description
+                                                  }
+                                                  onChange={(e) =>
+                                                    setEditItemData((prev) => ({
+                                                      ...prev,
+                                                      description:
+                                                        e.target.value,
+                                                    }))
+                                                  }
+                                                  placeholder="Description"
+                                                  className="edit-input"
+                                                />
+                                                <div className="budget-input-wrapper">
+                                                  <span>$</span>
+                                                  <input
+                                                    type="number"
+                                                    value={editItemData.budget}
+                                                    onChange={(e) =>
+                                                      setEditItemData(
+                                                        (prev) => ({
+                                                          ...prev,
+                                                          budget:
+                                                            e.target.value,
+                                                        })
+                                                      )
+                                                    }
+                                                    placeholder="Budget"
+                                                    className="edit-input"
+                                                  />
+                                                </div>
+                                              </div>
+                                              <div className="edit-actions">
+                                                <button
+                                                  className="btn-save"
+                                                  onClick={() =>
+                                                    handleSaveEditItem(
+                                                      category.id,
+                                                      itemIndex
+                                                    )
+                                                  }
+                                                >
+                                                  ✓ Save
+                                                </button>
+                                                <button
+                                                  className="btn-cancel"
+                                                  onClick={handleCancelEditItem}
+                                                >
+                                                  ✕ Cancel
+                                                </button>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <div className="item-info">
+                                                <div className="item-name">
+                                                  {item.name}
+                                                </div>
+                                                {item.description && (
+                                                  <div className="item-description">
+                                                    {item.description}
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className="item-actions">
+                                                <span className="item-budget">
+                                                  $
+                                                  {item.budget.toLocaleString()}
+                                                </span>
+                                                <div className="action-menu-container">
+                                                  <button
+                                                    className="action-menu-btn"
+                                                    onClick={() =>
+                                                      setOpenActionMenu(
+                                                        isMenuOpen ? null : key
+                                                      )
+                                                    }
+                                                  >
+                                                    ⋮
+                                                  </button>
+                                                  {isMenuOpen && (
+                                                    <div className="action-menu">
+                                                      <div className="copy-section">
+                                                        <label>Copy to:</label>
+                                                        <select
+                                                          value={itemTargetYear}
+                                                          onChange={(e) =>
+                                                            setItemCopyYears(
+                                                              (prev) => ({
+                                                                ...prev,
+                                                                [key]: parseInt(
+                                                                  e.target.value
+                                                                ),
+                                                              })
+                                                            )
+                                                          }
+                                                          className="year-select-menu"
+                                                        >
+                                                          {getFutureYears().map(
+                                                            (y) => (
+                                                              <option
+                                                                key={y}
+                                                                value={y}
+                                                              >
+                                                                {y}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+                                                        <button
+                                                          className="menu-item copy"
+                                                          onClick={() => {
+                                                            copySingleItem(
+                                                              category.id,
+                                                              item,
+                                                              itemTargetYear
+                                                            );
+                                                            setOpenActionMenu(
+                                                              null
+                                                            );
+                                                          }}
+                                                        >
+                                                          ⤴️ Copy
+                                                        </button>
+                                                      </div>
+                                                      <button
+                                                        className="menu-item edit"
+                                                        onClick={() => {
+                                                          handleStartEditItem(
+                                                            category.id,
+                                                            itemIndex,
+                                                            item
+                                                          );
+                                                          setOpenActionMenu(
+                                                            null
+                                                          );
+                                                        }}
+                                                      >
+                                                        ✏️ Edit
+                                                      </button>
+                                                      <button
+                                                        className="menu-item delete"
+                                                        onClick={() => {
+                                                          if (
+                                                            confirm(
+                                                              `Delete "${item.name}"?`
+                                                            )
+                                                          ) {
+                                                            handleDeleteBudgetItem(
+                                                              category.id,
+                                                              itemIndex
+                                                            );
+                                                          }
+                                                          setOpenActionMenu(
+                                                            null
+                                                          );
+                                                        }}
+                                                      >
+                                                        🗑️ Delete
+                                                      </button>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <div className="add-item-form">
+                                  <input
+                                    type="text"
+                                    value={newItemForm.name}
+                                    onChange={(e) =>
+                                      setNewItemForms((prev) => ({
+                                        ...prev,
+                                        [category.id]: {
+                                          ...newItemForm,
+                                          name: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Item name"
+                                    className="item-input"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={newItemForm.description}
+                                    onChange={(e) =>
+                                      setNewItemForms((prev) => ({
+                                        ...prev,
+                                        [category.id]: {
+                                          ...newItemForm,
+                                          description: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Description (optional)"
+                                    className="item-input"
+                                  />
+                                  <div className="budget-input-wrapper">
+                                    <span>$</span>
+                                    <input
+                                      type="number"
+                                      value={newItemForm.budget}
+                                      onChange={(e) =>
+                                        setNewItemForms((prev) => ({
+                                          ...prev,
+                                          [category.id]: {
+                                            ...newItemForm,
+                                            budget: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      placeholder="Budget"
+                                      min="0"
+                                      className="item-input"
+                                    />
+                                  </div>
+                                  <button
+                                    className="add-item-btn"
+                                    onClick={() =>
+                                      handleAddBudgetItem(
+                                        category.id,
+                                        newItemForm.name,
+                                        newItemForm.budget,
+                                        newItemForm.description
+                                      )
+                                    }
+                                  >
+                                    ➕ Add
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {getTotalYearlyBudget() > 0 && (
+                    <div className="finish-section">
+                      <button
+                        className="finish-btn"
+                        onClick={() => {
+                          setShowWizard(false);
+                          alert("Budget plan complete! View your overview.");
+                        }}
+                      >
+                        ✅ Finish & View Overview
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>
@@ -1375,12 +1308,13 @@ function BudgetPlanningPage() {
           background: #f8fafc;
         }
         .page-main {
-          max-width: 1200px;
+          max-width: 1400px;
           margin: 0 auto;
           padding: 2rem 1rem;
         }
         .budget-planning-container {
           background: white;
+          width: 1000px;
           border-radius: 12px;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
           overflow: hidden;
@@ -1398,103 +1332,95 @@ function BudgetPlanningPage() {
         }
 
         .client-selection {
-          padding: 1.5rem 2rem;
+          padding: 2rem 2.5rem;
           background: #f8fafc;
           border-bottom: 1px solid #e2e8f0;
         }
         .client-selection-row {
           display: flex;
-          align-items: flex-end;
-          gap: 1.5rem;
+          align-items: center;
+          gap: 1rem;
           flex-wrap: wrap;
         }
         .client-select-wrapper,
         .year-select-wrapper {
-          flex: 0 0 auto;
-          min-width: 200px;
+          min-width: 180px;
         }
         .client-selection label {
           display: block;
           font-weight: 600;
           color: #374151;
           margin-bottom: 0.5rem;
+          font-size: 0.875rem;
         }
         .client-selection select {
           width: 100%;
-          padding: 0.75rem;
+          padding: 0.625rem;
           border: 2px solid #d1d5db;
-          border-radius: 8px;
+          border-radius: 6px;
           background: white;
-          font-size: 1rem;
-          transition: border-color 0.2s;
+          font-size: 0.95rem;
         }
         .client-selection select:focus {
           outline: none;
           border-color: #10b981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
         .reconfigure-btn {
-          padding: 0.75rem 1.25rem;
+          padding: 0.625rem 1rem;
           background: #6b7280;
           color: white;
           border: none;
-          border-radius: 8px;
+          border-radius: 6px;
           font-weight: 600;
-          font-size: 1rem;
+          font-size: 0.875rem;
           cursor: pointer;
-          transition: all 0.2s;
           white-space: nowrap;
         }
         .reconfigure-btn:hover {
           background: #4b5563;
-          transform: translateY(-1px);
-        }
-        .copy-tip {
-          width: 100%;
-          margin-top: 0.75rem;
-          color: #374151;
         }
 
-        /* COPY: plan-level controls */
         .copy-plan-controls {
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
-        .copy-plan-controls select {
-          margin-left: 0.25rem;
+        .year-copy-select {
+          padding: 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          background: white;
         }
-        .copy-plan-btn {
+        .copy-btn {
           padding: 0.5rem 0.75rem;
           background: #2563eb;
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: 4px;
           font-weight: 600;
-          font-size: 0.95rem;
+          font-size: 0.5rem;
           cursor: pointer;
-          transition: all 0.2s;
           white-space: nowrap;
         }
-        .copy-plan-btn:hover {
+        .copy-btn:hover {
           background: #1d4ed8;
-          transform: translateY(-1px);
+        }
+        .copy-hint {
+          margin: 0.75rem 0 0 0;
+          font-size: 0.8rem;
+          color: #6b7280;
         }
 
         .instructions-section {
-          padding: 2rem;
+          padding: 2rem 2.5rem;
           background: #eff6ff;
           border-bottom: 1px solid #dbeafe;
         }
         .instructions-section h3 {
           margin: 0 0 0.75rem 0;
           color: #1e40af;
-          font-size: 1.25rem;
-        }
-        .instructions-section p {
-          margin: 0 0 1rem 0;
-          color: #1e3a8a;
-          line-height: 1.6;
+          font-size: 1.1rem;
         }
         .instructions-section ol {
           margin: 0;
@@ -1502,27 +1428,22 @@ function BudgetPlanningPage() {
           color: #1e3a8a;
         }
         .instructions-section li {
-          margin-bottom: 0.5rem;
-          line-height: 1.6;
-        }
-        .instructions-copy-note {
-          margin-top: 0.75rem;
-          color: #1e3a8a;
+          margin-bottom: 0.375rem;
         }
 
         .budget-summary-card {
-          padding: 1.5rem 2rem;
+          padding: 2rem 2.5rem;
           background: #f0fdf4;
           border-bottom: 1px solid #d1fae5;
         }
-        .summary-row-header h3 {
+        .budget-summary-card h3 {
           margin: 0 0 1rem 0;
           color: #065f46;
-          font-size: 1.25rem;
+          font-size: 1.1rem;
         }
         .summary-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1.5rem;
         }
         .summary-item {
@@ -1533,61 +1454,95 @@ function BudgetPlanningPage() {
         .summary-label {
           color: #047857;
           font-weight: 600;
+          font-size: 0.875rem;
         }
         .summary-value {
           color: #065f46;
-          font-size: 1.25rem;
+          font-size: 1.1rem;
           font-weight: 700;
         }
 
         .budget-step {
-          padding: 2rem;
+          padding: 2.5rem;
           border-bottom: 1px solid #e5e7eb;
         }
-        .budget-step:last-child {
-          border-bottom: none;
-        }
         .step-header h3 {
-          margin: 0 0 0.5rem 0;
+          margin: 0 0 0.25rem 0;
           color: #374151;
-          font-size: 1.5rem;
+          font-size: 1.25rem;
         }
-        .step-header p {
-          margin: 0;
+        .step-description {
+          margin: 0.25rem 0 0 0;
           color: #6b7280;
-          font-size: 1rem;
+          font-size: 0.875rem;
         }
 
         .categories-section {
           margin-top: 1.5rem;
         }
         .add-category-section {
-          margin-bottom: 1.5rem;
-          display: flex;
-          justify-content: flex-start;
+          margin-bottom: 1.25rem;
         }
         .add-category-btn {
           background: #3b82f6;
           color: white;
           border: none;
-          border-radius: 8px;
-          padding: 0.75rem 1.5rem;
-          font-size: 0.9rem;
+          border-radius: 6px;
+          padding: 0.625rem 1rem;
+          font-size: 0.875rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s;
         }
         .add-category-btn:hover {
           background: #2563eb;
-          transform: translateY(-1px);
         }
         .add-category-form {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
+          border-radius: 6px;
           padding: 1rem;
-          width: 100%;
-          max-width: 500px;
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .category-input {
+          padding: 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          flex: 1;
+          min-width: 150px;
+        }
+        .form-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+        .btn-save {
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .btn-save:hover {
+          background: #059669;
+        }
+        .btn-cancel {
+          background: #f3f4f6;
+          color: #374151;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .btn-cancel:hover {
+          background: #e5e7eb;
         }
 
         .categories-grid {
@@ -1598,30 +1553,26 @@ function BudgetPlanningPage() {
         .category-card {
           background: #f9fafb;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          border-radius: 6px;
           padding: 1rem;
-          transition: border-color 0.2s, box-shadow 0.2s;
         }
         .category-card:hover {
           border-color: #10b981;
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
         }
         .category-header {
           display: flex;
-          align-items: flex-start;
-          margin-bottom: 1rem;
+          gap: 0.75rem;
+          margin-bottom: 0.75rem;
         }
         .category-emoji {
           font-size: 1.5rem;
-          margin-right: 0.75rem;
-          margin-top: 0.25rem;
         }
         .category-info {
           flex: 1;
         }
         .category-name {
           margin: 0 0 0.25rem 0;
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 600;
           color: #374151;
           display: flex;
@@ -1630,88 +1581,79 @@ function BudgetPlanningPage() {
         }
         .category-description {
           margin: 0;
-          font-size: 0.875rem;
+          font-size: 0.8rem;
           color: #6b7280;
-          line-height: 1.4;
         }
         .custom-badge {
           background: #dbeafe;
           color: #1d4ed8;
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           padding: 0.15rem 0.4rem;
-          border-radius: 12px;
-          font-weight: 500;
+          border-radius: 10px;
         }
         .category-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 0.75rem;
           padding-top: 0.75rem;
           border-top: 1px solid #e5e7eb;
+          gap: 0.5rem;
         }
         .category-budget-display {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
-          flex: 1;
-        }
-        .budget-label {
-          font-size: 0.75rem;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+          gap: 0.125rem;
         }
         .budget-amount {
-          font-size: 1.1rem;
+          font-size: 1rem;
           font-weight: 700;
           color: #10b981;
         }
-        .item-count-badge {
-          font-size: 0.75rem;
+        .item-count {
+          font-size: 0.7rem;
           color: #6b7280;
-          margin-top: 0.25rem;
         }
-
-        /* COPY: category controls */
-        .copy-category-controls {
+        .category-actions {
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
-        .copy-category-btn {
+        .copy-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        .year-copy-select-sm {
+          padding: 0.25rem 0.375rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          background: white;
+        }
+        .copy-btn-sm {
+          padding: 0.25rem 0.5rem;
           background: #2563eb;
           color: white;
           border: none;
-          border-radius: 6px;
-          padding: 0.4rem 0.6rem;
-          font-size: 0.8rem;
-          font-weight: 600;
+          border-radius: 4px;
+          font-size: 0.7rem;
           cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
         }
-        .copy-category-btn:hover {
+        .copy-btn-sm:hover {
           background: #1d4ed8;
         }
-
         .delete-category-btn {
           background: #fca5a5;
           color: #991b1b;
           border: 1px solid #f87171;
-          border-radius: 6px;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.8rem;
+          border-radius: 4px;
+          padding: 0.375rem 0.625rem;
+          font-size: 0.5rem;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
         }
         .delete-category-btn:hover {
           background: #f87171;
-          border-color: #ef4444;
-          color: #7f1d1d;
-          transform: translateY(-1px);
         }
 
         .budget-items-section {
@@ -1719,22 +1661,21 @@ function BudgetPlanningPage() {
           display: flex;
           flex-direction: column;
           gap: 1rem;
+          overflow: visible;
         }
         .category-items-card {
           background: white;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          overflow: hidden;
+          border-radius: 6px;
+          overflow: visible;
         }
         .category-items-header {
-          padding: 1rem;
+          padding: 1.125rem 1.25rem;
           cursor: pointer;
           display: flex;
           justify-content: space-between;
           align-items: center;
           background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
-          transition: background-color 0.2s;
         }
         .category-items-header:hover {
           background: #f3f4f6;
@@ -1744,333 +1685,251 @@ function BudgetPlanningPage() {
           align-items: center;
           gap: 0.75rem;
         }
-        .category-items-details {
-          flex: 1;
-        }
-        .category-items-name {
-          margin: 0 0 0.25rem 0;
-          font-size: 1.1rem;
+        .category-items-info h4 {
+          margin: 0 0 0.125rem 0;
+          font-size: 1rem;
           font-weight: 600;
-          color: #374151;
         }
-        .category-items-budget {
-          font-size: 0.85rem;
+        .category-meta {
+          font-size: 0.8rem;
           color: #6b7280;
         }
         .expand-icon {
           font-size: 1.2rem;
           font-weight: bold;
           color: #6b7280;
-          width: 2rem;
-          text-align: center;
         }
         .category-items-content {
-          padding: 1rem;
+          padding: 1.25rem;
+          overflow: visible;
         }
         .existing-items {
-          margin-bottom: 1.5rem;
+          margin-bottom: 1.25rem;
+          overflow: visible;
         }
         .budget-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.75rem;
+          padding: 1rem;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          margin-bottom: 0.5rem;
-          flex-wrap: wrap;
-          gap: 0.75rem;
+          border-radius: 4px;
+          margin-bottom: 0.75rem;
+          gap: 1rem;
         }
-        .budget-item:last-child {
-          margin-bottom: 0;
-        }
-        .budget-item-info {
+        .item-info {
           flex: 1;
-          min-width: 200px;
         }
-        .budget-item-name {
+        .item-name {
           font-weight: 600;
           color: #374151;
-          margin-bottom: 0.25rem;
+          font-size: 0.9rem;
         }
-        .budget-item-description {
-          font-size: 0.85rem;
+        .item-description {
+          font-size: 0.8rem;
           color: #6b7280;
+          margin-top: 0.125rem;
         }
-        .budget-item-actions {
+        .item-actions {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
+          gap: 0.75rem;
         }
-        .budget-item-amount {
+        .item-budget {
           font-weight: 600;
           color: #059669;
           font-size: 0.9rem;
         }
-        .edit-item-btn {
-          background: #3b82f6;
-          color: white;
-          border: 1px solid #2563eb;
-          border-radius: 4px;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
+        .action-menu-container {
+          position: relative;
         }
-        .edit-item-btn:hover {
-          background: #2563eb;
-          border-color: #1d4ed8;
-        }
-        .delete-item-btn {
-          background: #fca5a5;
-          color: #991b1b;
-          border: 1px solid #f87171;
-          border-radius: 4px;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .delete-item-btn:hover {
-          background: #f87171;
-          border-color: #ef4444;
-          color: #7f1d1d;
-        }
-
-        /* COPY: item controls */
-        .copy-item-control select {
-          margin-left: 0.25rem;
-        }
-        .copy-item-btn {
-          background: #2563eb;
-          color: white;
+        .action-menu-btn {
+          background: #e5e7eb;
+          color: #374151 !important;
           border: none;
           border-radius: 4px;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 600;
+          width: 20px;
+          height: 20px;
+          font-size: 1.1rem;
+          font-weight: bold;
           cursor: pointer;
-          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 5px 10px 25px 10px !important;
         }
-        .copy-item-btn:hover {
-          background: #1d4ed8;
+        .action-menu-btn:hover {
+          background: #d1d5db;
+        }
+        .action-menu {
+          position: absolute;
+          right: 0;
+          top: 100%;
+          margin-top: 0.375rem;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 100;
+          min-width: 200px;
+          padding: 0.5rem;
+          max-height: 320px;
+          overflow-y: auto;
+        }
+        .copy-section {
+          padding: 0.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          margin-bottom: 0.25rem;
+        }
+        .copy-section label {
+          display: block;
+          font-size: 0.75rem;
+          color: #6b7280;
+          margin-bottom: 0.375rem;
+        }
+        .year-select-menu {
+          width: 100%;
+          padding: 0.375rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.8rem;
+          margin-bottom: 0.375rem;
+        }
+        .menu-item {
+          display: block;
+          width: 100%;
+          padding: 0.5rem 0.75rem;
+          background: transparent;
+          border: none;
+          text-align: left;
+          font-size: 0.85rem;
+          font-weight: 500;
+          cursor: pointer;
+          border-radius: 4px;
+        }
+        .menu-item:hover {
+          background: #f3f4f6;
+        }
+        .menu-item.copy {
+          background: #eff6ff;
+          color: #1d4ed8;
+        }
+        .menu-item.copy:hover {
+          background: #dbeafe;
+        }
+        .menu-item.edit {
+          color: #374151;
+        }
+        .menu-item.delete {
+          color: #dc2626;
+        }
+        .menu-item.delete:hover {
+          background: #fef2f2;
         }
 
-        .budget-item-edit-form {
+        .edit-form {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
           flex: 1;
-          width: 100%;
         }
-        .edit-item-name-input,
-        .edit-item-description-input {
+        .edit-input {
           padding: 0.5rem;
           border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
+          border-radius: 4px;
+          font-size: 0.875rem;
         }
-        .edit-item-name-input:focus,
-        .edit-item-description-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .edit-item-budget-input {
+        .budget-input-wrapper {
           position: relative;
-          display: flex;
-          align-items: center;
         }
-        .edit-item-budget-input .currency-symbol {
+        .budget-input-wrapper span {
           position: absolute;
           left: 0.5rem;
+          top: 50%;
+          transform: translateY(-50%);
           color: #6b7280;
           font-weight: 600;
-          z-index: 1;
         }
-        .edit-item-budget-input input {
-          width: 100%;
-          padding: 0.5rem 0.5rem 0.5rem 1.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
+        .budget-input-wrapper input {
+          padding-left: 1.5rem;
         }
-        .edit-item-budget-input input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .budget-item-edit-actions {
+        .edit-actions {
           display: flex;
           gap: 0.5rem;
-          align-items: center;
-          width: 100%;
-          justify-content: flex-end;
-        }
-        .save-edit-btn {
-          background: #10b981;
-          color: white;
-          border: 1px solid #059669;
-          border-radius: 4px;
-          padding: 0.375rem 0.75rem;
-          font-size: 0.8rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .save-edit-btn:hover {
-          background: #059669;
-          border-color: #047857;
-        }
-        .cancel-edit-btn {
-          background: #f3f4f6;
-          color: #374151;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          padding: 0.375rem 0.75rem;
-          font-size: 0.8rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .cancel-edit-btn:hover {
-          background: #e5e7eb;
-          border-color: #9ca3af;
+          margin-top: 0.5rem;
         }
 
         .add-item-form {
           background: #f8fafc;
+          max-width: 1000px;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 1rem;
-        }
-        .add-item-inputs {
-          display: grid;
-          grid-template-columns: 1.5fr 2fr 150px;
-          gap: 0.75rem;
-          margin-bottom: 1rem;
-        }
-        @media (max-width: 1024px) {
-          .add-item-inputs {
-            grid-template-columns: 1fr;
-          }
-        }
-        .item-name-input,
-        .item-description-input {
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
           border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .item-name-input:focus,
-        .item-description-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .item-budget-input {
-          position: relative;
-          display: flex;
+          padding: 1rem;
+          display: grid;
+          grid-template-columns: 2fr 2fr 1fr 1fr;
+          gap: 0.75rem;
           align-items: center;
         }
-        .item-budget-input .currency-symbol {
-          position: absolute;
-          left: 0.5rem;
-          color: #6b7280;
-          font-weight: 600;
-          z-index: 1;
-        }
-        .item-budget-input input {
-          width: 100%;
-          padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+        .item-input {
+          padding: 0.5rem;
           border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
+          border-radius: 4px;
+          font-size: 0.875rem;
         }
-        .item-budget-input input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
         .add-item-btn {
           background: #3b82f6;
           color: white;
           border: none;
-          border-radius: 6px;
-          padding: 0.5rem 1rem;
-          font-size: 0.85rem;
+          border-radius: 4px;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.8rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s;
+          white-space: nowrap;
         }
         .add-item-btn:hover {
           background: #2563eb;
-          transform: translateY(-1px);
         }
 
-        .finish-planning-section {
+        .finish-section {
           padding: 2rem;
           display: flex;
           justify-content: center;
-          align-items: center;
           background: #f8fafc;
-          border-top: 2px solid #e5e7eb;
         }
-        .finish-planning-btn {
+        .finish-btn {
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
           border: none;
-          border-radius: 12px;
-          padding: 1rem 3rem;
-          font-size: 1.1rem;
+          border-radius: 8px;
+          padding: 0.875rem 2rem;
+          font-size: 1rem;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.3s;
           box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
-        .finish-planning-btn:hover {
+        .finish-btn:hover {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
         }
 
-        .btn {
-          background: #10b981;
-          color: white;
-          text-decoration: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 8px;
-          font-weight: 600;
-          display: inline-block;
-          transition: background-color 0.2s;
+        @media (max-width: 1024px) {
+          .add-item-form {
+            grid-template-columns: 1fr 1fr;
+          }
+          .add-item-form .item-input:first-child {
+            grid-column: 1 / -1;
+          }
         }
-        .btn:hover {
-          background: #059669;
-          text-decoration: none;
-        }
-
         @media (max-width: 768px) {
-          .budget-header {
-            padding: 1.5rem;
-          }
-          .budget-header h2 {
-            font-size: 1.5rem;
-          }
-          .client-selection,
-          .budget-step {
-            padding: 1.5rem;
+          .client-selection-row {
+            flex-direction: column;
+            align-items: stretch;
           }
           .categories-grid {
+            grid-template-columns: 1fr;
+          }
+          .add-item-form {
             grid-template-columns: 1fr;
           }
         }
