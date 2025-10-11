@@ -22,6 +22,7 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           if (t.status === "Completed") return "#10b981"; // Green
           if (t.status === "Missed" || isOverdue) return "#ef4444"; // Red
           if (t.status === "Scheduled") return "#3b82f6"; // Blue
+          if (t.status === "Returned") return "#d97706"; // Orange
           return "#6b7280"; // Gray fallback
         };
 
@@ -133,6 +134,10 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           <span className="legend-dot overdue"></span>
           <span className="legend-label">Overdue</span>
         </div>
+        <div className="legend-item">
+          <span className="legend-dot returned"></span>
+          <span className="legend-label">Returned</span>
+        </div>
       </div>
       <div ref={elRef} />
 
@@ -175,6 +180,10 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
 
         .legend-dot.overdue {
           background: #ef4444;
+        }
+
+        .legend-dot.returned {
+          background: #d97706;
         }
 
         .legend-label {

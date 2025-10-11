@@ -1,3 +1,4 @@
+// TaskCompletionPage.jsx
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
@@ -7,7 +8,8 @@ function TaskCompletionPage() {
   const { taskId } = useParams();
   const { me } = useAuth();
   const navigate = useNavigate();
-  const jwt = typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
+  const jwt =
+    typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
 
   const [task, setTask] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -24,7 +26,8 @@ function TaskCompletionPage() {
   const [receiptMode, setReceiptMode] = React.useState("upload"); // "upload" or "select"
   const [timeRange, setTimeRange] = React.useState("30"); // days
   const [existingReceipts, setExistingReceipts] = React.useState([]);
-  const [selectedExistingReceipts, setSelectedExistingReceipts] = React.useState([]);
+  const [selectedExistingReceipts, setSelectedExistingReceipts] =
+    React.useState([]);
   const [loadingReceipts, setLoadingReceipts] = React.useState(false);
 
   // Load task details
@@ -66,7 +69,9 @@ function TaskCompletionPage() {
         startDate.setDate(startDate.getDate() - parseInt(timeRange));
 
         // Fetch receipts from ReceiptBuckets
-        const url = `/api/file-upload/shared?personId=${task.personId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        const url = `/api/file-upload/shared?personId=${
+          task.personId
+        }&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
 
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${jwt}` },
@@ -157,7 +162,7 @@ function TaskCompletionPage() {
           },
           body: JSON.stringify({
             careTaskId: taskId,
-            text: comments.trim()
+            text: comments.trim(),
           }),
         });
       }
@@ -170,7 +175,7 @@ function TaskCompletionPage() {
 
         // Use task's due date to determine bucket
         const dueDate = new Date(task.dueDate);
-        const effectiveDateStr = dueDate.toISOString().split('T')[0];
+        const effectiveDateStr = dueDate.toISOString().split("T")[0];
 
         formData.append("scope", "Shared");
         formData.append("personId", task.personId);
@@ -279,7 +284,8 @@ function TaskCompletionPage() {
           <div className="page-header">
             <h1>Complete Task</h1>
             <p className="page-description">
-              Mark this task as complete and add any associated costs, receipts, or notes.
+              Mark this task as complete and add any associated costs, receipts,
+              or notes.
             </p>
           </div>
 
@@ -294,10 +300,6 @@ function TaskCompletionPage() {
               <div className="detail-row">
                 <span className="label">Due Date:</span>
                 <span className="value">{formatDate(task.dueDate)}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Schedule Type:</span>
-                <span className="value">{task.scheduleType}</span>
               </div>
             </div>
 
@@ -327,21 +329,26 @@ function TaskCompletionPage() {
               <div className="form-section">
                 <h3>Receipts (Optional)</h3>
                 <p className="section-description">
-                  Upload new receipts or select from previously uploaded receipts.
+                  Upload new receipts or select from previously uploaded
+                  receipts.
                 </p>
 
                 {/* Receipt Mode Selector */}
                 <div className="receipt-mode-selector">
                   <button
                     type="button"
-                    className={`mode-btn ${receiptMode === "upload" ? "active" : ""}`}
+                    className={`mode-btn ${
+                      receiptMode === "upload" ? "active" : ""
+                    }`}
                     onClick={() => setReceiptMode("upload")}
                   >
                     Upload New
                   </button>
                   <button
                     type="button"
-                    className={`mode-btn ${receiptMode === "select" ? "active" : ""}`}
+                    className={`mode-btn ${
+                      receiptMode === "select" ? "active" : ""
+                    }`}
                     onClick={() => setReceiptMode("select")}
                   >
                     Select Existing
@@ -359,7 +366,10 @@ function TaskCompletionPage() {
                       className="file-input"
                       id="receipts-input"
                     />
-                    <label htmlFor="receipts-input" className="file-input-label">
+                    <label
+                      htmlFor="receipts-input"
+                      className="file-input-label"
+                    >
                       Choose Files
                     </label>
                     {receipts.length > 0 && (
@@ -403,16 +413,22 @@ function TaskCompletionPage() {
 
                     {/* Existing Receipts List */}
                     {loadingReceipts ? (
-                      <div className="loading-receipts">Loading receipts...</div>
+                      <div className="loading-receipts">
+                        Loading receipts...
+                      </div>
                     ) : existingReceipts.length === 0 ? (
-                      <div className="no-receipts">No receipts found in this time range.</div>
+                      <div className="no-receipts">
+                        No receipts found in this time range.
+                      </div>
                     ) : (
                       <div className="existing-receipts-grid">
                         {existingReceipts.map((receipt) => (
                           <div
                             key={receipt._id}
                             className={`receipt-card ${
-                              selectedExistingReceipts.includes(receipt._id) ? "selected" : ""
+                              selectedExistingReceipts.includes(receipt._id)
+                                ? "selected"
+                                : ""
                             }`}
                           >
                             <div
@@ -420,12 +436,19 @@ function TaskCompletionPage() {
                               onClick={() => toggleExistingReceipt(receipt._id)}
                             >
                               <div className="receipt-checkbox">
-                                {selectedExistingReceipts.includes(receipt._id) && "✓"}
+                                {selectedExistingReceipts.includes(
+                                  receipt._id
+                                ) && "✓"}
                               </div>
                               <div className="receipt-info">
-                                <div className="receipt-filename">{receipt.filename}</div>
+                                <div className="receipt-filename">
+                                  {receipt.filename}
+                                </div>
                                 <div className="receipt-date">
-                                  Uploaded: {new Date(receipt.createdAt || receipt.uploadedAt).toLocaleDateString()}
+                                  Uploaded:{" "}
+                                  {new Date(
+                                    receipt.createdAt || receipt.uploadedAt
+                                  ).toLocaleDateString()}
                                 </div>
                               </div>
                             </div>
@@ -471,7 +494,8 @@ function TaskCompletionPage() {
               <div className="form-section">
                 <h3>Other Documents (Optional)</h3>
                 <p className="section-description">
-                  Upload any other relevant documents (e.g., medical certificates, forms).
+                  Upload any other relevant documents (e.g., medical
+                  certificates, forms).
                 </p>
                 <input
                   type="file"

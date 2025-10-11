@@ -1,19 +1,23 @@
 import React from "react";
 
 function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
+  const todayStr = React.useMemo(
+    () => new Date().toISOString().split("T")[0],
+    []
+  );
   const [selectedClient, setSelectedClient] = React.useState("");
   const [taskData, setTaskData] = React.useState({
     title: "",
-    dueDate: "",
-    scheduleType: "AllDay",
-    startAt: "",
-    endAt: "",
+    dueDate: todayStr,
     isRecurring: false,
     recurrencePattern: "daily",
     recurrenceInterval: 1,
+    recurrenceEndType: "date",
     recurrenceEndDate: "",
+    recurrenceOccurrences: 1,
     assignedToUserId: "",
   });
+
   const [budgetCategoryId, setBudgetCategoryId] = React.useState("");
   const [budgetItemId, setBudgetItemId] = React.useState("");
   const [categories, setCategories] = React.useState([]);
@@ -21,35 +25,154 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState("");
   const [success, setSuccess] = React.useState("");
+  const [estimatedEndDate, setEstimatedEndDate] = React.useState(null);
+  const [affectedYears, setAffectedYears] = React.useState([]);
 
-  // Load budget categories when client is selected
+  const sourceYear = React.useMemo(() => {
+    const base = taskData.dueDate ? new Date(taskData.dueDate) : new Date();
+    return base.getFullYear();
+  }, [taskData.dueDate]);
+
+  // Calculate affected years for recurring tasks
+  React.useEffect(() => {
+    if (!taskData.isRecurring || !taskData.dueDate) {
+      setAffectedYears([]);
+      return;
+    }
+
+    const start = new Date(taskData.dueDate);
+    const startYear = start.getFullYear();
+    const years = new Set([startYear]);
+
+    if (taskData.recurrenceEndType === "date" && taskData.recurrenceEndDate) {
+      const endYear = new Date(taskData.recurrenceEndDate).getFullYear();
+      for (let y = startYear; y <= endYear; y++) {
+        years.add(y);
+      }
+    } else if (
+      taskData.recurrenceEndType === "occurrences" &&
+      estimatedEndDate
+    ) {
+      const endYear = estimatedEndDate.getFullYear();
+      for (let y = startYear; y <= endYear; y++) {
+        years.add(y);
+      }
+    }
+
+    setAffectedYears(Array.from(years).sort());
+  }, [
+    taskData.isRecurring,
+    taskData.dueDate,
+    taskData.recurrenceEndType,
+    taskData.recurrenceEndDate,
+    estimatedEndDate,
+  ]);
+
+  // Calculate estimated end date
+  React.useEffect(() => {
+    if (!taskData.isRecurring || !taskData.dueDate) {
+      setEstimatedEndDate(null);
+      return;
+    }
+    if (
+      taskData.recurrenceEndType !== "occurrences" ||
+      taskData.recurrenceOccurrences < 1
+    ) {
+      setEstimatedEndDate(null);
+      return;
+    }
+
+    const start = new Date(taskData.dueDate);
+    let calc = new Date(start);
+    const step = Math.max(1, Number(taskData.recurrenceInterval) || 1);
+    const occurrences = Math.min(
+      10000,
+      Number(taskData.recurrenceOccurrences) || 1
+    );
+
+    for (let i = 1; i < occurrences; i++) {
+      if (taskData.recurrencePattern === "daily") {
+        calc.setDate(calc.getDate() + step);
+      } else if (taskData.recurrencePattern === "weekly") {
+        calc.setDate(calc.getDate() + 7 * step);
+      } else if (taskData.recurrencePattern === "monthly") {
+        calc.setMonth(calc.getMonth() + step);
+      }
+    }
+    setEstimatedEndDate(calc);
+  }, [
+    taskData.isRecurring,
+    taskData.dueDate,
+    taskData.recurrencePattern,
+    taskData.recurrenceInterval,
+    taskData.recurrenceEndType,
+    taskData.recurrenceOccurrences,
+  ]);
+
+  // Load budget categories
   React.useEffect(() => {
     if (!selectedClient) {
       setCategories([]);
+      setBudgetItems([]);
+      setBudgetItemId("");
       return;
     }
 
     const loadCategories = async () => {
       try {
-        // Get current year
-        const currentYear = new Date().getFullYear();
-
-        const response = await fetch(`/api/budget-plans?personId=${selectedClient}&year=${currentYear}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const response = await fetch(
+          `/api/budget-plans?personId=${encodeURIComponent(
+            selectedClient
+          )}&year=${encodeURIComponent(sourceYear)}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
         if (response.ok) {
           const data = await response.json();
-          setCategories(data.budgetPlan?.categories || []);
+          const cats = data.budgetPlan?.categories || [];
+          setCategories(cats);
+
+          if (cats.length === 0) {
+            setError(
+              `No budget plan found for ${sourceYear}. Please create a budget plan first.`
+            );
+          } else {
+            setError("");
+          }
+
+          if (
+            budgetCategoryId &&
+            !cats.find((c) => c.id === budgetCategoryId)
+          ) {
+            setBudgetCategoryId("");
+            setBudgetItems([]);
+            setBudgetItemId("");
+          } else if (budgetCategoryId) {
+            const cat = cats.find((c) => c.id === budgetCategoryId);
+            setBudgetItems(cat?.items || []);
+            if (
+              budgetItemId &&
+              !(cat?.items || []).find(
+                (i) => String(i._id) === String(budgetItemId)
+              )
+            ) {
+              setBudgetItemId("");
+            }
+          }
+        } else {
+          setError(`Could not load budget plan for ${sourceYear}`);
         }
       } catch (err) {
         console.error("Error loading categories:", err);
+        setError("Error loading budget categories");
       }
     };
 
     loadCategories();
-  }, [selectedClient, jwt]);
+  }, [selectedClient, sourceYear, jwt]);
 
-  // Filter budget items based on selected category
+  // Filter budget items
   React.useEffect(() => {
     if (!budgetCategoryId) {
       setBudgetItems([]);
@@ -63,8 +186,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     }
   }, [budgetCategoryId, categories]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError("");
     setSuccess("");
 
@@ -79,12 +201,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     }
 
     if (!taskData.dueDate) {
-      setError("Please select a due date");
-      return;
-    }
-
-    if (taskData.scheduleType === "Timed" && (!taskData.startAt || !taskData.endAt)) {
-      setError("Please set start and end times for timed tasks");
+      setError("Please select a date");
       return;
     }
 
@@ -98,21 +215,56 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       return;
     }
 
+    // Validate recurring settings
+    if (taskData.isRecurring) {
+      if (taskData.recurrenceEndType === "occurrences") {
+        if (
+          !taskData.recurrenceOccurrences ||
+          taskData.recurrenceOccurrences < 1
+        ) {
+          setError("Please specify the number of occurrences (at least 1)");
+          return;
+        }
+      } else if (taskData.recurrenceEndType === "date") {
+        if (!taskData.recurrenceEndDate) {
+          setError("Please specify an end date for recurring tasks");
+          return;
+        }
+        if (new Date(taskData.recurrenceEndDate) < new Date(taskData.dueDate)) {
+          setError("End date must be on or after the start date");
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
+      let actualEndDate = null;
+      if (taskData.isRecurring) {
+        if (taskData.recurrenceEndType === "occurrences") {
+          actualEndDate = estimatedEndDate
+            ? estimatedEndDate.toISOString().split("T")[0]
+            : null;
+        } else {
+          actualEndDate = taskData.recurrenceEndDate;
+        }
+      }
+
       const payload = {
         personId: selectedClient,
         title: taskData.title.trim(),
         dueDate: taskData.dueDate,
-        scheduleType: taskData.scheduleType,
-        startAt: taskData.scheduleType === "Timed" ? taskData.startAt : undefined,
-        endAt: taskData.scheduleType === "Timed" ? taskData.endAt : undefined,
+        scheduleType: "AllDay",
         assignedToUserId: taskData.assignedToUserId || undefined,
         isRecurring: taskData.isRecurring,
-        recurrencePattern: taskData.isRecurring ? taskData.recurrencePattern : undefined,
-        recurrenceInterval: taskData.isRecurring ? taskData.recurrenceInterval : undefined,
-        recurrenceEndDate: taskData.isRecurring && taskData.recurrenceEndDate ? taskData.recurrenceEndDate : undefined,
+        recurrencePattern: taskData.isRecurring
+          ? taskData.recurrencePattern
+          : undefined,
+        recurrenceInterval: taskData.isRecurring
+          ? taskData.recurrenceInterval
+          : undefined,
+        recurrenceEndDate: taskData.isRecurring ? actualEndDate : undefined,
         budgetCategoryId: budgetCategoryId,
         budgetItemId: budgetItemId,
       };
@@ -132,31 +284,33 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       }
 
       const result = await response.json();
+
       setSuccess(
-        taskData.isRecurring
-          ? `Successfully created recurring task! ${result.tasksCreated || 1} task(s) created.`
-          : "Task created successfully!"
+        result.message ||
+          (taskData.isRecurring
+            ? `Successfully created ${
+                result.tasksCreated || 1
+              } recurring task(s)`
+            : "Task created successfully!")
       );
 
-      // Reset form
+      // Reset
       setTaskData({
         title: "",
-        dueDate: "",
-        scheduleType: "AllDay",
-        startAt: "",
-        endAt: "",
+        dueDate: todayStr,
         isRecurring: false,
         recurrencePattern: "daily",
         recurrenceInterval: 1,
+        recurrenceEndType: "date",
         recurrenceEndDate: "",
+        recurrenceOccurrences: 1,
         assignedToUserId: "",
       });
       setBudgetCategoryId("");
       setBudgetItemId("");
 
-      // Notify parent to reload tasks
       if (onTaskCreated) {
-        onTaskCreated();
+        setTimeout(() => onTaskCreated(), 1500);
       }
     } catch (err) {
       setError(err.message || "Failed to create task");
@@ -170,19 +324,19 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       <div className="form-header">
         <h3>Create New Task</h3>
       </div>
+
       <p className="form-description">
-        Create a one-time or recurring care task. Costs can be added after the task is completed.
+        Create a one-time or recurring care task linked to budget items for
+        expense tracking.
       </p>
 
-      <form onSubmit={handleSubmit}>
-        {/* Client Selection */}
+      <div className="form-content">
+        {/* Client */}
         <div className="form-group">
-          <label htmlFor="client">Client *</label>
+          <label>Client *</label>
           <select
-            id="client"
             value={selectedClient}
             onChange={(e) => setSelectedClient(e.target.value)}
-            required
           >
             <option value="">Select a client...</option>
             {clients.map((client) => (
@@ -193,188 +347,261 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           </select>
         </div>
 
-        {/* Task Title */}
-        <div className="form-group">
-          <label htmlFor="title">Task Title *</label>
-          <input
-            type="text"
-            id="title"
-            value={taskData.title}
-            onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
-            placeholder="e.g., Doctor appointment, Buy medication, Exercise"
-            required
-          />
-        </div>
-
-        {/* Due Date */}
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="dueDate">Due Date *</label>
-            <input
-              type="date"
-              id="dueDate"
-              value={taskData.dueDate}
-              onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="scheduleType">Schedule Type</label>
-            <select
-              id="scheduleType"
-              value={taskData.scheduleType}
-              onChange={(e) => setTaskData({ ...taskData, scheduleType: e.target.value })}
-            >
-              <option value="AllDay">All Day</option>
-              <option value="Timed">Specific Time</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Time Range (if Timed) */}
-        {taskData.scheduleType === "Timed" && (
-          <div className="form-row">
+        {/* Budget */}
+        {selectedClient && (
+          <div className="budget-settings">
             <div className="form-group">
-              <label htmlFor="startAt">Start Time *</label>
-              <input
-                type="time"
-                id="startAt"
-                value={taskData.startAt}
-                onChange={(e) => setTaskData({ ...taskData, startAt: e.target.value })}
-                required
-              />
+              <label>Budget Category *</label>
+              <select
+                value={budgetCategoryId}
+                onChange={(e) => setBudgetCategoryId(e.target.value)}
+              >
+                <option value="">Select a category...</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.emoji} {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="form-group">
-              <label htmlFor="endAt">End Time *</label>
-              <input
-                type="time"
-                id="endAt"
-                value={taskData.endAt}
-                onChange={(e) => setTaskData({ ...taskData, endAt: e.target.value })}
-                required
-              />
+
+            {budgetCategoryId && (
+              <div className="form-group">
+                <label>Item Type *</label>
+                <select
+                  value={budgetItemId}
+                  onChange={(e) => setBudgetItemId(e.target.value)}
+                >
+                  <option value="">Select an item type...</option>
+                  {budgetItems.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name} {item.budget ? `($${item.budget})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="info-box info-box-small">
+              <span className="info-icon">💡</span>
+              <span className="info-text">From {sourceYear} budget plan</span>
             </div>
           </div>
         )}
 
-        {/* Recurring Task Option */}
+        {/* Title */}
+        <div className="form-group">
+          <label>Task Title *</label>
+          <input
+            type="text"
+            value={taskData.title}
+            onChange={(e) =>
+              setTaskData({ ...taskData, title: e.target.value })
+            }
+            placeholder="e.g., Doctor appointment, Buy medication"
+          />
+        </div>
+
+        {/* Date */}
+        <div className="form-group">
+          <label>{taskData.isRecurring ? "Start Date *" : "Due Date *"}</label>
+          <input
+            type="date"
+            value={taskData.dueDate}
+            onChange={(e) =>
+              setTaskData({ ...taskData, dueDate: e.target.value })
+            }
+          />
+          {taskData.isRecurring && (
+            <small>First occurrence of the recurring task</small>
+          )}
+        </div>
+
+        {/* Recurring */}
         <div className="form-group">
           <label className="checkbox-label">
             <input
               type="checkbox"
               checked={taskData.isRecurring}
-              onChange={(e) => setTaskData({ ...taskData, isRecurring: e.target.checked })}
+              onChange={(e) =>
+                setTaskData({ ...taskData, isRecurring: e.target.checked })
+              }
             />
             <span>Make this a recurring task</span>
           </label>
         </div>
 
-        {/* Recurrence Settings */}
         {taskData.isRecurring && (
           <div className="recurrence-settings">
+            <h4>Recurrence Pattern</h4>
+
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="recurrencePattern">Repeat</label>
+                <label>Repeat</label>
                 <select
-                  id="recurrencePattern"
                   value={taskData.recurrencePattern}
-                  onChange={(e) => setTaskData({ ...taskData, recurrencePattern: e.target.value })}
+                  onChange={(e) =>
+                    setTaskData({
+                      ...taskData,
+                      recurrencePattern: e.target.value,
+                    })
+                  }
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
               </div>
+
               <div className="form-group">
-                <label htmlFor="recurrenceInterval">Every</label>
-                <input
-                  type="number"
-                  id="recurrenceInterval"
-                  min="1"
-                  value={taskData.recurrenceInterval}
-                  onChange={(e) => setTaskData({ ...taskData, recurrenceInterval: parseInt(e.target.value) || 1 })}
-                />
+                <label>Every</label>
+                <div className="interval-input">
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={taskData.recurrenceInterval}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceInterval: parseInt(e.target.value) || 1,
+                      })
+                    }
+                  />
+                  <span className="interval-label">
+                    {taskData.recurrencePattern === "daily" && "day(s)"}
+                    {taskData.recurrencePattern === "weekly" && "week(s)"}
+                    {taskData.recurrencePattern === "monthly" && "month(s)"}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="recurrenceEndDate">End Date (Optional)</label>
-              <input
-                type="date"
-                id="recurrenceEndDate"
-                value={taskData.recurrenceEndDate}
-                onChange={(e) => setTaskData({ ...taskData, recurrenceEndDate: e.target.value })}
-              />
-              <small>Leave blank for indefinite recurrence</small>
+
+            <div className="end-condition-section">
+              <h4>End Condition</h4>
+
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="endType"
+                    value="date"
+                    checked={taskData.recurrenceEndType === "date"}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndType: e.target.value,
+                      })
+                    }
+                  />
+                  <span>End by date</span>
+                </label>
+
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="endType"
+                    value="occurrences"
+                    checked={taskData.recurrenceEndType === "occurrences"}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndType: e.target.value,
+                      })
+                    }
+                  />
+                  <span>End after occurrences</span>
+                </label>
+              </div>
+
+              {taskData.recurrenceEndType === "date" && (
+                <div className="form-group">
+                  <label>End Date *</label>
+                  <input
+                    type="date"
+                    value={taskData.recurrenceEndDate}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndDate: e.target.value,
+                      })
+                    }
+                    min={taskData.dueDate || todayStr}
+                  />
+                </div>
+              )}
+
+              {taskData.recurrenceEndType === "occurrences" && (
+                <div className="form-group">
+                  <label>Number of Occurrences *</label>
+                  <input
+                    type="number"
+                    value={taskData.recurrenceOccurrences}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceOccurrences: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    min="1"
+                    max="10000"
+                  />
+                  {estimatedEndDate && (
+                    <small>
+                      Last task: {estimatedEndDate.toLocaleDateString()}
+                    </small>
+                  )}
+                </div>
+              )}
             </div>
+
+            {affectedYears.length > 1 && (
+              <div className="info-box">
+                <span className="info-icon">📅</span>
+                <div className="info-content">
+                  <strong>Multi-Year Recurring Task</strong>
+                  <p>
+                    Spans {affectedYears.length} years:{" "}
+                    <strong>{affectedYears.join(", ")}</strong>
+                  </p>
+                  <p className="info-detail">Budget linking per year:</p>
+                  <ul className="info-list">
+                    <li>
+                      Existing category & item → links to them (preserves
+                      budgets)
+                    </li>
+                    <li>
+                      Only category exists → creates item from {sourceYear}{" "}
+                      template
+                    </li>
+                    <li>
+                      Neither exists → creates both from {sourceYear} template
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Budget Category Selection */}
-        <div className="budget-settings">
-          <div className="form-group">
-            <label htmlFor="budgetCategory">Select a category *</label>
-            <select
-              id="budgetCategory"
-              value={budgetCategoryId}
-              onChange={(e) => setBudgetCategoryId(e.target.value)}
-              required
-            >
-              <option value="">Select a category...</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {budgetCategoryId && (
-            <div className="form-group">
-              <label htmlFor="budgetItem">Select item type *</label>
-              <select
-                id="budgetItem"
-                value={budgetItemId}
-                onChange={(e) => setBudgetItemId(e.target.value)}
-                required
-              >
-                <option value="">Select an item type...</option>
-                {budgetItems.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="tip-box">
-            <span className="tip-icon">💡</span>
-            <span className="tip-text">
-              Can't find a suitable category/item?{" "}
-              <a href="/budget-and-reports" className="tip-link">
-                Add a new one to your budget plan
-              </a>
-            </span>
-          </div>
-        </div>
-
-        {/* Messages */}
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
 
-        {/* Submit Button */}
         <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+          <button
+            className="btn-primary"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Creating..." : "Create Task"}
           </button>
           {onCancel && (
-            <button type="button" className="btn-secondary" onClick={onCancel}>
+            <button className="btn-secondary" onClick={onCancel}>
               Cancel
             </button>
           )}
         </div>
-      </form>
+      </div>
 
       <style jsx>{`
         .task-create-form {
@@ -382,68 +609,54 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           border-radius: 8px;
           padding: 1.5rem;
           border: 1px solid #e5e7eb;
+          max-width: 800px;
         }
-
-        .form-header {
-          margin-bottom: 0.5rem;
-        }
-
         .form-header h3 {
-          margin: 0;
+          margin: 0 0 0.5rem 0;
           color: #1f2937;
           font-size: 1.25rem;
           font-weight: 600;
         }
-
         .form-description {
           margin: 0 0 1.5rem 0;
           color: #6b7280;
           font-size: 0.875rem;
         }
-
-        form {
+        .form-content {
           display: flex;
           flex-direction: column;
           gap: 1rem;
         }
-
         .form-group {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
         }
-
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
         }
-
         label {
           font-weight: 600;
           color: #374151;
           font-size: 0.875rem;
         }
-
         input[type="text"],
         input[type="date"],
-        input[type="time"],
         input[type="number"],
         select {
           padding: 0.625rem;
           border: 1px solid #d1d5db;
           border-radius: 6px;
           font-size: 0.95rem;
-          transition: border-color 0.2s;
         }
-
         input:focus,
         select:focus {
           outline: none;
           border-color: #667eea;
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-
         .checkbox-label {
           display: flex;
           align-items: center;
@@ -451,23 +664,60 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           font-weight: normal;
           cursor: pointer;
         }
-
         .checkbox-label input[type="checkbox"] {
           width: 1.25rem;
           height: 1.25rem;
           cursor: pointer;
         }
-
         .recurrence-settings {
           background: #f8fafc;
-          padding: 1rem;
-          border-radius: 6px;
+          padding: 1.25rem;
+          border-radius: 8px;
           border: 1px solid #e5e7eb;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
         }
-
+        .recurrence-settings h4 {
+          margin: 0;
+          color: #1f2937;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        .interval-input {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .interval-input input {
+          width: 80px;
+        }
+        .interval-label {
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+        .end-condition-section {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .radio-group {
+          display: flex;
+          gap: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .radio-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          font-weight: normal;
+        }
+        .radio-label input[type="radio"] {
+          width: 1.125rem;
+          height: 1.125rem;
+          cursor: pointer;
+        }
         .budget-settings {
           background: #f8fafc;
           padding: 1rem;
@@ -477,44 +727,58 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           flex-direction: column;
           gap: 1rem;
         }
-
-        .tip-box {
+        .info-box {
           display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem;
-          background: #fef3c7;
-          border: 1px solid #fde68a;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #eff6ff;
+          border: 1px solid #93c5fd;
           border-radius: 6px;
-          font-size: 0.875rem;
+          align-items: flex-start;
         }
-
-        .tip-icon {
+        .info-box-small {
+          padding: 0.625rem;
+          align-items: center;
+          background: #fef3c7;
+          border-color: #fde68a;
+        }
+        .info-icon {
           font-size: 1.1rem;
           flex-shrink: 0;
         }
-
-        .tip-text {
+        .info-text {
           color: #92400e;
+          font-size: 0.875rem;
+        }
+        .info-content {
+          flex: 1;
+          color: #1e40af;
+          font-size: 0.875rem;
           line-height: 1.5;
         }
-
-        .tip-link {
-          color: #b45309;
-          font-weight: 600;
-          text-decoration: underline;
-          transition: color 0.2s;
+        .info-content strong {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: #1e3a8a;
         }
-
-        .tip-link:hover {
-          color: #92400e;
+        .info-content p {
+          margin: 0.5rem 0;
         }
-
+        .info-detail {
+          margin-top: 0.75rem;
+          font-weight: 500;
+        }
+        .info-list {
+          margin: 0.5rem 0 0 1.25rem;
+          padding: 0;
+        }
+        .info-list li {
+          margin: 0.375rem 0;
+        }
         small {
           color: #6b7280;
           font-size: 0.75rem;
         }
-
         .error-message {
           padding: 0.75rem;
           background: #fef2f2;
@@ -523,7 +787,6 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           color: #dc2626;
           font-size: 0.875rem;
         }
-
         .success-message {
           padding: 0.75rem;
           background: #f0fdf4;
@@ -532,14 +795,12 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           color: #16a34a;
           font-size: 0.875rem;
         }
-
         .form-actions {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
           margin-top: 0.5rem;
         }
-
         .btn-primary {
           padding: 0.75rem 1.5rem;
           background: #667eea;
@@ -549,19 +810,15 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           font-weight: 600;
           font-size: 0.95rem;
           cursor: pointer;
-          transition: background-color 0.2s;
           width: 100%;
         }
-
         .btn-primary:hover:not(:disabled) {
           background: #5a67d8;
         }
-
         .btn-primary:disabled {
           background: #9ca3af;
           cursor: not-allowed;
         }
-
         .btn-secondary {
           padding: 0.75rem 1.5rem;
           background: #6b7280;
@@ -571,17 +828,18 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           font-weight: 600;
           font-size: 0.95rem;
           cursor: pointer;
-          transition: all 0.2s;
           width: 100%;
         }
-
         .btn-secondary:hover {
           background: #4b5563;
         }
-
         @media (max-width: 768px) {
           .form-row {
             grid-template-columns: 1fr;
+          }
+          .radio-group {
+            flex-direction: column;
+            gap: 0.75rem;
           }
         }
       `}</style>

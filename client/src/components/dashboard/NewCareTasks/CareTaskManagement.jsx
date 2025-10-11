@@ -1,3 +1,4 @@
+// CareTaskManagement.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
@@ -277,12 +278,25 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
   const [loadingDetails, setLoadingDetails] = React.useState(false);
   const [budgetCategoryName, setBudgetCategoryName] = React.useState("");
   const [budgetItemName, setBudgetItemName] = React.useState("");
+
+  // New states for completed/returned task features
+  const [isEditingCost, setIsEditingCost] = React.useState(false);
+  const [editedCost, setEditedCost] = React.useState(task.cost || "");
+  const [showAddSection, setShowAddSection] = React.useState(false);
+  const [newComment, setNewComment] = React.useState("");
+  const [newFiles, setNewFiles] = React.useState([]);
+  const [isAddingSupplement, setIsAddingSupplement] = React.useState(false);
+
   const [editedTask, setEditedTask] = React.useState({
     title: task.title,
-    dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+    dueDate: task.dueDate
+      ? new Date(task.dueDate).toISOString().split("T")[0]
+      : "",
     scheduleType: task.scheduleType,
-    startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
-    endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
+    startAt: task.startAt
+      ? new Date(task.startAt).toTimeString().slice(0, 5)
+      : "",
+    endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
   });
 
   // Load budget category and item names
@@ -294,9 +308,12 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
         // Get current year
         const currentYear = new Date().getFullYear();
 
-        const response = await fetch(`/api/budget-plans?personId=${task.personId}&year=${currentYear}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const response = await fetch(
+          `/api/budget-plans?personId=${task.personId}&year=${currentYear}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
@@ -304,13 +321,17 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
           // Find category name
           if (task.budgetCategoryId) {
-            const category = categories.find(c => c.id === task.budgetCategoryId);
+            const category = categories.find(
+              (c) => c.id === task.budgetCategoryId
+            );
             if (category) {
               setBudgetCategoryName(category.name);
 
               // Find budget item name within that category
               if (task.budgetItemId) {
-                const item = category.items?.find(i => String(i._id) === String(task.budgetItemId));
+                const item = category.items?.find(
+                  (i) => String(i._id) === String(task.budgetItemId)
+                );
                 if (item) {
                   setBudgetItemName(item.name);
                 }
@@ -326,26 +347,32 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
     loadBudgetNames();
   }, [task.budgetCategoryId, task.budgetItemId, task.personId, jwt]);
 
-  // Load comments and files for completed tasks
+  // Load comments and files for completed/returned tasks
   React.useEffect(() => {
     const loadCompletionDetails = async () => {
-      if (task.status !== "Completed") return;
+      if (task.status !== "Completed" && task.status !== "Returned") return;
 
       setLoadingDetails(true);
       try {
         // Load comments
-        const commentsResponse = await fetch(`/api/comments?careTaskId=${task._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const commentsResponse = await fetch(
+          `/api/comments?careTaskId=${task._id}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
         if (commentsResponse.ok) {
           const commentsData = await commentsResponse.json();
           setComments(commentsData);
         }
 
         // Load files - both direct uploads and referenced files
-        const filesResponse = await fetch(`/api/file-upload?scope=CareTask&targetId=${task._id}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
+        const filesResponse = await fetch(
+          `/api/file-upload?scope=CareTask&targetId=${task._id}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
 
         let allFiles = [];
         if (filesResponse.ok) {
@@ -355,13 +382,13 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
         // Also load files from fileRefs (shared receipts)
         if (task.fileRefs && task.fileRefs.length > 0) {
-          const refsPromises = task.fileRefs.map(fileId =>
+          const refsPromises = task.fileRefs.map((fileId) =>
             fetch(`/api/file-upload/${fileId}`, {
               headers: { Authorization: `Bearer ${jwt}` },
-            }).then(res => res.ok ? res.json() : null)
+            }).then((res) => (res.ok ? res.json() : null))
           );
           const refsFiles = await Promise.all(refsPromises);
-          allFiles = [...allFiles, ...refsFiles.filter(f => f !== null)];
+          allFiles = [...allFiles, ...refsFiles.filter((f) => f !== null)];
         }
 
         setFiles(allFiles);
@@ -405,7 +432,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
       return;
     }
 
-    if (editedTask.scheduleType === "Timed" && (!editedTask.startAt || !editedTask.endAt)) {
+    if (
+      editedTask.scheduleType === "Timed" &&
+      (!editedTask.startAt || !editedTask.endAt)
+    ) {
       alert("Start and end times are required for timed tasks");
       return;
     }
@@ -417,7 +447,7 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
       const combineDateTime = (dateStr, timeStr) => {
         if (!dateStr || !timeStr) return undefined;
         const date = new Date(dateStr);
-        const [hours, minutes] = timeStr.split(':');
+        const [hours, minutes] = timeStr.split(":");
         date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         return date.toISOString();
       };
@@ -431,7 +461,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
       // Only add time fields if schedule type is Timed
       if (editedTask.scheduleType === "Timed") {
-        payload.startAt = combineDateTime(editedTask.dueDate, editedTask.startAt);
+        payload.startAt = combineDateTime(
+          editedTask.dueDate,
+          editedTask.startAt
+        );
         payload.endAt = combineDateTime(editedTask.dueDate, editedTask.endAt);
       } else {
         // Clear time fields if changing from Timed to AllDay
@@ -469,15 +502,157 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
     // Reset to original values
     setEditedTask({
       title: task.title,
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      dueDate: task.dueDate
+        ? new Date(task.dueDate).toISOString().split("T")[0]
+        : "",
       scheduleType: task.scheduleType,
-      startAt: task.startAt ? new Date(task.startAt).toTimeString().slice(0, 5) : '',
-      endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : '',
+      startAt: task.startAt
+        ? new Date(task.startAt).toTimeString().slice(0, 5)
+        : "",
+      endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
     });
     setIsEditing(false);
   };
 
-  const isOverdue = task.status === "Scheduled" && new Date(task.dueDate) < new Date();
+  // Handle cost edit save
+  const handleSaveCost = async () => {
+    const costValue = parseFloat(editedCost);
+    if (editedCost && (isNaN(costValue) || costValue < 0)) {
+      alert("Please enter a valid cost amount");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/care-tasks/${task._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          cost: editedCost ? costValue : 0,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update cost");
+      }
+
+      setIsEditingCost(false);
+      if (onSave) {
+        onSave();
+      }
+    } catch (err) {
+      alert("Error updating cost: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle refund (change to Returned status)
+  const handleRefund = async () => {
+    const confirmMessage =
+      "Are you sure you want to mark this task as returned\n\n" +
+      "It's recommended to add a comment explaining the reason and upload any relevant proof (receipt, documentation, etc.).";
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/care-tasks/${task._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          status: "Returned",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task status");
+      }
+
+      // Show the add section automatically for adding proof/comment
+      setShowAddSection(true);
+      if (onSave) {
+        onSave();
+      }
+    } catch (err) {
+      alert("Error processing refund: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle adding new comment and files
+  const handleAddSupplement = async () => {
+    if (!newComment.trim() && newFiles.length === 0) {
+      alert("Please add a comment or select files to upload");
+      return;
+    }
+
+    setIsAddingSupplement(true);
+    try {
+      // Add comment if provided
+      if (newComment.trim()) {
+        await fetch(`/api/comments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({
+            careTaskId: task._id,
+            text: newComment.trim(),
+          }),
+        });
+      }
+
+      // Upload files
+      for (const file of newFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("scope", "CareTask");
+        formData.append("targetId", task._id);
+        formData.append("description", "Additional Document");
+
+        await fetch("/api/file-upload/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${jwt}` },
+          body: formData,
+        });
+      }
+
+      // Reset form and refresh
+      setNewComment("");
+      setNewFiles([]);
+      setShowAddSection(false);
+      if (onSave) {
+        onSave();
+      }
+    } catch (err) {
+      alert("Error adding supplement: " + err.message);
+    } finally {
+      setIsAddingSupplement(false);
+    }
+  };
+
+  const handleNewFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setNewFiles((prev) => [...prev, ...files]);
+  };
+
+  const removeNewFile = (index) => {
+    setNewFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const isOverdue =
+    task.status === "Scheduled" && new Date(task.dueDate) < new Date();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -493,13 +668,19 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                 type="text"
                 className="edit-input title-input"
                 value={editedTask.title}
-                onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
+                onChange={(e) =>
+                  setEditedTask({ ...editedTask, title: e.target.value })
+                }
                 placeholder="Task title"
               />
             ) : (
               <>
                 <h3 className="task-title">{task.title}</h3>
-                <span className={`status-badge ${task.status.toLowerCase()} ${isOverdue ? "overdue" : ""}`}>
+                <span
+                  className={`status-badge ${task.status.toLowerCase()} ${
+                    isOverdue ? "overdue" : ""
+                  }`}
+                >
                   {isOverdue ? "Overdue" : task.status}
                 </span>
               </>
@@ -513,63 +694,14 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                 type="date"
                 className="edit-input"
                 value={editedTask.dueDate}
-                onChange={(e) => setEditedTask({ ...editedTask, dueDate: e.target.value })}
+                onChange={(e) =>
+                  setEditedTask({ ...editedTask, dueDate: e.target.value })
+                }
               />
             ) : (
               <span className="detail-value">{formatDate(task.dueDate)}</span>
             )}
           </div>
-
-          <div className="detail-row">
-            <span className="detail-label">Schedule Type:</span>
-            {isEditing ? (
-              <select
-                className="edit-input"
-                value={editedTask.scheduleType}
-                onChange={(e) => setEditedTask({ ...editedTask, scheduleType: e.target.value })}
-              >
-                <option value="AllDay">All Day</option>
-                <option value="Timed">Specific Time</option>
-              </select>
-            ) : (
-              <span className="detail-value">{task.scheduleType}</span>
-            )}
-          </div>
-
-          {(isEditing ? editedTask.scheduleType === "Timed" : task.scheduleType === "Timed") && (
-            <>
-              <div className="detail-row">
-                <span className="detail-label">Start Time:</span>
-                {isEditing ? (
-                  <input
-                    type="time"
-                    className="edit-input"
-                    value={editedTask.startAt}
-                    onChange={(e) => setEditedTask({ ...editedTask, startAt: e.target.value })}
-                  />
-                ) : task.startAt ? (
-                  <span className="detail-value">{formatTime(task.startAt)}</span>
-                ) : (
-                  <span className="detail-value">—</span>
-                )}
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">End Time:</span>
-                {isEditing ? (
-                  <input
-                    type="time"
-                    className="edit-input"
-                    value={editedTask.endAt}
-                    onChange={(e) => setEditedTask({ ...editedTask, endAt: e.target.value })}
-                  />
-                ) : task.endAt ? (
-                  <span className="detail-value">{formatTime(task.endAt)}</span>
-                ) : (
-                  <span className="detail-value">—</span>
-                )}
-              </div>
-            </>
-          )}
 
           {task.assignedToUserId && (
             <div className="detail-row">
@@ -594,25 +726,78 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
             </div>
           )}
 
-          {task.expectedCost !== undefined && task.expectedCost !== null && task.status !== "Completed" && (
-            <div className="detail-row">
-              <span className="detail-label">Expected Cost:</span>
-              <span className="detail-value cost">${task.expectedCost.toFixed(2)}</span>
+          {task.expectedCost !== undefined &&
+            task.expectedCost !== null &&
+            task.status !== "Completed" &&
+            task.status !== "Returned" && (
+              <div className="detail-row">
+                <span className="detail-label">Expected Cost:</span>
+                <span className="detail-value cost">
+                  ${task.expectedCost.toFixed(2)}
+                </span>
+              </div>
+            )}
+
+          {/* Cost section for Completed/Returned tasks */}
+          {(task.status === "Completed" || task.status === "Returned") && (
+            <div className="detail-row cost-row">
+              <span className="detail-label">
+                {task.status === "Returned" ? "Original Cost:" : "Cost:"}
+              </span>
+              {isEditingCost && task.status === "Completed" ? (
+                <div className="cost-edit-group">
+                  <span className="currency-symbol">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="cost-edit-input"
+                    value={editedCost}
+                    onChange={(e) => setEditedCost(e.target.value)}
+                  />
+                  <button
+                    className="btn-inline save"
+                    onClick={handleSaveCost}
+                    disabled={isSaving}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="btn-inline cancel"
+                    onClick={() => {
+                      setIsEditingCost(false);
+                      setEditedCost(task.cost || "");
+                    }}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="cost-display-group">
+                  <span className="detail-value cost">
+                    ${(task.cost || 0).toFixed(2)}
+                  </span>
+                  {task.status === "Completed" && (
+                    <button
+                      className="btn-inline edit"
+                      onClick={() => setIsEditingCost(true)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {task.cost !== undefined && task.cost !== null && task.status === "Completed" && (
-            <div className="detail-row">
-              <span className="detail-label">Cost:</span>
-              <span className="detail-value cost">${task.cost.toFixed(2)}</span>
-            </div>
-          )}
-
-          {/* Completion Details for Completed Tasks */}
-          {task.status === "Completed" && (
+          {/* Completion Details for Completed/Returned Tasks */}
+          {(task.status === "Completed" || task.status === "Returned") && (
             <>
               {loadingDetails && (
-                <div className="loading-details">Loading completion details...</div>
+                <div className="loading-details">
+                  Loading completion details...
+                </div>
               )}
 
               {/* Comments Section */}
@@ -624,7 +809,11 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                       <div key={comment._id} className="comment-item">
                         <div className="comment-meta">
                           <span className="comment-author">
-                            {comment.author?.name || comment.author?.email || comment.authorUserId?.name || comment.authorUserId?.email || "User"}
+                            {comment.author?.name ||
+                              comment.author?.email ||
+                              comment.authorUserId?.name ||
+                              comment.authorUserId?.email ||
+                              "User"}
                           </span>
                           <span className="comment-date">
                             {new Date(comment.createdAt).toLocaleDateString()}
@@ -647,7 +836,6 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                     {files.map((file) => (
                       <div key={file._id} className="file-item">
                         <div className="file-info">
-
                           <div className="file-details">
                             <span className="file-name">{file.filename}</span>
                             <span className="file-meta">
@@ -678,6 +866,95 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                   </div>
                 </div>
               )}
+
+              {/* Add Comments/Files Section */}
+              {showAddSection && (
+                <div className="add-supplement-section">
+                  <h4 className="section-title">Add Comments or Documents</h4>
+                  {task.status === "Returned" && (
+                    <p className="info-message">
+                      ℹ️ Please provide details about the return/refund and
+                      upload any supporting documents.
+                    </p>
+                  )}
+                  <div className="add-form">
+                    <div className="form-group">
+                      <label>Comment</label>
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Add any notes or explanations..."
+                        rows="4"
+                        className="comment-textarea"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Upload Files</label>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleNewFileChange}
+                        className="file-input"
+                        id="new-files-input"
+                      />
+                      <label
+                        htmlFor="new-files-input"
+                        className="file-input-label"
+                      >
+                        Choose Files
+                      </label>
+                      {newFiles.length > 0 && (
+                        <div className="new-files-list">
+                          {newFiles.map((file, index) => (
+                            <div key={index} className="new-file-item">
+                              <span className="file-name">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeNewFile(index)}
+                                className="remove-btn"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="add-form-actions">
+                      <button
+                        className="btn-submit"
+                        onClick={handleAddSupplement}
+                        disabled={isAddingSupplement}
+                      >
+                        {isAddingSupplement ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        className="btn-cancel"
+                        onClick={() => {
+                          setShowAddSection(false);
+                          setNewComment("");
+                          setNewFiles([]);
+                        }}
+                        disabled={isAddingSupplement}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Button to show add section if not already shown */}
+              {!showAddSection && !loadingDetails && (
+                <button
+                  className="btn-add-supplement"
+                  onClick={() => setShowAddSection(true)}
+                >
+                  + Add Comment and Files
+                </button>
+              )}
             </>
           )}
         </div>
@@ -685,26 +962,50 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
         <div className="modal-footer">
           {isEditing ? (
             <>
-              <button className="btn-save" onClick={handleSaveEdit} disabled={isSaving}>
+              <button
+                className="btn-save"
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+              >
                 {isSaving ? "Saving..." : "Save Changes"}
               </button>
-              <button className="btn-close" onClick={handleCancelEdit} disabled={isSaving}>
+              <button
+                className="btn-close"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+              >
                 Cancel
               </button>
             </>
           ) : (
             <>
-              {task.status !== "Completed" && (
-                <button className="btn-complete" onClick={() => navigate(`/tasks/${task._id}/complete`)}>
+              {task.status === "Completed" && (
+                <button
+                  className="btn-refund"
+                  onClick={handleRefund}
+                  disabled={isSaving}
+                  title="Mark this task as returned/refunded"
+                >
+                  {isSaving ? "Processing..." : "Refund"}
+                </button>
+              )}
+              {task.status !== "Completed" && task.status !== "Returned" && (
+                <button
+                  className="btn-complete"
+                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                >
                   Complete Task
                 </button>
               )}
-              {task.status !== "Completed" && (
-                <button className="btn-reschedule" onClick={() => setIsEditing(true)}>
+              {task.status !== "Completed" && task.status !== "Returned" && (
+                <button
+                  className="btn-reschedule"
+                  onClick={() => setIsEditing(true)}
+                >
                   Reschedule
                 </button>
               )}
-              {task.status !== "Completed" && (
+              {task.status !== "Completed" && task.status !== "Returned" && (
                 <button className="btn-delete" onClick={onDelete}>
                   Delete Task
                 </button>
@@ -794,6 +1095,11 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           color: #16a34a;
         }
 
+        .status-badge.returned {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
         .status-badge.overdue {
           background: #fee2e2;
           color: #dc2626;
@@ -804,6 +1110,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           justify-content: space-between;
           padding: 0.75rem 0;
           border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-row.cost-row {
+          align-items: center;
         }
 
         .detail-label {
@@ -821,6 +1131,64 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           font-weight: 600;
           color: #10b981;
           font-size: 1rem;
+        }
+
+        .cost-edit-group,
+        .cost-display-group {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .currency-symbol {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .cost-edit-input {
+          width: 100px;
+          padding: 0.375rem 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.875rem;
+        }
+
+        .btn-inline {
+          padding: 0.25rem 0.75rem;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-inline.edit {
+          background: #f3f4f6;
+          color: #374151;
+        }
+
+        .btn-inline.edit:hover {
+          background: #e5e7eb;
+        }
+
+        .btn-inline.save {
+          background: #10b981;
+          color: white;
+        }
+
+        .btn-inline.save:hover {
+          background: #059669;
+        }
+
+        .btn-inline.cancel {
+          background: #6b7280;
+          color: white;
+        }
+
+        .btn-inline.cancel:hover {
+          background: #4b5563;
         }
 
         .edit-input {
@@ -893,6 +1261,15 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
 
         .btn-delete:hover {
           background: #dc2626;
+        }
+
+        .btn-refund {
+          background: #f59e0b;
+          color: white;
+        }
+
+        .btn-refund:hover {
+          background: #d97706;
         }
 
         .btn-close {
@@ -1064,6 +1441,183 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           background: #059669;
         }
 
+        .btn-add-supplement {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          margin-top: 1rem;
+          background: #f3f4f6;
+          border: 2px dashed #d1d5db;
+          border-radius: 6px;
+          color: #374151 !important;
+          font-weight: 500;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-add-supplement:hover {
+          background: #e5e7eb;
+          border-color: #9ca3af;
+        }
+
+        .add-supplement-section {
+          margin-top: 1.5rem;
+          padding: 1.5rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+
+        .section-title {
+          margin: 0 0 0.75rem 0;
+          color: #1f2937;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+
+        .info-message {
+          margin: 0 0 1rem 0;
+          padding: 0.75rem;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 6px;
+          color: #92400e;
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+
+        .add-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .form-group label {
+          font-weight: 500;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .comment-textarea {
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-family: inherit;
+          resize: vertical;
+          transition: border-color 0.2s;
+        }
+
+        .comment-textarea:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-input {
+          display: none;
+        }
+
+        .file-input-label {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-weight: 500;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          color: #374151;
+        }
+
+        .file-input-label:hover {
+          background: #f3f4f6;
+          border-color: #667eea;
+        }
+
+        .new-files-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+
+        .new-file-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0.75rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          font-size: 0.875rem;
+        }
+
+        .remove-btn {
+          padding: 0.25rem 0.5rem;
+          background: #fee2e2;
+          color: #dc2626;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .remove-btn:hover {
+          background: #fecaca;
+        }
+
+        .add-form-actions {
+          display: flex;
+          gap: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        .btn-submit,
+        .btn-cancel {
+          flex: 1;
+          padding: 0.75rem 1rem;
+          border: none;
+          border-radius: 6px;
+          font-weight: 500;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-submit {
+          background: #10b981;
+          color: white;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+          background: #059669;
+        }
+
+        .btn-cancel {
+          background: #6b7280;
+          color: white;
+        }
+
+        .btn-cancel:hover:not(:disabled) {
+          background: #4b5563;
+        }
+
+        .btn-submit:disabled,
+        .btn-cancel:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
         @media (max-width: 640px) {
           .modal-content {
             margin: 0;
@@ -1072,6 +1626,21 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           .detail-row {
             flex-direction: column;
             gap: 0.25rem;
+          }
+
+          .cost-edit-group,
+          .cost-display-group {
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+          }
+
+          .cost-edit-input {
+            width: 100%;
+          }
+
+          .btn-inline {
+            width: 100%;
           }
 
           .file-item {
@@ -1091,6 +1660,10 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
           .comment-meta {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          .add-form-actions {
+            flex-direction: column;
           }
         }
       `}</style>

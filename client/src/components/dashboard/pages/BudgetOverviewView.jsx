@@ -1,16 +1,19 @@
+// BudgetOverviewView.jsx
 import React from "react";
 
 function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [expandedCategories, setExpandedCategories] = React.useState(new Set());
   const [actualSpending, setActualSpending] = React.useState({});
+  const [returnedAmounts, setReturnedAmounts] = React.useState({});
   const [isLoadingSpending, setIsLoadingSpending] = React.useState(true);
-  const [showIncreaseBudgetModal, setShowIncreaseBudgetModal] = React.useState(false);
+  const [showIncreaseBudgetModal, setShowIncreaseBudgetModal] =
+    React.useState(false);
   const [showReallocateModal, setShowReallocateModal] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState(null);
   const [newItemBudget, setNewItemBudget] = React.useState("");
   const [reallocationAmounts, setReallocationAmounts] = React.useState({});
 
-  // Load actual spending from completed care tasks
+  // Load actual spending and returned amounts from care tasks
   React.useEffect(() => {
     const loadActualSpending = async () => {
       if (!budgetPlan?.personId || !budgetPlan?.year) return;
@@ -26,7 +29,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("Spending data:", data);
           setActualSpending(data.spending || {});
+          setReturnedAmounts(data.returned || {});
         }
       } catch (err) {
         console.error("Error loading spending:", err);
@@ -48,13 +53,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
     setExpandedCategories(newExpanded);
   };
 
-  // Calculate totals
+  // Calculate totals including returned amounts
   const totalBudget = budgetPlan?.yearlyBudget || 0;
   const totalAllocated = (budgetPlan?.categories || []).reduce(
     (sum, cat) => sum + (cat.budget || 0),
     0
   );
-  const totalSpent = Object.values(actualSpending).reduce(
+
+  // Calculate gross spent (before returns) and total returned
+  const totalGrossSpent = Object.values(actualSpending).reduce(
     (sum, catSpending) =>
       sum +
       Object.values(catSpending.items || {}).reduce(
@@ -63,7 +70,20 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       ),
     0
   );
-  const remaining = totalBudget - totalSpent;
+
+  const totalReturned = Object.values(returnedAmounts).reduce(
+    (sum, catReturned) =>
+      sum +
+      Object.values(catReturned.items || {}).reduce(
+        (itemSum, itemReturned) => itemSum + (itemReturned || 0),
+        0
+      ),
+    0
+  );
+
+  // Net spending is gross minus returns
+  const totalNetSpent = totalGrossSpent - totalReturned;
+  const remaining = totalBudget - totalNetSpent;
 
   const getCategorySpent = (categoryId) => {
     const catSpending = actualSpending[categoryId];
@@ -74,8 +94,25 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
     );
   };
 
+  const getCategoryReturned = (categoryId) => {
+    const catReturned = returnedAmounts[categoryId];
+    if (!catReturned) return 0;
+    return Object.values(catReturned.items || {}).reduce(
+      (sum, itemReturned) => sum + (itemReturned || 0),
+      0
+    );
+  };
+
   const getItemSpent = (categoryId, itemId) => {
-    return actualSpending[categoryId]?.items?.[itemId] || 0;
+    const cat = actualSpending?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
+  };
+
+  const getItemReturned = (categoryId, itemId) => {
+    const cat = returnedAmounts?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
   };
 
   const formatCurrency = (amount) => {
@@ -85,9 +122,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
     }).format(amount || 0);
   };
 
-  const getProgressPercentage = (spent, allocated) => {
+  const getProgressPercentage = (netSpent, allocated) => {
     if (!allocated || allocated === 0) return 0;
-    return Math.min(Math.round((spent / allocated) * 100), 100);
+    return Math.min(Math.round((netSpent / allocated) * 100), 100);
   };
 
   const getProgressColor = (percentage) => {
@@ -112,17 +149,20 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       }
 
       // Validate that no item goes negative
-      const updatedCategories = budgetPlan.categories.map(cat => {
+      const updatedCategories = budgetPlan.categories.map((cat) => {
         if (cat.id === selectedItem.category.id) {
-          const newItems = cat.items.map(item => {
+          const newItems = cat.items.map((item) => {
             if (item._id === selectedItem.item._id) {
               // Add reallocated amount to this item
               return { ...item, budget: item.budget + totalReallocated };
             } else if (reallocationAmounts[item._id]) {
               // Subtract from source items
-              const newBudget = item.budget - parseFloat(reallocationAmounts[item._id]);
+              const newBudget =
+                item.budget - parseFloat(reallocationAmounts[item._id]);
               if (newBudget < 0) {
-                throw new Error(`Cannot reallocate more than available budget from ${item.name}`);
+                throw new Error(
+                  `Cannot reallocate more than available budget from ${item.name}`
+                );
               }
               return { ...item, budget: newBudget };
             }
@@ -154,7 +194,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("Server error:", response.status, errorData);
-        throw new Error(errorData.error || `Server returned ${response.status}`);
+        throw new Error(
+          errorData.error || `Server returned ${response.status}`
+        );
       }
 
       // Close modal
@@ -175,7 +217,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
     const newBudget = parseFloat(newItemBudget);
     if (isNaN(newBudget) || newBudget <= selectedItem.item.budget) {
-      alert("Please enter a valid budget amount greater than the current budget.");
+      alert(
+        "Please enter a valid budget amount greater than the current budget."
+      );
       return;
     }
 
@@ -184,18 +228,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       const budgetDifference = newBudget - selectedItem.item.budget;
 
       // Update the item budget
-      const updatedCategories = budgetPlan.categories.map(cat => {
+      const updatedCategories = budgetPlan.categories.map((cat) => {
         if (cat.id === selectedItem.category.id) {
           return {
             ...cat,
             // Increase category budget by the difference
             budget: cat.budget + budgetDifference,
-            items: cat.items.map(item => {
+            items: cat.items.map((item) => {
               if (item._id === selectedItem.item._id) {
                 return { ...item, budget: newBudget };
               }
               return item;
-            })
+            }),
           };
         }
         return cat;
@@ -224,7 +268,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("Server error:", response.status, errorData);
-        throw new Error(errorData.error || `Server returned ${response.status}`);
+        throw new Error(
+          errorData.error || `Server returned ${response.status}`
+        );
       }
 
       // Close modal
@@ -245,7 +291,19 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       {/* Header */}
       <div className="overview-header">
         <div className="overview-header-text">
-          <h2>Budget Plan for {budgetPeriod.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {budgetPeriod.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          <h2>
+            Budget Plan for{" "}
+            {budgetPeriod.startDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}{" "}
+            -{" "}
+            {budgetPeriod.endDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
           </h2>
         </div>
       </div>
@@ -260,11 +318,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         <div className="summary-card">
           <div className="summary-label">Spent</div>
           <div className="summary-value spent">
-            {isLoadingSpending ? "Loading..." : formatCurrency(totalSpent)}
+            {isLoadingSpending ? "Loading..." : formatCurrency(totalNetSpent)}
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalSpent / totalBudget) * 100)}% of budget`
+              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget`
               : "0% of budget"}
           </div>
         </div>
@@ -281,6 +339,23 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         </div>
       </div>
 
+      {/* Budget Surplus Section - Only show if there are returns */}
+      {totalReturned > 0 && (
+        <div className="budget-surplus-section">
+          <div className="surplus-header">
+            <h3>💰 Budget Surplus from Returns</h3>
+            <div className="surplus-amount">
+              {formatCurrency(totalReturned)}
+            </div>
+          </div>
+          <p className="surplus-description">
+            This amount represents money that was initially spent but has been
+            returned/refunded. This surplus is now available to be spent on
+            other care needs.
+          </p>
+        </div>
+      )}
+
       {/* Categories Table */}
       <div className="categories-table">
         <div className="table-header">
@@ -291,9 +366,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         </div>
 
         {(budgetPlan?.categories || []).map((category) => {
-          const categorySpent = getCategorySpent(category.id);
+          const categoryGrossSpent = getCategorySpent(category.id);
+          const categoryReturned = getCategoryReturned(category.id);
+          const categoryNetSpent = categoryGrossSpent - categoryReturned;
           const progressPct = getProgressPercentage(
-            categorySpent,
+            categoryNetSpent,
             category.budget
           );
           const isExpanded = expandedCategories.has(category.id);
@@ -319,7 +396,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                   {formatCurrency(category.budget)}
                 </div>
                 <div className="col-amount spent">
-                  {isLoadingSpending ? "..." : formatCurrency(categorySpent)}
+                  {isLoadingSpending ? (
+                    "..."
+                  ) : (
+                    <>{formatCurrency(categoryNetSpent)}</>
+                  )}
                 </div>
                 <div className="col-progress">
                   <div className="progress-container">
@@ -339,16 +420,23 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
               {isExpanded && category.items && category.items.length > 0 && (
                 <div className="items-section">
                   {category.items.map((item) => {
-                    const itemSpent = getItemSpent(category.id, item._id);
+                    const itemGrossSpent = getItemSpent(category.id, item._id);
+                    const itemReturned = getItemReturned(category.id, item._id);
+                    const itemNetSpent = itemGrossSpent - itemReturned;
                     const itemProgressPct = getProgressPercentage(
-                      itemSpent,
+                      itemNetSpent,
                       item.budget
                     );
 
                     return (
                       <div key={item._id} className="item-row">
                         <div className="col-name item-name">
-                          {item.name}
+                          <span>{item.name}</span>
+                          {itemReturned > 0 && (
+                            <span className="return-badge">
+                              {formatCurrency(itemReturned)} returned
+                            </span>
+                          )}
                           {itemProgressPct >= 80 && (
                             <div className="action-buttons">
                               <button
@@ -358,8 +446,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                   setSelectedItem({
                                     item,
                                     category,
-                                    itemSpent,
-                                    itemProgressPct
+                                    itemSpent: itemNetSpent,
+                                    itemProgressPct,
                                   });
                                   setNewItemBudget(item.budget.toString());
                                   setShowIncreaseBudgetModal(true);
@@ -374,8 +462,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                   setSelectedItem({
                                     item,
                                     category,
-                                    itemSpent,
-                                    itemProgressPct
+                                    itemSpent: itemNetSpent,
+                                    itemProgressPct,
                                   });
                                   setReallocationAmounts({});
                                   setShowReallocateModal(true);
@@ -390,7 +478,13 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                           {formatCurrency(item.budget)}
                         </div>
                         <div className="col-amount spent">
-                          {isLoadingSpending ? "..." : formatCurrency(itemSpent)}
+                          {isLoadingSpending ? (
+                            "..."
+                          ) : (
+                            <div className="spent-details">
+                              <span>{formatCurrency(itemNetSpent)}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="col-progress">
                           <div className="progress-container">
@@ -398,7 +492,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                               className="progress-bar"
                               style={{
                                 width: `${itemProgressPct}%`,
-                                backgroundColor: getProgressColor(itemProgressPct),
+                                backgroundColor:
+                                  getProgressColor(itemProgressPct),
                               }}
                             />
                             <span className="progress-text">
@@ -418,21 +513,31 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
       {/* Increase Budget Modal */}
       {showIncreaseBudgetModal && selectedItem && (
-        <div className="modal-overlay" onClick={() => setShowIncreaseBudgetModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowIncreaseBudgetModal(false)}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Increase Budget</h3>
             <p className="modal-description">
-              Increasing the budget for <strong>{selectedItem.item.name}</strong> will also increase the budget for <strong>{selectedItem.category.name}</strong> and the total yearly budget.
+              Increasing the budget for{" "}
+              <strong>{selectedItem.item.name}</strong> will also increase the
+              budget for <strong>{selectedItem.category.name}</strong> and the
+              total yearly budget.
             </p>
 
             <div className="budget-summary">
               <div className="budget-row">
                 <span>Current Item Budget:</span>
-                <span className="amount">{formatCurrency(selectedItem.item.budget)}</span>
+                <span className="amount">
+                  {formatCurrency(selectedItem.item.budget)}
+                </span>
               </div>
               <div className="budget-row">
-                <span>Amount Spent:</span>
-                <span className="amount spent">{formatCurrency(selectedItem.itemSpent)}</span>
+                <span>Net Amount Spent:</span>
+                <span className="amount spent">
+                  {formatCurrency(selectedItem.itemSpent)}
+                </span>
               </div>
               <div className="budget-row">
                 <span>Usage:</span>
@@ -454,24 +559,44 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
             {parseFloat(newItemBudget) > selectedItem.item.budget && (
               <div className="cascade-info">
-                <p><strong>Budget Changes:</strong></p>
+                <p>
+                  <strong>Budget Changes:</strong>
+                </p>
                 <div className="budget-row">
                   <span>Item increase:</span>
-                  <span className="amount increase">+{formatCurrency(parseFloat(newItemBudget) - selectedItem.item.budget)}</span>
+                  <span className="amount increase">
+                    +
+                    {formatCurrency(
+                      parseFloat(newItemBudget) - selectedItem.item.budget
+                    )}
+                  </span>
                 </div>
                 <div className="budget-row">
                   <span>Category new budget:</span>
-                  <span className="amount">{formatCurrency(selectedItem.category.budget + (parseFloat(newItemBudget) - selectedItem.item.budget))}</span>
+                  <span className="amount">
+                    {formatCurrency(
+                      selectedItem.category.budget +
+                        (parseFloat(newItemBudget) - selectedItem.item.budget)
+                    )}
+                  </span>
                 </div>
                 <div className="budget-row">
                   <span>Yearly new budget:</span>
-                  <span className="amount">{formatCurrency(budgetPlan.yearlyBudget + (parseFloat(newItemBudget) - selectedItem.item.budget))}</span>
+                  <span className="amount">
+                    {formatCurrency(
+                      budgetPlan.yearlyBudget +
+                        (parseFloat(newItemBudget) - selectedItem.item.budget)
+                    )}
+                  </span>
                 </div>
               </div>
             )}
 
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowIncreaseBudgetModal(false)}>
+              <button
+                className="btn-cancel"
+                onClick={() => setShowIncreaseBudgetModal(false)}
+              >
                 Cancel
               </button>
               <button className="btn-save" onClick={handleIncreaseBudget}>
@@ -484,21 +609,34 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
       {/* Reallocate Within Category Modal */}
       {showReallocateModal && selectedItem && (
-        <div className="modal-overlay" onClick={() => setShowReallocateModal(false)}>
-          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowReallocateModal(false)}
+        >
+          <div
+            className="modal-content modal-large"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3>Reallocate Budget</h3>
             <p className="modal-description">
-              Reallocate budget from other items in <strong>{selectedItem.category.name}</strong> to <strong>{selectedItem.item.name}</strong>. The category's total budget will remain unchanged.
+              Reallocate budget from other items in{" "}
+              <strong>{selectedItem.category.name}</strong> to{" "}
+              <strong>{selectedItem.item.name}</strong>. The category's total
+              budget will remain unchanged.
             </p>
 
             <div className="budget-summary">
               <div className="budget-row">
                 <span>Current Item Budget:</span>
-                <span className="amount">{formatCurrency(selectedItem.item.budget)}</span>
+                <span className="amount">
+                  {formatCurrency(selectedItem.item.budget)}
+                </span>
               </div>
               <div className="budget-row">
-                <span>Amount Spent:</span>
-                <span className="amount spent">{formatCurrency(selectedItem.itemSpent)}</span>
+                <span>Net Amount Spent:</span>
+                <span className="amount spent">
+                  {formatCurrency(selectedItem.itemSpent)}
+                </span>
               </div>
               <div className="budget-row">
                 <span>Usage:</span>
@@ -509,20 +647,32 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <div className="reallocate-section">
               <h4>Reallocate From:</h4>
               {selectedItem.category.items
-                .filter(item => item._id !== selectedItem.item._id)
-                .map(sourceItem => {
-                  const sourceSpent = getItemSpent(selectedItem.category.id, sourceItem._id);
-                  const availableToReallocate = sourceItem.budget - sourceSpent;
-                  const currentReallocation = parseFloat(reallocationAmounts[sourceItem._id]) || 0;
+                .filter((item) => item._id !== selectedItem.item._id)
+                .map((sourceItem) => {
+                  const sourceGrossSpent = getItemSpent(
+                    selectedItem.category.id,
+                    sourceItem._id
+                  );
+                  const sourceReturned = getItemReturned(
+                    selectedItem.category.id,
+                    sourceItem._id
+                  );
+                  const sourceNetSpent = sourceGrossSpent - sourceReturned;
+                  const availableToReallocate =
+                    sourceItem.budget - sourceNetSpent;
+                  const currentReallocation =
+                    parseFloat(reallocationAmounts[sourceItem._id]) || 0;
 
                   return (
                     <div key={sourceItem._id} className="source-item">
                       <div className="source-item-header">
-                        <span className="source-item-name">{sourceItem.name}</span>
+                        <span className="source-item-name">
+                          {sourceItem.name}
+                        </span>
                         <span className="source-item-budget">
-                          Budget: {formatCurrency(sourceItem.budget)} |
-                          Spent: {formatCurrency(sourceSpent)} |
-                          Available: {formatCurrency(availableToReallocate)}
+                          Budget: {formatCurrency(sourceItem.budget)} | Net
+                          Spent: {formatCurrency(sourceNetSpent)} | Available:{" "}
+                          {formatCurrency(availableToReallocate)}
                         </span>
                       </div>
                       <input
@@ -530,12 +680,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         step="0.01"
                         min="0"
                         max={availableToReallocate}
-                        value={reallocationAmounts[sourceItem._id] || ''}
+                        value={reallocationAmounts[sourceItem._id] || ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setReallocationAmounts(prev => ({
+                          setReallocationAmounts((prev) => ({
                             ...prev,
-                            [sourceItem._id]: value
+                            [sourceItem._id]: value,
                           }));
                         }}
                         placeholder="Amount to reallocate"
@@ -543,7 +693,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                       />
                       {currentReallocation > availableToReallocate && (
                         <span className="error-text">
-                          Cannot reallocate more than available: {formatCurrency(availableToReallocate)}
+                          Cannot reallocate more than available:{" "}
+                          {formatCurrency(availableToReallocate)}
                         </span>
                       )}
                     </div>
@@ -551,13 +702,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                 })}
             </div>
 
-            {Object.values(reallocationAmounts).some(amt => parseFloat(amt) > 0) && (
+            {Object.values(reallocationAmounts).some(
+              (amt) => parseFloat(amt) > 0
+            ) && (
               <div className="cascade-info">
-                <p><strong>Budget Changes:</strong></p>
+                <p>
+                  <strong>Budget Changes:</strong>
+                </p>
                 <div className="budget-row">
                   <span>Total being reallocated:</span>
                   <span className="amount increase">
-                    +{formatCurrency(
+                    +
+                    {formatCurrency(
                       Object.values(reallocationAmounts).reduce(
                         (sum, amt) => sum + (parseFloat(amt) || 0),
                         0
@@ -570,25 +726,33 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                   <span className="amount">
                     {formatCurrency(
                       selectedItem.item.budget +
-                      Object.values(reallocationAmounts).reduce(
-                        (sum, amt) => sum + (parseFloat(amt) || 0),
-                        0
-                      )
+                        Object.values(reallocationAmounts).reduce(
+                          (sum, amt) => sum + (parseFloat(amt) || 0),
+                          0
+                        )
                     )}
                   </span>
                 </div>
                 <div className="budget-row">
                   <span>Category budget:</span>
-                  <span className="amount">{formatCurrency(selectedItem.category.budget)} (unchanged)</span>
+                  <span className="amount">
+                    {formatCurrency(selectedItem.category.budget)} (unchanged)
+                  </span>
                 </div>
               </div>
             )}
 
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowReallocateModal(false)}>
+              <button
+                className="btn-cancel"
+                onClick={() => setShowReallocateModal(false)}
+              >
                 Cancel
               </button>
-              <button className="btn-save" onClick={handleReallocateWithinCategory}>
+              <button
+                className="btn-save"
+                onClick={handleReallocateWithinCategory}
+              >
                 Save Changes
               </button>
             </div>
@@ -694,6 +858,43 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           color: #9ca3af;
         }
 
+        /* Budget Surplus Section */
+        .budget-surplus-section {
+          background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+          border: 2px solid #a78bfa;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 2px 4px rgba(167, 139, 250, 0.2);
+        }
+
+        .surplus-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .surplus-header h3 {
+          margin: 0;
+          color: #5b21b6;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .surplus-amount {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #10b981;
+        }
+
+        .surplus-description {
+          margin: 0;
+          color: #4c1d95;
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+
         .categories-table {
           background: white;
           border: 1px solid #e5e7eb;
@@ -763,6 +964,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           margin-left: 0.5rem;
         }
 
+        .return-indicator {
+          margin-left: 0.5rem;
+          font-size: 0.875rem;
+          cursor: help;
+        }
+
         .col-amount {
           text-align: right;
           font-weight: 600;
@@ -770,6 +977,26 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .col-amount.spent {
           color: #f59e0b;
+        }
+
+        .returned-hint {
+          color: #8b5cf6;
+          margin-left: 0.25rem;
+          font-size: 0.875rem;
+          cursor: help;
+        }
+
+        .spent-details {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 0.25rem;
+        }
+
+        .spent-breakdown {
+          font-size: 0.75rem;
+          color: #6b7280;
+          font-weight: normal;
         }
 
         .col-progress {
@@ -825,7 +1052,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-size: 0.95rem;
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        .return-badge {
+          background: #fef3c7;
+          color: #92400e;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          white-space: nowrap;
         }
 
         .action-buttons {
@@ -1083,6 +1321,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
           .summary-cards {
             grid-template-columns: 1fr;
+          }
+
+          .surplus-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
           }
         }
       `}</style>
