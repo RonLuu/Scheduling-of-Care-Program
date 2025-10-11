@@ -5,15 +5,15 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
   const [taskData, setTaskData] = React.useState({
     title: "",
     dueDate: "",
-    scheduleType: "AllDay",
-    startAt: "",
-    endAt: "",
     isRecurring: false,
     recurrencePattern: "daily",
     recurrenceInterval: 1,
+    recurrenceEndType: "date", // "date" or "occurrences"
     recurrenceEndDate: "",
+    recurrenceOccurrences: 1,
     assignedToUserId: "",
   });
+
   const [budgetCategoryId, setBudgetCategoryId] = React.useState("");
   const [budgetItemId, setBudgetItemId] = React.useState("");
   const [categories, setCategories] = React.useState([]);
@@ -21,6 +21,85 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState("");
   const [success, setSuccess] = React.useState("");
+  const [maxOccurrences, setMaxOccurrences] = React.useState(null);
+  const [estimatedEndDate, setEstimatedEndDate] = React.useState(null);
+
+  // Get current year limits
+  const currentYear = new Date().getFullYear();
+  const yearEndDate = `${currentYear}-12-31`;
+
+  // Calculate max occurrences based on recurrence pattern
+  React.useEffect(() => {
+    if (!taskData.isRecurring || !taskData.dueDate) {
+      setMaxOccurrences(null);
+      setEstimatedEndDate(null);
+      return;
+    }
+
+    const startDate = new Date(taskData.dueDate);
+    const endOfYear = new Date(currentYear, 11, 31); // December 31st
+
+    let count = 0;
+    let currentDate = new Date(startDate);
+    let lastValidDate = new Date(startDate);
+
+    // Calculate maximum occurrences that fit within the current year
+    while (currentDate <= endOfYear) {
+      count++;
+      lastValidDate = new Date(currentDate);
+
+      // Increment based on pattern
+      if (taskData.recurrencePattern === "daily") {
+        currentDate.setDate(
+          currentDate.getDate() + taskData.recurrenceInterval
+        );
+      } else if (taskData.recurrencePattern === "weekly") {
+        currentDate.setDate(
+          currentDate.getDate() + 7 * taskData.recurrenceInterval
+        );
+      } else if (taskData.recurrencePattern === "monthly") {
+        currentDate.setMonth(
+          currentDate.getMonth() + taskData.recurrenceInterval
+        );
+      }
+    }
+
+    setMaxOccurrences(count);
+
+    // Calculate estimated end date based on occurrences
+    if (
+      taskData.recurrenceEndType === "occurrences" &&
+      taskData.recurrenceOccurrences > 0
+    ) {
+      let calcDate = new Date(startDate);
+      for (
+        let i = 1;
+        i < Math.min(taskData.recurrenceOccurrences, count);
+        i++
+      ) {
+        if (taskData.recurrencePattern === "daily") {
+          calcDate.setDate(calcDate.getDate() + taskData.recurrenceInterval);
+        } else if (taskData.recurrencePattern === "weekly") {
+          calcDate.setDate(
+            calcDate.getDate() + 7 * taskData.recurrenceInterval
+          );
+        } else if (taskData.recurrencePattern === "monthly") {
+          calcDate.setMonth(calcDate.getMonth() + taskData.recurrenceInterval);
+        }
+      }
+      setEstimatedEndDate(calcDate);
+    } else {
+      setEstimatedEndDate(null);
+    }
+  }, [
+    taskData.isRecurring,
+    taskData.dueDate,
+    taskData.recurrencePattern,
+    taskData.recurrenceInterval,
+    taskData.recurrenceEndType,
+    taskData.recurrenceOccurrences,
+    currentYear,
+  ]);
 
   // Load budget categories when client is selected
   React.useEffect(() => {
@@ -31,15 +110,13 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
 
     const loadCategories = async () => {
       try {
-        // Get current year
-        const currentYear = new Date().getFullYear();
-
         const response = await fetch(
           `/api/budget-plans?personId=${selectedClient}&year=${currentYear}`,
           {
             headers: { Authorization: `Bearer ${jwt}` },
           }
         );
+
         if (response.ok) {
           const data = await response.json();
           setCategories(data.budgetPlan?.categories || []);
@@ -50,7 +127,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     };
 
     loadCategories();
-  }, [selectedClient, jwt]);
+  }, [selectedClient, jwt, currentYear]);
 
   // Filter budget items based on selected category
   React.useEffect(() => {
@@ -86,14 +163,6 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       return;
     }
 
-    if (
-      taskData.scheduleType === "Timed" &&
-      (!taskData.startAt || !taskData.endAt)
-    ) {
-      setError("Please set start and end times for timed tasks");
-      return;
-    }
-
     if (!budgetCategoryId) {
       setError("Please select a budget category");
       return;
@@ -104,17 +173,54 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       return;
     }
 
+    // Validate recurring task settings
+    if (taskData.isRecurring) {
+      if (taskData.recurrenceEndType === "occurrences") {
+        if (
+          !taskData.recurrenceOccurrences ||
+          taskData.recurrenceOccurrences < 1
+        ) {
+          setError("Please specify the number of occurrences");
+          return;
+        }
+        if (taskData.recurrenceOccurrences > maxOccurrences) {
+          setError(
+            `Maximum ${maxOccurrences} occurrences allowed within ${currentYear}`
+          );
+          return;
+        }
+      } else if (taskData.recurrenceEndType === "date") {
+        if (!taskData.recurrenceEndDate) {
+          setError("Please specify an end date for recurring tasks");
+          return;
+        }
+        if (new Date(taskData.recurrenceEndDate) > new Date(yearEndDate)) {
+          setError(`End date must be within ${currentYear}`);
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Calculate actual end date for API
+      let actualEndDate = null;
+      if (taskData.isRecurring) {
+        if (taskData.recurrenceEndType === "occurrences") {
+          actualEndDate = estimatedEndDate
+            ? estimatedEndDate.toISOString().split("T")[0]
+            : null;
+        } else {
+          actualEndDate = taskData.recurrenceEndDate;
+        }
+      }
+
       const payload = {
         personId: selectedClient,
         title: taskData.title.trim(),
         dueDate: taskData.dueDate,
-        scheduleType: taskData.scheduleType,
-        startAt:
-          taskData.scheduleType === "Timed" ? taskData.startAt : undefined,
-        endAt: taskData.scheduleType === "Timed" ? taskData.endAt : undefined,
+        scheduleType: "AllDay", // Always AllDay as per requirement
         assignedToUserId: taskData.assignedToUserId || undefined,
         isRecurring: taskData.isRecurring,
         recurrencePattern: taskData.isRecurring
@@ -123,10 +229,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrenceInterval: taskData.isRecurring
           ? taskData.recurrenceInterval
           : undefined,
-        recurrenceEndDate:
-          taskData.isRecurring && taskData.recurrenceEndDate
-            ? taskData.recurrenceEndDate
-            : undefined,
+        recurrenceEndDate: taskData.isRecurring ? actualEndDate : undefined,
         budgetCategoryId: budgetCategoryId,
         budgetItemId: budgetItemId,
       };
@@ -146,6 +249,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       }
 
       const result = await response.json();
+
       setSuccess(
         taskData.isRecurring
           ? `Successfully created recurring task! ${
@@ -158,13 +262,12 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       setTaskData({
         title: "",
         dueDate: "",
-        scheduleType: "AllDay",
-        startAt: "",
-        endAt: "",
         isRecurring: false,
         recurrencePattern: "daily",
         recurrenceInterval: 1,
+        recurrenceEndType: "date",
         recurrenceEndDate: "",
+        recurrenceOccurrences: 1,
         assignedToUserId: "",
       });
       setBudgetCategoryId("");
@@ -186,9 +289,10 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
       <div className="form-header">
         <h3>Create New Task</h3>
       </div>
+
       <p className="form-description">
-        Create a one-time or recurring care task. Costs can be added after the
-        task is completed.
+        Create a one-time or recurring care task. Tasks are scoped within the
+        current year ({currentYear}).
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -223,7 +327,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
               <option value="">Select a category...</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.emoji} {category.name}
                 </option>
               ))}
             </select>
@@ -274,20 +378,25 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           />
         </div>
 
-        {/* Due Date */}
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="dueDate">Due Date *</label>
-            <input
-              type="date"
-              id="dueDate"
-              value={taskData.dueDate}
-              onChange={(e) =>
-                setTaskData({ ...taskData, dueDate: e.target.value })
-              }
-              required
-            />
-          </div>
+        {/* Due Date / Start Date */}
+        <div className="form-group">
+          <label htmlFor="dueDate">
+            {taskData.isRecurring ? "Start Date *" : "Due Date *"}
+          </label>
+          <input
+            type="date"
+            id="dueDate"
+            value={taskData.dueDate}
+            onChange={(e) =>
+              setTaskData({ ...taskData, dueDate: e.target.value })
+            }
+            min={new Date().toISOString().split("T")[0]}
+            max={yearEndDate}
+            required
+          />
+          {taskData.isRecurring && (
+            <small>First occurrence of the recurring task</small>
+          )}
         </div>
 
         {/* Recurring Task Option */}
@@ -307,6 +416,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         {/* Recurrence Settings */}
         {taskData.isRecurring && (
           <div className="recurrence-settings">
+            <h4>Recurrence Pattern</h4>
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="recurrencePattern">Repeat</label>
@@ -325,36 +436,136 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
                   <option value="monthly">Monthly</option>
                 </select>
               </div>
+
               <div className="form-group">
                 <label htmlFor="recurrenceInterval">Every</label>
-                <input
-                  type="number"
-                  id="recurrenceInterval"
-                  min="1"
-                  value={taskData.recurrenceInterval}
-                  onChange={(e) =>
-                    setTaskData({
-                      ...taskData,
-                      recurrenceInterval: parseInt(e.target.value) || 1,
-                    })
-                  }
-                />
+                <div className="interval-input">
+                  <input
+                    type="number"
+                    id="recurrenceInterval"
+                    min="1"
+                    max="30"
+                    value={taskData.recurrenceInterval}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceInterval: parseInt(e.target.value) || 1,
+                      })
+                    }
+                  />
+                  <span className="interval-label">
+                    {taskData.recurrencePattern === "daily" && "day(s)"}
+                    {taskData.recurrencePattern === "weekly" && "week(s)"}
+                    {taskData.recurrencePattern === "monthly" && "month(s)"}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="recurrenceEndDate">End Date (Optional)</label>
-              <input
-                type="date"
-                id="recurrenceEndDate"
-                value={taskData.recurrenceEndDate}
-                onChange={(e) =>
-                  setTaskData({
-                    ...taskData,
-                    recurrenceEndDate: e.target.value,
-                  })
-                }
-              />
-              <small>Leave blank for indefinite recurrence</small>
+
+            {/* End Condition */}
+            <div className="end-condition-section">
+              <h4>End Condition</h4>
+
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="endType"
+                    value="date"
+                    checked={taskData.recurrenceEndType === "date"}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndType: e.target.value,
+                      })
+                    }
+                  />
+                  <span>End by date</span>
+                </label>
+
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="endType"
+                    value="occurrences"
+                    checked={taskData.recurrenceEndType === "occurrences"}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndType: e.target.value,
+                      })
+                    }
+                  />
+                  <span>End after occurrences</span>
+                </label>
+              </div>
+
+              {taskData.recurrenceEndType === "date" && (
+                <div className="form-group">
+                  <label htmlFor="recurrenceEndDate">End Date *</label>
+                  <input
+                    type="date"
+                    id="recurrenceEndDate"
+                    value={taskData.recurrenceEndDate}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceEndDate: e.target.value,
+                      })
+                    }
+                    min={taskData.dueDate}
+                    max={yearEndDate}
+                    required
+                  />
+                  <small>Tasks can only be created within {currentYear}</small>
+                </div>
+              )}
+
+              {taskData.recurrenceEndType === "occurrences" && (
+                <div className="form-group">
+                  <label htmlFor="recurrenceOccurrences">
+                    Number of Occurrences *
+                  </label>
+                  <input
+                    type="number"
+                    id="recurrenceOccurrences"
+                    value={taskData.recurrenceOccurrences}
+                    onChange={(e) =>
+                      setTaskData({
+                        ...taskData,
+                        recurrenceOccurrences: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    min="1"
+                    max={maxOccurrences || 365}
+                    required
+                  />
+                  {maxOccurrences && (
+                    <small>
+                      Maximum {maxOccurrences} occurrences possible within{" "}
+                      {currentYear}
+                      {estimatedEndDate &&
+                        taskData.recurrenceOccurrences <= maxOccurrences && (
+                          <span>
+                            {" "}
+                            (Last task will be on{" "}
+                            {estimatedEndDate.toLocaleDateString()})
+                          </span>
+                        )}
+                    </small>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="info-box">
+              <span className="info-icon">ℹ️</span>
+              <div className="info-text">
+                <strong>Year-based Task Management:</strong> Tasks are managed
+                within yearly budget cycles. To extend recurring tasks into next
+                year, use the "Copy to Next Year" function in the Budget
+                Overview page.
+              </div>
             </div>
           </div>
         )}
@@ -399,6 +610,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           margin: 0 0 1.5rem 0;
           color: #6b7280;
           font-size: 0.875rem;
+          line-height: 1.5;
         }
 
         form {
@@ -427,7 +639,6 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
 
         input[type="text"],
         input[type="date"],
-        input[type="time"],
         input[type="number"],
         select {
           padding: 0.625rem;
@@ -460,12 +671,60 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
 
         .recurrence-settings {
           background: #f8fafc;
-          padding: 1rem;
-          border-radius: 6px;
+          padding: 1.25rem;
+          border-radius: 8px;
           border: 1px solid #e5e7eb;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
+        }
+
+        .recurrence-settings h4 {
+          margin: 0;
+          color: #1f2937;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .interval-input {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .interval-input input {
+          width: 80px;
+        }
+
+        .interval-label {
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+
+        .end-condition-section {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .radio-group {
+          display: flex;
+          gap: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .radio-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          font-weight: normal;
+        }
+
+        .radio-label input[type="radio"] {
+          width: 1.125rem;
+          height: 1.125rem;
+          cursor: pointer;
         }
 
         .budget-settings {
@@ -510,9 +769,36 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
           color: #92400e;
         }
 
+        .info-box {
+          display: flex;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #eff6ff;
+          border: 1px solid #93c5fd;
+          border-radius: 6px;
+          margin-top: 0.5rem;
+        }
+
+        .info-icon {
+          font-size: 1.1rem;
+          flex-shrink: 0;
+        }
+
+        .info-text {
+          color: #1e40af;
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+
+        .info-text strong {
+          display: block;
+          margin-bottom: 0.25rem;
+        }
+
         small {
           color: #6b7280;
           font-size: 0.75rem;
+          line-height: 1.4;
         }
 
         .error-message {
@@ -582,6 +868,11 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         @media (max-width: 768px) {
           .form-row {
             grid-template-columns: 1fr;
+          }
+
+          .radio-group {
+            flex-direction: column;
+            gap: 0.75rem;
           }
         }
       `}</style>
