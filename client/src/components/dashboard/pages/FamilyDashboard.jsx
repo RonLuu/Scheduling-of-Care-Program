@@ -116,7 +116,7 @@ function FamilyDashboard() {
                     )}
                     {hasJoinedOrganization && (
                       <a href="/organization" className="step-button secondary">
-                        Manage Organization
+                        View Organization
                       </a>
                     )}
                   </div>
@@ -4820,7 +4820,7 @@ function OrganizationManagementModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Manage Organization</h3>
+          <h3>View Organization</h3>
           <button className="modal-close" onClick={onClose}>
             ×
           </button>
