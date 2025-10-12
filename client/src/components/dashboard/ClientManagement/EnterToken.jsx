@@ -67,7 +67,7 @@ function EnterToken({ me, jwt, onSuccess }) {
             required
           />
           <p className="help-text">
-            Enter the invite token shared with you by a Family user
+            Enter the invite token shared with you by a family member or power of attorney
           </p>
         </div>
 
@@ -98,14 +98,15 @@ function EnterToken({ me, jwt, onSuccess }) {
 
       <style jsx>{`
         .enter-token-container {
-          background: white;
-          border-radius: 12px;
-          padding: 2rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          background: transparent;
+          padding: 0;
+          margin: 0;
         }
 
         .enter-token-form {
-          max-width: 600px;
+          width: 100%;
+          margin: 0;
+          padding: 0;
         }
 
         .form-group {
@@ -179,6 +180,8 @@ function EnterToken({ me, jwt, onSuccess }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0;
+          display: block;
         }
 
         .submit-btn:hover:not(:disabled) {

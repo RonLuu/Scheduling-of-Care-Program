@@ -284,12 +284,13 @@ function AddClient({ me, jwt, setClients }) {
 
   return (
     <div className="card">
-      <h3>Add a Client (Person with Special Needs)</h3>
-      <p className="card-description">
-        Fill in the client's information below. Fields marked with * are
-        required. You can add custom fields in both Medical and Additional
-        Information sections as needed.
-      </p>
+      <div className="card-header">
+        <h3>Add a Client (Person with Special Needs)</h3>
+        <p className="card-description">
+          Fill in the client's information below. Fields marked with * are
+          required. <br />
+        </p>
+      </div>
 
       <form onSubmit={addClient}>
         {/* Basic Information */}
@@ -626,22 +627,39 @@ function AddClient({ me, jwt, setClients }) {
 
       <style jsx>{`
         .card {
-          padding: 1.5rem;
-          background: white;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          padding: 0;
+          background: transparent;
+          width: 100%;
+          margin: 0;
+        }
+
+        form {
+          width: 100%;
+          margin: 0;
+          padding: 0 0 1rem 0;
+        }
+
+        .card-header {
+          padding: 1.5rem 1.5rem 1rem 1.5rem;
+          margin-bottom: 0;
+        }
+
+        h3 {
+          margin: 0 0 0.5rem 0;
+          padding: 0;
         }
 
         .card-description {
           color: #6b7280;
           font-size: 0.875rem;
-          margin-bottom: 1.5rem;
+          margin-bottom: 0;
           line-height: 1.5;
+          padding: 0;
         }
 
         .section {
           margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
+          padding: 0 1.5rem 1rem 1.5rem;
           border-bottom: 1px solid #e5e7eb;
         }
 
@@ -757,6 +775,7 @@ function AddClient({ me, jwt, setClients }) {
           font-size: 0.875rem;
           font-weight: 500;
           align-self: flex-start;
+          margin-left: 0;
         }
 
         .add-field-btn:hover {
@@ -846,19 +865,20 @@ function AddClient({ me, jwt, setClients }) {
         }
 
         .submit-btn {
-          width: 100%;
+          width: calc(100% - 3rem);
           padding: 0.75rem;
-          background: #10b981;
+          background: #8189d2;
           color: white;
           border: none;
           border-radius: 0.375rem;
           font-weight: 600;
           cursor: pointer;
-          margin-top: 1rem;
+          margin: 1rem 1.5rem 1.5rem 1.5rem;
+          display: block;
         }
 
         .submit-btn:hover:not(:disabled) {
-          background: #059669;
+          background: #6d76c4;
         }
 
         .submit-btn:disabled {
