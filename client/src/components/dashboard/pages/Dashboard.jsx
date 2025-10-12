@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { BiCalendar, BiDollarCircle } from "react-icons/bi";
 import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
@@ -2369,7 +2370,9 @@ function TodaysScheduleWidget({ scheduleData, client }) {
   return (
     <div className="todays-schedule">
       <div className="schedule-header">
-        <h4>📅 Today's Schedule</h4>
+        <h4>
+          <BiCalendar className="schedule-icon" /> Today's Schedule
+        </h4>
         <a href="/tasks-new" className="view-more-btn">
           View Full Schedule →
         </a>
@@ -2433,6 +2436,14 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           margin: 0;
           color: #374151;
           font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .schedule-icon {
+          font-size: 1.4rem;
+          color: #667eea;
         }
 
         .view-more-btn {
@@ -2540,7 +2551,8 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           color: #0369a1;
         }
 
-        .status-badge.complete {
+        .status-badge.complete,
+        .status-badge.completed {
           background: #ecfdf5;
           color: #059669;
         }
@@ -2830,6 +2842,14 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           margin: 0;
           color: #374151;
           font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .schedule-icon {
+          font-size: 1.4rem;
+          color: #667eea;
         }
 
         .view-more-btn {
@@ -2909,7 +2929,8 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           color: #0369a1;
         }
 
-        .status-badge.complete {
+        .status-badge.complete,
+        .status-badge.completed {
           background: #ecfdf5;
           color: #059669;
         }
@@ -3000,6 +3021,14 @@ function TaskSummaryWidget({ tasks, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3160,6 +3189,14 @@ function SuppliesWidget({ supplies, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3272,7 +3309,9 @@ function BudgetWidget({ budget, client }) {
   return (
     <div className="widget budget-widget">
       <div className="widget-header">
-        <h4>💰 Budget Overview</h4>
+        <h4>
+          <BiDollarCircle className="widget-icon" /> Budget Overview
+        </h4>
         <a href="/budget-and-reports" className="widget-link">
           {budget.allocated > 0 ? "Manage →" : "Create →"}
         </a>
@@ -3438,6 +3477,14 @@ function BudgetWidget({ budget, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3908,6 +3955,14 @@ function RecentActivityWidget({ activity }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .activity-list {

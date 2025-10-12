@@ -4,6 +4,30 @@ import useAuth from "../hooks/useAuth";
 import { useClients } from "../hooks/useClients";
 import { useBudgetPlan } from "../hooks/useBudgetPlan";
 import BudgetOverviewView from "./BudgetOverviewView";
+import {
+  BiDollarCircle,
+  BiPlusCircle,
+  BiFirstAid,
+  BiSpa,
+  BiCloset,
+  BiDish,
+  BiAccessibility,
+  BiPalette,
+  BiCar,
+  BiHome,
+  BiClipboard,
+  BiPencil,
+  BiCopy,
+  BiBulb,
+  BiFolder,
+  BiPlus,
+  BiCheck,
+  BiX,
+  BiEdit,
+  BiDotsVerticalRounded,
+  BiTrash,
+  BiCheckCircle,
+} from "react-icons/bi";
 
 function BudgetPlanningPage() {
   const { me } = useAuth();
@@ -75,49 +99,49 @@ function BudgetPlanningPage() {
     {
       id: "health",
       name: "Health & Medical",
-      emoji: "🏥",
+      emoji: BiFirstAid,
       description: "Doctor visits, medications, medical equipment",
     },
     {
       id: "hygiene",
       name: "Hygiene & Personal Care",
-      emoji: "🧴",
+      emoji: BiSpa,
       description: "Toiletries, bathing aids, grooming supplies",
     },
     {
       id: "clothing",
       name: "Clothing & Footwear",
-      emoji: "👕",
+      emoji: BiCloset,
       description: "Adaptive clothing, shoes, accessories",
     },
     {
       id: "nutrition",
       name: "Nutrition & Supplements",
-      emoji: "🥗",
+      emoji: BiDish,
       description: "Special diets, vitamins, nutritional support",
     },
     {
       id: "mobility",
       name: "Mobility & Equipment",
-      emoji: "♿",
+      emoji: BiAccessibility,
       description: "Wheelchairs, walkers, mobility aids",
     },
     {
       id: "activities",
       name: "Activities & Entertainment",
-      emoji: "🎨",
+      emoji: BiPalette,
       description: "Recreation, hobbies, social activities",
     },
     {
       id: "transportation",
       name: "Transportation",
-      emoji: "🚗",
+      emoji: BiCar,
       description: "Medical transport, vehicle modifications",
     },
     {
       id: "home",
       name: "Home Modifications",
-      emoji: "🏠",
+      emoji: BiHome,
       description: "Accessibility improvements, safety equipment",
     },
   ];
@@ -192,7 +216,7 @@ function BudgetPlanningPage() {
     const newCategory = {
       id: `custom_${Date.now()}`,
       name: newCategoryName.trim(),
-      emoji: "📋",
+      emoji: BiClipboard,
       description: newCategoryDescription.trim() || "Custom category",
       isCustom: true,
     };
@@ -589,7 +613,7 @@ function BudgetPlanningPage() {
     const newCat = {
       id: sourceCatMeta.id,
       name: sourceCatMeta.name,
-      emoji: sourceCatMeta.emoji || "📋",
+      emoji: sourceCatMeta.emoji || BiClipboard,
       description: sourceCatMeta.description || "",
       isCustom: !!sourceCatMeta.isCustom,
       items: [],
@@ -766,7 +790,7 @@ function BudgetPlanningPage() {
       <div className="page-main">
         <div className="budget-planning-container">
           <div className="budget-header">
-            <h2>💰 Budget Planning</h2>
+            <h2>Budget Planning</h2>
           </div>
 
           <div className="client-selection">
@@ -817,7 +841,7 @@ function BudgetPlanningPage() {
                   className="reconfigure-btn"
                   onClick={() => setShowWizard(true)}
                 >
-                  ✏️ Edit Plan
+                  <BiPencil /> Edit Plan
                 </button>
               )}
 
@@ -839,7 +863,7 @@ function BudgetPlanningPage() {
                     onClick={() => copyWholePlan(planCopyYear)}
                     title={`Copy entire plan to ${planCopyYear}`}
                   >
-                    ⤴️ Copy Plan
+                    <BiCopy /> Copy Plan
                   </button>
                 </div>
               )}
@@ -847,7 +871,7 @@ function BudgetPlanningPage() {
 
             {isBudgetPlanComplete && (
               <p className="copy-hint">
-                💡 Copy to future years: existing items won't be deleted,
+                Copy to future years: existing items won't be deleted,
                 same-name items will be updated
               </p>
             )}
@@ -865,7 +889,7 @@ function BudgetPlanningPage() {
               ) : (
                 <>
                   <div className="instructions-section">
-                    <h3>📋 Budget Plan Setup</h3>
+                    <h2>Set Up Your Budget Plan</h2>
                     <ol>
                       <li>Select budget categories (or add custom ones)</li>
                       <li>Add items with budgets to each category</li>
@@ -902,7 +926,7 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>📂 Step 1: Select Categories</h3>
+                      <h3>Step 1: Select Categories</h3>
                     </div>
 
                     <div className="categories-section">
@@ -912,7 +936,7 @@ function BudgetPlanningPage() {
                             className="add-category-btn"
                             onClick={() => setShowAddCategory(true)}
                           >
-                            ➕ Add Custom Category
+                            <BiPlus /> Add Custom Category
                           </button>
                         ) : (
                           <div className="add-category-form">
@@ -939,7 +963,7 @@ function BudgetPlanningPage() {
                                 className="btn-save"
                                 onClick={handleAddCustomCategory}
                               >
-                                ✓
+                                <BiCheck />
                               </button>
                               <button
                                 className="btn-cancel"
@@ -949,7 +973,7 @@ function BudgetPlanningPage() {
                                   setNewCategoryDescription("");
                                 }}
                               >
-                                ✕
+                                <BiX />
                               </button>
                             </div>
                           </div>
@@ -970,7 +994,7 @@ function BudgetPlanningPage() {
                             <div key={category.id} className="category-card">
                               <div className="category-header">
                                 <span className="category-emoji">
-                                  {category.emoji}
+                                  {typeof category.emoji === 'string' ? category.emoji : <category.emoji />}
                                 </span>
                                 <div className="category-info">
                                   <h4 className="category-name">
@@ -1030,7 +1054,7 @@ function BudgetPlanningPage() {
                                         }
                                         title="Copy all items to selected year"
                                       >
-                                        ⤴️
+                                        <BiCopy />
                                       </button>
                                     </div>
                                   )}
@@ -1055,9 +1079,9 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>📝 Step 2: Add Budget Items</h3>
+                      <h3>Step 2: Add Budget Items</h3>
                       <p className="step-description">
-                        Add items with budgets. Use the ⋮ menu for
+                        Add items with budgets. Use the three-dot menu for
                         copy/edit/delete actions.
                       </p>
                     </div>
@@ -1091,7 +1115,7 @@ function BudgetPlanningPage() {
                             >
                               <div className="category-items-info">
                                 <span className="category-emoji">
-                                  {category.emoji}
+                                  {typeof category.emoji === 'string' ? category.emoji : <category.emoji />}
                                 </span>
                                 <div>
                                   <h4>{category.name}</h4>
@@ -1187,13 +1211,13 @@ function BudgetPlanningPage() {
                                                     )
                                                   }
                                                 >
-                                                  ✓ Save
+                                                  <BiCheck /> Save
                                                 </button>
                                                 <button
                                                   className="btn-cancel"
                                                   onClick={handleCancelEditItem}
                                                 >
-                                                  ✕ Cancel
+                                                  <BiX /> Cancel
                                                 </button>
                                               </div>
                                             </>
@@ -1223,7 +1247,7 @@ function BudgetPlanningPage() {
                                                       )
                                                     }
                                                   >
-                                                    ⋮
+                                                    <BiDotsVerticalRounded />
                                                   </button>
                                                   {isMenuOpen && (
                                                     <div className="action-menu">
@@ -1267,7 +1291,7 @@ function BudgetPlanningPage() {
                                                             );
                                                           }}
                                                         >
-                                                          ⤴️ Copy
+                                                          <BiCopy /> Copy
                                                         </button>
                                                       </div>
                                                       <button
@@ -1283,7 +1307,7 @@ function BudgetPlanningPage() {
                                                           );
                                                         }}
                                                       >
-                                                        ✏️ Edit
+                                                        <BiPencil /> Edit
                                                       </button>
                                                       <button
                                                         className="menu-item delete"
@@ -1303,7 +1327,7 @@ function BudgetPlanningPage() {
                                                           );
                                                         }}
                                                       >
-                                                        🗑️ Delete
+                                                        <BiTrash /> Delete
                                                       </button>
                                                     </div>
                                                   )}
@@ -1378,7 +1402,7 @@ function BudgetPlanningPage() {
                                       )
                                     }
                                   >
-                                    ➕ Add
+                                    <BiPlus /> Add
                                   </button>
                                 </div>
                               </div>
@@ -1398,7 +1422,7 @@ function BudgetPlanningPage() {
                           alert("Budget plan complete! View your overview.");
                         }}
                       >
-                        ✅ Finish & View Overview
+                        <BiCheckCircle /> Finish & View Overview
                       </button>
                     </div>
                   )}
@@ -1427,15 +1451,18 @@ function BudgetPlanningPage() {
           overflow: hidden;
         }
         .budget-header {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          background: #8189d2;
           color: white;
-          padding: 2rem;
-          text-align: center;
+          padding: 2rem 2.5rem;
+          text-align: left;
         }
         .budget-header h2 {
           margin: 0;
           font-size: 2rem;
           font-weight: 600;
+          color: white;
+          text-align: left;
+          font-family: "Inter", sans-serif;
         }
 
         .client-selection {
@@ -1582,6 +1609,17 @@ function BudgetPlanningPage() {
           margin: 0.25rem 0 0 0;
           color: #6b7280;
           font-size: 0.875rem;
+        }
+
+        .header-icon {
+          margin-right: 0.5rem;
+          vertical-align: middle;
+        }
+
+        .category-emoji svg {
+          width: 1.5em;
+          height: 1.5em;
+          color: #667eea;
         }
 
         .categories-section {
