@@ -93,7 +93,7 @@ const NavigationTab = () => {
       >
         {showTab && (
           <div className="navigationtab-link-wrapper">
-            {me?.role === "Family" && (
+            {(me?.role === "Family" || me?.role === "Admin") && (
               <NavItem to="/dashboard">
                 <BiHome className="navigationtab-icon" />
                 Dashboard
@@ -107,10 +107,6 @@ const NavigationTab = () => {
               <BiDollarCircle className="navigationtab-icon" />
               Budget & Reports
             </NavItem>
-            <NavItem to="/profile">
-              <BiUser className="navigationtab-icon" />
-              Profile
-            </NavItem>
             <NavItem to="/clients">
               <BiGroup className="navigationtab-icon" />
               Clients
@@ -118,6 +114,10 @@ const NavigationTab = () => {
             <NavItem to="/shift-allocation">
               <BiCalendar className="navigationtab-icon" />
               Shift Allocation
+            </NavItem>
+            <NavItem to="/profile">
+              <BiUser className="navigationtab-icon" />
+              Profile
             </NavItem>
 
             {/* Log Out as a button but styled like links */}

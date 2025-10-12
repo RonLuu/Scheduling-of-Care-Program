@@ -104,7 +104,7 @@ function TasksPageNew() {
         }
 
         .page-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           padding: 2.5rem 2rem;
         }
@@ -172,7 +172,7 @@ function TasksPageNew() {
         .create-task-btn {
           width: 100%;
           padding: 1rem 1.5rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           border: none;
           border-radius: 8px;

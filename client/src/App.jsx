@@ -19,7 +19,7 @@ import TasksPageNew from "./components/dashboard/pages/TasksPageNew";
 import TaskCompletionPage from "./components/dashboard/pages/TaskCompletionPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
 import BudgetAndReportsPage from "./components/dashboard/pages/BudgetAndReportsPage";
-import FamilyDashboard from "./components/dashboard/pages/FamilyDashboard";
+import Dashboard from "./components/dashboard/pages/Dashboard";
 
 import PrintButton from "./components/PrintButton";
 
@@ -74,7 +74,7 @@ const App = () => {
             path="/"
             element={
               me ? (
-                me.role === "Family" ? (
+                me.role === "Family" || me.role === "Admin" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />
@@ -98,7 +98,7 @@ const App = () => {
             path="/dashboard"
             element={
               <RequireAuth>
-                <FamilyDashboard />
+                <Dashboard />
               </RequireAuth>
             }
           />
@@ -197,7 +197,7 @@ const App = () => {
             path="*"
             element={
               me ? (
-                me.role === "Family" ? (
+                me.role === "Family" || me.role === "Admin" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />
