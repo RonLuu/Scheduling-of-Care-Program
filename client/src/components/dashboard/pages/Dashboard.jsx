@@ -4,7 +4,7 @@ import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
 import CareTasks from "../CareTasks";
 
-function FamilyDashboard() {
+function Dashboard() {
   const { me } = useAuth();
   const jwt = localStorage.getItem("jwt");
   const { clients, loading, error, refresh } = useClients(me, jwt);
@@ -463,7 +463,14 @@ function FamilyDashboard() {
           <div className="dashboard-header">
             <div className="header-content">
               <div className="header-title">
-                <h1>Schedule of Care</h1>
+                <h1>
+                  {me?.role === "Admin"
+                    ? "Admin Dashboard"
+                    : "Schedule of Care"}
+                </h1>
+                {me?.role === "Admin" && (
+                  <p>Manage organization clients, staff, and settings</p>
+                )}
               </div>
 
               {organizationData && (
@@ -487,7 +494,11 @@ function FamilyDashboard() {
           {/* Client Selection */}
           <div className="client-selector">
             <div className="client-selector-left">
-              <label htmlFor="client-select">Managing care for:</label>
+              <label htmlFor="client-select">
+                {me?.role === "Admin"
+                  ? "Viewing client:"
+                  : "Managing care for:"}
+              </label>
               <select
                 id="client-select"
                 value={selectedClient?._id || ""}
@@ -505,22 +516,43 @@ function FamilyDashboard() {
               </select>
             </div>
 
-            <div className="access-buttons">
-              <button
-                className="access-btn create-token-btn"
-                onClick={() => setShowCreateTokenModal(true)}
-                title="Create an invite token for others to join"
-              >
-                Create Invite Token
-              </button>
-              <button
-                className="access-btn enter-token-btn"
-                onClick={() => setShowEnterTokenModal(true)}
-                title="Enter a token to join someone's care network"
-              >
-                Enter Invite Token
-              </button>
-            </div>
+            {me?.role === "Family" && (
+              <div className="access-buttons">
+                <button
+                  className="access-btn create-token-btn"
+                  onClick={() => setShowCreateTokenModal(true)}
+                  title="Create an invite token for others to join"
+                >
+                  Create Invite Token
+                </button>
+                <button
+                  className="access-btn enter-token-btn"
+                  onClick={() => setShowEnterTokenModal(true)}
+                  title="Enter a token to join someone's care network"
+                >
+                  Enter Invite Token
+                </button>
+              </div>
+            )}
+
+            {me?.role === "Admin" && (
+              <div className="access-buttons">
+                <button
+                  className="access-btn admin-btn"
+                  onClick={() => (window.location.href = "/clients")}
+                  title="Manage all clients"
+                >
+                  Manage All Clients
+                </button>
+                <button
+                  className="access-btn admin-btn"
+                  onClick={() => (window.location.href = "/access")}
+                  title="Manage staff access"
+                >
+                  Manage Staff Access
+                </button>
+              </div>
+            )}
           </div>
 
           {selectedClient && (
@@ -5259,4 +5291,4 @@ function OrganizationManagementModal({
   );
 }
 
-export default FamilyDashboard;
+export default Dashboard;
