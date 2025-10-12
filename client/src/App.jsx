@@ -74,7 +74,7 @@ const App = () => {
             path="/"
             element={
               me ? (
-                me.role === "Family" || me.role === "Admin" ? (
+                me.role === "Family" || me.role === "Admin" || me.role === "PoA" || me.role === "GeneralCareStaff" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />
@@ -197,7 +197,7 @@ const App = () => {
             path="*"
             element={
               me ? (
-                me.role === "Family" || me.role === "Admin" ? (
+                me.role === "Family" || me.role === "Admin" || me.role === "PoA" || me.role === "GeneralCareStaff" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />

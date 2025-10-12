@@ -33,7 +33,9 @@ function ClientInfoManager({ me, jwt, clients }) {
   const handleClientChange = (e) => {
     const value = e.target.value;
     setSelectedClientId(value);
-    if (value) loadAccessLinks(value);
+    // Only load access links if user can manage access
+    const canManage = me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
+    if (value && canManage) loadAccessLinks(value);
   };
 
   const getMedicalInfoDisplay = (medicalInfo, customFields = []) => {
@@ -239,19 +241,23 @@ function ClientInfoManager({ me, jwt, clients }) {
     ? getAdditionalInfoDisplay(selectedClient.customFields || [])
     : null;
 
+  const canManageAccess = me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
+
   return (
     <div className="client-info-manager">
       <div className="client-card">
 
-        {/* Tip box for inviting users */}
-        <div className="tip-box">
-          <div className="tip-icon">i</div>
-          <p>
-            <strong>Want to give someone access to a client?</strong> <br />Create an invite token to
-            share with other users. Select a client below, then
-            click "Create Invite Token".
-          </p>
-        </div>
+        {/* Tip box for inviting users - Only for Admin/Family/PoA */}
+        {canManageAccess && (
+          <div className="tip-box">
+            <div className="tip-icon">i</div>
+            <p>
+              <strong>Want to give someone access to a client?</strong> <br />Create an invite token to
+              share with other users. Select a client below, then
+              click "Create Invite Token".
+            </p>
+          </div>
+        )}
 
         <div className="selector-container">
           <div className="client-selector">
@@ -268,7 +274,8 @@ function ClientInfoManager({ me, jwt, clients }) {
             </select>
           </div>
 
-          {selectedClient && (
+          {/* Create Invite Token Button - Only for Admin/Family/PoA */}
+          {selectedClient && canManageAccess && (
             <div className="token-section">
               <button
                 className="create-token-btn"
@@ -378,7 +385,8 @@ function ClientInfoManager({ me, jwt, clients }) {
               </div>
             </div>
 
-            {/* Access Management Section */}
+            {/* Access Management Section - Only for Admin/Family/PoA */}
+            {canManageAccess && (
             <div className="access-section">
               <h3>Access to Client</h3>
               <p className="access-description">
@@ -451,6 +459,7 @@ function ClientInfoManager({ me, jwt, clients }) {
                 </p>
               )}
             </div>
+            )}
           </>
         )}
       </div>

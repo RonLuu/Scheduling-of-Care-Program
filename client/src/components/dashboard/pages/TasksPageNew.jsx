@@ -40,43 +40,71 @@ function TasksPageNew() {
           {/* Page Content */}
           {!loading && !error && jwt && me && (
             <div className="page-content">
-              {/* Task Creation Section */}
-              <div className="left-column">
-                <div className="info-box">
-                  <p>
-                    The calendar shows your current scheduled tasks in the system.
-                    You can click on any task to view details, mark task as complete, reschedule, or delete the task.
-                  </p>
+              {/* Task Creation Section - Hidden for GeneralCareStaff */}
+              {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
+                <div className="left-column">
+                  <div className="info-box">
+                    <p>
+                      The calendar shows your current scheduled tasks in the system.
+                      You can click on any task to view details, mark task as complete, reschedule, or delete the task.
+                    </p>
+                  </div>
+                  {showCreateForm ? (
+                    <div className="create-section">
+                      <CareTaskCreate
+                        jwt={jwt}
+                        clients={clients}
+                        onTaskCreated={handleTaskCreated}
+                        onCancel={() => setShowCreateForm(false)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="create-button-container">
+                      <button
+                        className="create-task-btn"
+                        onClick={() => setShowCreateForm(true)}
+                      >
+                        <span className="plus-icon">+</span>
+                        <span>Create Task</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {showCreateForm ? (
-                  <div className="create-section">
-                    <CareTaskCreate
-                      jwt={jwt}
-                      clients={clients}
-                      onTaskCreated={handleTaskCreated}
-                      onCancel={() => setShowCreateForm(false)}
-                    />
-                  </div>
-                ) : (
-                  <div className="create-button-container">
-                    <button
-                      className="create-task-btn"
-                      onClick={() => setShowCreateForm(true)}
-                    >
-                      <span className="plus-icon">+</span>
-                      <span>Create Task</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Task Management Section */}
               <div className="management-section">
                 <h2 className="section-title">Your Tasks</h2>
+
+                {/* Tip boxes for GeneralCareStaff */}
+                {me?.role === "GeneralCareStaff" && (
+                  <div className="staff-tips-container">
+                    <div className="staff-tip-box">
+                      <div className="tip-icon">💡</div>
+                      <div className="tip-content">
+                        <strong>Quick Tip</strong>
+                        <p>
+                          View the client's tasks in the calendar below. Click on any task to see details and mark it as complete when finished.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="staff-tip-box">
+                      <div className="tip-icon">💡</div>
+                      <div className="tip-content">
+                        <strong>Want to return a purchase?</strong>
+                        <p>
+                          Click on any completed task and then click the refund button.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <CareTaskManagement
                   ref={managementRef}
                   jwt={jwt}
                   clients={clients}
+                  me={me}
                 />
               </div>
             </div>
@@ -142,6 +170,11 @@ function TasksPageNew() {
           grid-template-columns: 450px 1fr;
           gap: 2rem;
           align-items: start;
+        }
+
+        /* When only management section exists (staff view), make it full width */
+        .page-content:has(.management-section:only-child) {
+          grid-template-columns: 1fr;
         }
 
         .left-column {
@@ -217,6 +250,48 @@ function TasksPageNew() {
           color: #1f2937;
           font-size: 1.5rem;
           font-weight: 600;
+        }
+
+        .staff-tips-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .staff-tip-box {
+          background: #eff6ff;
+          border: 2px solid #bfdbfe;
+          border-radius: 12px;
+          padding: 1.5rem;
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+          animation: fadeIn 0.3s ease-in;
+        }
+
+        .tip-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .tip-content {
+          flex: 1;
+        }
+
+        .tip-content strong {
+          display: block;
+          color: #1e40af;
+          font-size: 1rem;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .tip-content p {
+          margin: 0;
+          color: #1e40af;
+          font-size: 0.9375rem;
+          line-height: 1.6;
         }
 
         @keyframes fadeIn {

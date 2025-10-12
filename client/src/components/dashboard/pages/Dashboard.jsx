@@ -488,6 +488,8 @@ function Dashboard() {
               <label htmlFor="client-select">
                 {me?.role === "Admin"
                   ? "Viewing client:"
+                  : me?.role === "GeneralCareStaff"
+                  ? "Providing care for:"
                   : "Managing care for:"}
               </label>
               <select
@@ -520,7 +522,7 @@ function Dashboard() {
 
           {selectedClient && (
             <div className="dashboard-widgets">
-              <DashboardContent client={selectedClient} jwt={jwt} />
+              <DashboardContent client={selectedClient} jwt={jwt} me={me} />
             </div>
           )}
         </div>
@@ -1055,7 +1057,7 @@ function Dashboard() {
 }
 
 // Main Dashboard Content with Widget Layout
-function DashboardContent({ client, jwt }) {
+function DashboardContent({ client, jwt, me }) {
   const [overviewData, setOverviewData] = React.useState({
     tasks: { total: 0, completed: 0, pending: 0, overdue: 0 },
     supplies: { total: 0, needsPurchase: 0, lowStock: 0 },
@@ -1296,9 +1298,25 @@ function DashboardContent({ client, jwt }) {
           />
         </div>
 
-        {/* Right: Budget Widget */}
+        {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
         <div className="content-right">
-          <BudgetWidget budget={budget} client={client} />
+          {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
+            <BudgetWidget budget={budget} client={client} />
+          )}
+
+          {me?.role === "GeneralCareStaff" && (
+            <div className="staff-tip-box">
+              <div className="tip-icon">💡</div>
+              <div className="tip-content">
+                <strong>Quick Guide</strong>
+                <p>
+                  Check today's schedule on the left to see your assigned tasks. Visit the{" "}
+                  <a href="/clients">Clients page</a> to review medical information,
+                  allergies, and emergency contacts for this client.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1307,6 +1325,50 @@ function DashboardContent({ client, jwt }) {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+        }
+
+        .staff-tip-box {
+          background: #eff6ff;
+          border: 2px solid #bfdbfe;
+          border-radius: 12px;
+          padding: 1.5rem;
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+        }
+
+        .tip-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .tip-content {
+          flex: 1;
+        }
+
+        .tip-content strong {
+          display: block;
+          color: #1e40af;
+          font-size: 1rem;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .tip-content p {
+          margin: 0;
+          color: #1e40af;
+          font-size: 0.9375rem;
+          line-height: 1.6;
+        }
+
+        .tip-content a {
+          color: #1e40af;
+          text-decoration: underline;
+          font-weight: 600;
+        }
+
+        .tip-content a:hover {
+          color: #1e3a8a;
         }
 
         .dashboard-content {
@@ -1345,6 +1407,24 @@ function DashboardContent({ client, jwt }) {
         @media (max-width: 1024px) {
           .dashboard-content {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .staff-tip-box {
+            padding: 1rem;
+          }
+
+          .tip-icon {
+            font-size: 1.25rem;
+          }
+
+          .tip-content strong {
+            font-size: 0.9375rem;
+          }
+
+          .tip-content p {
+            font-size: 0.875rem;
           }
         }
       `}</style>
