@@ -185,7 +185,7 @@ function FamilyDashboard() {
           }
 
           .onboarding-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #8189d2;
             color: white;
             padding: 3rem 2rem;
             text-align: center;
@@ -238,12 +238,12 @@ function FamilyDashboard() {
           }
 
           .step.completed {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #f0f9ff;
             border-color: #22c55e;
           }
 
           .step.completed::before {
-            background: linear-gradient(90deg, #22c55e, #16a34a);
+            background: #22c55e;
           }
 
           .step::before {
@@ -253,14 +253,14 @@ function FamilyDashboard() {
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: #8189d2;
             border-radius: 16px 16px 0 0;
           }
 
           .step-number {
             width: 4rem;
             height: 4rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #8189d2;
             color: white;
             border-radius: 50%;
             display: flex;
@@ -270,7 +270,7 @@ function FamilyDashboard() {
             font-size: 1.5rem;
             margin-right: 2rem;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
             position: relative;
           }
 
@@ -279,7 +279,7 @@ function FamilyDashboard() {
             position: absolute;
             inset: -2px;
             padding: 2px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #8189d2;
             border-radius: 50%;
             mask: linear-gradient(#fff 0 0) content-box,
               linear-gradient(#fff 0 0);
@@ -287,7 +287,7 @@ function FamilyDashboard() {
           }
 
           .step.completed .step-number {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            background: #22c55e;
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
           }
 
@@ -314,7 +314,7 @@ function FamilyDashboard() {
             align-items: center;
             gap: 0.5rem;
             padding: 1rem 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #8189d2;
             color: white;
             border: none;
             border-radius: 12px;
@@ -350,7 +350,7 @@ function FamilyDashboard() {
           }
 
           .step-button.secondary {
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            background: #6b7280;
             box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
           }
 
@@ -589,7 +589,7 @@ function FamilyDashboard() {
         }
 
         .dashboard-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           padding: 2rem;
         }
@@ -825,7 +825,7 @@ function FamilyDashboard() {
         }
 
         .onboarding-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           padding: 3rem 2rem;
           text-align: center;
@@ -884,14 +884,14 @@ function FamilyDashboard() {
           left: 0;
           right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #667eea, #764ba2);
+          background: #8189d2;
           border-radius: 16px 16px 0 0;
         }
 
         .step-number {
           width: 4rem;
           height: 4rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           border-radius: 50%;
           display: flex;
@@ -901,7 +901,7 @@ function FamilyDashboard() {
           font-size: 1.5rem;
           margin-right: 2rem;
           flex-shrink: 0;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
           position: relative;
         }
 
@@ -910,7 +910,7 @@ function FamilyDashboard() {
           position: absolute;
           inset: -2px;
           padding: 2px;
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          background: #8189d2;
           border-radius: 50%;
           mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
           mask-composite: exclude;
@@ -939,7 +939,7 @@ function FamilyDashboard() {
           align-items: center;
           gap: 0.5rem;
           padding: 1rem 2rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #8189d2;
           color: white;
           border: none;
           border-radius: 12px;
@@ -948,12 +948,13 @@ function FamilyDashboard() {
           font-size: 1rem;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
         }
 
         .step-button:hover {
+          background: #6d76c4;
           transform: translateY(-1px);
-          box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+          box-shadow: 0 8px 20px rgba(129, 137, 210, 0.4);
         }
 
         .step-button.disabled {
@@ -1985,7 +1986,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
           }
 
           .budget-guidance {
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            background: #eff6ff;
           }
 
           .guidance-header h4 {
@@ -2155,7 +2156,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
           }
 
           .tasks-guidance {
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            background: #eff6ff;
           }
 
           .guidance-header h4 {
@@ -2598,7 +2599,7 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
 
         <style jsx>{`
           .task-guidance {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: #f0f9ff;
             border: 2px solid #38bdf8;
             border-radius: 12px;
             padding: 1.5rem;
@@ -3948,7 +3949,7 @@ function AccessRequestsWidget({ requests, jwt, onUpdate }) {
 
       <style jsx>{`
         .access-requests-widget {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+          background: #fef3c7;
           border: 2px solid #f59e0b;
           border-radius: 12px;
           padding: 1.5rem;

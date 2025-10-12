@@ -150,14 +150,18 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
   return (
     <div className="userprofile-edit-wrapper">
       <div className={`userprofile-edit ${showEdit ? "on" : "off"}`}>
-        <div className="userprofile-edit-cancel-wrapper">
-          <BiX
-            className="userprofile-edit-cancel-icon"
+        <div className="userprofile-edit-header">
+          <h2 className="userprofile-edit-title">Edit Profile</h2>
+          <button
+            className="userprofile-edit-close-btn"
             onClick={() => setShowEdit(!showEdit)}
-          />
+            type="button"
+          >
+            <BiX className="userprofile-edit-close-icon" />
+          </button>
         </div>
 
-        <div className="userprofile-edit-input">
+        <div className="userprofile-edit-content">
           {/* Avatar Upload Section */}
           <div className="avatar-upload-section">
             <label className="avatar-label">Profile Picture</label>
@@ -201,53 +205,69 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           </div>
 
           {/* Profile Info Inputs */}
-          <input
-            className="userprofile-input"
-            placeholder={me?.name ? "" : "Please provide your full name."}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <div className="userprofile-input-group">
+            <label className="userprofile-input-label">Full Name</label>
+            <input
+              className="userprofile-input"
+              placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-          <input
-            className="userprofile-input"
-            placeholder={me?.mobile ? "" : "Please provide your phone number."}
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
-          />
+          <div className="userprofile-input-group">
+            <label className="userprofile-input-label">Phone Number</label>
+            <input
+              className="userprofile-input"
+              placeholder="Enter your phone number"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+            />
+          </div>
 
-          <input
-            className="userprofile-input"
-            placeholder={me?.address ? "" : "Please provide your address."}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
+          <div className="userprofile-input-group">
+            <label className="userprofile-input-label">Address</label>
+            <input
+              className="userprofile-input"
+              placeholder="Enter your address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
 
           {err && <div className="userprofile-error">{err}</div>}
 
           <button
-            className="userprofile-detail1-main-button"
+            className="userprofile-save-button"
             onClick={onConfirm}
             disabled={saving || uploading}
           >
-            {saving ? "Saving..." : uploading ? "Uploading..." : "Confirm"}
+            {saving ? "Saving..." : uploading ? "Uploading..." : "Save Changes"}
           </button>
         </div>
       </div>
 
       <style jsx>{`
         .avatar-upload-section {
-          margin-bottom: 1.5rem;
-          padding: 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          border: 2px dashed #d1d5db;
+          border-radius: 12px;
           background: #f9fafb;
+          transition: all 0.2s ease;
+        }
+
+        .avatar-upload-section:hover {
+          border-color: #8189d2;
+          background: #f3f4f6;
         }
 
         .avatar-label {
           display: block;
           font-weight: 600;
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
           color: #374151;
+          font-size: 1rem;
         }
 
         .avatar-preview {
@@ -256,7 +276,8 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           margin: 0 auto 1rem;
           border-radius: 50%;
           overflow: hidden;
-          border: 3px solid #e5e7eb;
+          border: 4px solid #8189d2;
+          box-shadow: 0 4px 12px rgba(129, 137, 210, 0.2);
         }
 
         .avatar-preview img {
@@ -267,32 +288,34 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
         .avatar-actions {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.75rem;
           justify-content: center;
           flex-wrap: wrap;
         }
 
         .avatar-upload-btn,
         .avatar-delete-btn {
-          padding: 0.5rem 1rem;
+          padding: 0.625rem 1.25rem;
           border: none;
-          border-radius: 0.375rem;
+          border-radius: 8px;
           font-size: 0.875rem;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 0.25rem;
-          transition: all 0.2s;
+          gap: 0.375rem;
+          transition: all 0.2s ease;
         }
 
         .avatar-upload-btn {
-          background: #3b82f6;
+          background: #8189d2;
           color: white;
         }
 
         .avatar-upload-btn:hover:not(:disabled) {
-          background: #2563eb;
+          background: #6d76c4;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(129, 137, 210, 0.4);
         }
 
         .avatar-delete-btn {
@@ -302,20 +325,15 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
         .avatar-delete-btn:hover:not(:disabled) {
           background: #dc2626;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
 
         .avatar-upload-btn:disabled,
         .avatar-delete-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
-        }
-
-        .avatar-hint {
-          text-align: center;
-          font-size: 0.75rem;
-          color: #6b7280;
-          margin-top: 0.5rem;
-          font-style: italic;
+          transform: none;
         }
       `}</style>
     </div>
