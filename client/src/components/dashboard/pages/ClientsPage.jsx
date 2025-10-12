@@ -12,7 +12,7 @@ function ClientsPage() {
   const [showEnterToken, setShowEnterToken] = React.useState(false);
 
   const canAddClient = me?.role === "Family" || me?.role === "PoA";
-  const canEnterToken = me?.role === "Admin" || me?.role === "GeneralCareStaff";
+  const canEnterToken = me?.role === "Admin" || me?.role === "GeneralCareStaff" || me?.role === "Family" || me?.role === "PoA";
   const canManageAccess =
     me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
 
@@ -28,52 +28,57 @@ function ClientsPage() {
           </div>
 
           <div className="content-area">
-        {/* Add Client Section - Collapsible */}
-        {canAddClient && (
-          <div className="add-client-section">
+        {/* Action Buttons Section */}
+        <div className="action-buttons-container">
+          {/* Add Client Button - For Family/PoA only */}
+          {canAddClient && (
             <button
-              className="toggle-add-client-btn"
-              onClick={() => setShowAddClient(!showAddClient)}
+              className="action-btn"
+              onClick={() => {
+                setShowAddClient(!showAddClient);
+                setShowEnterToken(false);
+              }}
             >
               <span className="btn-icon">{showAddClient ? "−" : "+"}</span>
-              {showAddClient ? "Hide Add Client Form" : "Add New Client"}
+              {showAddClient ? "Cancel" : "Add New Client"}
             </button>
+          )}
 
-            {showAddClient && (
-              <div className="add-client-wrapper">
-                <ClientManagement.AddClient
-                  me={me}
-                  jwt={jwt}
-                  setClients={refresh}
-                />
-              </div>
-            )}
+          {/* Enter Token Button - For all roles */}
+          <button
+            className="action-btn"
+            onClick={() => {
+              setShowEnterToken(!showEnterToken);
+              setShowAddClient(false);
+            }}
+          >
+            <span className="btn-icon">{showEnterToken ? "−" : "+"}</span>
+            {showEnterToken ? "Cancel" : canAddClient ? "Join Existing Client" : "Add New Client"}
+          </button>
+        </div>
+
+        {/* Add Client Form */}
+        {showAddClient && (
+          <div className="form-wrapper">
+            <ClientManagement.AddClient
+              me={me}
+              jwt={jwt}
+              setClients={refresh}
+            />
           </div>
         )}
 
-        {/* Enter Token Section - For Admin and Staff */}
-        {canEnterToken && (
-          <div className="enter-token-section">
-            <button
-              className="toggle-enter-token-btn"
-              onClick={() => setShowEnterToken(!showEnterToken)}
-            >
-              <span className="btn-icon">{showEnterToken ? "−" : "+"}</span>
-              {showEnterToken ? "Hide Add Client Form" : "Add New Client"}
-            </button>
-
-            {showEnterToken && (
-              <div className="enter-token-wrapper">
-                <ClientManagement.EnterToken
-                  me={me}
-                  jwt={jwt}
-                  onSuccess={() => {
-                    refresh();
-                    setShowEnterToken(false);
-                  }}
-                />
-              </div>
-            )}
+        {/* Enter Token Form */}
+        {showEnterToken && (
+          <div className="form-wrapper">
+            <ClientManagement.EnterToken
+              me={me}
+              jwt={jwt}
+              onSuccess={() => {
+                refresh();
+                setShowEnterToken(false);
+              }}
+            />
           </div>
         )}
 
@@ -90,22 +95,27 @@ function ClientsPage() {
         {clients.length === 0 && !loading && (
           <div className="empty-state-card">
             <h3>No Clients Yet</h3>
-            {canEnterToken ? (
+            {canAddClient ? (
+              <div>
+                <p>
+                  You don't have access to any clients yet.
+                </p>
+                <p style={{ marginTop: "1rem" }}>
+                  You can either:<br />
+                  • Click "Add New Client" to create a completely new client, or<br />
+                  • Click "Join Existing Client" to enter an invite token and access an existing client
+                </p>
+              </div>
+            ) : (
               <div>
                 <p>
                   You don't have access to any clients yet.
                 </p>
                 <p style={{ marginTop: "1rem" }}>
                   To gain access to a client, enter an invite token that was shared with you by a Family/Power of Attorney.<br />
-                  Once you have an invite token, click the "Add New Client" button above to get started.
+                  Click the button above to get started.
                 </p>
               </div>
-            ) : (
-              <p>
-                {canAddClient
-                  ? "Get started by adding your first client using the button above."
-                  : "No clients have been added to the system yet."}
-              </p>
             )}
           </div>
         )}
@@ -175,18 +185,15 @@ function ClientsPage() {
           margin-right: 0;
         }
 
-        .add-client-section {
+        .action-buttons-container {
+          display: flex;
+          gap: 1rem;
           margin-bottom: 1.5rem;
-        }
-
-        .enter-token-section {
-          margin-bottom: 1.5rem;
-          margin-left: 0;
-          padding-left: 0;
-        }
-
-        .toggle-add-client-btn {
           width: 100%;
+        }
+
+        .action-btn {
+          flex: 1;
           padding: 1rem 1.5rem;
           background: white;
           color: #333;
@@ -201,37 +208,16 @@ function ClientsPage() {
           gap: 0.5rem;
           transition: all 0.2s;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          min-width: 0;
         }
 
-        .toggle-enter-token-btn {
-          width: 50%;
-          padding: 1rem 1.5rem;
-          background: white;
-          color: #333;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          margin-left: 0;
-          margin-right: auto;
-        }
-
-        .toggle-add-client-btn:hover,
-        .toggle-enter-token-btn:hover {
+        .action-btn:hover {
           background: #f9fafb;
           border-color: #8189d2;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
 
-        .toggle-add-client-btn .btn-icon,
-        .toggle-enter-token-btn .btn-icon {
+        .action-btn .btn-icon {
           display: inline-flex;
           width: 1.5rem;
           height: 1.5rem;
@@ -245,9 +231,13 @@ function ClientsPage() {
           line-height: 1;
         }
 
-        .add-client-wrapper,
-        .enter-token-wrapper {
-          margin-top: 1rem;
+        .form-wrapper {
+          margin-bottom: 1.5rem;
+          width: 100%;
+        }
+
+        .form-wrapper :global(.card) {
+          width: 100% !important;
         }
 
         .empty-state-card,
@@ -320,8 +310,8 @@ function ClientsPage() {
             padding: 1rem;
           }
 
-          .toggle-enter-token-btn {
-            width: 100%;
+          .action-buttons-container {
+            flex-direction: column;
           }
         }
         `}</style>

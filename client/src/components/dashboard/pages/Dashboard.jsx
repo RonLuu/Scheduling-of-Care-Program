@@ -3174,7 +3174,7 @@ function BudgetWidget({ budget, client }) {
               </div>
               <div className="summary-item">
                 <div className="summary-label">Spent</div>
-                <div className="summary-value spent">
+                <div className={`summary-value spent ${percentSpent >= 80 ? 'high-spending' : 'normal-spending'}`}>
                   ${budget.spent.toLocaleString()}
                 </div>
               </div>
@@ -3379,8 +3379,12 @@ function BudgetWidget({ budget, client }) {
           color: #1f2937;
         }
 
-        .summary-value.spent {
+        .summary-value.spent.high-spending {
           color: #ef4444;
+        }
+
+        .summary-value.spent.normal-spending {
+          color: #3b82f6;
         }
 
         .summary-value.remaining {
