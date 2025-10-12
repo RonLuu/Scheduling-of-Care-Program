@@ -40,9 +40,12 @@ function LogIn() {
       }
       onAuthed({ ...d.user, jwt, expiresIn });
       // Redirect based on user role
-      if (d.user.role === "Family") {
+      console.log("User role on login:", d.user.role);
+      if (d.user.role === "Family" || d.user.role === "Admin" || d.user.role === "PoA" || d.user.role === "GeneralCareStaff") {
+        console.log("Redirecting to /dashboard");
         navigate("/dashboard");
       } else {
+        console.log("Redirecting to /profile");
         navigate("/profile");
       }
     } catch {

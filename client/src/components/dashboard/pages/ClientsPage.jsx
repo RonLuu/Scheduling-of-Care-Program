@@ -13,6 +13,8 @@ function ClientsPage() {
 
   const canAddClient = me?.role === "Family" || me?.role === "PoA";
   const canEnterToken = me?.role === "Admin" || me?.role === "GeneralCareStaff" || me?.role === "Family" || me?.role === "PoA";
+  const canViewClients =
+    me?.role === "Admin" || me?.role === "GeneralCareStaff" || me?.role === "Family" || me?.role === "PoA";
   const canManageAccess =
     me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
 
@@ -83,7 +85,7 @@ function ClientsPage() {
         )}
 
         {/* Client Information Manager - Always shown after action buttons */}
-        {canManageAccess && clients.length > 0 && (
+        {canViewClients && clients.length > 0 && (
           <ClientManagement.ClientInfoManager
             me={me}
             jwt={jwt}

@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
 
-function CareTaskManagement({ jwt, clients }) {
+function CareTaskManagement({ jwt, clients, me }) {
   const [selectedClient, setSelectedClient] = React.useState("");
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -156,6 +156,7 @@ function CareTaskManagement({ jwt, clients }) {
         <TaskDetailModal
           task={selectedTask}
           jwt={jwt}
+          me={me}
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
@@ -269,7 +270,7 @@ function CareTaskManagement({ jwt, clients }) {
 }
 
 // Task Detail Modal
-function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
+function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -997,7 +998,7 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                   Complete Task
                 </button>
               )}
-              {task.status !== "Completed" && task.status !== "Returned" && (
+              {task.status !== "Completed" && task.status !== "Returned" && (me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
                 <button
                   className="btn-reschedule"
                   onClick={() => setIsEditing(true)}
@@ -1005,7 +1006,7 @@ function TaskDetailModal({ task, jwt, onClose, onDelete, onSave }) {
                   Reschedule
                 </button>
               )}
-              {task.status !== "Completed" && task.status !== "Returned" && (
+              {task.status !== "Completed" && task.status !== "Returned" && (me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
                 <button className="btn-delete" onClick={onDelete}>
                   Delete Task
                 </button>

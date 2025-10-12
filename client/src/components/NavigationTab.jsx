@@ -93,7 +93,7 @@ const NavigationTab = () => {
       >
         {showTab && (
           <div className="navigationtab-link-wrapper">
-            {(me?.role === "Family" || me?.role === "Admin") && (
+            {(me?.role === "Family" || me?.role === "Admin" || me?.role === "PoA" || me?.role === "GeneralCareStaff") && (
               <NavItem to="/dashboard">
                 <BiHome className="navigationtab-icon" />
                 Dashboard

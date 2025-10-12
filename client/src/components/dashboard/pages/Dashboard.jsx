@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { BiCalendar, BiDollarCircle } from "react-icons/bi";
 import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
@@ -488,6 +490,8 @@ function Dashboard() {
               <label htmlFor="client-select">
                 {me?.role === "Admin"
                   ? "Viewing client:"
+                  : me?.role === "GeneralCareStaff"
+                  ? "Providing care for:"
                   : "Managing care for:"}
               </label>
               <select
@@ -520,7 +524,7 @@ function Dashboard() {
 
           {selectedClient && (
             <div className="dashboard-widgets">
-              <DashboardContent client={selectedClient} jwt={jwt} />
+              <DashboardContent client={selectedClient} jwt={jwt} me={me} />
             </div>
           )}
         </div>
@@ -1055,7 +1059,7 @@ function Dashboard() {
 }
 
 // Main Dashboard Content with Widget Layout
-function DashboardContent({ client, jwt }) {
+function DashboardContent({ client, jwt, me }) {
   const [overviewData, setOverviewData] = React.useState({
     tasks: { total: 0, completed: 0, pending: 0, overdue: 0 },
     supplies: { total: 0, needsPurchase: 0, lowStock: 0 },
@@ -1296,9 +1300,25 @@ function DashboardContent({ client, jwt }) {
           />
         </div>
 
-        {/* Right: Budget Widget */}
+        {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
         <div className="content-right">
-          <BudgetWidget budget={budget} client={client} />
+          {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
+            <BudgetWidget budget={budget} client={client} />
+          )}
+
+          {me?.role === "GeneralCareStaff" && (
+            <div className="staff-tip-box">
+              <div className="tip-icon">💡</div>
+              <div className="tip-content">
+                <strong>Quick Guide</strong>
+                <p>
+                  Check today's schedule on the left to see your assigned tasks. Visit the{" "}
+                  <a href="/clients">Clients page</a> to review medical information,
+                  allergies, and emergency contacts for this client.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1307,6 +1327,50 @@ function DashboardContent({ client, jwt }) {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+        }
+
+        .staff-tip-box {
+          background: #eff6ff;
+          border: 2px solid #bfdbfe;
+          border-radius: 12px;
+          padding: 1.5rem;
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+        }
+
+        .tip-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .tip-content {
+          flex: 1;
+        }
+
+        .tip-content strong {
+          display: block;
+          color: #1e40af;
+          font-size: 1rem;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .tip-content p {
+          margin: 0;
+          color: #1e40af;
+          font-size: 0.9375rem;
+          line-height: 1.6;
+        }
+
+        .tip-content a {
+          color: #1e40af;
+          text-decoration: underline;
+          font-weight: 600;
+        }
+
+        .tip-content a:hover {
+          color: #1e3a8a;
         }
 
         .dashboard-content {
@@ -1345,6 +1409,24 @@ function DashboardContent({ client, jwt }) {
         @media (max-width: 1024px) {
           .dashboard-content {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .staff-tip-box {
+            padding: 1rem;
+          }
+
+          .tip-icon {
+            font-size: 1.25rem;
+          }
+
+          .tip-content strong {
+            font-size: 0.9375rem;
+          }
+
+          .tip-content p {
+            font-size: 0.875rem;
           }
         }
       `}</style>
@@ -2264,6 +2346,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
 
 // Today's Schedule Widget (when user has budget and tasks)
 function TodaysScheduleWidget({ scheduleData, client }) {
+  const navigate = useNavigate();
   const { todaysTasks, loading, error } = scheduleData;
 
   if (loading) {
@@ -2287,7 +2370,9 @@ function TodaysScheduleWidget({ scheduleData, client }) {
   return (
     <div className="todays-schedule">
       <div className="schedule-header">
-        <h4>📅 Today's Schedule</h4>
+        <h4>
+          <BiCalendar className="schedule-icon" /> Today's Schedule
+        </h4>
         <a href="/tasks-new" className="view-more-btn">
           View Full Schedule →
         </a>
@@ -2317,6 +2402,16 @@ function TodaysScheduleWidget({ scheduleData, client }) {
                   </span>
                 </div>
               </div>
+              {task.status === "Scheduled" && (
+                <div className="schedule-actions">
+                  <button
+                    className="complete-task-btn"
+                    onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                  >
+                    Complete Task
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2341,6 +2436,14 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           margin: 0;
           color: #374151;
           font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .schedule-icon {
+          font-size: 1.4rem;
+          color: #667eea;
         }
 
         .view-more-btn {
@@ -2377,6 +2480,7 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           background: white;
           border-radius: 8px;
           border: 1px solid #e5e7eb;
+          align-items: center;
         }
 
         .schedule-time {
@@ -2389,6 +2493,33 @@ function TodaysScheduleWidget({ scheduleData, client }) {
 
         .schedule-content {
           flex: 1;
+        }
+
+        .schedule-actions {
+          flex-shrink: 0;
+        }
+
+        .complete-task-btn {
+          padding: 0.5rem 1rem;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .complete-task-btn:hover {
+          background: #059669;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .complete-task-btn:active {
+          transform: translateY(0);
         }
 
         .schedule-title {
@@ -2420,7 +2551,8 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           color: #0369a1;
         }
 
-        .status-badge.complete {
+        .status-badge.complete,
+        .status-badge.completed {
           background: #ecfdf5;
           color: #059669;
         }
@@ -2440,10 +2572,15 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           .schedule-item {
             flex-direction: column;
             gap: 0.5rem;
+            align-items: stretch;
           }
 
           .schedule-time {
             min-width: auto;
+          }
+
+          .complete-task-btn {
+            width: 100%;
           }
         }
       `}</style>
@@ -2705,6 +2842,14 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           margin: 0;
           color: #374151;
           font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .schedule-icon {
+          font-size: 1.4rem;
+          color: #667eea;
         }
 
         .view-more-btn {
@@ -2784,7 +2929,8 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
           color: #0369a1;
         }
 
-        .status-badge.complete {
+        .status-badge.complete,
+        .status-badge.completed {
           background: #ecfdf5;
           color: #059669;
         }
@@ -2875,6 +3021,14 @@ function TaskSummaryWidget({ tasks, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3035,6 +3189,14 @@ function SuppliesWidget({ supplies, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3147,7 +3309,9 @@ function BudgetWidget({ budget, client }) {
   return (
     <div className="widget budget-widget">
       <div className="widget-header">
-        <h4>💰 Budget Overview</h4>
+        <h4>
+          <BiDollarCircle className="widget-icon" /> Budget Overview
+        </h4>
         <a href="/budget-and-reports" className="widget-link">
           {budget.allocated > 0 ? "Manage →" : "Create →"}
         </a>
@@ -3313,6 +3477,14 @@ function BudgetWidget({ budget, client }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .widget-link {
@@ -3783,6 +3955,14 @@ function RecentActivityWidget({ activity }) {
           font-size: 1.1rem;
           color: #374151;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .widget-icon {
+          font-size: 1.3rem;
+          color: #667eea;
         }
 
         .activity-list {
