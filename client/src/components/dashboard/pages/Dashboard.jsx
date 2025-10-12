@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
@@ -2344,6 +2345,7 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
 
 // Today's Schedule Widget (when user has budget and tasks)
 function TodaysScheduleWidget({ scheduleData, client }) {
+  const navigate = useNavigate();
   const { todaysTasks, loading, error } = scheduleData;
 
   if (loading) {
@@ -2397,6 +2399,16 @@ function TodaysScheduleWidget({ scheduleData, client }) {
                   </span>
                 </div>
               </div>
+              {task.status === "Scheduled" && (
+                <div className="schedule-actions">
+                  <button
+                    className="complete-task-btn"
+                    onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                  >
+                    Complete Task
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2457,6 +2469,7 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           background: white;
           border-radius: 8px;
           border: 1px solid #e5e7eb;
+          align-items: center;
         }
 
         .schedule-time {
@@ -2469,6 +2482,33 @@ function TodaysScheduleWidget({ scheduleData, client }) {
 
         .schedule-content {
           flex: 1;
+        }
+
+        .schedule-actions {
+          flex-shrink: 0;
+        }
+
+        .complete-task-btn {
+          padding: 0.5rem 1rem;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .complete-task-btn:hover {
+          background: #059669;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .complete-task-btn:active {
+          transform: translateY(0);
         }
 
         .schedule-title {
@@ -2520,10 +2560,15 @@ function TodaysScheduleWidget({ scheduleData, client }) {
           .schedule-item {
             flex-direction: column;
             gap: 0.5rem;
+            align-items: stretch;
           }
 
           .schedule-time {
             min-width: auto;
+          }
+
+          .complete-task-btn {
+            width: 100%;
           }
         }
       `}</style>
