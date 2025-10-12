@@ -253,18 +253,31 @@ function ClientInfoManager({ me, jwt, clients }) {
           </p>
         </div>
 
-        <div className="client-selector">
-          <label>
-            Select a client (person with special needs) to view details
-          </label>
-          <select value={selectedClientId} onChange={handleClientChange}>
-            <option value="">— Choose a client—</option>
-            {clients.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name} {c.status !== "Active" ? `(${c.status})` : ""}
-              </option>
-            ))}
-          </select>
+        <div className="selector-container">
+          <div className="client-selector">
+            <label>
+              Select a client (person with special needs) to view details
+            </label>
+            <select value={selectedClientId} onChange={handleClientChange}>
+              <option value="">— Choose a client—</option>
+              {clients.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name} {c.status !== "Active" ? `(${c.status})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedClient && (
+            <div className="token-section">
+              <button
+                className="create-token-btn"
+                onClick={() => setShowTokenForm(true)}
+              >
+                Create Invite Token
+              </button>
+            </div>
+          )}
         </div>
 
         {!selectedClientId && (
@@ -278,15 +291,6 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         {selectedClient && (
           <>
-            {/* Create Token Button */}
-            <div className="token-section">
-              <button
-                className="create-token-btn"
-                onClick={() => setShowTokenForm(true)}
-              >
-                Create Invite Token
-              </button>
-            </div>
 
             <div className="client-info-section">
               <div className="section-header">
@@ -567,8 +571,16 @@ function ClientInfoManager({ me, jwt, clients }) {
           font-weight: 600;
         }
 
-        .client-selector {
+        .selector-container {
+          display: flex;
+          gap: 1rem;
+          align-items: flex-end;
           margin-bottom: 1.5rem;
+        }
+
+        .client-selector {
+          flex: 1;
+          margin-bottom: 0;
         }
 
         .client-selector label {
@@ -594,11 +606,12 @@ function ClientInfoManager({ me, jwt, clients }) {
         }
 
         .token-section {
-          margin-bottom: 1.5rem;
+          margin-bottom: 0;
+          flex-shrink: 0;
         }
 
         .create-token-btn {
-          padding: 0.75rem 1.5rem;
+          padding: 0.625rem 1.5rem;
           background: #8189d2;
           color: white;
           border: none;
@@ -608,6 +621,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           cursor: pointer;
           transition: all 0.2s;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          white-space: nowrap;
         }
 
         .create-token-btn:hover {
@@ -975,6 +989,20 @@ function ClientInfoManager({ me, jwt, clients }) {
         }
 
         @media (max-width: 768px) {
+          .selector-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+          }
+
+          .client-selector {
+            margin-bottom: 0;
+          }
+
+          .create-token-btn {
+            width: 100%;
+          }
+
           .info-grid {
             grid-template-columns: 1fr;
           }
