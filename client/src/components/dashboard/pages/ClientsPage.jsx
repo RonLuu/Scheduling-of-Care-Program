@@ -23,20 +23,11 @@ function ClientsPage() {
         <div className="clients-container">
           {/* Page Header */}
           <div className="page-header">
-            <h1>Client Management</h1>
-            <p>Manage and view client information</p>
+            <h1>Clients</h1>
+            <p>View client information and add new clients</p>
           </div>
 
           <div className="content-area">
-        {/* Client Information Manager - Always shown first if user has permission */}
-        {canManageAccess && clients.length > 0 && (
-          <ClientManagement.ClientInfoManager
-            me={me}
-            jwt={jwt}
-            clients={clients}
-          />
-        )}
-
         {/* Add Client Section - Collapsible */}
         {canAddClient && (
           <div className="add-client-section">
@@ -68,7 +59,7 @@ function ClientsPage() {
               onClick={() => setShowEnterToken(!showEnterToken)}
             >
               <span className="btn-icon">{showEnterToken ? "−" : "+"}</span>
-              {showEnterToken ? "Hide Enter Token Form" : "Enter Invite Token"}
+              {showEnterToken ? "Hide Add Client Form" : "Add New Client"}
             </button>
 
             {showEnterToken && (
@@ -86,6 +77,15 @@ function ClientsPage() {
           </div>
         )}
 
+        {/* Client Information Manager - Always shown after action buttons */}
+        {canManageAccess && clients.length > 0 && (
+          <ClientManagement.ClientInfoManager
+            me={me}
+            jwt={jwt}
+            clients={clients}
+          />
+        )}
+
         {/* Show message if no clients exist */}
         {clients.length === 0 && !loading && (
           <div className="empty-state-card">
@@ -96,8 +96,8 @@ function ClientsPage() {
                   You don't have access to any clients yet.
                 </p>
                 <p style={{ marginTop: "1rem" }}>
-                  To gain access to a client, enter an invite token that was shared with you by a Family user.
-                  Use the "Enter Invite Token" button above to get started.
+                  To gain access to a client, enter an invite token that was shared with you by a Family/Power of Attorney.<br />
+                  Once you have an invite token, click the "Add New Client" button above to get started.
                 </p>
               </div>
             ) : (
@@ -163,13 +163,29 @@ function ClientsPage() {
           padding: 2rem;
         }
 
-        .add-client-section,
-        .enter-token-section {
+        .content-area :global(.client-info-manager) {
+          width: 100%;
+          margin-left: 0;
+          margin-right: 0;
+        }
+
+        .content-area :global(.client-info-manager .card) {
+          width: 100%;
+          margin-left: 0;
+          margin-right: 0;
+        }
+
+        .add-client-section {
           margin-bottom: 1.5rem;
         }
 
-        .toggle-add-client-btn,
-        .toggle-enter-token-btn {
+        .enter-token-section {
+          margin-bottom: 1.5rem;
+          margin-left: 0;
+          padding-left: 0;
+        }
+
+        .toggle-add-client-btn {
           width: 100%;
           padding: 1rem 1.5rem;
           background: white;
@@ -185,6 +201,26 @@ function ClientsPage() {
           gap: 0.5rem;
           transition: all 0.2s;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-enter-token-btn {
+          width: 50%;
+          padding: 1rem 1.5rem;
+          background: white;
+          color: #333;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          transition: all 0.2s;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          margin-left: 0;
+          margin-right: auto;
         }
 
         .toggle-add-client-btn:hover,
@@ -220,9 +256,11 @@ function ClientsPage() {
           background: white;
           border-radius: 8px;
           padding: 2rem;
-          text-align: center;
+          text-align: left;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           margin-bottom: 1.5rem;
+          margin-left: 0;
+          margin-right: 0;
           border: 1px solid #e5e7eb;
         }
 
@@ -231,6 +269,7 @@ function ClientsPage() {
           color: #333;
           font-size: 1.5rem;
           font-weight: 600;
+          text-align: left;
         }
 
         .empty-state-card p {
@@ -238,6 +277,7 @@ function ClientsPage() {
           margin: 0;
           font-size: 1rem;
           line-height: 1.5;
+          text-align: left;
         }
 
         .loading-card {
@@ -278,6 +318,10 @@ function ClientsPage() {
 
           .content-area {
             padding: 1rem;
+          }
+
+          .toggle-enter-token-btn {
+            width: 100%;
           }
         }
         `}</style>

@@ -5,6 +5,10 @@ function ClientInfoManager({ me, jwt, clients }) {
   const [accessLinks, setAccessLinks] = React.useState([]);
   const [accessErr, setAccessErr] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showTokenForm, setShowTokenForm] = React.useState(false);
+  const [generatedToken, setGeneratedToken] = React.useState("");
+  const [tokenError, setTokenError] = React.useState("");
+  const [isGenerating, setIsGenerating] = React.useState(false);
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
 
@@ -184,6 +188,46 @@ function ClientInfoManager({ me, jwt, clients }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
+  const generateToken = async () => {
+    setIsGenerating(true);
+    setTokenError("");
+    setGeneratedToken("");
+
+    try {
+      const response = await fetch("/api/tokens", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          type: me.role === "Admin" ? "STAFF_TOKEN" : "MANAGER_TOKEN",
+          organizationId: me.organizationId,
+          personIds: [selectedClientId],
+          expiresInDays: 7,
+          maxUses: 1,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to generate token");
+      }
+
+      const data = await response.json();
+      setGeneratedToken(data.token);
+    } catch (error) {
+      setTokenError(error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyToken = () => {
+    navigator.clipboard.writeText(generatedToken);
+    alert("Token copied to clipboard!");
+  };
+
   const medicalInfoDisplay = selectedClient
     ? getMedicalInfoDisplay(
         selectedClient.medicalInfo,
@@ -197,8 +241,17 @@ function ClientInfoManager({ me, jwt, clients }) {
 
   return (
     <div className="client-info-manager">
-      <div className="card">
-        <h2>Client Information</h2>
+      <div className="client-card">
+
+        {/* Tip box for inviting users */}
+        <div className="tip-box">
+          <div className="tip-icon">i</div>
+          <p>
+            <strong>Want to give someone access to a client?</strong> <br />Create an invite token to
+            share with other users. Select a client below, then
+            click "Create Invite Token".
+          </p>
+        </div>
 
         <div className="client-selector">
           <label>
@@ -225,6 +278,16 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         {selectedClient && (
           <>
+            {/* Create Token Button */}
+            <div className="token-section">
+              <button
+                className="create-token-btn"
+                onClick={() => setShowTokenForm(true)}
+              >
+                Create Invite Token
+              </button>
+            </div>
+
             <div className="client-info-section">
               <div className="section-header">
                 <h3>{selectedClient.name}</h3>
@@ -315,10 +378,10 @@ function ClientInfoManager({ me, jwt, clients }) {
             <div className="access-section">
               <h3>Access to Client</h3>
               <p className="access-description">
-                This section shows all users who currently have access to view
-                this client's information. This includes family members, Power
-                of Attorney (PoA), administrators, and general care staff
-                assigned to this client. Authorized users can revoke access as
+                These are the list of all users who currently have access to view
+                this client's information. This includes family members, power
+                of attorney, administrators, and general care staff
+                assigned to this client. You can revoke access as
                 needed.
               </p>
 
@@ -388,23 +451,120 @@ function ClientInfoManager({ me, jwt, clients }) {
         )}
       </div>
 
+      {/* Create Token Modal */}
+      {showTokenForm && (
+        <div className="modal-overlay" onClick={() => setShowTokenForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create Invite Token for {selectedClient?.name}</h3>
+              <button className="modal-close" onClick={() => setShowTokenForm(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {!generatedToken ? (
+                <>
+                  <p className="modal-description">
+                    Generate an invite token to share with staff or administrators to grant them access to{" "}
+                    <strong>{selectedClient?.name}</strong>.
+                  </p>
+
+                  <button
+                    className="generate-btn"
+                    onClick={generateToken}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? "Generating Token..." : "Generate Token"}
+                  </button>
+
+                  {tokenError && (
+                    <div className="token-error">
+                      <p>Error: {tokenError}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="token-result">
+                  <p className="success-message">Token generated successfully!</p>
+
+                  <label>Your Invite Token:</label>
+                  <div className="token-display">
+                    <code>{generatedToken}</code>
+                    <button className="copy-btn" onClick={copyToken}>
+                      Copy
+                    </button>
+                  </div>
+
+                  <p className="token-instructions">
+                    Share this token with the user you want to grant access to. They should enter
+                    this token on the Clients page to gain access to <strong>{selectedClient?.name}</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         .client-info-manager {
           width: 100%;
         }
 
-        .card {
+        .client-card {
           background: white;
           border-radius: 0.5rem;
           padding: 1.5rem;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           margin-bottom: 1rem;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box;
         }
 
         h2 {
           margin: 0 0 1.5rem 0;
           color: #111827;
           font-size: 1.5rem;
+        }
+
+        .tip-box {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          gap: 0.75rem;
+          align-items: flex-start;
+        }
+
+        .tip-icon {
+          width: 1.5rem;
+          height: 1.5rem;
+          background: #3b82f6;
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.875rem;
+          font-weight: 600;
+          font-style: italic;
+          flex-shrink: 0;
+        }
+
+        .tip-box p {
+          margin: 0;
+          color: #1e40af;
+          font-size: 0.875rem;
+          line-height: 1.6;
+          flex: 1;
+        }
+
+        .tip-box strong {
+          font-weight: 600;
         }
 
         .client-selector {
@@ -431,6 +591,199 @@ function ClientInfoManager({ me, jwt, clients }) {
           text-align: center;
           padding: 2rem;
           color: #6b7280;
+        }
+
+        .token-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .create-token-btn {
+          padding: 0.75rem 1.5rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .create-token-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 12px;
+          max-width: 500px;
+          width: 90%;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          color: #374151;
+          font-size: 1.25rem;
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: 2rem;
+          line-height: 1;
+          cursor: pointer;
+          color: #6b7280;
+          padding: 0;
+          width: 2rem;
+          height: 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .modal-close:hover {
+          color: #374151;
+        }
+
+        .modal-body {
+          padding: 1.5rem;
+        }
+
+        .modal-description {
+          margin: 0 0 1.5rem 0;
+          color: #374151;
+          font-size: 0.9375rem;
+          line-height: 1.6;
+        }
+
+        .generate-btn {
+          padding: 0.75rem 1.5rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .generate-btn:hover:not(:disabled) {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
+        .generate-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .token-error {
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .token-error p {
+          margin: 0;
+          color: #991b1b;
+          font-size: 0.875rem;
+        }
+
+        .success-message {
+          background: #d1fae5;
+          color: #065f46;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          margin: 0 0 1.5rem 0;
+          font-size: 0.9375rem;
+          font-weight: 500;
+        }
+
+        .token-result {
+          margin-top: 0;
+        }
+
+        .token-result label {
+          display: block;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        .token-display {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+          background: #f3f4f6;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          padding: 0.75rem;
+        }
+
+        .token-display code {
+          flex: 1;
+          font-family: 'Courier New', monospace;
+          font-size: 0.875rem;
+          color: #374151;
+          word-break: break-all;
+        }
+
+        .copy-btn {
+          padding: 0.5rem 1rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+          background: #6d76c4;
+        }
+
+        .token-instructions {
+          margin: 0.75rem 0 0 0;
+          color: #6b7280;
+          font-size: 0.8125rem;
+          line-height: 1.5;
         }
 
         .client-info-section {
@@ -615,14 +968,10 @@ function ClientInfoManager({ me, jwt, clients }) {
         }
 
         .access-description {
-          color: #6b7280;
+          color: #111827;
           font-size: 0.875rem;
           line-height: 1.5;
           margin: 0 0 1.25rem 0;
-          padding: 0.75rem;
-          background: #f9fafb;
-          border-left: 3px solid #3b82f6;
-          border-radius: 0.25rem;
         }
 
         @media (max-width: 768px) {
