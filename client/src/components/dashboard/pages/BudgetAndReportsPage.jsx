@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import NavigationTab from "../../NavigationTab";
 import useAuth from "../hooks/useAuth";
 import { useClients } from "../hooks/useClients";
@@ -27,10 +28,12 @@ import {
   BiDotsVerticalRounded,
   BiTrash,
   BiCheckCircle,
+  BiCalendarPlus,
 } from "react-icons/bi";
 
 function BudgetPlanningPage() {
   const { me } = useAuth();
+  const navigate = useNavigate();
   const jwt = localStorage.getItem("jwt");
   const { clients, loading, error } = useClients(me, jwt);
 
@@ -837,44 +840,40 @@ function BudgetPlanningPage() {
               </div>
 
               {shouldShowOverview && (
-                <button
-                  className="reconfigure-btn"
-                  onClick={() => setShowWizard(true)}
-                >
-                  <BiPencil /> Edit Plan
-                </button>
-              )}
-
-              {selectedClient && isBudgetPlanComplete && (
-                <div className="copy-plan-controls">
-                  <select
-                    value={planCopyYear}
-                    onChange={(e) => setPlanCopyYear(parseInt(e.target.value))}
-                    className="year-copy-select"
-                  >
-                    {getFutureYears().map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
+                <>
                   <button
-                    className="copy-btn copy-plan-btn"
-                    onClick={() => copyWholePlan(planCopyYear)}
-                    title={`Copy entire plan to ${planCopyYear}`}
+                    className="reconfigure-btn"
+                    onClick={() => setShowWizard(true)}
                   >
-                    <BiCopy /> Copy Plan
+                    <BiPencil /> Edit Plan
                   </button>
-                </div>
+                  <button
+                    className="plan-future-btn"
+                    onClick={() => {
+                      console.log('Plan for Future Years clicked');
+                      console.log('selectedClient:', selectedClient);
+                      console.log('selectedYear:', selectedYear);
+                      console.log('budgetPlan:', budgetPlan);
+
+                      if (!selectedClient?._id || !budgetPlan) {
+                        alert('Missing required data. Please try again.');
+                        return;
+                      }
+
+                      navigate('/budget-planning/plan-future', {
+                        state: {
+                          clientId: selectedClient._id,
+                          sourceYear: selectedYear,
+                          budgetPlan
+                        }
+                      });
+                    }}
+                  >
+                    <BiCalendarPlus /> Plan for Future Years
+                  </button>
+                </>
               )}
             </div>
-
-            {isBudgetPlanComplete && (
-              <p className="copy-hint">
-                Copy to future years: existing items won't be deleted,
-                same-name items will be updated
-              </p>
-            )}
           </div>
 
           {selectedClient && (
@@ -1512,6 +1511,23 @@ function BudgetPlanningPage() {
         }
         .reconfigure-btn:hover {
           background: #4b5563;
+        }
+        .plan-future-btn {
+          padding: 0.625rem 1rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .plan-future-btn:hover {
+          background: #6b73c1;
         }
 
         .copy-plan-controls {

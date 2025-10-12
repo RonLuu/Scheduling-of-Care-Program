@@ -19,6 +19,7 @@ import TasksPageNew from "./components/dashboard/pages/TasksPageNew";
 import TaskCompletionPage from "./components/dashboard/pages/TaskCompletionPage";
 import BudgetPage from "./components/dashboard/pages/BudgetPage";
 import BudgetAndReportsPage from "./components/dashboard/pages/BudgetAndReportsPage";
+import PlanForNextYear from "./components/dashboard/pages/PlanForNextYear";
 import Dashboard from "./components/dashboard/pages/Dashboard";
 
 import PrintButton from "./components/PrintButton";
@@ -187,6 +188,22 @@ const App = () => {
             element={
               <RequireAuth>
                 <BudgetAndReportsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/budget-planning"
+            element={
+              <RequireAuth>
+                <BudgetAndReportsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/budget-planning/plan-future"
+            element={
+              <RequireAuth>
+                <PlanForNextYear />
               </RequireAuth>
             }
           />
