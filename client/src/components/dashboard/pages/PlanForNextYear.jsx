@@ -31,6 +31,8 @@ function PlanForNextYear() {
 
   const [targetYear, setTargetYear] = React.useState(sourceYear ? sourceYear + 1 : new Date().getFullYear() + 1);
   const [selectedCategories, setSelectedCategories] = React.useState(new Set());
+  const [selectedItems, setSelectedItems] = React.useState({}); // { categoryId: Set([itemName1, itemName2, ...]) }
+  const [expandedCategories, setExpandedCategories] = React.useState(new Set());
   const [copying, setCopying] = React.useState(false);
   const [copySuccess, setCopySuccess] = React.useState(false);
 
@@ -181,23 +183,100 @@ function PlanForNextYear() {
   // Toggle category selection
   const toggleCategory = (categoryId) => {
     const newSelected = new Set(selectedCategories);
+    const category = getCategoriesWithItems().find(cat => cat.id === categoryId);
+
     if (newSelected.has(categoryId)) {
+      // Deselecting category - remove all its items
       newSelected.delete(categoryId);
+      setSelectedItems(prev => {
+        const updated = { ...prev };
+        delete updated[categoryId];
+        return updated;
+      });
     } else {
+      // Selecting category - add all its items
       newSelected.add(categoryId);
+      if (category?.items) {
+        setSelectedItems(prev => ({
+          ...prev,
+          [categoryId]: new Set(category.items.map(item => item.name))
+        }));
+      }
     }
     setSelectedCategories(newSelected);
   };
 
+  // Toggle individual item selection
+  const toggleItem = (categoryId, itemName) => {
+    setSelectedItems(prev => {
+      const categoryItems = prev[categoryId] || new Set();
+      const updated = new Set(categoryItems);
+
+      if (updated.has(itemName)) {
+        updated.delete(itemName);
+      } else {
+        updated.add(itemName);
+      }
+
+      // If all items deselected, uncheck category
+      if (updated.size === 0) {
+        setSelectedCategories(prevCats => {
+          const newCats = new Set(prevCats);
+          newCats.delete(categoryId);
+          return newCats;
+        });
+        const result = { ...prev };
+        delete result[categoryId];
+        return result;
+      }
+
+      // If some items selected, ensure category is checked
+      if (updated.size > 0) {
+        setSelectedCategories(prevCats => new Set([...prevCats, categoryId]));
+      }
+
+      return { ...prev, [categoryId]: updated };
+    });
+  };
+
+  // Toggle category expansion
+  const toggleExpansion = (categoryId) => {
+    setExpandedCategories(prev => {
+      const updated = new Set(prev);
+      if (updated.has(categoryId)) {
+        updated.delete(categoryId);
+      } else {
+        updated.add(categoryId);
+      }
+      return updated;
+    });
+  };
+
+  // Get selected item count for a category
+  const getSelectedItemCount = (categoryId) => {
+    return selectedItems[categoryId]?.size || 0;
+  };
+
   // Select all categories
   const selectAll = () => {
-    const allIds = getCategoriesWithItems().map((cat) => cat.id);
+    const categories = getCategoriesWithItems();
+    const allIds = categories.map((cat) => cat.id);
     setSelectedCategories(new Set(allIds));
+
+    // Select all items in all categories
+    const allItemsMap = {};
+    categories.forEach(cat => {
+      if (cat.items && cat.items.length > 0) {
+        allItemsMap[cat.id] = new Set(cat.items.map(item => item.name));
+      }
+    });
+    setSelectedItems(allItemsMap);
   };
 
   // Deselect all categories
   const deselectAll = () => {
     setSelectedCategories(new Set());
+    setSelectedItems({});
   };
 
   // Copy selected categories to target year
@@ -207,19 +286,35 @@ function PlanForNextYear() {
       return;
     }
 
+    // Count total selected items
+    let totalSelectedItems = 0;
+    selectedCategories.forEach(catId => {
+      totalSelectedItems += getSelectedItemCount(catId);
+    });
+
+    if (totalSelectedItems === 0) {
+      alert("Please select at least one item to copy.");
+      return;
+    }
+
     setCopying(true);
     try {
       const target = await apiGetPlan(clientId, targetYear);
       const baseCategories = target?.categories ? [...target.categories] : [];
 
-      // Copy selected categories
+      // Copy only selected items from selected categories
       const categoriesToCopy = budgetPlan.categories.filter((cat) =>
         selectedCategories.has(cat.id)
       );
 
       categoriesToCopy.forEach((srcCat) => {
         const tcat = ensureCategoryInTarget(baseCategories, srcCat);
-        (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
+        const categorySelectedItems = selectedItems[srcCat.id] || new Set();
+
+        // Only copy items that are selected
+        (srcCat.items || [])
+          .filter(item => categorySelectedItems.has(item.name))
+          .forEach((it) => upsertItemByName(tcat, it));
       });
 
       const { categories, yearlyBudget } = recomputeTotals(baseCategories);
@@ -242,63 +337,6 @@ function PlanForNextYear() {
       alert(e.message || "Failed to copy budget plan");
       setCopying(false);
     }
-  };
-
-  // Copy all categories and items at once
-  const handleCopyAll = async () => {
-    if (!clientId || !budgetPlan) {
-      alert("No budget plan data available.");
-      return;
-    }
-
-    const categoriesWithItemsToCount = getCategoriesWithItems();
-    if (categoriesWithItemsToCount.length === 0) {
-      alert("No categories with items to copy.");
-      return;
-    }
-
-    // Auto-select all categories and then copy
-    const allIds = categoriesWithItemsToCount.map((cat) => cat.id);
-    setSelectedCategories(new Set(allIds));
-
-    // Give a moment for the UI to update
-    setTimeout(async () => {
-      setCopying(true);
-      try {
-        const target = await apiGetPlan(clientId, targetYear);
-        const baseCategories = target?.categories ? [...target.categories] : [];
-
-        // Copy all categories with items
-        const categoriesToCopy = budgetPlan.categories.filter(
-          (cat) => cat.items && cat.items.length > 0
-        );
-
-        categoriesToCopy.forEach((srcCat) => {
-          const tcat = ensureCategoryInTarget(baseCategories, srcCat);
-          (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
-        });
-
-        const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-        const payload = {
-          categories,
-          yearlyBudget,
-          deletedCategories: target?.deletedCategories || [],
-          budgetPeriodStart: new Date(targetYear, 0, 1),
-          budgetPeriodEnd: new Date(targetYear, 11, 31),
-        };
-
-        await apiUpsertPlan(clientId, targetYear, payload, !!target);
-
-        setCopySuccess(true);
-        setTimeout(() => {
-          navigate("/budget-planning");
-        }, 2000);
-      } catch (e) {
-        console.error(e);
-        alert(e.message || "Failed to copy budget plan");
-        setCopying(false);
-      }
-    }, 100);
   };
 
   // Redirect if no data
@@ -324,9 +362,11 @@ function PlanForNextYear() {
     (sum, cat) => sum + cat.items.length,
     0
   );
-  const selectedItems = categoriesWithItems
-    .filter((cat) => selectedCategories.has(cat.id))
-    .reduce((sum, cat) => sum + cat.items.length, 0);
+
+  // Calculate total selected items count
+  const totalSelectedItemsCount = Array.from(selectedCategories).reduce((sum, catId) => {
+    return sum + getSelectedItemCount(catId);
+  }, 0);
 
   return (
     <div className="page">
@@ -348,7 +388,7 @@ function PlanForNextYear() {
           {/* Success Message */}
           {copySuccess && (
             <div className="success-banner">
-              <BiCheck /> Successfully copied {selectedItems} item(s) to {targetYear}! Redirecting...
+              <BiCheck /> Successfully copied {totalSelectedItemsCount} item(s) to {targetYear}! Redirecting...
             </div>
           )}
 
@@ -387,21 +427,6 @@ function PlanForNextYear() {
                   <span className="value">{totalItems}</span>
                 </div>
               </div>
-
-              {/* Quick Copy All Button */}
-              <div className="quick-copy-section">
-                <button
-                  className="copy-all-btn"
-                  onClick={handleCopyAll}
-                  disabled={copying || categoriesWithItems.length === 0}
-                >
-                  <BiCopy />
-                  {copying ? "Copying..." : `Copy All Categories & Items to ${targetYear}`}
-                </button>
-                <p className="quick-copy-hint">
-                  Or select specific categories below to copy only what you need
-                </p>
-              </div>
             </div>
 
             {/* Category Selection */}
@@ -412,7 +437,6 @@ function PlanForNextYear() {
                   <button className="text-btn" onClick={selectAll} disabled={copying}>
                     Select All
                   </button>
-                  <span className="separator">|</span>
                   <button className="text-btn" onClick={deselectAll} disabled={copying}>
                     Deselect All
                   </button>
@@ -425,6 +449,8 @@ function PlanForNextYear() {
               <div className="categories-list">
                 {categoriesWithItems.map((category) => {
                   const isSelected = selectedCategories.has(category.id);
+                  const isExpanded = expandedCategories.has(category.id);
+                  const selectedItemCount = getSelectedItemCount(category.id);
                   const categoryMeta = predefinedCategories.find(
                     (c) => c.id === category.id
                   ) || category;
@@ -433,37 +459,87 @@ function PlanForNextYear() {
                     <div
                       key={category.id}
                       className={`category-item ${isSelected ? "selected" : ""}`}
-                      onClick={() => !copying && toggleCategory(category.id)}
                     >
-                      <div className="category-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleCategory(category.id)}
-                          disabled={copying}
-                        />
-                      </div>
-                      <div className="category-icon">
-                        {category.isCustom ? (
-                          <BiClipboard />
-                        ) : categoryMeta.emoji ? (
-                          React.createElement(categoryMeta.emoji)
-                        ) : (
-                          <BiClipboard />
-                        )}
-                      </div>
-                      <div className="category-details">
-                        <div className="category-name">
-                          {category.name}
-                          {category.isCustom && (
-                            <span className="custom-badge">Custom</span>
+                      <div
+                        className="category-header-row"
+                        onClick={() => !copying && toggleCategory(category.id)}
+                      >
+                        <div className="category-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleCategory(category.id)}
+                            disabled={copying}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div className="category-icon">
+                          {category.isCustom ? (
+                            <BiClipboard />
+                          ) : categoryMeta.emoji ? (
+                            React.createElement(categoryMeta.emoji)
+                          ) : (
+                            <BiClipboard />
                           )}
                         </div>
-                        <div className="category-meta">
-                          {category.items.length} item{category.items.length !== 1 ? "s" : ""} • $
-                          {category.budget.toLocaleString()}
+                        <div className="category-details">
+                          <div className="category-name">
+                            {category.name}
+                            {category.isCustom && (
+                              <span className="custom-badge">Custom</span>
+                            )}
+                          </div>
+                          <div className="category-meta">
+                            {isSelected && selectedItemCount !== category.items.length ? (
+                              <span>{selectedItemCount} of {category.items.length} item{category.items.length !== 1 ? "s" : ""} selected • </span>
+                            ) : (
+                              <span>{category.items.length} item{category.items.length !== 1 ? "s" : ""} • </span>
+                            )}
+                            ${category.budget.toLocaleString()}
+                          </div>
                         </div>
+                        <button
+                          className="expand-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleExpansion(category.id);
+                          }}
+                          disabled={copying}
+                        >
+                          {isExpanded ? "−" : "+"}
+                        </button>
                       </div>
+
+                      {/* Expandable Items List */}
+                      {isExpanded && (
+                        <div className="items-list">
+                          {category.items.map((item, idx) => {
+                            const isItemSelected = selectedItems[category.id]?.has(item.name);
+                            return (
+                              <div
+                                key={idx}
+                                className={`item-row ${isItemSelected ? "selected" : ""}`}
+                                onClick={() => !copying && toggleItem(category.id, item.name)}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isItemSelected}
+                                  onChange={() => toggleItem(category.id, item.name)}
+                                  disabled={copying}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div className="item-details">
+                                  <span className="item-name">{item.name}</span>
+                                  {item.description && (
+                                    <span className="item-description">{item.description}</span>
+                                  )}
+                                </div>
+                                <span className="item-budget">${item.budget.toLocaleString()}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -474,8 +550,8 @@ function PlanForNextYear() {
             <div className="action-section">
               <div className="selection-summary">
                 <strong>{selectedCategories.size}</strong> categor
-                {selectedCategories.size === 1 ? "y" : "ies"} selected ({selectedItems} item
-                {selectedItems !== 1 ? "s" : ""})
+                {selectedCategories.size === 1 ? "y" : "ies"} selected ({totalSelectedItemsCount} item
+                {totalSelectedItemsCount !== 1 ? "s" : ""})
               </div>
               <div className="action-buttons">
                 <button
@@ -615,46 +691,6 @@ function PlanForNextYear() {
           flex-direction: column;
           gap: 0.25rem;
         }
-        .quick-copy-section {
-          margin-top: 1.5rem;
-          padding-top: 1.5rem;
-          border-top: 1px solid #e2e8f0;
-        }
-        .copy-all-btn {
-          width: 100%;
-          padding: 1rem 1.5rem;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 1rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-        }
-        .copy-all-btn:hover {
-          background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
-          transform: translateY(-1px);
-        }
-        .copy-all-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
-          box-shadow: none;
-        }
-        .quick-copy-hint {
-          text-align: center;
-          margin: 0.75rem 0 0 0;
-          font-size: 0.875rem;
-          color: #6b7280;
-          font-style: italic;
-        }
         .info-item .label {
           font-size: 0.75rem;
           color: #6b7280;
@@ -687,26 +723,40 @@ function PlanForNextYear() {
         .selection-controls {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.75rem;
         }
         .text-btn {
-          background: none;
           border: none;
-          color: #8189d2;
           font-weight: 600;
           font-size: 0.875rem;
           cursor: pointer;
-          padding: 0.25rem 0.5rem;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          min-width: 180px;
+          height: 40px;
         }
-        .text-btn:hover {
-          color: #6b73c1;
+        .text-btn:first-of-type {
+          background: #10b981;
+          color: white;
+        }
+        .text-btn:first-of-type:hover {
+          background: #059669;
+        }
+        .text-btn:last-of-type {
+          background: #6b7280;
+          color: white;
+        }
+        .text-btn:last-of-type:hover {
+          background: #4b5563;
         }
         .text-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
-        }
-        .separator {
-          color: #d1d5db;
         }
         .categories-list {
           margin-top: 1rem;
@@ -715,23 +765,28 @@ function PlanForNextYear() {
           gap: 0.75rem;
         }
         .category-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
           background: #f9fafb;
           border: 2px solid #e5e7eb;
           border-radius: 8px;
-          cursor: pointer;
           transition: all 0.2s;
+          overflow: hidden;
         }
         .category-item:hover {
           border-color: #8189d2;
-          background: #f3f4f6;
         }
         .category-item.selected {
           border-color: #8189d2;
           background: #eff6ff;
+        }
+        .category-header-row {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          cursor: pointer;
+        }
+        .category-header-row:hover {
+          background: #f3f4f6;
         }
         .category-checkbox input {
           width: 1.25rem;
@@ -766,6 +821,77 @@ function PlanForNextYear() {
           font-size: 0.875rem;
           color: #6b7280;
           margin-top: 0.25rem;
+        }
+        .expand-btn {
+          background: #e5e7eb;
+          border: none;
+          width: 2rem;
+          height: 2rem;
+          border-radius: 4px;
+          font-size: 1.25rem;
+          font-weight: bold;
+          color: #374151;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+        .expand-btn:hover {
+          background: #d1d5db;
+        }
+        .expand-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .items-list {
+          padding: 0 1rem 1rem 1rem;
+          background: white;
+        }
+        .item-row {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.75rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          margin-bottom: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .item-row:hover {
+          background: #f3f4f6;
+          border-color: #d1d5db;
+        }
+        .item-row.selected {
+          background: #dbeafe;
+          border-color: #3b82f6;
+        }
+        .item-row input[type="checkbox"] {
+          width: 1rem;
+          height: 1rem;
+          cursor: pointer;
+        }
+        .item-details {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .item-name {
+          font-weight: 500;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+        .item-description {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+        .item-budget {
+          font-weight: 600;
+          color: #059669;
+          font-size: 0.875rem;
         }
         .action-section {
           display: flex;
