@@ -441,9 +441,8 @@ function PlanForNextYear() {
                 </div>
               </div>
               <p className="help-text">
-                Choose which categories and items to copy to {targetYear}. 
-                You can view the list of items in a category by clicking the purple 
-                expand button on the right.
+                Choose which categories and items to copy to {targetYear}.
+                Click on a category to expand and view its items.
               </p>
 
               <div className="categories-list">
@@ -460,58 +459,53 @@ function PlanForNextYear() {
                       key={category.id}
                       className={`category-item ${isSelected ? "selected" : ""}`}
                     >
-                      <div
-                        className="category-header-row"
-                        onClick={() => !copying && toggleCategory(category.id)}
-                      >
+                      <div className="category-header-row">
                         <div className="category-checkbox">
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleCategory(category.id)}
+                            onChange={() => !copying && toggleCategory(category.id)}
                             disabled={copying}
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
-                        <div className="category-icon">
-                          {category.isCustom ? (
-                            <BiClipboard />
-                          ) : categoryMeta.emoji ? (
-                            React.createElement(categoryMeta.emoji)
-                          ) : (
-                            <BiClipboard />
-                          )}
-                        </div>
-                        <div className="category-details">
-                          <div className="category-name">
-                            {category.name}
-                            {category.isCustom && (
-                              <span className="custom-badge">Custom</span>
-                            )}
-                          </div>
-                          <div className="category-meta">
-                            {isSelected && selectedItemCount !== category.items.length ? (
-                              <span>{selectedItemCount} of {category.items.length} item{category.items.length !== 1 ? "s" : ""} selected • </span>
-                            ) : (
-                              <span>{category.items.length} item{category.items.length !== 1 ? "s" : ""} • </span>
-                            )}
-                            {isSelected && selectedItemCount > 0 && selectedItemCount !== category.items.length ? (
-                              <span>${getSelectedItemsBudget(category.id).toLocaleString()}</span>
-                            ) : (
-                              <span>${category.budget.toLocaleString()}</span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          className="expand-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpansion(category.id);
-                          }}
-                          disabled={copying}
+                        <div
+                          className="category-content"
+                          onClick={() => !copying && toggleExpansion(category.id)}
                         >
-                          {isExpanded ? <BiChevronDown /> : <BiChevronRight />}
-                        </button>
+                          <div className="category-icon">
+                            {category.isCustom ? (
+                              <BiClipboard />
+                            ) : categoryMeta.emoji ? (
+                              React.createElement(categoryMeta.emoji)
+                            ) : (
+                              <BiClipboard />
+                            )}
+                          </div>
+                          <div className="category-details">
+                            <div className="category-name">
+                              {category.name}
+                              {category.isCustom && (
+                                <span className="custom-badge">Custom</span>
+                              )}
+                            </div>
+                            <div className="category-meta">
+                              {isSelected && selectedItemCount !== category.items.length ? (
+                                <span>{selectedItemCount} of {category.items.length} item{category.items.length !== 1 ? "s" : ""} selected • </span>
+                              ) : (
+                                <span>{category.items.length} item{category.items.length !== 1 ? "s" : ""} • </span>
+                              )}
+                              {isSelected && selectedItemCount > 0 && selectedItemCount !== category.items.length ? (
+                                <span>${getSelectedItemsBudget(category.id).toLocaleString()}</span>
+                              ) : (
+                                <span>${category.budget.toLocaleString()}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="expand-indicator">
+                            {isExpanded ? "−" : "+"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Expandable Items List */}
@@ -803,16 +797,29 @@ function PlanForNextYear() {
           align-items: center;
           gap: 0.75rem;
           padding: 1rem;
-          cursor: pointer;
         }
-        .category-header-row:hover {
-          background: #f3f4f6;
+        .category-checkbox {
+          flex-shrink: 0;
         }
         .category-checkbox input {
           width: 1.25rem;
           height: 1.25rem;
           cursor: pointer;
           flex-shrink: 0;
+        }
+        .category-content {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: background 0.2s;
+          padding: 0.25rem;
+          margin: -0.25rem;
+        }
+        .category-content:hover {
+          background: #f3f4f6;
         }
         .category-icon {
           font-size: 1.5rem;
@@ -846,43 +853,12 @@ function PlanForNextYear() {
           color: #6b7280;
           margin-top: 0.25rem;
         }
-        .expand-btn {
-          background: #8189d2;
-          border: none;
-          width: 28px;
-          height: 28px;
-          min-width: 28px;
-          min-height: 28px;
-          max-width: 28px;
-          max-height: 28px;
-          border-radius: 4px;
-          font-size: 1.2rem;
-          color: white;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-          flex-shrink: 0;
-          padding: 0;
-          line-height: 0;
-          overflow: hidden;
-        }
-        .expand-btn svg {
-          display: block;
-          width: 1.2rem;
-          height: 1.2rem;
-          margin: 0;
-          position: relative;
-          left: 0;
-          right: 0;
-        }
-        .expand-btn:hover {
-          background: #6b73c1;
-        }
-        .expand-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .expand-indicator {
+          font-size: 1.5rem;
+          font-weight: 400;
+          color: #9ca3af;
+          user-select: none;
+          line-height: 1;
         }
         .items-list {
           padding: 0 1rem 1rem 1rem;
