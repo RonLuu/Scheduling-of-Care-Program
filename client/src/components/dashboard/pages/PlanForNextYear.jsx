@@ -14,6 +14,8 @@ import {
   BiCar,
   BiHome,
   BiClipboard,
+  BiChevronDown,
+  BiChevronRight,
 } from "react-icons/bi";
 
 function PlanForNextYear() {
@@ -257,6 +259,19 @@ function PlanForNextYear() {
     return selectedItems[categoryId]?.size || 0;
   };
 
+  // Get selected items budget for a category
+  const getSelectedItemsBudget = (categoryId) => {
+    const category = getCategoriesWithItems().find(cat => cat.id === categoryId);
+    if (!category) return 0;
+
+    const selectedItemNames = selectedItems[categoryId];
+    if (!selectedItemNames || selectedItemNames.size === 0) return 0;
+
+    return category.items
+      .filter(item => selectedItemNames.has(item.name))
+      .reduce((sum, item) => sum + (parseFloat(item.budget) || 0), 0);
+  };
+
   // Select all categories
   const selectAll = () => {
     const categories = getCategoriesWithItems();
@@ -368,6 +383,11 @@ function PlanForNextYear() {
     return sum + getSelectedItemCount(catId);
   }, 0);
 
+  // Calculate total selected budget
+  const totalSelectedBudget = Array.from(selectedCategories).reduce((sum, catId) => {
+    return sum + getSelectedItemsBudget(catId);
+  }, 0);
+
   return (
     <div className="page">
       <NavigationTab />
@@ -376,13 +396,10 @@ function PlanForNextYear() {
           {/* Header */}
           <div className="plan-header">
             <button className="back-btn-header" onClick={() => navigate("/budget-planning")}>
-              <BiArrowBack /> Back to Budget Planning
+              <BiArrowBack /> Back to Budget Report
             </button>
-            <h2>Plan for Future Years</h2>
-            <p>Carry over your {sourceYear} budget plan to a future year. <br /></p>
-            <p>Save time setting up plans by copying all your 
-               categories and items from {sourceYear} into a future year. 
-              You can review or edit the details after copying.</p>
+            <h2>Set Up Future Budgets</h2>
+            <p>Carry over your {sourceYear} budget to the future. You can edit details later.<br /></p>
           </div>
 
           {/* Success Message */}
@@ -396,10 +413,8 @@ function PlanForNextYear() {
           <div className="content-section">
             {/* Year Selection */}
             <div className="year-selection-card">
-              <h3>Select Target Year</h3>
-              <p className="help-text">Choose which year to copy your budget plan to</p>
               <div className="year-selector">
-                <label htmlFor="target-year">Target Year:</label>
+                <label htmlFor="target-year">Copy your {sourceYear} budget to:</label>
                 <select
                   id="target-year"
                   value={targetYear}
@@ -414,10 +429,7 @@ function PlanForNextYear() {
                 </select>
               </div>
               <div className="year-info">
-                <div className="info-item">
-                  <span className="label">Source Year:</span>
-                  <span className="value">{sourceYear}</span>
-                </div>
+
                 <div className="info-item">
                   <span className="label">Total Categories:</span>
                   <span className="value">{categoriesWithItems.length}</span>
@@ -443,7 +455,9 @@ function PlanForNextYear() {
                 </div>
               </div>
               <p className="help-text">
-                Choose which categories to copy to {targetYear}. Items with the same name will be updated.
+                Choose which categories and items to copy to {targetYear}. 
+                You can view item details of categories by clicking the purple 
+                expand button on the right.
               </p>
 
               <div className="categories-list">
@@ -495,7 +509,11 @@ function PlanForNextYear() {
                             ) : (
                               <span>{category.items.length} item{category.items.length !== 1 ? "s" : ""} • </span>
                             )}
-                            ${category.budget.toLocaleString()}
+                            {isSelected && selectedItemCount > 0 && selectedItemCount !== category.items.length ? (
+                              <span>${getSelectedItemsBudget(category.id).toLocaleString()}</span>
+                            ) : (
+                              <span>${category.budget.toLocaleString()}</span>
+                            )}
                           </div>
                         </div>
                         <button
@@ -506,7 +524,7 @@ function PlanForNextYear() {
                           }}
                           disabled={copying}
                         >
-                          {isExpanded ? "−" : "+"}
+                          {isExpanded ? <BiChevronDown /> : <BiChevronRight />}
                         </button>
                       </div>
 
@@ -549,9 +567,14 @@ function PlanForNextYear() {
             {/* Action Buttons */}
             <div className="action-section">
               <div className="selection-summary">
-                <strong>{selectedCategories.size}</strong> categor
-                {selectedCategories.size === 1 ? "y" : "ies"} selected ({totalSelectedItemsCount} item
-                {totalSelectedItemsCount !== 1 ? "s" : ""})
+                <div className="summary-text">
+                  <strong>{selectedCategories.size}</strong> categor
+                  {selectedCategories.size === 1 ? "y" : "ies"} selected ({totalSelectedItemsCount} item
+                  {totalSelectedItemsCount !== 1 ? "s" : ""})
+                </div>
+                <div className="summary-budget">
+                  Total Budget: <span className="budget-amount">${totalSelectedBudget.toLocaleString()}</span>
+                </div>
               </div>
               <div className="action-buttons">
                 <button
@@ -621,11 +644,17 @@ function PlanForNextYear() {
           margin: 2rem 0 0.5rem 0;
           font-size: 2rem;
           font-weight: 600;
+          color: white;
+          text-align: left;
+          font-family: "Inter", sans-serif;
         }
         .plan-header p {
           margin: 0;
           opacity: 0.9;
           font-size: 1rem;
+          color: white;
+          text-align: left;
+          font-family: "Inter", sans-serif;
         }
         .success-banner {
           background: #d1fae5;
@@ -781,7 +810,7 @@ function PlanForNextYear() {
         .category-header-row {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.75rem;
           padding: 1rem;
           cursor: pointer;
         }
@@ -792,20 +821,23 @@ function PlanForNextYear() {
           width: 1.25rem;
           height: 1.25rem;
           cursor: pointer;
+          flex-shrink: 0;
         }
         .category-icon {
           font-size: 1.5rem;
           color: #8189d2;
           display: flex;
           align-items: center;
+          flex-shrink: 0;
         }
         .category-details {
           flex: 1;
+          min-width: 0;
         }
         .category-name {
           font-weight: 600;
           color: #374151;
-          font-size: 1rem;
+          font-size: 1.1rem;
           display: flex;
           align-items: center;
           gap: 0.5rem;
@@ -816,6 +848,7 @@ function PlanForNextYear() {
           font-size: 0.65rem;
           padding: 0.15rem 0.4rem;
           border-radius: 10px;
+          flex-shrink: 0;
         }
         .category-meta {
           font-size: 0.875rem;
@@ -823,22 +856,38 @@ function PlanForNextYear() {
           margin-top: 0.25rem;
         }
         .expand-btn {
-          background: #e5e7eb;
+          background: #8189d2;
           border: none;
-          width: 2rem;
-          height: 2rem;
+          width: 28px;
+          height: 28px;
+          min-width: 28px;
+          min-height: 28px;
+          max-width: 28px;
+          max-height: 28px;
           border-radius: 4px;
-          font-size: 1.25rem;
-          font-weight: bold;
-          color: #374151;
+          font-size: 1.2rem;
+          color: white;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s;
+          flex-shrink: 0;
+          padding: 0;
+          line-height: 0;
+          overflow: hidden;
+        }
+        .expand-btn svg {
+          display: block;
+          width: 1.2rem;
+          height: 1.2rem;
+          margin: 0;
+          position: relative;
+          left: 0;
+          right: 0;
         }
         .expand-btn:hover {
-          background: #d1d5db;
+          background: #6b73c1;
         }
         .expand-btn:disabled {
           opacity: 0.5;
@@ -904,10 +953,23 @@ function PlanForNextYear() {
         .selection-summary {
           color: #374151;
           font-size: 0.875rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
         }
-        .selection-summary strong {
+        .summary-text strong {
           font-size: 1.25rem;
           color: #8189d2;
+        }
+        .summary-budget {
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+        .budget-amount {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #059669;
+          margin-left: 0.5rem;
         }
         .action-buttons {
           display: flex;
