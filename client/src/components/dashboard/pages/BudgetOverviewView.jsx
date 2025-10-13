@@ -1,7 +1,39 @@
 // BudgetOverviewView.jsx
 import React from "react";
+import {
+  BiFirstAid,
+  BiSpa,
+  BiCloset,
+  BiDish,
+  BiAccessibility,
+  BiPalette,
+  BiCar,
+  BiHome,
+  BiClipboard,
+} from "react-icons/bi";
 
 function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
+  // Predefined categories mapping
+  const predefinedCategories = {
+    health: BiFirstAid,
+    hygiene: BiSpa,
+    clothing: BiCloset,
+    nutrition: BiDish,
+    mobility: BiAccessibility,
+    activities: BiPalette,
+    transportation: BiCar,
+    home: BiHome,
+  };
+
+  // Get the correct icon component for a category
+  const getCategoryIcon = (category) => {
+    // If it's a predefined category, use the icon mapping
+    if (predefinedCategories[category.id]) {
+      return predefinedCategories[category.id];
+    }
+    // For custom categories, always use BiClipboard
+    return BiClipboard;
+  };
   const [expandedCategories, setExpandedCategories] = React.useState(new Set());
   const [actualSpending, setActualSpending] = React.useState({});
   const [returnedAmounts, setReturnedAmounts] = React.useState({});
@@ -384,7 +416,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
               >
                 <div className="col-name">
                   <span className="expand-icon">{isExpanded ? "▼" : "▶"}</span>
-                  <span className="category-emoji">{category.emoji}</span>
+                  <span className="category-emoji">
+                    {React.createElement(getCategoryIcon(category))}
+                  </span>
                   <span className="category-name">{category.name}</span>
                   {category.items && category.items.length > 0 && (
                     <span className="item-count">

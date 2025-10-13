@@ -171,9 +171,13 @@ function BudgetPlanningPage() {
       setDeletedCategories([]);
       return;
     }
-    const customCatsFromBackend = budgetPlan.categories.filter(
-      (cat) => cat.isCustom
-    );
+    const customCatsFromBackend = budgetPlan.categories
+      .filter((cat) => cat.isCustom)
+      .map((cat) => ({
+        ...cat,
+        // Ensure emoji is always the BiClipboard component, not a string
+        emoji: BiClipboard,
+      }));
     setCustomCategories((prevCustom) => {
       const budgetPlanCustomIds = new Set(
         customCatsFromBackend.map((cat) => cat.id)

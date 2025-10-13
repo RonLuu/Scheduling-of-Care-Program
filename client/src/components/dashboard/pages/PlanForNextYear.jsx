@@ -282,7 +282,10 @@ function PlanForNextYear() {
               <BiArrowBack /> Back to Budget Planning
             </button>
             <h2>Plan for Future Years</h2>
-            <p>Copy budget categories from {sourceYear} to a future year</p>
+            <p>Carry over your {sourceYear} budget plan to a future year. <br /></p>
+            <p>Save time setting up plans by copying all your 
+               categories and items from {sourceYear} into a future year. 
+              You can review or edit the details after copying.</p>
           </div>
 
           {/* Success Message */}
