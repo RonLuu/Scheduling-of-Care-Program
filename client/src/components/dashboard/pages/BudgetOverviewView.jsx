@@ -386,6 +386,64 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         </div>
       </div>
 
+      {/* High Usage Warning Section */}
+      {!isLoadingSpending && (() => {
+        const highUsageItems = [];
+        (budgetPlan?.categories || []).forEach((category) => {
+          category.items?.forEach((item) => {
+            const itemGrossSpent = getItemSpent(category.id, item._id);
+            const itemReturned = getItemReturned(category.id, item._id);
+            const itemNetSpent = itemGrossSpent - itemReturned;
+            const itemProgressPct = getProgressPercentage(itemNetSpent, item.budget);
+
+            if (itemProgressPct >= 80) {
+              highUsageItems.push({
+                item,
+                category,
+                itemNetSpent,
+                itemProgressPct,
+              });
+            }
+          });
+        });
+
+        if (highUsageItems.length > 0) {
+          return (
+            <div className="budget-warning-section">
+              <div className="warning-header">
+                <h3>⚠️ Items Requiring Attention</h3>
+                <div className="warning-count">
+                  {highUsageItems.length} {highUsageItems.length === 1 ? 'item' : 'items'}
+                </div>
+              </div>
+              <p className="warning-description">
+                The following items have used 80% or more of their budget. Consider increasing their budget or reallocating funds.
+              </p>
+              <div className="warning-items-list">
+                {highUsageItems.map(({ item, category, itemNetSpent, itemProgressPct }) => (
+                  <div key={`${category.id}-${item._id}`} className="warning-item">
+                    <div className="warning-item-info">
+                      <span className="warning-item-name">{item.name}</span>
+                      <span className="warning-item-category">in {category.name}</span>
+                    </div>
+                    <div className="warning-item-stats">
+                      <span className="warning-item-spent">{formatCurrency(itemNetSpent)} / {formatCurrency(item.budget)}</span>
+                      <span className="warning-item-percentage" style={{
+                        backgroundColor: itemProgressPct >= 100 ? '#dc2626' : itemProgressPct >= 90 ? '#f59e0b' : '#f59e0b',
+                        color: 'white'
+                      }}>
+                        {itemProgressPct}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Budget Surplus Section - Only show if there are returns */}
       {totalReturned > 0 && (
         <div className="budget-surplus-section">
@@ -422,6 +480,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           );
           const isExpanded = expandedCategories.has(category.id);
 
+          // Check if category has items at 80% or more budget usage
+          const hasHighUsageItems = !isLoadingSpending && category.items?.some((item) => {
+            const itemGrossSpent = getItemSpent(category.id, item._id);
+            const itemReturned = getItemReturned(category.id, item._id);
+            const itemNetSpent = itemGrossSpent - itemReturned;
+            const itemProgressPct = getProgressPercentage(itemNetSpent, item.budget);
+            return itemProgressPct >= 80;
+          });
+
           return (
             <div key={category.id} className="category-section">
               {/* Category Row */}
@@ -435,6 +502,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     {React.createElement(getCategoryIcon(category))}
                   </span>
                   <span className="category-name">{category.name}</span>
+                  {hasHighUsageItems && (
+                    <span className="category-warning-badge" title="Contains items requiring attention">
+                      ⚠️
+                    </span>
+                  )}
                   {category.items && category.items.length > 0 && (
                     <span className="item-count">
                       ({category.items.length} items)
@@ -673,25 +745,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
               <strong>{selectedItem.category.name}</strong> category.
             </p>
 
-            <div className="budget-summary">
-              <div className="budget-row">
-                <span>Current Item Budget:</span>
-                <span className="amount">
-                  {formatCurrency(selectedItem.item.budget)}
-                </span>
-              </div>
-              <div className="budget-row">
-                <span>Amount Spent:</span>
-                <span className="amount spent">
-                  {formatCurrency(selectedItem.itemSpent)}
-                </span>
-              </div>
-              <div className="budget-row">
-                <span>Usage:</span>
-                <span className="amount">{selectedItem.itemProgressPct}%</span>
-              </div>
-            </div>
-
             <div className="reallocate-section">
               <h4>Sort by:</h4>
 
@@ -798,6 +851,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                 return Object.values(groupedItems).map(({ category, items }) => (
                   <div key={category.id} className="category-group">
                     <h5 className="category-group-title">{category.name}</h5>
+                    <div className="category-items-grid">
                     {items.map(({ item: sourceItem, availableToReallocate, sourceNetSpent, utilizationPct }) => {
                       const currentReallocation =
                         parseFloat(reallocationAmounts[sourceItem._id]) || 0;
@@ -818,7 +872,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                             </div>
                             <span className="source-item-budget">
                               Budget: {formatCurrency(sourceItem.budget)} |
-                              Spent: {formatCurrency(sourceNetSpent)} | Available:{" "}
+                              Spent: {formatCurrency(sourceNetSpent)} | <br />Available:{" "}
                               <strong className="available-highlight">{formatCurrency(availableToReallocate)}</strong>
                             </span>
                           </div>
@@ -847,33 +901,19 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 ));
               })()}
             </div>
 
-            {Object.values(reallocationAmounts).some(
-              (amt) => parseFloat(amt) > 0
-            ) && (
-              <div className="cascade-info">
-                <p>
-                  <strong>Budget Changes:</strong>
-                </p>
-                <div className="budget-row">
-                  <span>Total being reallocated:</span>
-                  <span className="amount increase">
-                    +
-                    {formatCurrency(
-                      Object.values(reallocationAmounts).reduce(
-                        (sum, amt) => sum + (parseFloat(amt) || 0),
-                        0
-                      )
-                    )}
-                  </span>
-                </div>
-                <div className="budget-row">
-                  <span>New budget for {selectedItem.item.name}:</span>
-                  <span className="amount">
+            <div className="modal-actions">
+              {Object.values(reallocationAmounts).some(
+                (amt) => parseFloat(amt) > 0
+              ) && (
+                <div className="new-budget-summary">
+                  <span className="new-budget-label">New budget for {selectedItem.item.name}:</span>
+                  <span className="new-budget-value">
                     {formatCurrency(
                       selectedItem.item.budget +
                         Object.values(reallocationAmounts).reduce(
@@ -883,28 +923,21 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     )}
                   </span>
                 </div>
-                <div className="budget-row">
-                  <span>Yearly budget:</span>
-                  <span className="amount">
-                    {formatCurrency(budgetPlan.yearlyBudget)} (unchanged)
-                  </span>
-                </div>
+              )}
+              <div className="modal-buttons">
+                <button
+                  className="btn-cancel"
+                  onClick={() => setShowReallocateModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-save"
+                  onClick={handleReallocateBudget}
+                >
+                  Save Changes
+                </button>
               </div>
-            )}
-
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowReallocateModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-save"
-                onClick={handleReallocateBudget}
-              >
-                Save Changes
-              </button>
             </div>
           </div>
         </div>
@@ -1008,6 +1041,100 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           color: #9ca3af;
         }
 
+        /* Budget Warning Section */
+        .budget-warning-section {
+          background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+          border: 2px solid #fbbf24;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+        }
+
+        .warning-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .warning-header h3 {
+          margin: 0;
+          color: #92400e;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .warning-count {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #d97706;
+          background: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+        }
+
+        .warning-description {
+          margin: 0 0 1rem 0;
+          color: #78350f;
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+
+        .warning-items-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .warning-item {
+          background: white;
+          border: 1px solid #fde68a;
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .warning-item-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .warning-item-name {
+          font-weight: 600;
+          color: #1f2937;
+          font-size: 0.95rem;
+        }
+
+        .warning-item-category {
+          font-size: 0.85rem;
+          color: #6b7280;
+        }
+
+        .warning-item-stats {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .warning-item-spent {
+          font-size: 0.875rem;
+          color: #4b5563;
+          font-weight: 500;
+        }
+
+        .warning-item-percentage {
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.875rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
         /* Budget Surplus Section */
         .budget-surplus-section {
           background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
@@ -1105,6 +1232,23 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .category-emoji {
           font-size: 1.25rem;
+        }
+
+        .category-warning-badge {
+          font-size: 1rem;
+          animation: pulse 2s ease-in-out infinite;
+          cursor: help;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+          }
         }
 
         .item-count {
@@ -1271,12 +1415,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           max-width: 500px;
           width: 90%;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-          max-height: 90vh;
+          max-height: 85vh;
           overflow-y: auto;
+          display: flex;
+          flex-direction: column;
         }
 
         .modal-content.modal-large {
           max-width: 700px;
+          max-height: 80vh;
         }
 
         .modal-content h3 {
@@ -1364,7 +1511,39 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .modal-actions {
           display: flex;
           gap: 1rem;
-          justify-content: flex-end;
+          justify-content: space-between;
+          align-items: center;
+          position: sticky;
+          bottom: -2rem;
+          background: white;
+          padding: 1rem 2rem;
+          margin: 1rem -2rem -2rem -2rem;
+          border-top: 2px solid #e5e7eb;
+          flex-wrap: wrap;
+        }
+
+        .new-budget-summary {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .new-budget-label {
+          font-size: 0.875rem;
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        .new-budget-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #059669;
+        }
+
+        .modal-buttons {
+          display: flex;
+          gap: 1rem;
+          margin-left: auto;
         }
 
         .btn-cancel,
@@ -1503,6 +1682,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-weight: 600;
           padding-bottom: 0.5rem;
           border-bottom: 2px solid #e5e7eb;
+        }
+
+        .category-items-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+          .category-items-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .smart-sort-hint {
