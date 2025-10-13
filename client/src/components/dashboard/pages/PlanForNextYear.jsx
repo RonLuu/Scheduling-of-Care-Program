@@ -395,9 +395,6 @@ function PlanForNextYear() {
         <div className="plan-future-container">
           {/* Header */}
           <div className="plan-header">
-            <button className="back-btn-header" onClick={() => navigate("/budget-planning")}>
-              <BiArrowBack /> Back to Budget Report
-            </button>
             <h2>Set Up Future Budgets</h2>
             <p>Carry over your {sourceYear} budget to the future. You can edit details later.<br /></p>
           </div>
@@ -428,17 +425,6 @@ function PlanForNextYear() {
                   ))}
                 </select>
               </div>
-              <div className="year-info">
-
-                <div className="info-item">
-                  <span className="label">Total Categories:</span>
-                  <span className="value">{categoriesWithItems.length}</span>
-                </div>
-                <div className="info-item">
-                  <span className="label">Total Items:</span>
-                  <span className="value">{totalItems}</span>
-                </div>
-              </div>
             </div>
 
             {/* Category Selection */}
@@ -456,7 +442,7 @@ function PlanForNextYear() {
               </div>
               <p className="help-text">
                 Choose which categories and items to copy to {targetYear}. 
-                You can view item details of categories by clicking the purple 
+                You can view the list of items in a category by clicking the purple 
                 expand button on the right.
               </p>
 
@@ -623,19 +609,20 @@ function PlanForNextYear() {
         .back-btn-header {
           position: absolute;
           top: 1rem;
-          left: 1rem;
+          right: 1rem;
           background: rgba(255, 255, 255, 0.2);
           color: white;
           border: 1px solid rgba(255, 255, 255, 0.3);
-          padding: 0.5rem 1rem;
+          padding: 0.5rem 0.75rem;
           border-radius: 6px;
           font-size: 0.875rem;
           font-weight: 600;
           cursor: pointer;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.4rem;
           transition: all 0.2s;
+          white-space: nowrap;
         }
         .back-btn-header:hover {
           background: rgba(255, 255, 255, 0.3);
@@ -684,7 +671,9 @@ function PlanForNextYear() {
         .help-text {
           margin: 0 0 1rem 0;
           color: #6b7280;
-          font-size: 0.875rem;
+          font-size: 1rem;
+          text-align: left;
+          font-family: "Inter", sans-serif;
         }
         .year-selector {
           display: flex;
@@ -748,6 +737,8 @@ function PlanForNextYear() {
           margin: 0;
           color: #374151;
           font-size: 1.25rem;
+          text-align: left;
+          font-family: "Inter", sans-serif;
         }
         .selection-controls {
           display: flex;
@@ -977,9 +968,9 @@ function PlanForNextYear() {
         }
         .cancel-btn {
           padding: 0.75rem 1.5rem;
-          background: white;
-          color: #374151;
-          border: 2px solid #d1d5db;
+          background: #6b7280;
+          color: white;
+          border: none;
           border-radius: 8px;
           font-weight: 600;
           font-size: 1rem;
@@ -987,8 +978,7 @@ function PlanForNextYear() {
           transition: all 0.2s;
         }
         .cancel-btn:hover {
-          background: #f9fafb;
-          border-color: #9ca3af;
+          background: #4b5563;
         }
         .cancel-btn:disabled {
           opacity: 0.5;
