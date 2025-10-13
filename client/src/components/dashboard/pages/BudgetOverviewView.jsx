@@ -41,10 +41,10 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [showIncreaseBudgetModal, setShowIncreaseBudgetModal] =
     React.useState(false);
   const [showReallocateModal, setShowReallocateModal] = React.useState(false);
-  const [showCrossCategoryReallocateModal, setShowCrossCategoryReallocateModal] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState(null);
   const [newItemBudget, setNewItemBudget] = React.useState("");
   const [reallocationAmounts, setReallocationAmounts] = React.useState({});
+  const [reallocateFilter, setReallocateFilter] = React.useState("smart"); // "smart", "same-category", "other-category"
 
   // Load actual spending and returned amounts from care tasks
   React.useEffect(() => {
@@ -166,86 +166,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
     return "#10b981"; // green
   };
 
-  const handleReallocateWithinCategory = async () => {
-    if (!selectedItem) return;
-
-    try {
-      // Calculate total amount being reallocated
-      const totalReallocated = Object.values(reallocationAmounts).reduce(
-        (sum, amount) => sum + (parseFloat(amount) || 0),
-        0
-      );
-
-      if (totalReallocated <= 0) {
-        alert("Please enter amounts to reallocate from other items.");
-        return;
-      }
-
-      // Validate that no item goes negative
-      const updatedCategories = budgetPlan.categories.map((cat) => {
-        if (cat.id === selectedItem.category.id) {
-          const newItems = cat.items.map((item) => {
-            if (item._id === selectedItem.item._id) {
-              // Add reallocated amount to this item
-              return { ...item, budget: item.budget + totalReallocated };
-            } else if (reallocationAmounts[item._id]) {
-              // Subtract from source items
-              const newBudget =
-                item.budget - parseFloat(reallocationAmounts[item._id]);
-              if (newBudget < 0) {
-                throw new Error(
-                  `Cannot reallocate more than available budget from ${item.name}`
-                );
-              }
-              return { ...item, budget: newBudget };
-            }
-            return item;
-          });
-
-          return { ...cat, items: newItems };
-        }
-        return cat;
-      });
-
-      // Save to database (category budget and yearly budget stay the same)
-      const response = await fetch(`/api/budget-plans`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({
-          personId: budgetPlan.personId,
-          year: budgetPlan.year,
-          yearlyBudget: budgetPlan.yearlyBudget, // Unchanged
-          categories: updatedCategories,
-          budgetPeriodStart: budgetPlan.budgetPeriodStart,
-          budgetPeriodEnd: budgetPlan.budgetPeriodEnd,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Server error:", response.status, errorData);
-        throw new Error(
-          errorData.error || `Server returned ${response.status}`
-        );
-      }
-
-      // Close modal
-      setShowReallocateModal(false);
-      setSelectedItem(null);
-      setReallocationAmounts({});
-
-      // Reload the page to show updated budget data
-      window.location.reload();
-    } catch (err) {
-      console.error("Error reallocating budget:", err);
-      alert(`Failed to reallocate budget: ${err.message}`);
-    }
-  };
-
-  const handleReallocateAcrossCategories = async () => {
+  const handleReallocateBudget = async () => {
     if (!selectedItem) return;
 
     try {
@@ -326,14 +247,14 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       }
 
       // Close modal
-      setShowCrossCategoryReallocateModal(false);
+      setShowReallocateModal(false);
       setSelectedItem(null);
       setReallocationAmounts({});
 
       // Reload the page to show updated budget data
       window.location.reload();
     } catch (err) {
-      console.error("Error reallocating budget across categories:", err);
+      console.error("Error reallocating budget:", err);
       alert(`Failed to reallocate budget: ${err.message}`);
     }
   };
@@ -597,23 +518,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                   setShowReallocateModal(true);
                                 }}
                               >
-                                Reallocate (Same Category)
-                              </button>
-                              <button
-                                className="btn-reallocate-cross"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedItem({
-                                    item,
-                                    category,
-                                    itemSpent: itemNetSpent,
-                                    itemProgressPct,
-                                  });
-                                  setReallocationAmounts({});
-                                  setShowCrossCategoryReallocateModal(true);
-                                }}
-                              >
-                                Reallocate (Any Category)
+                                Reallocate Budget
                               </button>
                             </div>
                           )}
@@ -678,7 +583,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                 </span>
               </div>
               <div className="budget-row">
-                <span>Net Amount Spent:</span>
+                <span>Amount Spent:</span>
                 <span className="amount spent">
                   {formatCurrency(selectedItem.itemSpent)}
                 </span>
@@ -751,7 +656,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         </div>
       )}
 
-      {/* Reallocate Within Category Modal */}
+      {/* Reallocate Budget Modal */}
       {showReallocateModal && selectedItem && (
         <div
           className="modal-overlay"
@@ -763,10 +668,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           >
             <h3>Reallocate Budget</h3>
             <p className="modal-description">
-              Reallocate budget from other items in{" "}
-              <strong>{selectedItem.category.name}</strong> to{" "}
-              <strong>{selectedItem.item.name}</strong>. The category's total
-              budget will remain unchanged.
+              Move unused budget from other items to{" "}
+              <strong>{selectedItem.item.name}</strong> under the{" "}
+              <strong>{selectedItem.category.name}</strong> category.
             </p>
 
             <div className="budget-summary">
@@ -777,7 +681,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                 </span>
               </div>
               <div className="budget-row">
-                <span>Net Amount Spent:</span>
+                <span>Amount Spent:</span>
                 <span className="amount spent">
                   {formatCurrency(selectedItem.itemSpent)}
                 </span>
@@ -789,187 +693,133 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             </div>
 
             <div className="reallocate-section">
-              <h4>Reallocate From:</h4>
-              {selectedItem.category.items
-                .filter((item) => item._id !== selectedItem.item._id)
-                .map((sourceItem) => {
-                  const sourceGrossSpent = getItemSpent(
-                    selectedItem.category.id,
-                    sourceItem._id
-                  );
-                  const sourceReturned = getItemReturned(
-                    selectedItem.category.id,
-                    sourceItem._id
-                  );
-                  const sourceNetSpent = sourceGrossSpent - sourceReturned;
-                  const availableToReallocate =
-                    sourceItem.budget - sourceNetSpent;
-                  const currentReallocation =
-                    parseFloat(reallocationAmounts[sourceItem._id]) || 0;
+              <h4>Sort by:</h4>
 
+              <div className="filter-buttons">
+                <button
+                  className={`filter-btn ${reallocateFilter === "smart" ? "active" : ""}`}
+                  onClick={() => setReallocateFilter("smart")}
+                >
+                  Items with Most Budget Left
+                </button>
+                <button
+                  className={`filter-btn ${reallocateFilter === "same-category" ? "active" : ""}`}
+                  onClick={() => setReallocateFilter("same-category")}
+                >
+                  Same Category
+                </button>
+                <button
+                  className={`filter-btn ${reallocateFilter === "other-category" ? "active" : ""}`}
+                  onClick={() => setReallocateFilter("other-category")}
+                >
+                  Other Categories
+                </button>
+              </div>
+
+              {reallocateFilter === "smart" && (
+                <p className="smart-sort-hint">
+                  Items with the most unused budget will appear first. Enter the amount you want to reallocate from an item
+                  (you can reallocate from multiple items). Then Scroll down and click Save Changes to apply your updates. 
+                </p>
+              )}
+
+              {(() => {
+                // Collect all items with their metadata
+                const allAvailableItems = [];
+                budgetPlan.categories.forEach((cat) => {
+                  cat.items.forEach((item) => {
+                    // Skip the target item
+                    if (cat.id === selectedItem.category.id && item._id === selectedItem.item._id) {
+                      return;
+                    }
+
+                    // Apply filter
+                    if (reallocateFilter === "same-category" && cat.id !== selectedItem.category.id) {
+                      return;
+                    }
+                    if (reallocateFilter === "other-category" && cat.id === selectedItem.category.id) {
+                      return;
+                    }
+
+                    const sourceGrossSpent = getItemSpent(cat.id, item._id);
+                    const sourceReturned = getItemReturned(cat.id, item._id);
+                    const sourceNetSpent = sourceGrossSpent - sourceReturned;
+                    const availableToReallocate = item.budget - sourceNetSpent;
+
+                    // Only include items with available budget
+                    if (availableToReallocate > 0) {
+                      const utilizationPct = item.budget > 0 ? (sourceNetSpent / item.budget) * 100 : 0;
+                      allAvailableItems.push({
+                        item,
+                        category: cat,
+                        availableToReallocate,
+                        sourceNetSpent,
+                        utilizationPct,
+                      });
+                    }
+                  });
+                });
+
+                // Smart sort: prioritize by available amount (descending), then by utilization (ascending - less used first)
+                allAvailableItems.sort((a, b) => {
+                  // Primary sort: available amount (descending - more available first)
+                  if (b.availableToReallocate !== a.availableToReallocate) {
+                    return b.availableToReallocate - a.availableToReallocate;
+                  }
+                  // Secondary sort: utilization percentage (ascending - less utilized first)
+                  return a.utilizationPct - b.utilizationPct;
+                });
+
+                // Group by category for display
+                const groupedItems = {};
+                allAvailableItems.forEach(({ item, category, availableToReallocate, sourceNetSpent, utilizationPct }) => {
+                  if (!groupedItems[category.id]) {
+                    groupedItems[category.id] = {
+                      category,
+                      items: [],
+                    };
+                  }
+                  groupedItems[category.id].items.push({
+                    item,
+                    availableToReallocate,
+                    sourceNetSpent,
+                    utilizationPct,
+                  });
+                });
+
+                if (allAvailableItems.length === 0) {
                   return (
-                    <div key={sourceItem._id} className="source-item">
-                      <div className="source-item-header">
-                        <span className="source-item-name">
-                          {sourceItem.name}
-                        </span>
-                        <span className="source-item-budget">
-                          Budget: {formatCurrency(sourceItem.budget)} | Net
-                          Spent: {formatCurrency(sourceNetSpent)} | Available:{" "}
-                          {formatCurrency(availableToReallocate)}
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max={availableToReallocate}
-                        value={reallocationAmounts[sourceItem._id] || ""}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setReallocationAmounts((prev) => ({
-                            ...prev,
-                            [sourceItem._id]: value,
-                          }));
-                        }}
-                        placeholder="Amount to reallocate"
-                        className="reallocate-input"
-                      />
-                      {currentReallocation > availableToReallocate && (
-                        <span className="error-text">
-                          Cannot reallocate more than available:{" "}
-                          {formatCurrency(availableToReallocate)}
-                        </span>
-                      )}
+                    <div className="no-items-message">
+                      No items available for reallocation in this filter.
                     </div>
                   );
-                })}
-            </div>
+                }
 
-            {Object.values(reallocationAmounts).some(
-              (amt) => parseFloat(amt) > 0
-            ) && (
-              <div className="cascade-info">
-                <p>
-                  <strong>Budget Changes:</strong>
-                </p>
-                <div className="budget-row">
-                  <span>Total being reallocated:</span>
-                  <span className="amount increase">
-                    +
-                    {formatCurrency(
-                      Object.values(reallocationAmounts).reduce(
-                        (sum, amt) => sum + (parseFloat(amt) || 0),
-                        0
-                      )
-                    )}
-                  </span>
-                </div>
-                <div className="budget-row">
-                  <span>New budget for {selectedItem.item.name}:</span>
-                  <span className="amount">
-                    {formatCurrency(
-                      selectedItem.item.budget +
-                        Object.values(reallocationAmounts).reduce(
-                          (sum, amt) => sum + (parseFloat(amt) || 0),
-                          0
-                        )
-                    )}
-                  </span>
-                </div>
-                <div className="budget-row">
-                  <span>Category budget:</span>
-                  <span className="amount">
-                    {formatCurrency(selectedItem.category.budget)} (unchanged)
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowReallocateModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-save"
-                onClick={handleReallocateWithinCategory}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reallocate Across Categories Modal */}
-      {showCrossCategoryReallocateModal && selectedItem && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowCrossCategoryReallocateModal(false)}
-        >
-          <div
-            className="modal-content modal-large"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3>Reallocate Budget from Any Category</h3>
-            <p className="modal-description">
-              Reallocate budget from underutilized items across all categories to{" "}
-              <strong>{selectedItem.item.name}</strong> in{" "}
-              <strong>{selectedItem.category.name}</strong>. Category budgets will be adjusted accordingly, but the yearly total budget will remain unchanged.
-            </p>
-
-            <div className="budget-summary">
-              <div className="budget-row">
-                <span>Current Item Budget:</span>
-                <span className="amount">
-                  {formatCurrency(selectedItem.item.budget)}
-                </span>
-              </div>
-              <div className="budget-row">
-                <span>Net Amount Spent:</span>
-                <span className="amount spent">
-                  {formatCurrency(selectedItem.itemSpent)}
-                </span>
-              </div>
-              <div className="budget-row">
-                <span>Usage:</span>
-                <span className="amount">{selectedItem.itemProgressPct}%</span>
-              </div>
-            </div>
-
-            <div className="reallocate-section">
-              <h4>Reallocate From Items in All Categories:</h4>
-              {budgetPlan.categories.map((cat) => (
-                <div key={cat.id} className="category-group">
-                  <h5 className="category-group-title">{cat.name}</h5>
-                  {cat.items
-                    .filter((item) =>
-                      !(cat.id === selectedItem.category.id && item._id === selectedItem.item._id)
-                    )
-                    .map((sourceItem) => {
-                      const sourceGrossSpent = getItemSpent(cat.id, sourceItem._id);
-                      const sourceReturned = getItemReturned(cat.id, sourceItem._id);
-                      const sourceNetSpent = sourceGrossSpent - sourceReturned;
-                      const availableToReallocate = sourceItem.budget - sourceNetSpent;
+                return Object.values(groupedItems).map(({ category, items }) => (
+                  <div key={category.id} className="category-group">
+                    <h5 className="category-group-title">{category.name}</h5>
+                    {items.map(({ item: sourceItem, availableToReallocate, sourceNetSpent, utilizationPct }) => {
                       const currentReallocation =
                         parseFloat(reallocationAmounts[sourceItem._id]) || 0;
-
-                      // Only show items with available budget
-                      if (availableToReallocate <= 0) return null;
 
                       return (
                         <div key={sourceItem._id} className="source-item">
                           <div className="source-item-header">
-                            <span className="source-item-name">
-                              {sourceItem.name}
-                            </span>
+                            <div className="source-item-header-row">
+                              <span className="source-item-name">
+                                {sourceItem.name}
+                              </span>
+                              <span className="utilization-indicator" style={{
+                                backgroundColor: utilizationPct < 50 ? '#fef3c7' : utilizationPct < 80 ? '#fef9c3' : '#d1fae5',
+                                color: utilizationPct < 50 ? '#92400e' : utilizationPct < 80 ? '#854d0e' : '#065f46',
+                              }}>
+                                {utilizationPct.toFixed(0)}% used
+                              </span>
+                            </div>
                             <span className="source-item-budget">
-                              Budget: {formatCurrency(sourceItem.budget)} | Net
+                              Budget: {formatCurrency(sourceItem.budget)} |
                               Spent: {formatCurrency(sourceNetSpent)} | Available:{" "}
-                              {formatCurrency(availableToReallocate)}
+                              <strong className="available-highlight">{formatCurrency(availableToReallocate)}</strong>
                             </span>
                           </div>
                           <input
@@ -997,8 +847,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         </div>
                       );
                     })}
-                </div>
-              ))}
+                  </div>
+                ));
+              })()}
             </div>
 
             {Object.values(reallocationAmounts).some(
@@ -1044,13 +895,13 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <div className="modal-actions">
               <button
                 className="btn-cancel"
-                onClick={() => setShowCrossCategoryReallocateModal(false)}
+                onClick={() => setShowReallocateModal(false)}
               >
                 Cancel
               </button>
               <button
                 className="btn-save"
-                onClick={handleReallocateAcrossCategories}
+                onClick={handleReallocateBudget}
               >
                 Save Changes
               </button>
@@ -1372,8 +1223,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         }
 
         .btn-increase,
-        .btn-reallocate,
-        .btn-reallocate-cross {
+        .btn-reallocate {
           padding: 0.375rem 0.75rem;
           color: white;
           border: none;
@@ -1399,14 +1249,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .btn-reallocate:hover {
           background: #047857;
-        }
-
-        .btn-reallocate-cross {
-          background: #7c3aed;
-        }
-
-        .btn-reallocate-cross:hover {
-          background: #6d28d9;
         }
 
         .modal-overlay {
@@ -1537,12 +1379,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         }
 
         .btn-cancel {
-          background: #e5e7eb;
-          color: #374151;
+          background: #6b7280 !important;
+          color: white;
         }
 
         .btn-cancel:hover {
-          background: #d1d5db;
+          background: #4b5563;
         }
 
         .btn-save {
@@ -1562,6 +1404,42 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           margin: 0 0 1rem 0;
           color: #374151;
           font-size: 1.1rem;
+        }
+
+        .filter-buttons {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .filter-btn {
+          padding: 0.5rem 1rem;
+          border: 2px solid #059669 !important;
+          background: white;
+          color: #1f2937!important;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+          background: #f0fdf4;
+        }
+
+        .filter-btn.active {
+          background: #059669 !important;
+          border-color: #059669 !important;
+          color: white !important;
+        }
+
+        .no-items-message {
+          padding: 2rem;
+          text-align: center;
+          color: #6b7280;
+          font-style: italic;
         }
 
         .source-item {
@@ -1625,6 +1503,38 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-weight: 600;
           padding-bottom: 0.5rem;
           border-bottom: 2px solid #e5e7eb;
+        }
+
+        .smart-sort-hint {
+          background: #eef2ff;
+          border-left: 4px solid #6366f1;
+          padding: 0.75rem 1rem;
+          margin-bottom: 1rem;
+          border-radius: 4px;
+          font-size: 0.85rem;
+          color: #4338ca;
+          line-height: 1.5;
+        }
+
+        .source-item-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        .utilization-indicator {
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .available-highlight {
+          color: #059669;
+          font-weight: 700;
         }
 
         @media (max-width: 768px) {
