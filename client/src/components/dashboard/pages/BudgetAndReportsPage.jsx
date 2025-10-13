@@ -850,7 +850,7 @@ function BudgetPlanningPage() {
                   className="reconfigure-btn"
                   onClick={() => setShowWizard(true)}
                 >
-                  <BiPencil /> Edit Plan
+                  <BiPencil /> Edit Budget
                 </button>
                 <button
                   className="plan-future-btn"

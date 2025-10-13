@@ -4,6 +4,7 @@ import NavigationTab from "../../NavigationTab";
 import CareTaskCreate from "../NewCareTasks/CareTaskCreate";
 import CareTaskManagement from "../NewCareTasks/CareTaskManagement";
 import { useClients } from "../hooks/useClients";
+import { useNavigate } from "react-router-dom";
 
 function TasksPageNew() {
   const { me } = useAuth();
@@ -13,6 +14,7 @@ function TasksPageNew() {
   const { clients, loading, error } = useClients(me, jwt);
   const managementRef = React.useRef(null);
   const [showCreateForm, setShowCreateForm] = React.useState(false);
+  const navigate = useNavigate();
 
   const handleTaskCreated = () => {
     // Trigger reload in management component
@@ -21,6 +23,10 @@ function TasksPageNew() {
     }
     // Close the form after successful creation
     setShowCreateForm(false);
+  };
+
+  const handleNavigateToBudget = () => {
+    navigate("/budget-and-reports");
   };
 
   return (
@@ -56,6 +62,7 @@ function TasksPageNew() {
                         clients={clients}
                         onTaskCreated={handleTaskCreated}
                         onCancel={() => setShowCreateForm(false)}
+                        onNavigateToBudget={handleNavigateToBudget}
                       />
                     </div>
                   ) : (

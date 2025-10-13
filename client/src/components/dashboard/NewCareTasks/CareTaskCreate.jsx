@@ -1,6 +1,6 @@
 import React from "react";
 
-function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
+function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBudget }) {
   const todayStr = React.useMemo(
     () => new Date().toISOString().split("T")[0],
     []
@@ -16,6 +16,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     recurrenceEndDate: "",
     recurrenceOccurrences: 1,
     assignedToUserId: "",
+    expectedCost: "",
   });
 
   const [budgetCategoryId, setBudgetCategoryId] = React.useState("");
@@ -27,6 +28,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
   const [success, setSuccess] = React.useState("");
   const [estimatedEndDate, setEstimatedEndDate] = React.useState(null);
   const [affectedYears, setAffectedYears] = React.useState([]);
+  const [actualSpending, setActualSpending] = React.useState({});
+  const [returnedAmounts, setReturnedAmounts] = React.useState({});
+  const [isLoadingSpending, setIsLoadingSpending] = React.useState(false);
 
   const sourceYear = React.useMemo(() => {
     const base = taskData.dueDate ? new Date(taskData.dueDate) : new Date();
@@ -186,6 +190,59 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
     }
   }, [budgetCategoryId, categories]);
 
+  // Load spending data when client and year are selected
+  React.useEffect(() => {
+    const loadSpendingData = async () => {
+      if (!selectedClient || !sourceYear) {
+        setActualSpending({});
+        setReturnedAmounts({});
+        return;
+      }
+
+      setIsLoadingSpending(true);
+      try {
+        const response = await fetch(
+          `/api/budget-plans/${selectedClient}/spending?year=${sourceYear}`,
+          {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setActualSpending(data.spending || {});
+          setReturnedAmounts(data.returned || {});
+        }
+      } catch (err) {
+        console.error("Error loading spending data:", err);
+      } finally {
+        setIsLoadingSpending(false);
+      }
+    };
+
+    loadSpendingData();
+  }, [selectedClient, sourceYear, jwt]);
+
+  // Helper functions to calculate spending
+  const getItemSpent = (categoryId, itemId) => {
+    const cat = actualSpending?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
+  };
+
+  const getItemReturned = (categoryId, itemId) => {
+    const cat = returnedAmounts?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
+  };
+
   const handleSubmit = async () => {
     setError("");
     setSuccess("");
@@ -267,6 +324,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrenceEndDate: taskData.isRecurring ? actualEndDate : undefined,
         budgetCategoryId: budgetCategoryId,
         budgetItemId: budgetItemId,
+        expectedCost: taskData.expectedCost ? parseFloat(taskData.expectedCost) : undefined,
       };
 
       const response = await fetch("/api/care-tasks/standalone", {
@@ -305,6 +363,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         recurrenceEndDate: "",
         recurrenceOccurrences: 1,
         assignedToUserId: "",
+        expectedCost: "",
       });
       setBudgetCategoryId("");
       setBudgetItemId("");
@@ -375,16 +434,74 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
                   <option value="">Select an item type...</option>
                   {budgetItems.map((item) => (
                     <option key={item._id} value={item._id}>
-                      {item.name} {item.budget ? `($${item.budget})` : ""}
+                      {item.name}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            <div className="info-box info-box-small">
-              <span className="info-icon">💡</span>
-              <span className="info-text">From {sourceYear} budget plan</span>
+            {budgetItemId && (() => {
+              const selectedItem = budgetItems.find(item => item._id === budgetItemId);
+              if (!selectedItem) return null;
+
+              const itemGrossSpent = getItemSpent(budgetCategoryId, budgetItemId);
+              const itemReturned = getItemReturned(budgetCategoryId, budgetItemId);
+              const itemNetSpent = itemGrossSpent - itemReturned;
+              const remainingBudget = selectedItem.budget - itemNetSpent;
+
+              return (
+                <>
+                  <div className="budget-info-box">
+                    <div className="budget-info-row">
+                      <span className="budget-info-label">Remaining Budget for {selectedItem.name}:</span>
+                      <span className={`budget-info-value remaining ${remainingBudget < 0 ? 'negative' : ''}`}>
+                        {isLoadingSpending ? "Loading..." : formatCurrency(remainingBudget)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Expected Cost</label>
+                    <small>Enter the expected cost for this task. Leave it
+                       blank if there’s no cost. </small>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={taskData.expectedCost}
+                      onChange={(e) =>
+                        setTaskData({ ...taskData, expectedCost: e.target.value })
+                      }
+                      placeholder="e.g., 50.00"
+                    />
+                    
+                  </div>
+                </>
+              );
+            })()}
+
+            <div className="tip-box">
+              <span className="tip-icon">💡</span>
+              <div className="tip-content">
+                <strong>Can't find the right category or item?</strong>
+                <p>
+                  Go to the {onNavigateToBudget ? (
+                    <a
+                      href="#"
+                      className="tip-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigateToBudget();
+                      }}
+                    >
+                      Budget & Reports page
+                    </a>
+                  ) : (
+                    <span className="tip-link-text">Budget & Reports page</span>
+                  )} to add new categories or items to your budget plan before creating tasks.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -832,6 +949,79 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel }) {
         }
         .btn-secondary:hover {
           background: #4b5563;
+        }
+        .budget-info-box {
+          background: #f0f9ff;
+          border: 1px solid #bae6fd;
+          border-radius: 6px;
+          padding: 0.875rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .budget-info-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.9rem;
+        }
+        .budget-info-label {
+          color: #0369a1;
+          font-weight: 500;
+        }
+        .budget-info-value {
+          font-weight: 700;
+          color: #0c4a6e;
+        }
+        .budget-info-value.spent {
+          color: #f59e0b;
+        }
+        .budget-info-value.remaining {
+          color: #059669;
+        }
+        .budget-info-value.remaining.negative {
+          color: #dc2626;
+        }
+        .tip-box {
+          display: flex;
+          gap: 0.75rem;
+          padding: 0.875rem;
+          background: #fefce8;
+          border: 1px solid #fde047;
+          border-radius: 6px;
+          align-items: flex-start;
+        }
+        .tip-icon {
+          font-size: 1.1rem;
+          flex-shrink: 0;
+        }
+        .tip-content {
+          flex: 1;
+        }
+        .tip-content strong {
+          display: block;
+          color: #713f12;
+          font-size: 0.9rem;
+          margin-bottom: 0.375rem;
+        }
+        .tip-content p {
+          margin: 0;
+          color: #854d0e;
+          font-size: 0.85rem;
+          line-height: 1.5;
+        }
+        .tip-link {
+          color: #2563eb;
+          font-weight: 600;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .tip-link:hover {
+          color: #1d4ed8;
+        }
+        .tip-link-text {
+          color: #2563eb;
+          font-weight: 600;
         }
         @media (max-width: 768px) {
           .form-row {
