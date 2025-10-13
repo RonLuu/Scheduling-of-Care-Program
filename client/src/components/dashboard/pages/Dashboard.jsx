@@ -3753,7 +3753,6 @@ function BudgetWidget({ budget, client }) {
 
         .item-warnings-header {
           padding: 0.75rem 1rem;
-          background: #fbbf24;
           display: flex;
           align-items: center;
           gap: 0.5rem;
@@ -3776,16 +3775,12 @@ function BudgetWidget({ budget, client }) {
           background: white;
           border-radius: 6px;
           padding: 0.75rem;
-          border-left: 4px solid;
-        }
-
-        .item-warning.item-near {
-          border-left-color: #f59e0b;
+          border: 1px solid #fde68a;
         }
 
         .item-warning.item-over {
-          border-left-color: #ef4444;
           background: #fef2f2;
+          border-color: #fecaca;
         }
 
         .item-warning-header {
