@@ -842,42 +842,42 @@ function BudgetPlanningPage() {
                   ))}
                 </select>
               </div>
-
-              {shouldShowOverview && (
-                <>
-                  <button
-                    className="reconfigure-btn"
-                    onClick={() => setShowWizard(true)}
-                  >
-                    <BiPencil /> Edit Plan
-                  </button>
-                  <button
-                    className="plan-future-btn"
-                    onClick={() => {
-                      console.log('Plan for Future Years clicked');
-                      console.log('selectedClient:', selectedClient);
-                      console.log('selectedYear:', selectedYear);
-                      console.log('budgetPlan:', budgetPlan);
-
-                      if (!selectedClient?._id || !budgetPlan) {
-                        alert('Missing required data. Please try again.');
-                        return;
-                      }
-
-                      navigate('/budget-planning/plan-future', {
-                        state: {
-                          clientId: selectedClient._id,
-                          sourceYear: selectedYear,
-                          budgetPlan
-                        }
-                      });
-                    }}
-                  >
-                    <BiCalendarPlus /> Plan for Future Years
-                  </button>
-                </>
-              )}
             </div>
+
+            {shouldShowOverview && (
+              <div className="action-buttons-group">
+                <button
+                  className="reconfigure-btn"
+                  onClick={() => setShowWizard(true)}
+                >
+                  <BiPencil /> Edit Plan
+                </button>
+                <button
+                  className="plan-future-btn"
+                  onClick={() => {
+                    console.log('Plan for Future Years clicked');
+                    console.log('selectedClient:', selectedClient);
+                    console.log('selectedYear:', selectedYear);
+                    console.log('budgetPlan:', budgetPlan);
+
+                    if (!selectedClient?._id || !budgetPlan) {
+                      alert('Missing required data. Please try again.');
+                      return;
+                    }
+
+                    navigate('/budget-planning/plan-future', {
+                      state: {
+                        clientId: selectedClient._id,
+                        sourceYear: selectedYear,
+                        budgetPlan
+                      }
+                    });
+                  }}
+                >
+                  <BiCalendarPlus /> Plan for Future Years
+                </button>
+              </div>
+            )}
           </div>
 
           {selectedClient && (
@@ -1502,6 +1502,12 @@ function BudgetPlanningPage() {
           outline: none;
           border-color: #10b981;
         }
+        .action-buttons-group {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+          margin-top: 1rem;
+        }
         .reconfigure-btn {
           padding: 0.625rem 1rem;
           background: #6b7280;
@@ -1512,6 +1518,9 @@ function BudgetPlanningPage() {
           font-size: 0.875rem;
           cursor: pointer;
           white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
         .reconfigure-btn:hover {
           background: #4b5563;

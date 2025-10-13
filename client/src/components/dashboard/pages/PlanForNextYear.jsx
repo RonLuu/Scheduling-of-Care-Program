@@ -244,6 +244,63 @@ function PlanForNextYear() {
     }
   };
 
+  // Copy all categories and items at once
+  const handleCopyAll = async () => {
+    if (!clientId || !budgetPlan) {
+      alert("No budget plan data available.");
+      return;
+    }
+
+    const categoriesWithItemsToCount = getCategoriesWithItems();
+    if (categoriesWithItemsToCount.length === 0) {
+      alert("No categories with items to copy.");
+      return;
+    }
+
+    // Auto-select all categories and then copy
+    const allIds = categoriesWithItemsToCount.map((cat) => cat.id);
+    setSelectedCategories(new Set(allIds));
+
+    // Give a moment for the UI to update
+    setTimeout(async () => {
+      setCopying(true);
+      try {
+        const target = await apiGetPlan(clientId, targetYear);
+        const baseCategories = target?.categories ? [...target.categories] : [];
+
+        // Copy all categories with items
+        const categoriesToCopy = budgetPlan.categories.filter(
+          (cat) => cat.items && cat.items.length > 0
+        );
+
+        categoriesToCopy.forEach((srcCat) => {
+          const tcat = ensureCategoryInTarget(baseCategories, srcCat);
+          (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
+        });
+
+        const { categories, yearlyBudget } = recomputeTotals(baseCategories);
+        const payload = {
+          categories,
+          yearlyBudget,
+          deletedCategories: target?.deletedCategories || [],
+          budgetPeriodStart: new Date(targetYear, 0, 1),
+          budgetPeriodEnd: new Date(targetYear, 11, 31),
+        };
+
+        await apiUpsertPlan(clientId, targetYear, payload, !!target);
+
+        setCopySuccess(true);
+        setTimeout(() => {
+          navigate("/budget-planning");
+        }, 2000);
+      } catch (e) {
+        console.error(e);
+        alert(e.message || "Failed to copy budget plan");
+        setCopying(false);
+      }
+    }, 100);
+  };
+
   // Redirect if no data
   if (!clientId || !budgetPlan || !sourceYear) {
     return (
@@ -330,6 +387,21 @@ function PlanForNextYear() {
                   <span className="value">{totalItems}</span>
                 </div>
               </div>
+
+              {/* Quick Copy All Button */}
+              <div className="quick-copy-section">
+                <button
+                  className="copy-all-btn"
+                  onClick={handleCopyAll}
+                  disabled={copying || categoriesWithItems.length === 0}
+                >
+                  <BiCopy />
+                  {copying ? "Copying..." : `Copy All Categories & Items to ${targetYear}`}
+                </button>
+                <p className="quick-copy-hint">
+                  Or select specific categories below to copy only what you need
+                </p>
+              </div>
             </div>
 
             {/* Category Selection */}
@@ -372,10 +444,10 @@ function PlanForNextYear() {
                         />
                       </div>
                       <div className="category-icon">
-                        {typeof categoryMeta.emoji === 'string' ? (
-                          <span>{categoryMeta.emoji}</span>
+                        {category.isCustom ? (
+                          <BiClipboard />
                         ) : categoryMeta.emoji ? (
-                          <categoryMeta.emoji />
+                          React.createElement(categoryMeta.emoji)
                         ) : (
                           <BiClipboard />
                         )}
@@ -542,6 +614,46 @@ function PlanForNextYear() {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
+        }
+        .quick-copy-section {
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+        }
+        .copy-all-btn {
+          width: 100%;
+          padding: 1rem 1.5rem;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+        .copy-all-btn:hover {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+          transform: translateY(-1px);
+        }
+        .copy-all-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+        .quick-copy-hint {
+          text-align: center;
+          margin: 0.75rem 0 0 0;
+          font-size: 0.875rem;
+          color: #6b7280;
+          font-style: italic;
         }
         .info-item .label {
           font-size: 0.75rem;
