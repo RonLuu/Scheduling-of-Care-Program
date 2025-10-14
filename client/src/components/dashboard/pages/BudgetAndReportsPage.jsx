@@ -628,7 +628,7 @@ function BudgetPlanningPage() {
       <div className="page">
         <NavigationTab />
         <div className="page-main">
-          <h2>Budget Planning</h2>
+          <h2>Budget & Reports</h2>
           <p>Please add a client first to create a budget plan.</p>
           <a href="/clients" className="btn">
             Add Client
@@ -646,7 +646,7 @@ function BudgetPlanningPage() {
       <div className="page-main">
         <div className="budget-planning-container">
           <div className="budget-header">
-            <h2>Budget Planning</h2>
+            <h2>Budget & Reports</h2>
           </div>
 
           <div className="client-selection">

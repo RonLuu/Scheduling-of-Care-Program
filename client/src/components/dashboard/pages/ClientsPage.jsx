@@ -26,7 +26,6 @@ function ClientsPage() {
           {/* Page Header */}
           <div className="page-header">
             <h1>Clients</h1>
-            <p>View client information and add new clients</p>
           </div>
 
           <div className="content-area">
@@ -163,13 +162,9 @@ function ClientsPage() {
           margin: 0 0 0.5rem 0;
           font-size: 2rem;
           font-weight: 600;
+          color: white;
         }
 
-        .page-header p {
-          margin: 0;
-          font-size: 1rem;
-          opacity: 0.9;
-        }
 
         .content-area {
           padding: 2rem;

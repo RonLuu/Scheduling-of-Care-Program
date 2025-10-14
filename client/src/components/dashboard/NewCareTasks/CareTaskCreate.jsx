@@ -394,8 +394,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
       </div>
 
       <p className="form-description">
-        Create a one-time or recurring care task linked to budget items for
-        expense tracking.
+        Select a client, then create a one-time or recurring task.
       </p>
 
       <div className="form-content">
@@ -474,7 +473,8 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
                   <div className="form-group">
                     <label>Expected Cost</label>
                     <small>Enter the expected cost for this task. Leave it
-                       blank if there’s no cost. </small>
+                       blank if there’s no cost. You can always come back and 
+                       add a cost later. </small>
                     <input
                       type="number"
                       min="0"

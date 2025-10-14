@@ -418,7 +418,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       <div className="overview-header">
         <div className="overview-header-text">
           <h2>
-            Budget Plan for{" "}
+            Budget Report for{" "}
             {budgetPeriod.startDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",

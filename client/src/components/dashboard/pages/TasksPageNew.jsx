@@ -36,7 +36,7 @@ function TasksPageNew() {
         <div className="tasks-page-container">
           {/* Page Header */}
           <div className="page-header">
-            <h1>Care Tasks</h1>
+            <h1>Tasks</h1>
           </div>
 
           {/* Loading and Error States */}
@@ -51,8 +51,9 @@ function TasksPageNew() {
                 <div className="left-column">
                   <div className="info-box">
                     <p>
-                      The calendar shows your current scheduled tasks in the system.
-                      You can click on any task to view details, mark task as complete, reschedule, or delete the task.
+                      The calendar shows current scheduled tasks in the system.
+                      You can click on any task to view or change details, mark 
+                      the task as complete, reschedule, or delete the task.
                     </p>
                   </div>
                   {showCreateForm ? (
