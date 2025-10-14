@@ -42,9 +42,13 @@ async function getPeople(req, res) {
 
 async function postPerson(req, res) {
   try {
-    // Guard: organization must exist
-    const org = await Organization.exists({ _id: req.body.organizationId });
-    if (!org) return res.status(400).json({ error: "Invalid organizationId" });
+    // Only validate organizationId if it's provided
+    if (req.body.organizationId) {
+      const org = await Organization.exists({ _id: req.body.organizationId });
+      if (!org) {
+        return res.status(400).json({ error: "Invalid organizationId" });
+      }
+    }
 
     // Validate required fields
     if (!req.body.name) {
@@ -53,7 +57,7 @@ async function postPerson(req, res) {
 
     // Structure the data properly
     const personData = {
-      organizationId: req.body.organizationId,
+      organizationId: req.body.organizationId || null, // Allow null
       name: req.body.name,
       dateOfBirth: req.body.dateOfBirth,
       sex: req.body.sex,

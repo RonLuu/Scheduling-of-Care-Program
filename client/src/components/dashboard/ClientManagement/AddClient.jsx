@@ -142,10 +142,6 @@ function AddClient({ me, jwt, setClients }) {
 
   const addClient = async (e) => {
     e.preventDefault();
-    if (!me.organizationId) {
-      setAddErr("Please set your organisation first.");
-      return;
-    }
     if (!me || (me.role !== "Family" && me.role !== "PoA")) return;
 
     setAdding(true);

@@ -481,6 +481,17 @@ function Dashboard() {
                   </button>
                 </div>
               )}
+              {!organizationData && (
+                <div className="organization-status">
+                  <a
+                    href="/organization"
+                    className="manage-org-btn"
+                    title="Add organization"
+                  >
+                    Add Organization
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1367,7 +1378,9 @@ function DashboardContent({ client, jwt, me }) {
 
         {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
         <div className="content-right">
-          {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
+          {(me?.role === "Family" ||
+            me?.role === "PoA" ||
+            me?.role === "Admin") && (
             <BudgetWidget budget={budget} client={client} />
           )}
 
@@ -1377,9 +1390,10 @@ function DashboardContent({ client, jwt, me }) {
               <div className="tip-content">
                 <strong>Quick Guide</strong>
                 <p>
-                  Check today's schedule on the left to see your assigned tasks. Visit the{" "}
-                  <a href="/clients">Clients page</a> to review medical information,
-                  allergies, and emergency contacts for this client.
+                  Check today's schedule on the left to see your assigned tasks.
+                  Visit the <a href="/clients">Clients page</a> to review
+                  medical information, allergies, and emergency contacts for
+                  this client.
                 </p>
               </div>
             </div>
@@ -3405,7 +3419,11 @@ function BudgetWidget({ budget, client }) {
               </div>
               <div className="summary-item">
                 <div className="summary-label">Spent</div>
-                <div className={`summary-value spent ${percentSpent >= 80 ? 'high-spending' : 'normal-spending'}`}>
+                <div
+                  className={`summary-value spent ${
+                    percentSpent >= 80 ? "high-spending" : "normal-spending"
+                  }`}
+                >
                   ${budget.spent.toLocaleString()}
                 </div>
               </div>
@@ -4593,10 +4611,40 @@ function OrganizationManagementModal({
   }, [showChangeOrg]);
 
   const handleLeaveOrganization = async () => {
+    if (!user?.organizationId) {
+      alert("You are not currently in an organization");
+      return;
+    }
+
+    // Role-specific confirmation messages
+    let confirmMessage;
+
+    if (user.role === "Family" || user.role === "PoA") {
+      confirmMessage =
+        "Leave this organization?\n\n" +
+        "Your clients and their data will leave with you.\n" +
+        "• Your clients will no longer be in any organization\n" +
+        "• Budget plans and tasks will remain with your clients\n" +
+        "• Staff and admin access to your clients will be revoked\n" +
+        "• Other family/PoA members of your clients will also leave\n\n" +
+        "Click OK to proceed.";
+    } else if (user.role === "Admin" || user.role === "GeneralCareStaff") {
+      confirmMessage =
+        "Leave this organization?\n\n" +
+        "You will lose access to all clients in this organization.\n" +
+        "• Your access to current clients will be revoked\n" +
+        "• Clients will remain in the organization\n\n" +
+        "Click OK to proceed.";
+    }
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
     setIsLeaving(true);
     try {
-      const response = await fetch("/api/organizations/leave", {
-        method: "POST",
+      const response = await fetch("/api/users/me/leave-organization", {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
@@ -4608,7 +4656,44 @@ function OrganizationManagementModal({
         throw new Error(error.error || "Failed to leave organization");
       }
 
-      alert("Successfully left organization");
+      const data = await response.json();
+
+      // Show success message based on user type
+      let successMessage;
+
+      if (data.userType === "family_poa" && data.cascade) {
+        const c = data.cascade;
+        successMessage =
+          "Successfully left organization.\n\n" +
+          `Moved ${c.personsMoved} client${
+            c.personsMoved !== 1 ? "s" : ""
+          } out of organization.\n` +
+          `• ${c.budgetPlansMoved} budget plan${
+            c.budgetPlansMoved !== 1 ? "s" : ""
+          }\n` +
+          `• ${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}\n` +
+          (c.familyMoved > 0
+            ? `• ${c.familyMoved} family/PoA member${
+                c.familyMoved !== 1 ? "s" : ""
+              } also left\n`
+            : "") +
+          (c.staffRevoked > 0
+            ? `• ${c.staffRevoked} staff/admin access${
+                c.staffRevoked !== 1 ? "es" : ""
+              } revoked`
+            : "");
+      } else if (data.userType === "admin_staff" && data.cascade) {
+        const c = data.cascade;
+        successMessage =
+          "Successfully left organization.\n\n" +
+          `Your access to ${c.linksRevoked} client${
+            c.linksRevoked !== 1 ? "s" : ""
+          } has been revoked.`;
+      } else {
+        successMessage = "Successfully left organization.";
+      }
+
+      alert(successMessage);
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -4630,22 +4715,57 @@ function OrganizationManagementModal({
       return;
     }
 
-    // Confirm with user
+    const isFirstTimeJoining = !user?.organizationId;
+    const isSwitchingOrgs =
+      user?.organizationId && user.organizationId !== newOrgId;
     const selectedOrgName =
       organizations.find((o) => o._id === newOrgId)?.name ||
       "the selected organization";
-    const confirmChange = window.confirm(
-      `Are you sure you want to change to "${selectedOrgName}"?\n\n` +
-        `This will move all your clients to the new organization.`
-    );
 
-    if (!confirmChange) {
-      return;
+    let migrateClients = false;
+
+    // Role-specific confirmation messages
+    if (user.role === "Family" || user.role === "PoA") {
+      let confirmMessage;
+
+      if (isFirstTimeJoining) {
+        confirmMessage =
+          `Join "${selectedOrgName}"?\n\n` +
+          `Your clients and their budget plans will be moved to this organization.\n\n` +
+          `Click OK to proceed.`;
+      } else if (isSwitchingOrgs) {
+        confirmMessage =
+          `Switch to "${selectedOrgName}"?\n\n` +
+          `Your clients and their budget plans will be moved to the new organization.\n` +
+          `Staff and admin access from your current organization will be revoked.\n\n` +
+          `Click OK to proceed.`;
+      }
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+      migrateClients = true;
+    } else if (user.role === "Admin" || user.role === "GeneralCareStaff") {
+      let confirmMessage;
+
+      if (isSwitchingOrgs) {
+        confirmMessage =
+          `Switch to "${selectedOrgName}"?\n\n` +
+          `You will leave your current organization.\n` +
+          `Your access to clients in the current organization will be revoked.\n\n` +
+          `Click OK to proceed.`;
+      } else {
+        confirmMessage =
+          `Join "${selectedOrgName}"?\n\n` + `Click OK to proceed.`;
+      }
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
     }
 
     setIsChanging(true);
     try {
-      // Use the same endpoint as OrganizationPage
       const response = await fetch("/api/users/me/organization", {
         method: "PATCH",
         headers: {
@@ -4654,7 +4774,7 @@ function OrganizationManagementModal({
         },
         body: JSON.stringify({
           organizationId: newOrgId,
-          migrateClients: true, // For Family/PoA roles
+          migrateClients,
         }),
       });
 
@@ -4668,13 +4788,48 @@ function OrganizationManagementModal({
       // Show success message with cascade info if available
       if (data.cascade) {
         const c = data.cascade;
-        alert(
-          `Successfully changed to "${selectedOrgName}".\n\n` +
-            `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks.\n` +
-            `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
-        );
+        let successMessage;
+
+        if (isFirstTimeJoining) {
+          successMessage =
+            `Successfully joined "${selectedOrgName}".\n\n` +
+            `Moved: ${c.personsMoved} client${
+              c.personsMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.budgetPlansMoved} budget plan${
+              c.budgetPlansMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}.\n` +
+            (c.familyMoved > 0
+              ? `${c.familyMoved} family/PoA member${
+                  c.familyMoved !== 1 ? "s" : ""
+                } also joined.`
+              : "");
+        } else {
+          successMessage =
+            `Successfully switched to "${selectedOrgName}".\n\n` +
+            `Moved: ${c.personsMoved} client${
+              c.personsMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.budgetPlansMoved} budget plan${
+              c.budgetPlansMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}.\n` +
+            (c.familyMoved > 0 ? `${c.familyMoved} family/PoA moved. ` : "") +
+            (c.staffRevoked > 0
+              ? `${c.staffRevoked} staff/admin access${
+                  c.staffRevoked !== 1 ? "es" : ""
+                } revoked.`
+              : "");
+        }
+
+        alert(successMessage);
       } else {
-        alert(`Successfully joined "${selectedOrgName}".`);
+        alert(
+          isFirstTimeJoining
+            ? `Successfully joined "${selectedOrgName}".`
+            : `Successfully switched to "${selectedOrgName}".`
+        );
       }
 
       onSuccess();
@@ -4721,89 +4876,104 @@ function OrganizationManagementModal({
           <div className="org-actions">
             <div className="action-section">
               <h4>Actions</h4>
-              <p className="action-description">
-                You can change to a different organization, or leave your
-                current organization.
-              </p>
+              {(user.role === "Family" || user.role === "PoA") && (
+                <p className="action-description">
+                  You can change to a different organization, or leave your
+                  current organization.
+                </p>
+              )}
+
+              {(user.role === "Admin" || user.role === "GeneralCareStaff") && (
+                <p className="action-description">
+                  You can leave your current organization.
+                </p>
+              )}
 
               <div className="action-buttons">
                 {/* Change Organization */}
-                {!showChangeOrg ? (
-                  <button
-                    className="change-org-btn"
-                    onClick={() => setShowChangeOrg(true)}
-                  >
-                    Change Organization
-                  </button>
-                ) : (
-                  <div className="change-org-form">
-                    <h5>Change Organization</h5>
-                    <p className="form-description">
-                      Select the organization you want to join:
-                    </p>
-
-                    {loadingOrgs ? (
-                      <div className="loading-orgs">
-                        Loading organizations...
-                      </div>
-                    ) : orgError ? (
-                      <div className="org-error">Error: {orgError}</div>
+                {(user.role === "Family" || user.role === "PoA") && (
+                  <>
+                    {!showChangeOrg ? (
+                      <button
+                        className="change-org-btn"
+                        onClick={() => setShowChangeOrg(true)}
+                      >
+                        Change Organization
+                      </button>
                     ) : (
-                      <>
-                        <select
-                          value={newOrgId}
-                          onChange={(e) => setNewOrgId(e.target.value)}
-                          className="org-select"
-                          disabled={isChanging}
-                        >
-                          <option value="">— Select organization —</option>
-                          {organizations.map((org) => (
-                            <option key={org._id} value={org._id}>
-                              {org.name}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="change-org-form">
+                        <h5>Change Organization</h5>
+                        <p className="form-description">
+                          Select the organization you want to join:
+                        </p>
 
-                        {(user?.role === "Family" || user?.role === "PoA") &&
-                          newOrgId &&
-                          newOrgId !== String(user.organizationId) && (
-                            <div className="migration-warning">
-                              <strong>Important:</strong> Changing organizations
-                              will:
-                              <ul>
-                                <li>
-                                  Move all your clients to the new organization
-                                </li>
-                                <li>Transfer associated family/PoA members</li>
-                                <li>
-                                  Revoke all staff/admin access to your clients
-                                </li>
-                              </ul>
-                            </div>
-                          )}
-                      </>
+                        {loadingOrgs ? (
+                          <div className="loading-orgs">
+                            Loading organizations...
+                          </div>
+                        ) : orgError ? (
+                          <div className="org-error">Error: {orgError}</div>
+                        ) : (
+                          <>
+                            <select
+                              value={newOrgId}
+                              onChange={(e) => setNewOrgId(e.target.value)}
+                              className="org-select"
+                              disabled={isChanging}
+                            >
+                              <option value="">— Select organization —</option>
+                              {organizations.map((org) => (
+                                <option key={org._id} value={org._id}>
+                                  {org.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            {newOrgId &&
+                              newOrgId !== String(user.organizationId) && (
+                                <div className="migration-warning">
+                                  <strong>Important:</strong> Changing
+                                  organizations will:
+                                  <ul>
+                                    <li>
+                                      Move all your clients to the new
+                                      organization
+                                    </li>
+                                    <li>
+                                      Transfer associated family/PoA members
+                                    </li>
+                                    <li>
+                                      Revoke all staff/admin access to your
+                                      clients
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                          </>
+                        )}
+
+                        <div className="form-actions">
+                          <button
+                            className="confirm-change-btn"
+                            onClick={handleChangeOrganization}
+                            disabled={isChanging || !newOrgId || loadingOrgs}
+                          >
+                            {isChanging ? "Changing..." : "Change Organization"}
+                          </button>
+                          <button
+                            className="cancel-change-btn"
+                            onClick={() => {
+                              setShowChangeOrg(false);
+                              setNewOrgId("");
+                            }}
+                            disabled={isChanging}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
-
-                    <div className="form-actions">
-                      <button
-                        className="confirm-change-btn"
-                        onClick={handleChangeOrganization}
-                        disabled={isChanging || !newOrgId || loadingOrgs}
-                      >
-                        {isChanging ? "Changing..." : "Change Organization"}
-                      </button>
-                      <button
-                        className="cancel-change-btn"
-                        onClick={() => {
-                          setShowChangeOrg(false);
-                          setNewOrgId("");
-                        }}
-                        disabled={isChanging}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Leave Organization */}
@@ -4816,11 +4986,24 @@ function OrganizationManagementModal({
                   </button>
                 ) : (
                   <div className="leave-confirm">
-                    <p className="warning-text">
-                      ⚠️ Are you sure you want to leave "
-                      {organizationData?.name}"? This will remove your access to
-                      all clients and data in this organization.
-                    </p>
+                    {(user.role === "Family" || user.role === "PoA") && (
+                      <p className="warning-text">
+                        ⚠️ Are you sure you want to leave "
+                        {organizationData?.name}"? This will remove all access
+                        to the workers and shift allocations in this
+                        organization.
+                      </p>
+                    )}
+
+                    {(user.role === "Admin" ||
+                      user.role === "GeneralCareStaff") && (
+                      <p className="warning-text">
+                        ⚠️ Are you sure you want to leave "
+                        {organizationData?.name}"? This will lost all access to
+                        data in this organization.
+                      </p>
+                    )}
+
                     <div className="confirm-actions">
                       <button
                         className="confirm-leave-btn"

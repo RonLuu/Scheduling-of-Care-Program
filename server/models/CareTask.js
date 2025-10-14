@@ -22,7 +22,6 @@ const CareTaskSchema = new Schema(
     organizationId: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
-      required: true,
       index: true,
     }, // mirror Person.organizationId
 
