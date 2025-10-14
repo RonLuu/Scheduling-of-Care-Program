@@ -1193,6 +1193,17 @@ function DashboardContent({ client, jwt, me }) {
           console.log('[Dashboard] hasSignificantTimeRemaining:', hasSignificantTimeRemaining);
           console.log('[Dashboard] budgetPlan.categories:', budgetPlan.categories);
 
+          // Load dismissed warnings from localStorage
+          const dismissedWarnings = (() => {
+            try {
+              const saved = localStorage.getItem(`dismissedWarnings-${client._id}-${currentYear}`);
+              return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+              console.error('Error loading dismissed warnings:', e);
+              return [];
+            }
+          })();
+
           (budgetPlan.categories || []).forEach((category) => {
             (category.items || []).forEach((item) => {
               const itemId = String(item._id);
@@ -1203,8 +1214,12 @@ function DashboardContent({ client, jwt, me }) {
                 const percentSpent = (spent / allocated) * 100;
                 console.log(`[Dashboard] Item ${item.name} (${itemId}): spent=${spent}, allocated=${allocated}, percent=${percentSpent.toFixed(1)}%`);
 
-                // Warn if item is at 80% or more of budget
-                if (percentSpent >= 80) {
+                // Check if warning is dismissed
+                const warningKey = `${category.id}-${item._id}`;
+                const isDismissed = dismissedWarnings.includes(warningKey);
+
+                // Warn if item is at 80% or more of budget and not dismissed
+                if (percentSpent >= 80 && !isDismissed) {
                   console.log(`[Dashboard] ⚠️ WARNING for item ${item.name}`);
                   itemWarnings.push({
                     categoryName: category.name,
@@ -1214,6 +1229,8 @@ function DashboardContent({ client, jwt, me }) {
                     percentSpent,
                     isOver: spent > allocated,
                   });
+                } else if (percentSpent >= 80 && isDismissed) {
+                  console.log(`[Dashboard] Warning dismissed for item ${item.name}`);
                 }
               }
             });

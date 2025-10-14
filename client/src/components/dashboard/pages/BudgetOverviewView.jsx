@@ -47,6 +47,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [reallocationAmounts, setReallocationAmounts] = React.useState({});
   const [reallocateFilter, setReallocateFilter] = React.useState("smart"); // "smart", "same-category", "other-category"
   const [clientName, setClientName] = React.useState("");
+  const [dismissedWarnings, setDismissedWarnings] = React.useState(() => {
+    // Load dismissed warnings from localStorage
+    const saved = localStorage.getItem(`dismissedWarnings-${budgetPlan?.personId}-${budgetPlan?.year}`);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Load client name
   React.useEffect(() => {
@@ -218,6 +223,26 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
     if (percentage >= 90) return "#dc2626"; // red
     if (percentage >= 80) return "#f59e0b"; // orange
     return "#10b981"; // green
+  };
+
+  const handleDismissWarning = (categoryId, itemId) => {
+    const warningKey = `${categoryId}-${itemId}`;
+    const newDismissed = [...dismissedWarnings, warningKey];
+    setDismissedWarnings(newDismissed);
+    localStorage.setItem(
+      `dismissedWarnings-${budgetPlan?.personId}-${budgetPlan?.year}`,
+      JSON.stringify(newDismissed)
+    );
+  };
+
+  const handleDismissAllWarnings = (items) => {
+    const allWarningKeys = items.map(({ category, item }) => `${category.id}-${item._id}`);
+    const newDismissed = [...dismissedWarnings, ...allWarningKeys];
+    setDismissedWarnings(newDismissed);
+    localStorage.setItem(
+      `dismissedWarnings-${budgetPlan?.personId}-${budgetPlan?.year}`,
+      JSON.stringify(newDismissed)
+    );
   };
 
   const handleReallocateBudget = async () => {
@@ -502,7 +527,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             const itemNetSpent = itemGrossSpent - itemReturned;
             const itemProgressPct = getProgressPercentage(itemNetSpent, item.budget);
 
-            if (itemProgressPct >= 80) {
+            // Check if warning is dismissed
+            const warningKey = `${category.id}-${item._id}`;
+            const isDismissed = dismissedWarnings.includes(warningKey);
+
+            if (itemProgressPct >= 80 && !isDismissed) {
               highUsageItems.push({
                 item,
                 category,
@@ -518,9 +547,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <div className="budget-warning-section">
               <div className="warning-header">
                 <h3>⚠️ Items Requiring Attention</h3>
-                <div className="warning-count">
-                  {highUsageItems.length} {highUsageItems.length === 1 ? 'item' : 'items'}
-                </div>
               </div>
               <p className="warning-description">
                 The following items have used 80% or more of their budget. Consider increasing their budget or reallocating funds.
@@ -543,6 +569,14 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="warning-footer">
+                <button
+                  className="warning-dismiss-btn"
+                  onClick={() => handleDismissAllWarnings(highUsageItems)}
+                >
+                  Dismiss
+                </button>
               </div>
             </div>
           );
@@ -1329,9 +1363,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         }
 
         .warning-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
           margin-bottom: 0.75rem;
         }
 
@@ -1340,15 +1371,29 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           color: #92400e;
           font-size: 1.25rem;
           font-weight: 600;
+          text-align: left;
         }
 
-        .warning-count {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #d97706;
-          background: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
+        .warning-footer {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 1rem;
+        }
+
+        .warning-dismiss-btn {
+          background: #6b7280;
+          border: none;
+          color: white;
+          font-size: 0.875rem;
+          cursor: pointer;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          font-weight: 600;
+          transition: background-color 0.2s;
+        }
+
+        .warning-dismiss-btn:hover {
+          background: #4b5563;
         }
 
         .warning-description {
