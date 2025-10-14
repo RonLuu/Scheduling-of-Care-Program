@@ -210,6 +210,7 @@ function ClientInfoManager({ me, jwt, clients }) {
     try {
       const body = {
         type: tokenType,
+        organizationId: me.organizationId || null,
         personIds: [selectedClientId],
         expiresInDays: 7,
         maxUses: 1,
