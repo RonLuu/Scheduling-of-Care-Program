@@ -14,7 +14,7 @@ const BudgetItemSchema = new Schema(
       type: Number,
       required: true,
       min: 0,
-      set: roundToTwoDecimals  // Round on save
+      set: roundToTwoDecimals, // Round on save
     },
   },
   { _id: true }
@@ -24,13 +24,13 @@ const BudgetCategorySchema = new Schema(
   {
     id: { type: String, required: true },
     name: { type: String, required: true, trim: true },
-    emoji: { type: String, default: '📋' },
+    emoji: { type: String, default: "📋" },
     description: { type: String, trim: true },
     budget: {
       type: Number,
       required: true,
       min: 0,
-      set: roundToTwoDecimals  // Round on save
+      set: roundToTwoDecimals, // Round on save
     },
     isCustom: { type: Boolean, default: false },
     items: { type: [BudgetItemSchema], default: [] },
@@ -49,7 +49,6 @@ const BudgetPlanSchema = new Schema(
     organizationId: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
-      required: true,
       index: true,
     },
     createdByUserId: {
@@ -64,7 +63,7 @@ const BudgetPlanSchema = new Schema(
       type: Number,
       required: true,
       min: 0,
-      set: roundToTwoDecimals  // Round on save
+      set: roundToTwoDecimals, // Round on save
     },
     categories: { type: [BudgetCategorySchema], default: [] },
     deletedCategories: { type: [String], default: [] },
@@ -77,12 +76,10 @@ const BudgetPlanSchema = new Schema(
   { timestamps: true }
 );
 
-// Ensure only one active budget plan per person per year
-BudgetPlanSchema.index(
-  { personId: 1, year: 1 },
-  { unique: true }
-);
+// One budget plan per person per year (regardless of org)
+BudgetPlanSchema.index({ personId: 1, year: 1 }, { unique: true });
 
+// Index for org-based queries (can have multiple nulls)
 BudgetPlanSchema.index({ organizationId: 1, year: 1 });
 
 export default model("BudgetPlan", BudgetPlanSchema);
