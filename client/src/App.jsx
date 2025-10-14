@@ -27,6 +27,7 @@ import { library } from "@fortawesome/fontawesome-svg-core";
 import { fas } from "@fortawesome/free-solid-svg-icons";
 import { far } from "@fortawesome/free-regular-svg-icons";
 import { fab } from "@fortawesome/free-brands-svg-icons";
+import CalendarWeek from "./components/dashboard/Calendar/CalendarWeek";
 
 library.add(fas, far, fab);
 
@@ -68,6 +69,8 @@ const App = () => {
             element={<RegisterOrganization />}
           />
           <Route path="/login" element={<LogIn />} />
+          <Route path="/shift1" element={<ShiftPage />} />
+          <Route path="/calendarweek" element={<CalendarWeek />} />
 
           {/* Authenticated app routes */}
           <Route
@@ -89,9 +92,9 @@ const App = () => {
           <Route
             path="/access"
             element={
-              <RequireAuth>
                 <AccessPage />
-              </RequireAuth>
+              // <RequireAuth>
+              // </RequireAuth>
             }
           />
           <Route
@@ -142,11 +145,10 @@ const App = () => {
               </RequireAuth>
             }
           />
-          <Route path="/faq" element={<FAQPage />} />
 
           {/* Redirects */}
           {/* If logged in and they hit root again, push to /profile */}
-          <Route
+          {/* <Route
             path="*"
             element={
               me ? (
@@ -155,7 +157,7 @@ const App = () => {
                 <Navigate to="/login" replace />
               )
             }
-          />
+          /> */}
         </Routes>
       </div>
 
