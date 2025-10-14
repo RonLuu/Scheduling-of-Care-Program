@@ -37,6 +37,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [expandedCategories, setExpandedCategories] = React.useState(new Set());
   const [actualSpending, setActualSpending] = React.useState({});
   const [returnedAmounts, setReturnedAmounts] = React.useState({});
+  const [expectedCosts, setExpectedCosts] = React.useState({});
   const [isLoadingSpending, setIsLoadingSpending] = React.useState(true);
   const [showIncreaseBudgetModal, setShowIncreaseBudgetModal] =
     React.useState(false);
@@ -65,6 +66,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           console.log("Spending data:", data);
           setActualSpending(data.spending || {});
           setReturnedAmounts(data.returned || {});
+          setExpectedCosts(data.expected || {});
         }
       } catch (err) {
         console.error("Error loading spending:", err);
@@ -116,6 +118,20 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
   // Net spending is gross minus returns
   const totalNetSpent = totalGrossSpent - totalReturned;
+
+  // Calculate total expected costs for incomplete tasks
+  const totalExpected = Object.values(expectedCosts).reduce(
+    (sum, catExpected) =>
+      sum +
+      Object.values(catExpected.items || {}).reduce(
+        (itemSum, itemExpected) => itemSum + (itemExpected || 0),
+        0
+      ),
+    0
+  );
+
+  // Unallocated budget: total - spent - expected
+  const unallocated = totalBudget - totalNetSpent - totalExpected;
   const remaining = totalBudget - totalNetSpent;
 
   const getCategorySpent = (categoryId) => {
@@ -144,6 +160,21 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
   const getItemReturned = (categoryId, itemId) => {
     const cat = returnedAmounts?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
+  };
+
+  const getCategoryExpected = (categoryId) => {
+    const catExpected = expectedCosts[categoryId];
+    if (!catExpected) return 0;
+    return Object.values(catExpected.items || {}).reduce(
+      (sum, itemExpected) => sum + (itemExpected || 0),
+      0
+    );
+  };
+
+  const getItemExpected = (categoryId, itemId) => {
+    const cat = expectedCosts?.[String(categoryId)];
     const items = cat?.items || {};
     return items[String(itemId)] || 0;
   };
@@ -374,13 +405,24 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Remaining</div>
-          <div className={`summary-value ${remaining < 0 ? "negative" : ""}`}>
-            {isLoadingSpending ? "..." : formatCurrency(remaining)}
+          <div className="summary-label">Committed (Scheduled)</div>
+          <div className="summary-value committed">
+            {isLoadingSpending ? "..." : formatCurrency(totalExpected)}
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((remaining / totalBudget) * 100)}% of budget`
+              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget`
+              : "0% of budget"}
+          </div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Unallocated</div>
+          <div className={`summary-value ${unallocated < 0 ? "negative" : "positive"}`}>
+            {isLoadingSpending ? "..." : formatCurrency(unallocated)}
+          </div>
+          <div className="summary-subtitle">
+            {totalBudget > 0
+              ? `${Math.round((unallocated / totalBudget) * 100)}% of budget`
               : "0% of budget"}
           </div>
         </div>
@@ -444,23 +486,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         return null;
       })()}
 
-      {/* Budget Surplus Section - Only show if there are returns */}
-      {totalReturned > 0 && (
-        <div className="budget-surplus-section">
-          <div className="surplus-header">
-            <h3>💰 Budget Surplus from Returns</h3>
-            <div className="surplus-amount">
-              {formatCurrency(totalReturned)}
-            </div>
-          </div>
-          <p className="surplus-description">
-            This amount represents money that was initially spent but has been
-            returned/refunded. This surplus is now available to be spent on
-            other care needs.
-          </p>
-        </div>
-      )}
-
       {/* Categories Table */}
       <div className="categories-table">
         <div className="table-header">
@@ -474,10 +499,14 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           const categoryGrossSpent = getCategorySpent(category.id);
           const categoryReturned = getCategoryReturned(category.id);
           const categoryNetSpent = categoryGrossSpent - categoryReturned;
+          const categoryExpected = getCategoryExpected(category.id);
           const progressPct = getProgressPercentage(
             categoryNetSpent,
             category.budget
           );
+          const expectedMarkerPct = category.budget > 0
+            ? Math.min(((categoryNetSpent + categoryExpected) / category.budget) * 100, 100)
+            : 0;
           const isExpanded = expandedCategories.has(category.id);
 
           // Check if category has items at 80% or more budget usage
@@ -532,6 +561,13 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         backgroundColor: getProgressColor(progressPct),
                       }}
                     />
+                    {!isLoadingSpending && categoryExpected > 0 && (
+                      <div
+                        className="expected-marker"
+                        style={{ left: `${expectedMarkerPct}%` }}
+                        title={`Scheduled: ${formatCurrency(categoryExpected)}`}
+                      />
+                    )}
                     <span className="progress-text">{progressPct}%</span>
                   </div>
                 </div>
@@ -544,10 +580,14 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     const itemGrossSpent = getItemSpent(category.id, item._id);
                     const itemReturned = getItemReturned(category.id, item._id);
                     const itemNetSpent = itemGrossSpent - itemReturned;
+                    const itemExpected = getItemExpected(category.id, item._id);
                     const itemProgressPct = getProgressPercentage(
                       itemNetSpent,
                       item.budget
                     );
+                    const itemExpectedMarkerPct = item.budget > 0
+                      ? Math.min(((itemNetSpent + itemExpected) / item.budget) * 100, 100)
+                      : 0;
 
                     return (
                       <div key={item._id} className="item-row">
@@ -617,6 +657,13 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                   getProgressColor(itemProgressPct),
                               }}
                             />
+                            {!isLoadingSpending && itemExpected > 0 && (
+                              <div
+                                className="expected-marker"
+                                style={{ left: `${itemExpectedMarkerPct}%` }}
+                                title={`Scheduled: ${formatCurrency(itemExpected)}`}
+                              />
+                            )}
                             <span className="progress-text">
                               {itemProgressPct}%
                             </span>
@@ -1032,6 +1079,14 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           color: #f59e0b;
         }
 
+        .summary-value.committed {
+          color: #eab308;
+        }
+
+        .summary-value.positive {
+          color: #10b981;
+        }
+
         .summary-value.negative {
           color: #dc2626;
         }
@@ -1133,43 +1188,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-size: 0.875rem;
           font-weight: 700;
           white-space: nowrap;
-        }
-
-        /* Budget Surplus Section */
-        .budget-surplus-section {
-          background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-          border: 2px solid #a78bfa;
-          border-radius: 12px;
-          padding: 1.5rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 2px 4px rgba(167, 139, 250, 0.2);
-        }
-
-        .surplus-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.75rem;
-        }
-
-        .surplus-header h3 {
-          margin: 0;
-          color: #5b21b6;
-          font-size: 1.25rem;
-          font-weight: 600;
-        }
-
-        .surplus-amount {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #10b981;
-        }
-
-        .surplus-description {
-          margin: 0;
-          color: #4c1d95;
-          font-size: 0.95rem;
-          line-height: 1.5;
         }
 
         .categories-table {
@@ -1321,6 +1339,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-size: 0.75rem;
           font-weight: 700;
           color: #1f2937;
+        }
+
+        .expected-marker {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: #eab308;
+          transform: translateX(-50%);
+          z-index: 10;
+          cursor: help;
+          box-shadow: 0 0 4px rgba(234, 179, 8, 0.6);
         }
 
         .items-section {
@@ -1743,12 +1773,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
           .summary-cards {
             grid-template-columns: 1fr;
-          }
-
-          .surplus-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
           }
         }
       `}</style>

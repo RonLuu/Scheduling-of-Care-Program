@@ -1000,13 +1000,13 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
         }
         .tip-content strong {
           display: block;
-          color: #713f12;
+          color: #000000ff!important;
           font-size: 0.9rem;
           margin-bottom: 0.375rem;
         }
         .tip-content p {
           margin: 0;
-          color: #854d0e;
+          color: #000000ff!important;
           font-size: 0.85rem;
           line-height: 1.5;
         }
