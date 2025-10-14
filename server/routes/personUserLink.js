@@ -32,7 +32,11 @@ async function postLink(req, res) {
   ]);
   if (!person || !user)
     return res.status(400).json({ error: "Person or User not found" });
-  if (String(person.organizationId) !== String(user.organizationId)) {
+
+  if (
+    user.organizationId &&
+    String(person.organizationId) !== String(user.organizationId)
+  ) {
     return res.status(400).json({
       error: "ORG_MISMATCH: user and person must be in the same organization",
     });
