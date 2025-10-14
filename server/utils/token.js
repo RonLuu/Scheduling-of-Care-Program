@@ -46,8 +46,6 @@ export async function verifyTokenString(plainToken) {
   )
     return null;
 
-  // basic scope sanity
-  if (!doc.organizationId) return null;
   if (!doc.personIds || doc.personIds.length === 0) return null;
 
   return doc; // live doc so caller can increment uses later

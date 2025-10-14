@@ -12,7 +12,6 @@ const TokenSchema = new Schema(
     organizationId: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
-      required: true,
       index: true,
     },
     personIds: [{ type: Schema.Types.ObjectId, ref: "PersonWithNeeds" }],

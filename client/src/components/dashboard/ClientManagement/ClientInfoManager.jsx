@@ -6,6 +6,7 @@ function ClientInfoManager({ me, jwt, clients }) {
   const [accessErr, setAccessErr] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [showTokenForm, setShowTokenForm] = React.useState(false);
+  const [tokenType, setTokenType] = React.useState(null); // 'MANAGER_TOKEN' or 'FAMILY_TOKEN'
   const [generatedToken, setGeneratedToken] = React.useState("");
   const [tokenError, setTokenError] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -33,8 +34,8 @@ function ClientInfoManager({ me, jwt, clients }) {
   const handleClientChange = (e) => {
     const value = e.target.value;
     setSelectedClientId(value);
-    // Only load access links if user can manage access
-    const canManage = me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
+    const canManage =
+      me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
     if (value && canManage) loadAccessLinks(value);
   };
 
@@ -42,7 +43,6 @@ function ClientInfoManager({ me, jwt, clients }) {
     if (!medicalInfo || typeof medicalInfo !== "object") return null;
     const info = [];
 
-    // Standard medical fields
     if (medicalInfo.problems)
       info.push({ label: "Medical Problems", value: medicalInfo.problems });
     if (medicalInfo.allergies)
@@ -59,7 +59,6 @@ function ClientInfoManager({ me, jwt, clients }) {
     if (medicalInfo.dietaryRequirements)
       info.push({ label: "Dietary", value: medicalInfo.dietaryRequirements });
 
-    // Add custom medical fields
     const medicalCustomFields = customFields.filter(
       (f) => f.category === "Medical"
     );
@@ -71,7 +70,6 @@ function ClientInfoManager({ me, jwt, clients }) {
   };
 
   const getAdditionalInfoDisplay = (customFields = []) => {
-    // Get only additional (non-medical) custom fields
     return customFields.filter(
       (f) => f.category === "Additional" || !f.category
     );
@@ -190,25 +188,45 @@ function ClientInfoManager({ me, jwt, clients }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
+  const openTokenModal = (type) => {
+    setTokenType(type);
+    setShowTokenForm(true);
+    setGeneratedToken("");
+    setTokenError("");
+  };
+
+  const closeTokenModal = () => {
+    setShowTokenForm(false);
+    setTokenType(null);
+    setGeneratedToken("");
+    setTokenError("");
+  };
+
   const generateToken = async () => {
     setIsGenerating(true);
     setTokenError("");
     setGeneratedToken("");
 
     try {
+      const body = {
+        type: tokenType,
+        personIds: [selectedClientId],
+        expiresInDays: 7,
+        maxUses: 1,
+      };
+
+      // Only include organizationId for MANAGER_TOKEN and STAFF_TOKEN
+      if (tokenType === "MANAGER_TOKEN" || me.role === "Admin") {
+        body.organizationId = me.organizationId;
+      }
+
       const response = await fetch("/api/tokens", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({
-          type: me.role === "Admin" ? "STAFF_TOKEN" : "MANAGER_TOKEN",
-          organizationId: me.organizationId,
-          personIds: [selectedClientId],
-          expiresInDays: 7,
-          maxUses: 1,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -241,20 +259,59 @@ function ClientInfoManager({ me, jwt, clients }) {
     ? getAdditionalInfoDisplay(selectedClient.customFields || [])
     : null;
 
-  const canManageAccess = me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
+  const canManageAccess =
+    me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
+  const isFamilyOrPoA = me?.role === "Family" || me?.role === "PoA";
+  const hasOrganization = me?.organizationId;
+
+  const getTokenModalTitle = () => {
+    if (tokenType === "MANAGER_TOKEN") {
+      return `Create Admin Invite Token for ${selectedClient?.name}`;
+    } else if (tokenType === "FAMILY_TOKEN") {
+      return `Create Family/PoA Invite Token for ${selectedClient?.name}`;
+    }
+    return `Create Invite Token for ${selectedClient?.name}`;
+  };
+
+  const getTokenModalDescription = () => {
+    if (tokenType === "MANAGER_TOKEN") {
+      return (
+        <p className="modal-description">
+          Generate an invite token to share with an organization administrator.
+          This will grant them access to <strong>{selectedClient?.name}</strong>{" "}
+          within your organization.
+        </p>
+      );
+    } else if (tokenType === "FAMILY_TOKEN") {
+      return (
+        <p className="modal-description">
+          Generate an invite token to share with another family member or power
+          of attorney. This will grant them access to{" "}
+          <strong>{selectedClient?.name}</strong>.
+        </p>
+      );
+    } else if (me.role === "Admin") {
+      return (
+        <p className="modal-description">
+          Generate an invite token to share with care staff in your
+          organization. This will grant them access to{" "}
+          <strong>{selectedClient?.name}</strong>.
+        </p>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="client-info-manager">
       <div className="client-card">
-
-        {/* Tip box for inviting users - Only for Admin/Family/PoA */}
         {canManageAccess && (
           <div className="tip-box">
             <div className="tip-icon">i</div>
             <p>
-              <strong>Want to give someone access to a client?</strong> <br />Create an invite token to
-              share with other users. Select a client below, then
-              click "Create Invite Token".
+              <strong>Want to give someone access to a client?</strong> <br />
+              Create an invite token to share with other users. Select a client
+              below, then click the appropriate "Create Invite Token" button.
             </p>
           </div>
         )}
@@ -274,15 +331,41 @@ function ClientInfoManager({ me, jwt, clients }) {
             </select>
           </div>
 
-          {/* Create Invite Token Button - Only for Admin/Family/PoA */}
           {selectedClient && canManageAccess && (
             <div className="token-section">
-              <button
-                className="create-token-btn"
-                onClick={() => setShowTokenForm(true)}
-              >
-                Create Invite Token
-              </button>
+              {me.role === "Admin" ? (
+                <button
+                  className="create-token-btn"
+                  onClick={() => openTokenModal("STAFF_TOKEN")}
+                >
+                  Create Invite Token
+                </button>
+              ) : isFamilyOrPoA ? (
+                <div className="token-buttons-group">
+                  <button
+                    className="create-token-btn"
+                    onClick={() => openTokenModal("FAMILY_TOKEN")}
+                  >
+                    Create Token for Family/PoA
+                  </button>
+                  {hasOrganization ? (
+                    <button
+                      className="create-token-btn secondary"
+                      onClick={() => openTokenModal("MANAGER_TOKEN")}
+                    >
+                      Create Token for Admin
+                    </button>
+                  ) : (
+                    <div className="org-required-notice">
+                      <span className="notice-icon">⚠</span>
+                      <span>
+                        To share access with an administrator, you need to{" "}
+                        <a href="/organization">join an organization</a>.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -298,14 +381,12 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         {selectedClient && (
           <>
-
             <div className="client-info-section">
               <div className="section-header">
                 <h3>{selectedClient.name}</h3>
               </div>
 
               <div className="info-grid">
-                {/* Basic Information */}
                 <div className="info-block">
                   <h4>Basic Information</h4>
                   {selectedClient.dateOfBirth && (
@@ -338,7 +419,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                   </div>
                 </div>
 
-                {/* Emergency Contact */}
                 <div className="info-block">
                   <h4>Emergency Contact</h4>
                   <div className="info-row">
@@ -350,7 +430,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                   </div>
                 </div>
 
-                {/* Medical Information */}
                 {medicalInfoDisplay && medicalInfoDisplay.length > 0 && (
                   <div className="info-block full-width">
                     <h4>Medical Information</h4>
@@ -367,7 +446,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                   </div>
                 )}
 
-                {/* Additional Information */}
                 {additionalInfoDisplay && additionalInfoDisplay.length > 0 && (
                   <div className="info-block full-width">
                     <h4>Additional Information</h4>
@@ -385,92 +463,89 @@ function ClientInfoManager({ me, jwt, clients }) {
               </div>
             </div>
 
-            {/* Access Management Section - Only for Admin/Family/PoA */}
             {canManageAccess && (
-            <div className="access-section">
-              <h3>Access to Client</h3>
-              <p className="access-description">
-                These are the list of all users who currently have access to view
-                this client's information. This includes family members, power
-                of attorney, administrators, and general care staff
-                assigned to this client. You can revoke access as
-                needed.
-              </p>
-
-              {accessErr && (
-                <div className="error-message">
-                  <p>Error: {accessErr}</p>
-                </div>
-              )}
-
-              {isLoading && (
-                <p className="loading">Loading access information...</p>
-              )}
-
-              {!isLoading && accessLinks.length > 0 && (
-                <div className="access-table-wrapper">
-                  <table className="access-table">
-                    <thead>
-                      <tr>
-                        <th align="left">Name</th>
-                        <th align="left">Email</th>
-                        <th align="left">Role</th>
-                        <th align="center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accessLinks.filter(shouldShowUser).map((l) => {
-                        const u = l.userId;
-                        const actionStatus = getActionStatus(l);
-                        return (
-                          <tr key={l._id}>
-                            <td>{u.name || "—"}</td>
-                            <td>{u.email}</td>
-                            <td>
-                              <span
-                                className={`role-badge role-${u.role.toLowerCase()}`}
-                              >
-                                {u.role}
-                              </span>
-                            </td>
-                            <td align="center">
-                              {actionStatus.canAct ? (
-                                <button
-                                  className="revoke-btn"
-                                  onClick={() => revokeAccess(l)}
-                                >
-                                  Revoke
-                                </button>
-                              ) : (
-                                <span className="no-action">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {!isLoading && accessLinks.length === 0 && (
-                <p className="no-users">
-                  No users have access to this client yet.
+              <div className="access-section">
+                <h3>Access to Client</h3>
+                <p className="access-description">
+                  These are the list of all users who currently have access to
+                  view this client's information. This includes family members,
+                  power of attorney, administrators, and general care staff
+                  assigned to this client. You can revoke access as needed.
                 </p>
-              )}
-            </div>
+
+                {accessErr && (
+                  <div className="error-message">
+                    <p>Error: {accessErr}</p>
+                  </div>
+                )}
+
+                {isLoading && (
+                  <p className="loading">Loading access information...</p>
+                )}
+
+                {!isLoading && accessLinks.length > 0 && (
+                  <div className="access-table-wrapper">
+                    <table className="access-table">
+                      <thead>
+                        <tr>
+                          <th align="left">Name</th>
+                          <th align="left">Email</th>
+                          <th align="left">Role</th>
+                          <th align="center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessLinks.filter(shouldShowUser).map((l) => {
+                          const u = l.userId;
+                          const actionStatus = getActionStatus(l);
+                          return (
+                            <tr key={l._id}>
+                              <td>{u.name || "—"}</td>
+                              <td>{u.email}</td>
+                              <td>
+                                <span
+                                  className={`role-badge role-${u.role.toLowerCase()}`}
+                                >
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td align="center">
+                                {actionStatus.canAct ? (
+                                  <button
+                                    className="revoke-btn"
+                                    onClick={() => revokeAccess(l)}
+                                  >
+                                    Revoke
+                                  </button>
+                                ) : (
+                                  <span className="no-action">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {!isLoading && accessLinks.length === 0 && (
+                  <p className="no-users">
+                    No users have access to this client yet.
+                  </p>
+                )}
+              </div>
             )}
           </>
         )}
       </div>
 
-      {/* Create Token Modal */}
       {showTokenForm && (
-        <div className="modal-overlay" onClick={() => setShowTokenForm(false)}>
+        <div className="modal-overlay" onClick={closeTokenModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Create Invite Token for {selectedClient?.name}</h3>
-              <button className="modal-close" onClick={() => setShowTokenForm(false)}>
+              <h3>{getTokenModalTitle()}</h3>
+              <button className="modal-close" onClick={closeTokenModal}>
                 ×
               </button>
             </div>
@@ -478,10 +553,7 @@ function ClientInfoManager({ me, jwt, clients }) {
             <div className="modal-body">
               {!generatedToken ? (
                 <>
-                  <p className="modal-description">
-                    Generate an invite token to share with staff or administrators to grant them access to{" "}
-                    <strong>{selectedClient?.name}</strong>.
-                  </p>
+                  {getTokenModalDescription()}
 
                   <button
                     className="generate-btn"
@@ -499,7 +571,9 @@ function ClientInfoManager({ me, jwt, clients }) {
                 </>
               ) : (
                 <div className="token-result">
-                  <p className="success-message">Token generated successfully!</p>
+                  <p className="success-message">
+                    Token generated successfully!
+                  </p>
 
                   <label>Your Invite Token:</label>
                   <div className="token-display">
@@ -510,8 +584,10 @@ function ClientInfoManager({ me, jwt, clients }) {
                   </div>
 
                   <p className="token-instructions">
-                    Share this token with the user you want to grant access to. They should enter
-                    this token on the Clients page to gain access to <strong>{selectedClient?.name}</strong>.
+                    Share this token with the user you want to grant access to.
+                    They should enter this token on the Clients page to gain
+                    access to <strong>{selectedClient?.name}</strong>. This
+                    token expires in 7 days and can only be used once.
                   </p>
                 </div>
               )}
@@ -619,13 +695,19 @@ function ClientInfoManager({ me, jwt, clients }) {
           flex-shrink: 0;
         }
 
+        .token-buttons-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
         .create-token-btn {
           padding: 0.625rem 1.5rem;
           background: #8189d2;
           color: white;
           border: none;
           border-radius: 8px;
-          font-size: 1rem;
+          font-size: 0.9rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
@@ -639,7 +721,43 @@ function ClientInfoManager({ me, jwt, clients }) {
           box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
         }
 
-        /* Modal Styles */
+        .create-token-btn.secondary {
+          background: #10b981;
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .create-token-btn.secondary:hover {
+          background: #059669;
+          box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .org-required-notice {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.625rem 1rem;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 6px;
+          font-size: 0.8125rem;
+          color: #92400e;
+        }
+
+        .notice-icon {
+          font-size: 1rem;
+          flex-shrink: 0;
+        }
+
+        .org-required-notice a {
+          color: #b45309;
+          font-weight: 600;
+          text-decoration: underline;
+        }
+
+        .org-required-notice a:hover {
+          color: #92400e;
+        }
+
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -660,7 +778,8 @@ function ClientInfoManager({ me, jwt, clients }) {
           width: 90%;
           max-height: 90vh;
           overflow-y: auto;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
         .modal-header {
@@ -674,7 +793,7 @@ function ClientInfoManager({ me, jwt, clients }) {
         .modal-header h3 {
           margin: 0;
           color: #374151;
-          font-size: 1.25rem;
+          font-size: 1.125rem;
         }
 
         .modal-close {
@@ -779,7 +898,7 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         .token-display code {
           flex: 1;
-          font-family: 'Courier New', monospace;
+          font-family: "Courier New", monospace;
           font-size: 0.875rem;
           color: #374151;
           word-break: break-all;
@@ -1008,8 +1127,20 @@ function ClientInfoManager({ me, jwt, clients }) {
             margin-bottom: 0;
           }
 
+          .token-section {
+            width: 100%;
+          }
+
+          .token-buttons-group {
+            width: 100%;
+          }
+
           .create-token-btn {
             width: 100%;
+          }
+
+          .org-required-notice {
+            font-size: 0.75rem;
           }
 
           .info-grid {
