@@ -563,10 +563,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
               <span className="tooltip-text tooltip-text-progress">
-                The coloured progress bar shows the proportion of budget already 
-                spent for the category/item, and the yellow line shows the 
-                proportion of total commited spending - the sum of spent and 
-                reserved amounts.
+                The coloured progress bar shows how much of the budget has been 
+                spent. The yellow line shows total commitment (spent + reserved 
+                budgets combined).
               </span>
             </span>
           </div>
@@ -1280,6 +1279,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           right: 0;
           transform: none;
           width: 250px;
+          z-index: 9999!important;
         }
 
         .tooltip-text-progress::after {
@@ -1289,6 +1289,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           right: 1rem;
           transform: none;
           border-color: transparent transparent #1f2937 transparent;
+          z-index: 9999!important;
         }
 
         .tooltip-wrapper:hover .tooltip-text {
@@ -1610,38 +1611,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           width: 3px;
           background: #eab308;
           transform: translateX(-50%);
-          z-index: 10;
+          z-index: 5;
           box-shadow: 0 0 4px rgba(234, 179, 8, 0.6);
-        }
-
-        .expected-marker::after {
-          content: attr(data-percentage);
-          position: absolute;
-          top: calc(100% + 0.25rem);
-          left: 50%;
-          transform: translateX(-50%);
-          font-size: 0.7rem;
-          font-weight: 600;
-          color: #1f2937;
-          background: white;
-          padding: 0.125rem 0.375rem;
-          border-radius: 4px;
-          border: 1px solid #eab308;
-          white-space: nowrap;
-        }
-
-        .expected-marker::before {
-          content: '';
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 0;
-          height: 0;
-          border-left: 4px solid transparent;
-          border-right: 4px solid transparent;
-          border-bottom: 4px solid #eab308;
-          z-index: 1;
         }
 
         .items-section {
