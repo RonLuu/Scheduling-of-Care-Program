@@ -264,6 +264,7 @@ async function completeTask(req, res) {
       .populate("completedByUserId", "name email role");
 
     if (!updated) return res.status(404).json({ error: "Not found" });
+
     res.json(updated);
   } catch (e) {
     res.status(400).json({ error: e.message });

@@ -18,7 +18,6 @@ import {
   BiHome,
   BiClipboard,
   BiPencil,
-  BiCopy,
   BiBulb,
   BiFolder,
   BiPlus,
@@ -29,6 +28,7 @@ import {
   BiTrash,
   BiCheckCircle,
   BiCalendarPlus,
+  BiCopy,
 } from "react-icons/bi";
 
 function BudgetPlanningPage() {
@@ -57,10 +57,6 @@ function BudgetPlanningPage() {
   });
   const [openActionMenu, setOpenActionMenu] = React.useState(null);
 
-  const nextYearDefault = selectedYear + 1;
-  const [planCopyYear, setPlanCopyYear] = React.useState(nextYearDefault);
-  const [categoryCopyYears, setCategoryCopyYears] = React.useState({});
-  const [itemCopyYears, setItemCopyYears] = React.useState({});
 
   const {
     budgetPlan,
@@ -69,6 +65,12 @@ function BudgetPlanningPage() {
     saveBudgetPlan,
     refresh,
   } = useBudgetPlan(selectedClient?._id, selectedYear, jwt);
+
+  // Fetch previous year's budget to offer copying
+  const previousYear = selectedYear - 1;
+  const {
+    budgetPlan: previousYearBudget,
+  } = useBudgetPlan(selectedClient?._id, previousYear, jwt);
 
   // Check if budget plan is complete
   const isBudgetPlanComplete = React.useMemo(() => {
@@ -81,22 +83,20 @@ function BudgetPlanningPage() {
 
   // Initialize showWizard - only set on first load
   const [showWizard, setShowWizard] = React.useState(true);
-  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const initializedRef = React.useRef({});
 
   // Only auto-switch to overview on initial load if budget is complete
   React.useEffect(() => {
-    if (budgetPlan !== null && budgetPlan !== undefined && !hasInitialized) {
-      setShowWizard(!isBudgetPlanComplete);
-      setHasInitialized(true);
-    }
-  }, [budgetPlan, isBudgetPlanComplete, hasInitialized]);
+    const key = `${selectedClient?._id}-${selectedYear}`;
 
-  React.useEffect(() => {
-    setPlanCopyYear(selectedYear + 1);
-    setCategoryCopyYears({});
-    setItemCopyYears({});
-    setHasInitialized(false); // Reset initialization when year changes
-  }, [selectedYear]);
+    if (budgetPlan !== null && budgetPlan !== undefined && !initializedRef.current[key]) {
+      const isComplete = budgetPlan?.yearlyBudget &&
+                        budgetPlan?.categories?.length > 0 &&
+                        budgetPlan?.categories?.some((cat) => cat.items && cat.items.length > 0);
+      setShowWizard(!isComplete);
+      initializedRef.current[key] = true;
+    }
+  }, [budgetPlan, selectedClient?._id, selectedYear]);
 
   const predefinedCategories = [
     {
@@ -566,188 +566,37 @@ function BudgetPlanningPage() {
     return years;
   };
 
-  const getFutureYears = () => {
-    const years = [];
-    for (let y = selectedYear + 1; y <= selectedYear + 10; y++) years.push(y);
-    return years;
-  };
+  const handleCopyFromPreviousYear = async () => {
+    if (!previousYearBudget || !selectedClient) return;
 
-  const apiGetPlan = async (personId, year) => {
-    const resp = await fetch(
-      `/api/budget-plans?personId=${encodeURIComponent(
-        personId
-      )}&year=${encodeURIComponent(year)}`,
-      { headers: { Authorization: `Bearer ${jwt}` } }
-    );
-    const data = await resp.json();
-    if (!resp.ok)
-      throw new Error(data.error || "Failed to load target budget plan");
-    return data.budgetPlan || null;
-  };
-
-  const apiUpsertPlan = async (personId, year, payload, hasExistingPlan) => {
-    const resp = await fetch("/api/budget-plans", {
-      method: hasExistingPlan ? "PUT" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ personId, year, ...payload }),
-    });
-    const data = await resp.json();
-    if (!resp.ok)
-      throw new Error(data.error || "Failed to save target budget plan");
-    return data.budgetPlan;
-  };
-
-  const sumItemBudgets = (items = []) =>
-    items.reduce((s, it) => s + (parseFloat(it.budget) || 0), 0);
-
-  const recomputeTotals = (categories = []) => {
-    const cats = categories.map((c) => ({
-      ...c,
-      budget: sumItemBudgets(c.items || []),
-    }));
-    const yearlyBudget = cats.reduce((s, c) => s + (c.budget || 0), 0);
-    return { categories: cats, yearlyBudget };
-  };
-
-  const ensureCategoryInTarget = (targetCategories, sourceCatMeta) => {
-    const idx = targetCategories.findIndex((c) => c.id === sourceCatMeta.id);
-    if (idx >= 0) {
-      return targetCategories[idx];
-    }
-    const newCat = {
-      id: sourceCatMeta.id,
-      name: sourceCatMeta.name,
-      emoji: sourceCatMeta.emoji || BiClipboard,
-      description: sourceCatMeta.description || "",
-      isCustom: !!sourceCatMeta.isCustom,
-      items: [],
-      budget: 0,
-    };
-    targetCategories.push(newCat);
-    return newCat;
-  };
-
-  const upsertItemByName = (categoryObj, item) => {
-    const existingIdx = (categoryObj.items || []).findIndex(
-      (it) => it.name === item.name
-    );
-    const clean = {
-      name: item.name,
-      description: item.description || "",
-      budget: parseFloat(item.budget) || 0,
-    };
-    if (existingIdx >= 0) {
-      categoryObj.items[existingIdx] = clean;
-    } else {
-      categoryObj.items.push(clean);
-    }
-  };
-
-  const copySingleItem = async (categoryId, item, targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
     try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-      const srcCategoryMeta =
-        (budgetPlan.categories || []).find((c) => c.id === categoryId) ||
-        getAllAvailableCategories().find((c) => c.id === categoryId);
+      // Copy categories and items from previous year to current year
+      const copiedCategories = previousYearBudget.categories.map(cat => ({
+        ...cat,
+        items: cat.items.map(item => ({
+          name: item.name,
+          budget: item.budget,
+          description: item.description,
+        }))
+      }));
 
-      const targetCat = ensureCategoryInTarget(baseCategories, srcCategoryMeta);
-      upsertItemByName(targetCat, item);
-
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
-        yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied "${item.name}" to ${targetYear} in "${srcCategoryMeta.name}".`
+      const yearlyBudget = copiedCategories.reduce(
+        (sum, cat) => sum + (cat.budget || 0),
+        0
       );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy item");
-    }
-  };
 
-  const copyWholeCategory = async (categoryId, targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
-    const src = (budgetPlan.categories || []).find((c) => c.id === categoryId);
-    if (!src || !src.items || src.items.length === 0) {
-      alert("This category has no items to copy.");
-      return;
-    }
-    try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-
-      const targetCat = ensureCategoryInTarget(baseCategories, src);
-      (src.items || []).forEach((it) => upsertItemByName(targetCat, it));
-
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
+      await saveBudgetPlan({
         yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied category "${src.name}" (${src.items.length} item${
-          src.items.length !== 1 ? "s" : ""
-        }) to ${targetYear}.`
-      );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy category");
-    }
-  };
-
-  const copyWholePlan = async (targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
-    const srcCats = (budgetPlan.categories || []).filter(
-      (c) => (c.items || []).length > 0
-    );
-    if (srcCats.length === 0) {
-      alert("There are no items in this budget plan to copy.");
-      return;
-    }
-    try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-
-      srcCats.forEach((srcCat) => {
-        const tcat = ensureCategoryInTarget(baseCategories, srcCat);
-        (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
+        categories: copiedCategories,
+        deletedCategories: previousYearBudget.deletedCategories || [],
+        budgetPeriodStart: budgetPeriod.startDate,
+        budgetPeriodEnd: budgetPeriod.endDate,
       });
 
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
-        yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied ${srcCats.reduce(
-          (s, c) => s + (c.items?.length || 0),
-          0
-        )} item(s) across ${srcCats.length} categor${
-          srcCats.length === 1 ? "y" : "ies"
-        } to ${targetYear}.`
-      );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy budget plan");
+      alert(`Successfully copied budget from ${previousYear}!`);
+    } catch (error) {
+      console.error("Error copying from previous year:", error);
+      alert("Failed to copy budget. Please try again.");
     }
   };
 
@@ -779,7 +628,7 @@ function BudgetPlanningPage() {
       <div className="page">
         <NavigationTab />
         <div className="page-main">
-          <h2>Budget Planning</h2>
+          <h2>Budget & Reports</h2>
           <p>Please add a client first to create a budget plan.</p>
           <a href="/clients" className="btn">
             Add Client
@@ -797,7 +646,7 @@ function BudgetPlanningPage() {
       <div className="page-main">
         <div className="budget-planning-container">
           <div className="budget-header">
-            <h2>Budget Planning</h2>
+            <h2>Budget & Reports</h2>
           </div>
 
           <div className="client-selection">
@@ -850,7 +699,7 @@ function BudgetPlanningPage() {
                   className="reconfigure-btn"
                   onClick={() => setShowWizard(true)}
                 >
-                  <BiPencil /> Edit Plan
+                  <BiPencil /> Edit Budget
                 </button>
                 <button
                   className="plan-future-btn"
@@ -891,45 +740,33 @@ function BudgetPlanningPage() {
                 />
               ) : (
                 <>
-                  <div className="instructions-section">
-                    <h2>Set Up Your Budget Plan</h2>
-                    <ol>
-                      <li>Select budget categories (or add custom ones)</li>
-                      <li>Add items with budgets to each category</li>
-                      <li>Use copy controls to plan for future years</li>
-                    </ol>
-                  </div>
-
-                  <div className="budget-summary-card">
-                    <h3>Budget Summary for {selectedYear}</h3>
-                    <div className="summary-grid">
-                      <div className="summary-item">
-                        <span className="summary-label">Total Budget:</span>
-                        <span className="summary-value">
-                          ${getTotalYearlyBudget().toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="summary-item">
-                        <span className="summary-label">Period:</span>
-                        <span className="summary-value">
-                          {budgetPeriod.startDate.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}{" "}
-                          -{" "}
-                          {budgetPeriod.endDate.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
+                  {/* Show copy from previous year banner if no current budget but previous exists */}
+                  {!budgetPlan && previousYearBudget && (
+                    <div className="copy-from-previous-banner">
+                      <div className="banner-content">
+                        <div className="banner-text">
+                          <h4>No budget found for {selectedYear}</h4>
+                          <p>Would you like to copy your {previousYear} budget as a starting point?</p>
+                        </div>
+                        <button
+                          className="copy-from-previous-btn"
+                          onClick={handleCopyFromPreviousYear}
+                        >
+                          <BiCopy /> Copy from {previousYear}
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>Step 1: Select Categories</h3>
+                      <h3>{isBudgetPlanComplete ? 'Step 1: Edit Categories' : 'Step 1: Select Categories'}</h3>
+                      {isBudgetPlanComplete && (
+                        <p className="step-description">
+                          Add or remove categories as needed. 
+                          You can also add custom categories.
+                        </p>
+                      )}
                     </div>
 
                     <div className="categories-section">
@@ -990,8 +827,6 @@ function BudgetPlanningPage() {
                             budgetPlan?.categories || []
                           ).find((cat) => cat.id === category.id);
                           const itemCount = categoryData?.items?.length || 0;
-                          const targetYearForCat =
-                            categoryCopyYears[category.id] || selectedYear + 1;
 
                           return (
                             <div key={category.id} className="category-card">
@@ -1027,40 +862,6 @@ function BudgetPlanningPage() {
                                 </div>
 
                                 <div className="category-actions">
-                                  {itemCount > 0 && (
-                                    <div className="copy-controls">
-                                      <select
-                                        value={targetYearForCat}
-                                        onChange={(e) =>
-                                          setCategoryCopyYears((prev) => ({
-                                            ...prev,
-                                            [category.id]: parseInt(
-                                              e.target.value
-                                            ),
-                                          }))
-                                        }
-                                        className="year-copy-select-sm"
-                                      >
-                                        {getFutureYears().map((y) => (
-                                          <option key={y} value={y}>
-                                            {y}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <button
-                                        className="copy-btn-sm"
-                                        onClick={() =>
-                                          copyWholeCategory(
-                                            category.id,
-                                            targetYearForCat
-                                          )
-                                        }
-                                        title="Copy all items to selected year"
-                                      >
-                                        <BiCopy />
-                                      </button>
-                                    </div>
-                                  )}
                                   {itemCount === 0 && (
                                     <button
                                       className="delete-category-btn"
@@ -1082,10 +883,12 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>Step 2: Add Budget Items</h3>
+                      <h3>{isBudgetPlanComplete ? 'Step 2: Edit Budget Items' : 'Step 2: Add Budget Items'}</h3>
                       <p className="step-description">
-                        Add items with budgets. Use the three-dot menu for
-                        copy/edit/delete actions.
+                        {isBudgetPlanComplete
+                          ? 'Click on a category to add new items.'
+                          : 'Click on a category to add, delete, or edit items.'
+                        }
                       </p>
                     </div>
 
@@ -1146,8 +949,6 @@ function BudgetPlanningPage() {
                                           category.id &&
                                         editingItem?.itemIndex === itemIndex;
                                       const key = `${category.id}:${itemIndex}`;
-                                      const itemTargetYear =
-                                        itemCopyYears[key] || selectedYear + 1;
                                       const isMenuOpen = openActionMenu === key;
 
                                       return (
@@ -1254,49 +1055,6 @@ function BudgetPlanningPage() {
                                                   </button>
                                                   {isMenuOpen && (
                                                     <div className="action-menu">
-                                                      <div className="copy-section">
-                                                        <label>Copy to:</label>
-                                                        <select
-                                                          value={itemTargetYear}
-                                                          onChange={(e) =>
-                                                            setItemCopyYears(
-                                                              (prev) => ({
-                                                                ...prev,
-                                                                [key]: parseInt(
-                                                                  e.target.value
-                                                                ),
-                                                              })
-                                                            )
-                                                          }
-                                                          className="year-select-menu"
-                                                        >
-                                                          {getFutureYears().map(
-                                                            (y) => (
-                                                              <option
-                                                                key={y}
-                                                                value={y}
-                                                              >
-                                                                {y}
-                                                              </option>
-                                                            )
-                                                          )}
-                                                        </select>
-                                                        <button
-                                                          className="menu-item copy"
-                                                          onClick={() => {
-                                                            copySingleItem(
-                                                              category.id,
-                                                              item,
-                                                              itemTargetYear
-                                                            );
-                                                            setOpenActionMenu(
-                                                              null
-                                                            );
-                                                          }}
-                                                        >
-                                                          <BiCopy /> Copy
-                                                        </button>
-                                                      </div>
                                                       <button
                                                         className="menu-item edit"
                                                         onClick={() => {
@@ -1422,11 +1180,43 @@ function BudgetPlanningPage() {
                         className="finish-btn"
                         onClick={() => {
                           setShowWizard(false);
-                          alert("Budget plan complete! View your overview.");
+                          if (!isBudgetPlanComplete) {
+                            alert("Budget plan complete! View your overview.");
+                          }
                         }}
                       >
-                        <BiCheckCircle /> Finish & View Overview
+                        <BiCheckCircle /> {isBudgetPlanComplete ? 'Save Changes' : 'Save Changes'}
                       </button>
+                    </div>
+                  )}
+
+                  {/* Sticky Budget Summary Footer */}
+                  {getTotalYearlyBudget() > 0 && (
+                    <div className="budget-summary-sticky">
+                      <div className="summary-content">
+                        <div className="summary-item-sticky">
+                          <span className="summary-label-sticky">Total Budget:</span>
+                          <span className="summary-value-sticky">
+                            ${getTotalYearlyBudget().toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="summary-divider"></div>
+                        <div className="summary-item-sticky">
+                          <span className="summary-label-sticky">Period:</span>
+                          <span className="summary-value-sticky">
+                            {budgetPeriod.startDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            -{" "}
+                            {budgetPeriod.endDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
@@ -1580,10 +1370,10 @@ function BudgetPlanningPage() {
           background: #eff6ff;
           border-bottom: 1px solid #dbeafe;
         }
-        .instructions-section h3 {
+        .instructions-section h2 {
           margin: 0 0 0.75rem 0;
           color: #1e40af;
-          font-size: 1.1rem;
+          font-size: 1.5rem;
         }
         .instructions-section ol {
           margin: 0;
@@ -1592,6 +1382,12 @@ function BudgetPlanningPage() {
         }
         .instructions-section li {
           margin-bottom: 0.375rem;
+        }
+        .edit-instructions {
+          margin: 0;
+          color: #1e3a8a;
+          font-size: 0.95rem;
+          line-height: 1.5;
         }
 
         .budget-summary-card {
@@ -1946,29 +1742,8 @@ function BudgetPlanningPage() {
           border-radius: 6px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           z-index: 100;
-          min-width: 200px;
+          min-width: 120px;
           padding: 0.5rem;
-          max-height: 320px;
-          overflow-y: auto;
-        }
-        .copy-section {
-          padding: 0.5rem;
-          border-bottom: 1px solid #e5e7eb;
-          margin-bottom: 0.25rem;
-        }
-        .copy-section label {
-          display: block;
-          font-size: 0.75rem;
-          color: #6b7280;
-          margin-bottom: 0.375rem;
-        }
-        .year-select-menu {
-          width: 100%;
-          padding: 0.375rem;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 0.8rem;
-          margin-bottom: 0.375rem;
         }
         .menu-item {
           display: block;
@@ -1984,13 +1759,6 @@ function BudgetPlanningPage() {
         }
         .menu-item:hover {
           background: #f3f4f6;
-        }
-        .menu-item.copy {
-          background: #eff6ff;
-          color: #1d4ed8;
-        }
-        .menu-item.copy:hover {
-          background: #dbeafe;
         }
         .menu-item.edit {
           color: #374151;
@@ -2087,6 +1855,84 @@ function BudgetPlanningPage() {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
 
+        .copy-from-previous-banner {
+          padding: 2rem 2.5rem;
+          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          border-bottom: 1px solid #bfdbfe;
+        }
+        .banner-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 2rem;
+        }
+        .banner-text h4 {
+          margin: 0 0 0.5rem 0;
+          color: #1e40af;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+        .banner-text p {
+          margin: 0;
+          color: #1e3a8a;
+          font-size: 0.9rem;
+        }
+        .copy-from-previous-btn {
+          padding: 0.75rem 1.5rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        .copy-from-previous-btn:hover {
+          background: #2563eb;
+        }
+
+        .budget-summary-sticky {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          padding: 1rem 2.5rem;
+          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+          z-index: 1000;
+        }
+        .summary-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2rem;
+        }
+        .summary-item-sticky {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .summary-label-sticky {
+          color: #d1fae5;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+        .summary-value-sticky {
+          color: white;
+          font-size: 1.125rem;
+          font-weight: 700;
+        }
+        .summary-divider {
+          width: 1px;
+          height: 2rem;
+          background: rgba(255, 255, 255, 0.3);
+        }
+
         @media (max-width: 1024px) {
           .add-item-form {
             grid-template-columns: 1fr 1fr;
@@ -2105,6 +1951,22 @@ function BudgetPlanningPage() {
           }
           .add-item-form {
             grid-template-columns: 1fr;
+          }
+          .summary-content {
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+          .summary-divider {
+            width: 100%;
+            height: 1px;
+          }
+          .banner-content {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+          }
+          .copy-from-previous-btn {
+            justify-content: center;
           }
         }
       `}</style>

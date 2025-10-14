@@ -4,6 +4,7 @@ import NavigationTab from "../../NavigationTab";
 import CareTaskCreate from "../NewCareTasks/CareTaskCreate";
 import CareTaskManagement from "../NewCareTasks/CareTaskManagement";
 import { useClients } from "../hooks/useClients";
+import { useNavigate } from "react-router-dom";
 
 function TasksPageNew() {
   const { me } = useAuth();
@@ -13,6 +14,7 @@ function TasksPageNew() {
   const { clients, loading, error } = useClients(me, jwt);
   const managementRef = React.useRef(null);
   const [showCreateForm, setShowCreateForm] = React.useState(false);
+  const navigate = useNavigate();
 
   const handleTaskCreated = () => {
     // Trigger reload in management component
@@ -23,6 +25,10 @@ function TasksPageNew() {
     setShowCreateForm(false);
   };
 
+  const handleNavigateToBudget = () => {
+    navigate("/budget-and-reports");
+  };
+
   return (
     <div className="page">
       <NavigationTab />
@@ -30,7 +36,7 @@ function TasksPageNew() {
         <div className="tasks-page-container">
           {/* Page Header */}
           <div className="page-header">
-            <h1>Care Tasks</h1>
+            <h1>Tasks</h1>
           </div>
 
           {/* Loading and Error States */}
@@ -45,8 +51,9 @@ function TasksPageNew() {
                 <div className="left-column">
                   <div className="info-box">
                     <p>
-                      The calendar shows your current scheduled tasks in the system.
-                      You can click on any task to view details, mark task as complete, reschedule, or delete the task.
+                      The calendar shows current scheduled tasks in the system.
+                      You can click on any task to view or change details, mark 
+                      the task as complete, reschedule, or delete the task.
                     </p>
                   </div>
                   {showCreateForm ? (
@@ -56,6 +63,7 @@ function TasksPageNew() {
                         clients={clients}
                         onTaskCreated={handleTaskCreated}
                         onCancel={() => setShowCreateForm(false)}
+                        onNavigateToBudget={handleNavigateToBudget}
                       />
                     </div>
                   ) : (

@@ -182,6 +182,7 @@ router.delete("/", requireAuth, async (req, res) => {
 });
 
 // GET /api/budget-plans/:personId/spending?year=2024
+// Calculate actual spending, returns, and expected costs for incomplete tasks
 router.get("/:personId/spending", requireAuth, async (req, res) => {
   try {
     const { personId } = req.params;
@@ -215,6 +216,21 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
     const returnedTasks = await CareTask.find({
       ...taskQuery,
       status: "Returned",
+      cost: { $exists: true, $ne: null },
+      budgetCategoryId: { $exists: true, $ne: null },
+      budgetItemId: { $exists: true, $ne: null },
+      dueDate: { $gte: startDate, $lte: endDate },
+    });
+
+    // Find all incomplete tasks with expectedCost for this person and year
+    const incompleteTasks = await CareTask.find({
+      personId,
+      organizationId: req.user.organizationId,
+      status: { $in: ["Scheduled", "Missed", "Skipped"] },
+      expectedCost: { $exists: true, $ne: null },
+      budgetCategoryId: { $exists: true, $ne: null },
+      budgetItemId: { $exists: true, $ne: null },
+      dueDate: { $gte: startDate, $lte: endDate },
     });
 
     // Aggregate spending by category and item for completed tasks
@@ -262,7 +278,25 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
       spending[categoryId].items[itemId] += cost;
     }
 
-    res.json({ spending, returned });
+    // Aggregate expected costs for incomplete tasks
+    const expected = {};
+    for (const task of incompleteTasks) {
+      const categoryId = task.budgetCategoryId;
+      const itemId = task.budgetItemId.toString();
+      const expectedCost = task.expectedCost || 0;
+
+      if (!expected[categoryId]) {
+        expected[categoryId] = { items: {} };
+      }
+
+      if (!expected[categoryId].items[itemId]) {
+        expected[categoryId].items[itemId] = 0;
+      }
+
+      expected[categoryId].items[itemId] += expectedCost;
+    }
+
+    res.json({ spending, returned, expected });
   } catch (error) {
     console.error("Error calculating spending:", error);
     res.status(500).json({ error: "Failed to calculate spending" });

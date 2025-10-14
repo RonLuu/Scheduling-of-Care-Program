@@ -1089,6 +1089,8 @@ function DashboardContent({ client, jwt, me }) {
       setOverviewData((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
+        const currentYear = new Date().getFullYear();
+
         // Fetch multiple endpoints in parallel
         const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] =
           await Promise.all([
@@ -1099,9 +1101,7 @@ function DashboardContent({ client, jwt, me }) {
               headers: { Authorization: `Bearer ${jwt}` },
             }),
             fetch(
-              `/api/budget-plans?personId=${
-                client._id
-              }&year=${new Date().getFullYear()}`,
+              `/api/budget-plans?personId=${client._id}&year=${currentYear}`,
               {
                 headers: { Authorization: `Bearer ${jwt}` },
               }
@@ -1117,6 +1117,21 @@ function DashboardContent({ client, jwt, me }) {
         const accessRequests = accessRequestsRes?.ok
           ? await accessRequestsRes.json()
           : [];
+
+        // Fetch spending data if budget exists
+        let spendingData = null;
+        if (budget?.budgetPlan) {
+          const spendingRes = await fetch(
+            `/api/budget-plans/${client._id}/spending?year=${currentYear}`,
+            {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }
+          ).catch(() => ({ ok: false }));
+
+          if (spendingRes?.ok) {
+            spendingData = await spendingRes.json();
+          }
+        }
 
         // Process tasks data
         const taskStats = {
@@ -1136,29 +1151,31 @@ function DashboardContent({ client, jwt, me }) {
         // Process budget data
         const budgetPlan = budget?.budgetPlan;
 
-        // Calculate actual spending from completed tasks (only current year)
-        const currentYear = new Date().getFullYear();
-        const completedTasks = tasks.filter((t) => {
-          if (t.status !== "Completed" || !t.cost || !t.budgetCategoryId)
-            return false;
-          const taskDate = new Date(t.dueDate);
-          return taskDate.getFullYear() === currentYear;
-        });
-
-        const totalSpent = completedTasks.reduce(
-          (sum, t) => sum + (t.cost || 0),
-          0
-        );
-
-        // Calculate spending per budget item
+        // Calculate total spending from API data
+        let totalSpent = 0;
         const itemSpending = {};
-        completedTasks.forEach((task) => {
-          if (task.budgetItemId) {
-            const itemId = String(task.budgetItemId);
-            itemSpending[itemId] =
-              (itemSpending[itemId] || 0) + (task.cost || 0);
-          }
-        });
+
+        console.log('[Dashboard] spendingData:', spendingData);
+
+        if (spendingData?.spending) {
+          // Calculate total net spending (gross - returned)
+          Object.keys(spendingData.spending).forEach((categoryId) => {
+            const catSpending = spendingData.spending[categoryId];
+            const catReturned = spendingData.returned?.[categoryId] || {};
+
+            Object.keys(catSpending.items || {}).forEach((itemId) => {
+              const grossSpent = catSpending.items[itemId] || 0;
+              const returned = catReturned.items?.[itemId] || 0;
+              const netSpent = grossSpent - returned;
+
+              totalSpent += netSpent;
+              itemSpending[itemId] = netSpent;
+            });
+          });
+        }
+
+        console.log('[Dashboard] itemSpending:', itemSpending);
+        console.log('[Dashboard] totalSpent:', totalSpent);
 
         // Find budget items that need warnings
         const itemWarnings = [];
@@ -1173,7 +1190,30 @@ function DashboardContent({ client, jwt, me }) {
             const timeRemaining = end - now;
             const percentTimeRemaining = (timeRemaining / totalDuration) * 100;
             hasSignificantTimeRemaining = percentTimeRemaining >= 50;
+
+            console.log('[Dashboard] Budget period:', {
+              start: start.toISOString(),
+              end: end.toISOString(),
+              now: now.toISOString(),
+              totalDuration: totalDuration / (1000 * 60 * 60 * 24), // days
+              timeRemaining: timeRemaining / (1000 * 60 * 60 * 24), // days
+              percentTimeRemaining: percentTimeRemaining.toFixed(1) + '%'
+            });
           }
+
+          console.log('[Dashboard] hasSignificantTimeRemaining:', hasSignificantTimeRemaining);
+          console.log('[Dashboard] budgetPlan.categories:', budgetPlan.categories);
+
+          // Load dismissed warnings from localStorage
+          const dismissedWarnings = (() => {
+            try {
+              const saved = localStorage.getItem(`dismissedWarnings-${client._id}-${currentYear}`);
+              return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+              console.error('Error loading dismissed warnings:', e);
+              return [];
+            }
+          })();
 
           (budgetPlan.categories || []).forEach((category) => {
             (category.items || []).forEach((item) => {
@@ -1181,16 +1221,17 @@ function DashboardContent({ client, jwt, me }) {
               const spent = itemSpending[itemId] || 0;
               const allocated = item.budget || 0;
 
-              if (allocated > 0 && spent > 0) {
+              if (allocated > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
-                const isOverBudget = percentSpent >= 100;
-                const isHighSpendingWithTimeLeft =
-                  percentSpent >= 80 &&
-                  (hasSignificantTimeRemaining ||
-                    !budgetPlan.budgetPeriodStart);
+                console.log(`[Dashboard] Item ${item.name} (${itemId}): spent=${spent}, allocated=${allocated}, percent=${percentSpent.toFixed(1)}%`);
 
-                if (isOverBudget || isHighSpendingWithTimeLeft) {
+                // Check if warning is dismissed
+                const warningKey = `${category.id}-${item._id}`;
+                const isDismissed = dismissedWarnings.includes(warningKey);
+
+                // Warn if item is at 80% or more of budget and not dismissed
+                if (percentSpent >= 80 && !isDismissed) {
+                  console.log(`[Dashboard] ⚠️ WARNING for item ${item.name}`);
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,
@@ -1199,16 +1240,38 @@ function DashboardContent({ client, jwt, me }) {
                     percentSpent,
                     isOver: spent > allocated,
                   });
+                } else if (percentSpent >= 80 && isDismissed) {
+                  console.log(`[Dashboard] Warning dismissed for item ${item.name}`);
                 }
               }
             });
           });
         }
 
+        console.log('[Dashboard] itemWarnings:', itemWarnings);
+
+        // Calculate total expected/reserved budget
+        let totalExpected = 0;
+        if (spendingData?.expected) {
+          Object.keys(spendingData.expected).forEach((categoryId) => {
+            const catExpected = spendingData.expected[categoryId];
+            Object.values(catExpected.items || {}).forEach((itemExpected) => {
+              totalExpected += itemExpected || 0;
+            });
+          });
+        }
+
+        console.log('[Dashboard] totalExpected:', totalExpected);
+
+        // Available = Total Budget - Spent - Reserved
+        const totalAvailable = (budgetPlan?.yearlyBudget || 0) - totalSpent - totalExpected;
+
         const budgetStats = budgetPlan
           ? {
               allocated: budgetPlan.yearlyBudget || 0,
               spent: totalSpent,
+              reserved: totalExpected,
+              available: totalAvailable,
               remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
               categories: budgetPlan.categories || [],
               categoryCount: (budgetPlan.categories || []).length,
@@ -1221,6 +1284,8 @@ function DashboardContent({ client, jwt, me }) {
           : {
               allocated: 0,
               spent: 0,
+              reserved: 0,
+              available: 0,
               remaining: 0,
               categories: [],
               categoryCount: 0,
@@ -3303,6 +3368,8 @@ function SuppliesWidget({ supplies, client }) {
 function BudgetWidget({ budget, client }) {
   const percentSpent =
     budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
+  const percentCommitted =
+    budget.allocated > 0 ? ((budget.spent + budget.reserved) / budget.allocated) * 100 : 0;
   const isOverBudget = budget.spent > budget.allocated;
   const isNearLimit = percentSpent >= 80 && !isOverBudget;
 
@@ -3360,10 +3427,18 @@ function BudgetWidget({ budget, client }) {
                   ${budget.spent.toLocaleString()}
                 </div>
               </div>
+            </div>
+            <div className="summary-row">
               <div className="summary-item">
-                <div className="summary-label">Remaining</div>
-                <div className="summary-value remaining">
-                  ${budget.remaining.toLocaleString()}
+                <div className="summary-label">Reserved</div>
+                <div className="summary-value reserved">
+                  ${budget.reserved.toLocaleString()}
+                </div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-label">Available</div>
+                <div className="summary-value" style={{ color: budget.available < 0 ? '#dc2626' : '#047857' }}>
+                  ${budget.available.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -3385,6 +3460,13 @@ function BudgetWidget({ budget, client }) {
                   backgroundColor: status.color,
                 }}
               />
+              {budget.reserved > 0 && (
+                <div
+                  className="expected-marker"
+                  style={{ left: `${Math.min(percentCommitted, 100)}%` }}
+                  title={`Total Commitment: ${percentCommitted.toFixed(1)}% (Spent + Reserved)`}
+                />
+              )}
             </div>
           </div>
 
@@ -3543,8 +3625,13 @@ function BudgetWidget({ budget, client }) {
 
         .summary-row {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .summary-row:last-child {
+          margin-bottom: 0;
         }
 
         .summary-item {
@@ -3567,6 +3654,10 @@ function BudgetWidget({ budget, client }) {
           font-size: 1.5rem;
           font-weight: 700;
           color: #1f2937;
+        }
+
+        .summary-value.reserved {
+          color: #eab308;
         }
 
         .summary-value.spent.high-spending {
@@ -3609,7 +3700,7 @@ function BudgetWidget({ budget, client }) {
           height: 12px;
           background: #e5e7eb;
           border-radius: 6px;
-          overflow: hidden;
+          overflow: visible;
           position: relative;
         }
 
@@ -3617,6 +3708,65 @@ function BudgetWidget({ budget, client }) {
           height: 100%;
           transition: width 0.3s ease;
           border-radius: 6px;
+        }
+
+        .progress-bar .expected-marker {
+          position: absolute;
+          top: -4px;
+          bottom: -4px;
+          width: 3px;
+          background: #eab308;
+          transform: translateX(-50%);
+          z-index: 5;
+          box-shadow: 0 0 4px rgba(234, 179, 8, 0.6);
+          border-radius: 2px;
+        }
+
+        .budget-quick-stats {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .budget-breakdown {
+          display: flex;
+          align-items: center;
+          justify-content: space-around;
+          background: #f9fafb;
+          border-radius: 8px;
+          padding: 1rem;
+        }
+
+        .breakdown-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .breakdown-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.25rem;
+          font-weight: 600;
+        }
+
+        .breakdown-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #2c3f70;
+        }
+
+        .breakdown-value.reserved {
+          color: #eab308;
+        }
+
+        .breakdown-divider {
+          width: 1px;
+          height: 2.5rem;
+          background: #d1d5db;
         }
 
         .top-categories {

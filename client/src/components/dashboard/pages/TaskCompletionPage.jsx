@@ -135,24 +135,7 @@ function TaskCompletionPage() {
     setIsSubmitting(true);
 
     try {
-      // 1. Mark task as complete
-      const completeResponse = await fetch(`/api/care-tasks/${taskId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({
-          status: "Completed",
-          cost: cost ? costValue : undefined,
-        }),
-      });
-
-      if (!completeResponse.ok) {
-        throw new Error("Failed to complete task");
-      }
-
-      // 2. Add comment if provided
+      // 1. Add comment if provided (before completion so it's there regardless)
       if (comments.trim()) {
         await fetch(`/api/comments`, {
           method: "POST",
@@ -167,7 +150,7 @@ function TaskCompletionPage() {
         });
       }
 
-      // 3. Upload new receipts to Shared bucket and reference them
+      // 2. Upload new receipts to Shared bucket and reference them
       for (const file of receipts) {
         // Upload to Shared bucket
         const formData = new FormData();
@@ -208,7 +191,7 @@ function TaskCompletionPage() {
         }
       }
 
-      // 3b. Reference selected existing receipts
+      // 2b. Reference selected existing receipts
       for (const fileId of selectedExistingReceipts) {
         await fetch("/api/file-upload/shared/reference-to-task", {
           method: "POST",
@@ -223,7 +206,7 @@ function TaskCompletionPage() {
         });
       }
 
-      // 4. Upload other files
+      // 3. Upload other files
       for (const file of otherFiles) {
         const formData = new FormData();
         formData.append("file", file);
@@ -236,6 +219,23 @@ function TaskCompletionPage() {
           headers: { Authorization: `Bearer ${jwt}` },
           body: formData,
         });
+      }
+
+      // 4. Mark task as complete
+      const completeResponse = await fetch(`/api/care-tasks/${taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          status: "Completed",
+          cost: cost ? costValue : undefined,
+        }),
+      });
+
+      if (!completeResponse.ok) {
+        throw new Error("Failed to complete task");
       }
 
       // Success - navigate back to tasks page
@@ -1020,6 +1020,14 @@ function TaskCompletionPage() {
 
           .receipt-mode-selector {
             flex-direction: column;
+          }
+
+          .modal-content {
+            width: 95%;
+          }
+
+          .modal-body {
+            padding: 1.5rem;
           }
         }
       `}</style>
