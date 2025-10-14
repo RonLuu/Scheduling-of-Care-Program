@@ -1078,6 +1078,8 @@ function DashboardContent({ client, jwt, me }) {
       setOverviewData((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
+        const currentYear = new Date().getFullYear();
+
         // Fetch multiple endpoints in parallel
         const [tasksRes, suppliesRes, budgetRes, accessRequestsRes] =
           await Promise.all([
@@ -1088,9 +1090,7 @@ function DashboardContent({ client, jwt, me }) {
               headers: { Authorization: `Bearer ${jwt}` },
             }),
             fetch(
-              `/api/budget-plans?personId=${
-                client._id
-              }&year=${new Date().getFullYear()}`,
+              `/api/budget-plans?personId=${client._id}&year=${currentYear}`,
               {
                 headers: { Authorization: `Bearer ${jwt}` },
               }
@@ -1106,6 +1106,21 @@ function DashboardContent({ client, jwt, me }) {
         const accessRequests = accessRequestsRes?.ok
           ? await accessRequestsRes.json()
           : [];
+
+        // Fetch spending data if budget exists
+        let spendingData = null;
+        if (budget?.budgetPlan) {
+          const spendingRes = await fetch(
+            `/api/budget-plans/${client._id}/spending?year=${currentYear}`,
+            {
+              headers: { Authorization: `Bearer ${jwt}` },
+            }
+          ).catch(() => ({ ok: false }));
+
+          if (spendingRes?.ok) {
+            spendingData = await spendingRes.json();
+          }
+        }
 
         // Process tasks data
         const taskStats = {
@@ -1125,29 +1140,31 @@ function DashboardContent({ client, jwt, me }) {
         // Process budget data
         const budgetPlan = budget?.budgetPlan;
 
-        // Calculate actual spending from completed tasks (only current year)
-        const currentYear = new Date().getFullYear();
-        const completedTasks = tasks.filter((t) => {
-          if (t.status !== "Completed" || !t.cost || !t.budgetCategoryId)
-            return false;
-          const taskDate = new Date(t.dueDate);
-          return taskDate.getFullYear() === currentYear;
-        });
-
-        const totalSpent = completedTasks.reduce(
-          (sum, t) => sum + (t.cost || 0),
-          0
-        );
-
-        // Calculate spending per budget item
+        // Calculate total spending from API data
+        let totalSpent = 0;
         const itemSpending = {};
-        completedTasks.forEach((task) => {
-          if (task.budgetItemId) {
-            const itemId = String(task.budgetItemId);
-            itemSpending[itemId] =
-              (itemSpending[itemId] || 0) + (task.cost || 0);
-          }
-        });
+
+        console.log('[Dashboard] spendingData:', spendingData);
+
+        if (spendingData?.spending) {
+          // Calculate total net spending (gross - returned)
+          Object.keys(spendingData.spending).forEach((categoryId) => {
+            const catSpending = spendingData.spending[categoryId];
+            const catReturned = spendingData.returned?.[categoryId] || {};
+
+            Object.keys(catSpending.items || {}).forEach((itemId) => {
+              const grossSpent = catSpending.items[itemId] || 0;
+              const returned = catReturned.items?.[itemId] || 0;
+              const netSpent = grossSpent - returned;
+
+              totalSpent += netSpent;
+              itemSpending[itemId] = netSpent;
+            });
+          });
+        }
+
+        console.log('[Dashboard] itemSpending:', itemSpending);
+        console.log('[Dashboard] totalSpent:', totalSpent);
 
         // Find budget items that need warnings
         const itemWarnings = [];
@@ -1162,7 +1179,19 @@ function DashboardContent({ client, jwt, me }) {
             const timeRemaining = end - now;
             const percentTimeRemaining = (timeRemaining / totalDuration) * 100;
             hasSignificantTimeRemaining = percentTimeRemaining >= 50;
+
+            console.log('[Dashboard] Budget period:', {
+              start: start.toISOString(),
+              end: end.toISOString(),
+              now: now.toISOString(),
+              totalDuration: totalDuration / (1000 * 60 * 60 * 24), // days
+              timeRemaining: timeRemaining / (1000 * 60 * 60 * 24), // days
+              percentTimeRemaining: percentTimeRemaining.toFixed(1) + '%'
+            });
           }
+
+          console.log('[Dashboard] hasSignificantTimeRemaining:', hasSignificantTimeRemaining);
+          console.log('[Dashboard] budgetPlan.categories:', budgetPlan.categories);
 
           (budgetPlan.categories || []).forEach((category) => {
             (category.items || []).forEach((item) => {
@@ -1170,16 +1199,13 @@ function DashboardContent({ client, jwt, me }) {
               const spent = itemSpending[itemId] || 0;
               const allocated = item.budget || 0;
 
-              if (allocated > 0 && spent > 0) {
+              if (allocated > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                // Warn if: (100%+ spent) OR (80%+ spent AND 50%+ time remaining)
-                const isOverBudget = percentSpent >= 100;
-                const isHighSpendingWithTimeLeft =
-                  percentSpent >= 80 &&
-                  (hasSignificantTimeRemaining ||
-                    !budgetPlan.budgetPeriodStart);
+                console.log(`[Dashboard] Item ${item.name} (${itemId}): spent=${spent}, allocated=${allocated}, percent=${percentSpent.toFixed(1)}%`);
 
-                if (isOverBudget || isHighSpendingWithTimeLeft) {
+                // Warn if item is at 80% or more of budget
+                if (percentSpent >= 80) {
+                  console.log(`[Dashboard] ⚠️ WARNING for item ${item.name}`);
                   itemWarnings.push({
                     categoryName: category.name,
                     itemName: item.name,
@@ -1193,6 +1219,8 @@ function DashboardContent({ client, jwt, me }) {
             });
           });
         }
+
+        console.log('[Dashboard] itemWarnings:', itemWarnings);
 
         const budgetStats = budgetPlan
           ? {

@@ -1185,7 +1185,7 @@ function BudgetPlanningPage() {
                           }
                         }}
                       >
-                        <BiCheckCircle /> {isBudgetPlanComplete ? 'Return to Overview' : 'Finish & View Overview'}
+                        <BiCheckCircle /> {isBudgetPlanComplete ? 'Save Changes' : 'Save Changes'}
                       </button>
                     </div>
                   )}
