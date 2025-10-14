@@ -4461,10 +4461,40 @@ function OrganizationManagementModal({
   }, [showChangeOrg]);
 
   const handleLeaveOrganization = async () => {
+    if (!user?.organizationId) {
+      alert("You are not currently in an organization");
+      return;
+    }
+
+    // Role-specific confirmation messages
+    let confirmMessage;
+
+    if (user.role === "Family" || user.role === "PoA") {
+      confirmMessage =
+        "Leave this organization?\n\n" +
+        "Your clients and their data will leave with you.\n" +
+        "• Your clients will no longer be in any organization\n" +
+        "• Budget plans and tasks will remain with your clients\n" +
+        "• Staff and admin access to your clients will be revoked\n" +
+        "• Other family/PoA members of your clients will also leave\n\n" +
+        "Click OK to proceed.";
+    } else if (user.role === "Admin" || user.role === "GeneralCareStaff") {
+      confirmMessage =
+        "Leave this organization?\n\n" +
+        "You will lose access to all clients in this organization.\n" +
+        "• Your access to current clients will be revoked\n" +
+        "• Clients will remain in the organization\n\n" +
+        "Click OK to proceed.";
+    }
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
     setIsLeaving(true);
     try {
-      const response = await fetch("/api/organizations/leave", {
-        method: "POST",
+      const response = await fetch("/api/users/me/leave-organization", {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
@@ -4476,7 +4506,44 @@ function OrganizationManagementModal({
         throw new Error(error.error || "Failed to leave organization");
       }
 
-      alert("Successfully left organization");
+      const data = await response.json();
+
+      // Show success message based on user type
+      let successMessage;
+
+      if (data.userType === "family_poa" && data.cascade) {
+        const c = data.cascade;
+        successMessage =
+          "Successfully left organization.\n\n" +
+          `Moved ${c.personsMoved} client${
+            c.personsMoved !== 1 ? "s" : ""
+          } out of organization.\n` +
+          `• ${c.budgetPlansMoved} budget plan${
+            c.budgetPlansMoved !== 1 ? "s" : ""
+          }\n` +
+          `• ${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}\n` +
+          (c.familyMoved > 0
+            ? `• ${c.familyMoved} family/PoA member${
+                c.familyMoved !== 1 ? "s" : ""
+              } also left\n`
+            : "") +
+          (c.staffRevoked > 0
+            ? `• ${c.staffRevoked} staff/admin access${
+                c.staffRevoked !== 1 ? "es" : ""
+              } revoked`
+            : "");
+      } else if (data.userType === "admin_staff" && data.cascade) {
+        const c = data.cascade;
+        successMessage =
+          "Successfully left organization.\n\n" +
+          `Your access to ${c.linksRevoked} client${
+            c.linksRevoked !== 1 ? "s" : ""
+          } has been revoked.`;
+      } else {
+        successMessage = "Successfully left organization.";
+      }
+
+      alert(successMessage);
       onSuccess();
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -4756,8 +4823,8 @@ function OrganizationManagementModal({
                   <div className="leave-confirm">
                     <p className="warning-text">
                       ⚠️ Are you sure you want to leave "
-                      {organizationData?.name}"? This will remove your access to
-                      all clients and data in this organization.
+                      {organizationData?.name}"? This will remove all access to
+                      the workers and shift allocations in this organization.
                     </p>
                     <div className="confirm-actions">
                       <button
