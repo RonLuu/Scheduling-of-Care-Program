@@ -76,19 +76,20 @@ function BudgetPlanningPage() {
 
   // Initialize showWizard - only set on first load
   const [showWizard, setShowWizard] = React.useState(true);
-  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const initializedRef = React.useRef({});
 
   // Only auto-switch to overview on initial load if budget is complete
   React.useEffect(() => {
-    if (budgetPlan !== null && budgetPlan !== undefined && !hasInitialized) {
-      setShowWizard(!isBudgetPlanComplete);
-      setHasInitialized(true);
-    }
-  }, [budgetPlan, isBudgetPlanComplete, hasInitialized]);
+    const key = `${selectedClient?._id}-${selectedYear}`;
 
-  React.useEffect(() => {
-    setHasInitialized(false); // Reset initialization when year changes
-  }, [selectedYear]);
+    if (budgetPlan !== null && budgetPlan !== undefined && !initializedRef.current[key]) {
+      const isComplete = budgetPlan?.yearlyBudget &&
+                        budgetPlan?.categories?.length > 0 &&
+                        budgetPlan?.categories?.some((cat) => cat.items && cat.items.length > 0);
+      setShowWizard(!isComplete);
+      initializedRef.current[key] = true;
+    }
+  }, [budgetPlan, selectedClient?._id, selectedYear]);
 
   const predefinedCategories = [
     {
@@ -698,45 +699,15 @@ function BudgetPlanningPage() {
                 />
               ) : (
                 <>
-                  <div className="instructions-section">
-                    <h2>Set Up Your Budget Plan</h2>
-                    <ol>
-                      <li>Select budget categories (or add custom ones)</li>
-                      <li>Add items with budgets to each category</li>
-                      <li>Click "Finish & View Overview" when done</li>
-                    </ol>
-                  </div>
-
-                  <div className="budget-summary-card">
-                    <h3>Budget Summary for {selectedYear}</h3>
-                    <div className="summary-grid">
-                      <div className="summary-item">
-                        <span className="summary-label">Total Budget:</span>
-                        <span className="summary-value">
-                          ${getTotalYearlyBudget().toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="summary-item">
-                        <span className="summary-label">Period:</span>
-                        <span className="summary-value">
-                          {budgetPeriod.startDate.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}{" "}
-                          -{" "}
-                          {budgetPeriod.endDate.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>Step 1: Select Categories</h3>
+                      <h3>{isBudgetPlanComplete ? 'Step 1: Edit Categories' : 'Step 1: Select Categories'}</h3>
+                      {isBudgetPlanComplete && (
+                        <p className="step-description">
+                          Add or remove categories as needed. 
+                          You can also add custom categories.
+                        </p>
+                      )}
                     </div>
 
                     <div className="categories-section">
@@ -853,9 +824,12 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>Step 2: Add Budget Items</h3>
+                      <h3>{isBudgetPlanComplete ? 'Step 2: Edit Budget Items' : 'Step 2: Add Budget Items'}</h3>
                       <p className="step-description">
-                        Add items with budgets. Use the three-dot menu to edit or delete items.
+                        {isBudgetPlanComplete
+                          ? 'Click on a category to add new items.'
+                          : 'Click on a category to add, delete, or edit items.'
+                        }
                       </p>
                     </div>
 
@@ -1147,11 +1121,43 @@ function BudgetPlanningPage() {
                         className="finish-btn"
                         onClick={() => {
                           setShowWizard(false);
-                          alert("Budget plan complete! View your overview.");
+                          if (!isBudgetPlanComplete) {
+                            alert("Budget plan complete! View your overview.");
+                          }
                         }}
                       >
-                        <BiCheckCircle /> Finish & View Overview
+                        <BiCheckCircle /> {isBudgetPlanComplete ? 'Return to Overview' : 'Finish & View Overview'}
                       </button>
+                    </div>
+                  )}
+
+                  {/* Sticky Budget Summary Footer */}
+                  {getTotalYearlyBudget() > 0 && (
+                    <div className="budget-summary-sticky">
+                      <div className="summary-content">
+                        <div className="summary-item-sticky">
+                          <span className="summary-label-sticky">Total Budget:</span>
+                          <span className="summary-value-sticky">
+                            ${getTotalYearlyBudget().toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="summary-divider"></div>
+                        <div className="summary-item-sticky">
+                          <span className="summary-label-sticky">Period:</span>
+                          <span className="summary-value-sticky">
+                            {budgetPeriod.startDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            -{" "}
+                            {budgetPeriod.endDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
@@ -1305,10 +1311,10 @@ function BudgetPlanningPage() {
           background: #eff6ff;
           border-bottom: 1px solid #dbeafe;
         }
-        .instructions-section h3 {
+        .instructions-section h2 {
           margin: 0 0 0.75rem 0;
           color: #1e40af;
-          font-size: 1.1rem;
+          font-size: 1.5rem;
         }
         .instructions-section ol {
           margin: 0;
@@ -1317,6 +1323,12 @@ function BudgetPlanningPage() {
         }
         .instructions-section li {
           margin-bottom: 0.375rem;
+        }
+        .edit-instructions {
+          margin: 0;
+          color: #1e3a8a;
+          font-size: 0.95rem;
+          line-height: 1.5;
         }
 
         .budget-summary-card {
@@ -1784,6 +1796,43 @@ function BudgetPlanningPage() {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
 
+        .budget-summary-sticky {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          padding: 1rem 2.5rem;
+          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+          z-index: 1000;
+        }
+        .summary-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2rem;
+        }
+        .summary-item-sticky {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .summary-label-sticky {
+          color: #d1fae5;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+        .summary-value-sticky {
+          color: white;
+          font-size: 1.125rem;
+          font-weight: 700;
+        }
+        .summary-divider {
+          width: 1px;
+          height: 2rem;
+          background: rgba(255, 255, 255, 0.3);
+        }
+
         @media (max-width: 1024px) {
           .add-item-form {
             grid-template-columns: 1fr 1fr;
@@ -1802,6 +1851,14 @@ function BudgetPlanningPage() {
           }
           .add-item-form {
             grid-template-columns: 1fr;
+          }
+          .summary-content {
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+          .summary-divider {
+            width: 100%;
+            height: 1px;
           }
         }
       `}</style>
