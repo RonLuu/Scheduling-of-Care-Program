@@ -561,14 +561,22 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         backgroundColor: getProgressColor(progressPct),
                       }}
                     />
+                    {!isLoadingSpending && progressPct > 0 && (
+                      <span
+                        className="progress-text"
+                        style={{ left: `${progressPct}%` }}
+                      >
+                        {progressPct}%
+                      </span>
+                    )}
                     {!isLoadingSpending && categoryExpected > 0 && (
                       <div
                         className="expected-marker"
                         style={{ left: `${expectedMarkerPct}%` }}
+                        data-percentage={`${Math.round(expectedMarkerPct)}%`}
                         title={`Scheduled: ${formatCurrency(categoryExpected)}`}
                       />
                     )}
-                    <span className="progress-text">{progressPct}%</span>
                   </div>
                 </div>
               </div>
@@ -657,16 +665,22 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                   getProgressColor(itemProgressPct),
                               }}
                             />
+                            {!isLoadingSpending && itemProgressPct > 0 && (
+                              <span
+                                className="progress-text"
+                                style={{ left: `${itemProgressPct}%` }}
+                              >
+                                {itemProgressPct}%
+                              </span>
+                            )}
                             {!isLoadingSpending && itemExpected > 0 && (
                               <div
                                 className="expected-marker"
                                 style={{ left: `${itemExpectedMarkerPct}%` }}
+                                data-percentage={`${Math.round(itemExpectedMarkerPct)}%`}
                                 title={`Scheduled: ${formatCurrency(itemExpected)}`}
                               />
                             )}
-                            <span className="progress-text">
-                              {itemProgressPct}%
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -1319,26 +1333,45 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .progress-container {
           position: relative;
           width: 100%;
-          height: 1.5rem;
+          height: 1rem;
           background: #e5e7eb;
           border-radius: 999px;
-          overflow: hidden;
+          overflow: visible;
+          margin: 1rem 0;
         }
 
         .progress-bar {
           height: 100%;
-          transition: width 0.3s ease;
           border-radius: 999px;
+          transition: width 0.3s ease;
         }
 
         .progress-text {
           position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          font-size: 0.75rem;
-          font-weight: 700;
+          top: -1.5rem;
+          left: 0;
+          font-size: 0.7rem;
+          font-weight: 600;
           color: #1f2937;
+          background: white;
+          padding: 0.125rem 0.375rem;
+          border-radius: 4px;
+          border: 1px solid #10b981;
+          white-space: nowrap;
+          transform: translateX(-50%);
+        }
+
+        .progress-text::after {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-top: 4px solid #10b981;
         }
 
         .expected-marker {
@@ -1349,8 +1382,37 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           background: #eab308;
           transform: translateX(-50%);
           z-index: 10;
-          cursor: help;
           box-shadow: 0 0 4px rgba(234, 179, 8, 0.6);
+        }
+
+        .expected-marker::after {
+          content: attr(data-percentage);
+          position: absolute;
+          top: calc(100% + 0.25rem);
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: #1f2937;
+          background: white;
+          padding: 0.125rem 0.375rem;
+          border-radius: 4px;
+          border: 1px solid #eab308;
+          white-space: nowrap;
+        }
+
+        .expected-marker::before {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-bottom: 4px solid #eab308;
+          z-index: 1;
         }
 
         .items-section {
