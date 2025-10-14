@@ -6,7 +6,7 @@ function ClientInfoManager({ me, jwt, clients }) {
   const [accessErr, setAccessErr] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [showTokenForm, setShowTokenForm] = React.useState(false);
-  const [tokenType, setTokenType] = React.useState(null); // 'MANAGER_TOKEN' or 'FAMILY_TOKEN'
+  const [tokenType, setTokenType] = React.useState(null);
   const [generatedToken, setGeneratedToken] = React.useState("");
   const [tokenError, setTokenError] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -188,9 +188,9 @@ function ClientInfoManager({ me, jwt, clients }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
-  const openTokenModal = (type) => {
-    setTokenType(type);
+  const openTokenModal = () => {
     setShowTokenForm(true);
+    setTokenType(null);
     setGeneratedToken("");
     setTokenError("");
   };
@@ -202,22 +202,25 @@ function ClientInfoManager({ me, jwt, clients }) {
     setTokenError("");
   };
 
-  const generateToken = async () => {
+  const generateToken = async (type) => {
+    setTokenType(type);
     setIsGenerating(true);
     setTokenError("");
     setGeneratedToken("");
 
     try {
       const body = {
-        type: tokenType,
-        organizationId: me.organizationId || null,
+        type: type,
         personIds: [selectedClientId],
         expiresInDays: 7,
         maxUses: 1,
       };
 
-      // Only include organizationId for MANAGER_TOKEN and STAFF_TOKEN
-      if (tokenType === "MANAGER_TOKEN" || me.role === "Admin") {
+      // Include organizationId for MANAGER_TOKEN and STAFF_TOKEN
+      // Also include it for FAMILY_TOKEN if user has an organization
+      if (type === "MANAGER_TOKEN" || type === "STAFF_TOKEN") {
+        body.organizationId = me.organizationId;
+      } else if (type === "FAMILY_TOKEN" && me.organizationId) {
         body.organizationId = me.organizationId;
       }
 
@@ -262,46 +265,7 @@ function ClientInfoManager({ me, jwt, clients }) {
 
   const canManageAccess =
     me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
-  const isFamilyOrPoA = me?.role === "Family" || me?.role === "PoA";
   const hasOrganization = me?.organizationId;
-
-  const getTokenModalTitle = () => {
-    if (tokenType === "MANAGER_TOKEN") {
-      return `Create Admin Invite Token for ${selectedClient?.name}`;
-    } else if (tokenType === "FAMILY_TOKEN") {
-      return `Create Family/PoA Invite Token for ${selectedClient?.name}`;
-    }
-    return `Create Invite Token for ${selectedClient?.name}`;
-  };
-
-  const getTokenModalDescription = () => {
-    if (tokenType === "MANAGER_TOKEN") {
-      return (
-        <p className="modal-description">
-          Generate an invite token to share with an organization administrator.
-          This will grant them access to <strong>{selectedClient?.name}</strong>{" "}
-          within your organization.
-        </p>
-      );
-    } else if (tokenType === "FAMILY_TOKEN") {
-      return (
-        <p className="modal-description">
-          Generate an invite token to share with another family member or power
-          of attorney. This will grant them access to{" "}
-          <strong>{selectedClient?.name}</strong>.
-        </p>
-      );
-    } else if (me.role === "Admin") {
-      return (
-        <p className="modal-description">
-          Generate an invite token to share with care staff in your
-          organization. This will grant them access to{" "}
-          <strong>{selectedClient?.name}</strong>.
-        </p>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="client-info-manager">
@@ -312,7 +276,7 @@ function ClientInfoManager({ me, jwt, clients }) {
             <p>
               <strong>Want to give someone access to a client?</strong> <br />
               Create an invite token to share with other users. Select a client
-              below, then click the appropriate "Create Invite Token" button.
+              below, then click "Create Invite Token".
             </p>
           </div>
         )}
@@ -334,39 +298,9 @@ function ClientInfoManager({ me, jwt, clients }) {
 
           {selectedClient && canManageAccess && (
             <div className="token-section">
-              {me.role === "Admin" ? (
-                <button
-                  className="create-token-btn"
-                  onClick={() => openTokenModal("STAFF_TOKEN")}
-                >
-                  Create Invite Token
-                </button>
-              ) : isFamilyOrPoA ? (
-                <div className="token-buttons-group">
-                  <button
-                    className="create-token-btn"
-                    onClick={() => openTokenModal("FAMILY_TOKEN")}
-                  >
-                    Create Token for Family/PoA
-                  </button>
-                  {hasOrganization ? (
-                    <button
-                      className="create-token-btn secondary"
-                      onClick={() => openTokenModal("MANAGER_TOKEN")}
-                    >
-                      Create Token for Admin
-                    </button>
-                  ) : (
-                    <div className="org-required-notice">
-                      <span className="notice-icon">⚠</span>
-                      <span>
-                        To share access with an administrator, you need to{" "}
-                        <a href="/organization">join an organization</a>.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+              <button className="create-token-btn" onClick={openTokenModal}>
+                Create Invite Token
+              </button>
             </div>
           )}
         </div>
@@ -541,11 +475,12 @@ function ClientInfoManager({ me, jwt, clients }) {
         )}
       </div>
 
+      {/* Token Generation Modal */}
       {showTokenForm && (
         <div className="modal-overlay" onClick={closeTokenModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{getTokenModalTitle()}</h3>
+              <h3>Create Invite Token for {selectedClient?.name}</h3>
               <button className="modal-close" onClick={closeTokenModal}>
                 ×
               </button>
@@ -554,23 +489,104 @@ function ClientInfoManager({ me, jwt, clients }) {
             <div className="modal-body">
               {!generatedToken ? (
                 <>
-                  {getTokenModalDescription()}
+                  {!tokenType ? (
+                    // Step 1: Choose token type
+                    <>
+                      {me.role === "Admin" ? (
+                        // Admin view - direct to staff token
+                        <>
+                          <p className="modal-intro">
+                            Generate an invite token to share with care staff in
+                            your organization. This will grant them access to{" "}
+                            <strong>{selectedClient?.name}</strong>.
+                          </p>
+                          <button
+                            className="generate-btn"
+                            onClick={() => generateToken("STAFF_TOKEN")}
+                          >
+                            Generate Token for Staff
+                          </button>
+                        </>
+                      ) : (
+                        // Family/PoA view - choose between two types
+                        <>
+                          <p className="modal-intro">
+                            Choose who you want to share access with:
+                          </p>
 
-                  <button
-                    className="generate-btn"
-                    onClick={generateToken}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? "Generating Token..." : "Generate Token"}
-                  </button>
+                          <div className="token-type-selection">
+                            <div className="token-type-card">
+                              <div className="card-header">
+                                <h4>Family Member / Power of Attorney</h4>
+                              </div>
+                              <p className="card-description">
+                                Share access with another family member or
+                                someone with power of attorney. They will be
+                                able to view and manage{" "}
+                                <strong>{selectedClient?.name}</strong>'s
+                                information.
+                              </p>
+                              <button
+                                className="select-type-btn primary"
+                                onClick={() => generateToken("FAMILY_TOKEN")}
+                              >
+                                Generate Token
+                              </button>
+                            </div>
 
-                  {tokenError && (
-                    <div className="token-error">
-                      <p>Error: {tokenError}</p>
+                            <div className="token-type-card">
+                              <div className="card-header">
+                                <h4>Organization Administrator</h4>
+                              </div>
+                              <p className="card-description">
+                                Share access with an organization administrator.
+                                They will be able to assign care staff and
+                                manage <strong>{selectedClient?.name}</strong>{" "}
+                                within the organization.
+                              </p>
+                              {hasOrganization ? (
+                                <button
+                                  className="select-type-btn secondary"
+                                  onClick={() => generateToken("MANAGER_TOKEN")}
+                                >
+                                  Generate Token
+                                </button>
+                              ) : (
+                                <div className="org-required-box">
+                                  <span className="warning-icon">⚠️</span>
+                                  <div>
+                                    <p className="org-required-text">
+                                      You need to join an organization first
+                                    </p>
+                                    <a
+                                      href="/organization"
+                                      className="org-link"
+                                    >
+                                      Go to Organization Page →
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {tokenError && (
+                        <div className="token-error">
+                          <p>Error: {tokenError}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Step 2: Generating token (loading state)
+                    <div className="generating-state">
+                      <p>Generating your invite token...</p>
                     </div>
                   )}
                 </>
               ) : (
+                // Step 3: Token generated successfully
                 <div className="token-result">
                   <p className="success-message">
                     Token generated successfully!
@@ -584,12 +600,25 @@ function ClientInfoManager({ me, jwt, clients }) {
                     </button>
                   </div>
 
-                  <p className="token-instructions">
-                    Share this token with the user you want to grant access to.
-                    They should enter this token on the Clients page to gain
-                    access to <strong>{selectedClient?.name}</strong>. This
-                    token expires in 7 days and can only be used once.
-                  </p>
+                  <div className="token-info-box">
+                    <p className="token-instructions">
+                      <strong>How to use this token:</strong>
+                    </p>
+                    <ol className="instructions-list">
+                      <li>
+                        Share this token with the person you want to grant
+                        access to
+                      </li>
+                      <li>
+                        They should enter this token on the Clients page to gain
+                        access to <strong>{selectedClient?.name}</strong>
+                      </li>
+                      <li>
+                        This token expires in <strong>7 days</strong> and can
+                        only be used <strong>once</strong>
+                      </li>
+                    </ol>
+                  </div>
                 </div>
               )}
             </div>
@@ -611,12 +640,6 @@ function ClientInfoManager({ me, jwt, clients }) {
           width: 100% !important;
           max-width: 100% !important;
           box-sizing: border-box;
-        }
-
-        h2 {
-          margin: 0 0 1.5rem 0;
-          color: #111827;
-          font-size: 1.5rem;
         }
 
         .tip-box {
@@ -696,19 +719,13 @@ function ClientInfoManager({ me, jwt, clients }) {
           flex-shrink: 0;
         }
 
-        .token-buttons-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
         .create-token-btn {
           padding: 0.625rem 1.5rem;
           background: #8189d2;
           color: white;
           border: none;
           border-radius: 8px;
-          font-size: 0.9rem;
+          font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
@@ -722,43 +739,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
         }
 
-        .create-token-btn.secondary {
-          background: #10b981;
-          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-        }
-
-        .create-token-btn.secondary:hover {
-          background: #059669;
-          box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .org-required-notice {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.625rem 1rem;
-          background: #fef3c7;
-          border: 1px solid #fcd34d;
-          border-radius: 6px;
-          font-size: 0.8125rem;
-          color: #92400e;
-        }
-
-        .notice-icon {
-          font-size: 1rem;
-          flex-shrink: 0;
-        }
-
-        .org-required-notice a {
-          color: #b45309;
-          font-weight: 600;
-          text-decoration: underline;
-        }
-
-        .org-required-notice a:hover {
-          color: #92400e;
-        }
-
+        /* Modal Styles */
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -775,7 +756,7 @@ function ClientInfoManager({ me, jwt, clients }) {
         .modal-content {
           background: white;
           border-radius: 12px;
-          max-width: 500px;
+          max-width: 600px;
           width: 90%;
           max-height: 90vh;
           overflow-y: auto;
@@ -794,7 +775,7 @@ function ClientInfoManager({ me, jwt, clients }) {
         .modal-header h3 {
           margin: 0;
           color: #374151;
-          font-size: 1.125rem;
+          font-size: 1.25rem;
         }
 
         .modal-close {
@@ -820,14 +801,125 @@ function ClientInfoManager({ me, jwt, clients }) {
           padding: 1.5rem;
         }
 
-        .modal-description {
+        .modal-intro {
           margin: 0 0 1.5rem 0;
           color: #374151;
           font-size: 0.9375rem;
           line-height: 1.6;
         }
 
+        .token-type-selection {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .token-type-card {
+          border: 2px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 1.25rem;
+          transition: all 0.2s;
+        }
+
+        .token-type-card:hover {
+          border-color: #8189d2;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header h4 {
+          margin: 0 0 0.75rem 0;
+          color: #111827;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .card-description {
+          margin: 0 0 1rem 0;
+          color: #6b7280;
+          font-size: 0.875rem;
+          line-height: 1.6;
+        }
+
+        .select-type-btn {
+          width: 100%;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.9375rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .select-type-btn.primary {
+          background: #8189d2;
+          color: white;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .select-type-btn.primary:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
+        .select-type-btn.secondary {
+          background: #10b981;
+          color: white;
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .select-type-btn.secondary:hover {
+          background: #059669;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .org-required-box {
+          display: flex;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 6px;
+        }
+
+        .warning-icon {
+          font-size: 1.25rem;
+          flex-shrink: 0;
+        }
+
+        .org-required-text {
+          margin: 0 0 0.5rem 0;
+          color: #92400e;
+          font-size: 0.875rem;
+          font-weight: 600;
+        }
+
+        .org-link {
+          color: #b45309;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .org-link:hover {
+          color: #92400e;
+          text-decoration: underline;
+        }
+
+        .generating-state {
+          text-align: center;
+          padding: 2rem 0;
+          color: #6b7280;
+          font-style: italic;
+        }
+
         .generate-btn {
+          width: 100%;
           padding: 0.75rem 1.5rem;
           background: #8189d2;
           color: white;
@@ -895,6 +987,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           border: 1px solid #d1d5db;
           border-radius: 6px;
           padding: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
         .token-display code {
@@ -922,11 +1015,34 @@ function ClientInfoManager({ me, jwt, clients }) {
           background: #6d76c4;
         }
 
+        .token-info-box {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 1rem;
+        }
+
         .token-instructions {
-          margin: 0.75rem 0 0 0;
+          margin: 0 0 0.5rem 0;
+          color: #374151;
+          font-size: 0.875rem;
+          font-weight: 600;
+        }
+
+        .instructions-list {
+          margin: 0;
+          padding-left: 1.25rem;
           color: #6b7280;
-          font-size: 0.8125rem;
-          line-height: 1.5;
+          font-size: 0.875rem;
+          line-height: 1.6;
+        }
+
+        .instructions-list li {
+          margin-bottom: 0.5rem;
+        }
+
+        .instructions-list li:last-child {
+          margin-bottom: 0;
         }
 
         .client-info-section {
@@ -1132,16 +1248,8 @@ function ClientInfoManager({ me, jwt, clients }) {
             width: 100%;
           }
 
-          .token-buttons-group {
-            width: 100%;
-          }
-
           .create-token-btn {
             width: 100%;
-          }
-
-          .org-required-notice {
-            font-size: 0.75rem;
           }
 
           .info-grid {
@@ -1155,6 +1263,14 @@ function ClientInfoManager({ me, jwt, clients }) {
           .access-table th,
           .access-table td {
             padding: 0.5rem;
+          }
+
+          .modal-content {
+            max-width: 95%;
+          }
+
+          .token-type-selection {
+            gap: 0.75rem;
           }
         }
       `}</style>
