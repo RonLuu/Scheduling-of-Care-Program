@@ -28,6 +28,7 @@ import {
   BiTrash,
   BiCheckCircle,
   BiCalendarPlus,
+  BiCopy,
 } from "react-icons/bi";
 
 function BudgetPlanningPage() {
@@ -64,6 +65,12 @@ function BudgetPlanningPage() {
     saveBudgetPlan,
     refresh,
   } = useBudgetPlan(selectedClient?._id, selectedYear, jwt);
+
+  // Fetch previous year's budget to offer copying
+  const previousYear = selectedYear - 1;
+  const {
+    budgetPlan: previousYearBudget,
+  } = useBudgetPlan(selectedClient?._id, previousYear, jwt);
 
   // Check if budget plan is complete
   const isBudgetPlanComplete = React.useMemo(() => {
@@ -559,6 +566,40 @@ function BudgetPlanningPage() {
     return years;
   };
 
+  const handleCopyFromPreviousYear = async () => {
+    if (!previousYearBudget || !selectedClient) return;
+
+    try {
+      // Copy categories and items from previous year to current year
+      const copiedCategories = previousYearBudget.categories.map(cat => ({
+        ...cat,
+        items: cat.items.map(item => ({
+          name: item.name,
+          budget: item.budget,
+          description: item.description,
+        }))
+      }));
+
+      const yearlyBudget = copiedCategories.reduce(
+        (sum, cat) => sum + (cat.budget || 0),
+        0
+      );
+
+      await saveBudgetPlan({
+        yearlyBudget,
+        categories: copiedCategories,
+        deletedCategories: previousYearBudget.deletedCategories || [],
+        budgetPeriodStart: budgetPeriod.startDate,
+        budgetPeriodEnd: budgetPeriod.endDate,
+      });
+
+      alert(`Successfully copied budget from ${previousYear}!`);
+    } catch (error) {
+      console.error("Error copying from previous year:", error);
+      alert("Failed to copy budget. Please try again.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="page">
@@ -699,6 +740,24 @@ function BudgetPlanningPage() {
                 />
               ) : (
                 <>
+                  {/* Show copy from previous year banner if no current budget but previous exists */}
+                  {!budgetPlan && previousYearBudget && (
+                    <div className="copy-from-previous-banner">
+                      <div className="banner-content">
+                        <div className="banner-text">
+                          <h4>No budget found for {selectedYear}</h4>
+                          <p>Would you like to copy your {previousYear} budget as a starting point?</p>
+                        </div>
+                        <button
+                          className="copy-from-previous-btn"
+                          onClick={handleCopyFromPreviousYear}
+                        >
+                          <BiCopy /> Copy from {previousYear}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="budget-step">
                     <div className="step-header">
                       <h3>{isBudgetPlanComplete ? 'Step 1: Edit Categories' : 'Step 1: Select Categories'}</h3>
@@ -1796,6 +1855,47 @@ function BudgetPlanningPage() {
           background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
 
+        .copy-from-previous-banner {
+          padding: 2rem 2.5rem;
+          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          border-bottom: 1px solid #bfdbfe;
+        }
+        .banner-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 2rem;
+        }
+        .banner-text h4 {
+          margin: 0 0 0.5rem 0;
+          color: #1e40af;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+        .banner-text p {
+          margin: 0;
+          color: #1e3a8a;
+          font-size: 0.9rem;
+        }
+        .copy-from-previous-btn {
+          padding: 0.75rem 1.5rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        .copy-from-previous-btn:hover {
+          background: #2563eb;
+        }
+
         .budget-summary-sticky {
           position: fixed;
           bottom: 0;
@@ -1859,6 +1959,14 @@ function BudgetPlanningPage() {
           .summary-divider {
             width: 100%;
             height: 1px;
+          }
+          .banner-content {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+          }
+          .copy-from-previous-btn {
+            justify-content: center;
           }
         }
       `}</style>
