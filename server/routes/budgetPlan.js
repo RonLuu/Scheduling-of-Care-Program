@@ -15,11 +15,14 @@ router.get("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "personId and year are required" });
     }
 
-    const budgetPlan = await BudgetPlan.findOne({
+    // ✅ Build query to match user's org (including null)
+    const query = {
       personId,
       year: parseInt(year),
-      organizationId: req.user.organizationId,
-    });
+      organizationId: req.user.organizationId || null,
+    };
+
+    const budgetPlan = await BudgetPlan.findOne(query);
 
     res.json({ budgetPlan });
   } catch (error) {
@@ -31,13 +34,6 @@ router.get("/", requireAuth, async (req, res) => {
 // POST /api/budget-plans - Create new budget plan
 router.post("/", requireAuth, async (req, res) => {
   try {
-    console.log("POST /api/budget-plans received:", {
-      body: req.body,
-      user: req.user
-        ? { _id: req.user._id, organizationId: req.user.organizationId }
-        : null,
-    });
-
     const {
       personId,
       year,
@@ -49,22 +45,19 @@ router.post("/", requireAuth, async (req, res) => {
     } = req.body;
 
     if (!personId || !year || yearlyBudget === undefined) {
-      console.log("Missing required fields:", {
-        personId: !!personId,
-        year: !!year,
-        yearlyBudget: yearlyBudget !== undefined,
-      });
       return res.status(400).json({
         error: "personId, year, and yearlyBudget are required",
       });
     }
 
-    // Check if budget plan already exists
-    const existing = await BudgetPlan.findOne({
+    // ✅ Check if budget plan already exists (matching org or null)
+    const query = {
       personId,
       year: parseInt(year),
-      organizationId: req.user.organizationId,
-    });
+      organizationId: req.user.organizationId || null,
+    };
+
+    const existing = await BudgetPlan.findOne(query);
 
     if (existing) {
       return res.status(409).json({
@@ -74,7 +67,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     const budgetPlan = new BudgetPlan({
       personId,
-      organizationId: req.user.organizationId,
+      organizationId: req.user.organizationId || null, // ✅ Allow null
       createdByUserId: req.user.id,
       year: parseInt(year),
       yearlyBudget: parseFloat(yearlyBudget),
@@ -90,11 +83,10 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(201).json({ budgetPlan });
   } catch (error) {
     console.error("Error creating budget plan:", error);
-    console.error("Error stack:", error.stack);
     if (error.code === 11000) {
-      res
-        .status(409)
-        .json({ error: "Budget plan already exists for this person and year" });
+      res.status(409).json({
+        error: "Budget plan already exists for this person and year",
+      });
     } else {
       res.status(500).json({
         error: "Failed to create budget plan",
@@ -123,12 +115,15 @@ router.put("/", requireAuth, async (req, res) => {
       });
     }
 
+    // ✅ Build query matching user's org (including null)
+    const query = {
+      personId,
+      year: parseInt(year),
+      organizationId: req.user.organizationId || null,
+    };
+
     const budgetPlan = await BudgetPlan.findOneAndUpdate(
-      {
-        personId,
-        year: parseInt(year),
-        organizationId: req.user.organizationId,
-      },
+      query,
       {
         yearlyBudget:
           yearlyBudget !== undefined ? parseFloat(yearlyBudget) : undefined,
@@ -166,11 +161,14 @@ router.delete("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "personId and year are required" });
     }
 
-    const result = await BudgetPlan.deleteOne({
+    // ✅ Build query matching user's org (including null)
+    const query = {
       personId,
       year: parseInt(year),
-      organizationId: req.user.organizationId,
-    });
+      organizationId: req.user.organizationId || null,
+    };
+
+    const result = await BudgetPlan.deleteOne(query);
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Budget plan not found" });
@@ -184,7 +182,6 @@ router.delete("/", requireAuth, async (req, res) => {
 });
 
 // GET /api/budget-plans/:personId/spending?year=2024
-// Calculate actual spending and returns from care tasks
 router.get("/:personId/spending", requireAuth, async (req, res) => {
   try {
     const { personId } = req.params;
@@ -198,29 +195,26 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
     const startDate = new Date(parseInt(year), 0, 1);
     const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59);
 
-    // Find all completed care tasks with budget tracking for this person and year
-    const completedTasks = await CareTask.find({
+    // ✅ Build query matching user's org (including null)
+    const taskQuery = {
       personId,
-      organizationId: req.user.organizationId,
-      status: "Completed",
+      organizationId: req.user.organizationId || null,
       cost: { $exists: true, $ne: null },
       budgetCategoryId: { $exists: true, $ne: null },
       budgetItemId: { $exists: true, $ne: null },
-      //completedAt: { $gte: startDate, $lte: endDate },
-      dueDate: { $gte: startDate, $lte: endDate }, // Use dueDate to capture tasks completed in different years
+      dueDate: { $gte: startDate, $lte: endDate },
+    };
+
+    // Find all completed care tasks with budget tracking
+    const completedTasks = await CareTask.find({
+      ...taskQuery,
+      status: "Completed",
     });
 
-    // Find all returned care tasks with budget tracking for this person and year
+    // Find all returned care tasks with budget tracking
     const returnedTasks = await CareTask.find({
-      personId,
-      organizationId: req.user.organizationId,
+      ...taskQuery,
       status: "Returned",
-      cost: { $exists: true, $ne: null },
-      budgetCategoryId: { $exists: true, $ne: null },
-      budgetItemId: { $exists: true, $ne: null },
-      // For returned tasks, we check completedAt as it was originally completed before being returned
-      //completedAt: { $gte: startDate, $lte: endDate },
-      dueDate: { $gte: startDate, $lte: endDate }, // Use dueDate to capture tasks completed in different years
     });
 
     // Aggregate spending by category and item for completed tasks
@@ -258,7 +252,7 @@ router.get("/:personId/spending", requireAuth, async (req, res) => {
 
       returned[categoryId].items[itemId] += cost;
 
-      // Also add to spending if not already there (as returned items were initially spent)
+      // Also add to spending if not already there
       if (!spending[categoryId]) {
         spending[categoryId] = { items: {} };
       }

@@ -8,7 +8,6 @@ const PersonWithNeedsSchema = new Schema(
     organizationId: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
-      required: true,
       index: true,
     },
 

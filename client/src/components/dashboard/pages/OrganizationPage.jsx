@@ -80,18 +80,54 @@ function OrganizationPage() {
         return;
       }
 
+      const isFirstTimeJoining = !me?.organizationId;
+      const isSwitchingOrgs =
+        me?.organizationId && me.organizationId !== pendingOrgId;
       let migrateClients = false;
 
       if (me.role === "Family" || me.role === "PoA") {
-        const ok = window.confirm(
-          "Are you sure to change organization?\n\nClick OK to proceed."
-        );
+        let confirmMessage;
+
+        if (isFirstTimeJoining) {
+          confirmMessage =
+            "Join this organisation?\n\n" +
+            "Your clients and their budget plans will be moved to this organisation.\n\n" +
+            "Click OK to proceed.";
+        } else if (isSwitchingOrgs) {
+          confirmMessage =
+            "Switch to a different organisation?\n\n" +
+            "Your clients and their budget plans will be moved to the new organisation.\n" +
+            "Staff and admin access from your current organisation will be revoked.\n\n" +
+            "Click OK to proceed.";
+        }
+
+        const ok = window.confirm(confirmMessage);
         if (!ok) {
           setOrgSaveMsg("Change cancelled. No updates made.");
           setIsProcessing(false);
           return;
         }
         migrateClients = true;
+      } else if (me.role === "Admin" || me.role === "GeneralCareStaff") {
+        let confirmMessage;
+
+        if (isSwitchingOrgs) {
+          confirmMessage =
+            "Switch to a different organisation?\n\n" +
+            "You will leave your current organisation.\n" +
+            "Your access to clients in the current organisation will be revoked.\n\n" +
+            "Click OK to proceed.";
+        } else {
+          confirmMessage =
+            "Join this organisation?\n\n" + "Click OK to proceed.";
+        }
+
+        const ok = window.confirm(confirmMessage);
+        if (!ok) {
+          setOrgSaveMsg("Change cancelled. No updates made.");
+          setIsProcessing(false);
+          return;
+        }
       }
 
       const r = await fetch("/api/users/me/organization", {
@@ -114,13 +150,46 @@ function OrganizationPage() {
 
       if (d.cascade) {
         const c = d.cascade;
-        setOrgSaveMsg(
-          `Successfully changed to "${chosenName}". ` +
-            `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks. ` +
-            `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
-        );
+        if (isFirstTimeJoining) {
+          setOrgSaveMsg(
+            `Successfully joined "${chosenName}". ` +
+              `Moved: ${c.personsMoved} client${
+                c.personsMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.budgetPlansMoved} budget plan${
+                c.budgetPlansMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
+              (c.familyMoved > 0
+                ? `${c.familyMoved} family/PoA member${
+                    c.familyMoved !== 1 ? "s" : ""
+                  } also joined.`
+                : "")
+          );
+        } else {
+          setOrgSaveMsg(
+            `Successfully switched to "${chosenName}". ` +
+              `Moved: ${c.personsMoved} client${
+                c.personsMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.budgetPlansMoved} budget plan${
+                c.budgetPlansMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
+              (c.familyMoved > 0 ? `${c.familyMoved} family/PoA moved. ` : "") +
+              (c.staffRevoked > 0
+                ? `${c.staffRevoked} staff/admin access${
+                    c.staffRevoked !== 1 ? "es" : ""
+                  } revoked.`
+                : "")
+          );
+        }
       } else {
-        setOrgSaveMsg(`Successfully joined "${chosenName}".`);
+        setOrgSaveMsg(
+          isFirstTimeJoining
+            ? `Successfully joined "${chosenName}".`
+            : `Successfully switched to "${chosenName}".`
+        );
       }
 
       // Refresh user data
@@ -134,12 +203,35 @@ function OrganizationPage() {
   };
 
   const handleLeaveOrganization = async () => {
-    const confirmLeave = window.confirm(
-      "Are you sure you want to leave this organisation? " +
-        "This will remove your access to all clients and data associated with this organisation."
-    );
+    if (!me?.organizationId) {
+      setOrgSaveMsg("You are not currently in an organisation.");
+      return;
+    }
 
-    if (!confirmLeave) return;
+    // Role-specific confirmation messages
+    let confirmMessage;
+
+    if (me.role === "Family" || me.role === "PoA") {
+      confirmMessage =
+        "Leave this organisation?\n\n" +
+        "Your clients and their data will leave with you.\n" +
+        "• Your clients will no longer be in any organisation\n" +
+        "• Budget plans and tasks will remain with your clients\n" +
+        "• Staff and admin access to your clients will be revoked\n" +
+        "• Other family/PoA members of your clients will also leave\n\n" +
+        "Click OK to proceed.";
+    } else if (me.role === "Admin" || me.role === "GeneralCareStaff") {
+      confirmMessage =
+        "Leave this organisation?\n\n" +
+        "You will lose access to all clients in this organisation.\n" +
+        "• Your access to current clients will be revoked\n" +
+        "• Clients will remain in the organisation\n\n" +
+        "Click OK to proceed.";
+    }
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
 
     try {
       setIsProcessing(true);
@@ -155,7 +247,36 @@ function OrganizationPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to leave organisation");
 
-      setOrgSaveMsg("You have successfully left the organisation.");
+      // Show success message based on user type
+      let successMsg;
+
+      if (d.userType === "family_poa" && d.cascade) {
+        const c = d.cascade;
+        successMsg =
+          "Successfully left organisation. " +
+          `Moved ${c.personsMoved} client${
+            c.personsMoved !== 1 ? "s" : ""
+          } out. ` +
+          `${c.budgetPlansMoved} budget plan${
+            c.budgetPlansMoved !== 1 ? "s" : ""
+          }, ` +
+          `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
+          (c.familyMoved > 0 ? `${c.familyMoved} family/PoA also left. ` : "") +
+          (c.staffRevoked > 0
+            ? `${c.staffRevoked} staff/admin access revoked.`
+            : "");
+      } else if (d.userType === "admin_staff" && d.cascade) {
+        const c = d.cascade;
+        successMsg =
+          `Successfully left organisation. ` +
+          `Your access to ${c.linksRevoked} client${
+            c.linksRevoked !== 1 ? "s" : ""
+          } revoked.`;
+      } else {
+        successMsg = "You have successfully left the organisation.";
+      }
+
+      setOrgSaveMsg(successMsg);
       setPendingOrgId("");
 
       // Refresh user data
@@ -222,10 +343,6 @@ function OrganizationPage() {
               <div className="no-org-info">
                 <p className="warning-text">
                   You are not currently associated with any organization.
-                </p>
-                <p className="info-text">
-                  You must set your organization before you can add or manage
-                  clients.
                 </p>
                 {!editing && (
                   <button
