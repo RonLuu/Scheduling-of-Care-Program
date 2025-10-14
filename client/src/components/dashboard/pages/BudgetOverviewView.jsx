@@ -46,6 +46,29 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
   const [newItemBudget, setNewItemBudget] = React.useState("");
   const [reallocationAmounts, setReallocationAmounts] = React.useState({});
   const [reallocateFilter, setReallocateFilter] = React.useState("smart"); // "smart", "same-category", "other-category"
+  const [clientName, setClientName] = React.useState("");
+
+  // Load client name
+  React.useEffect(() => {
+    const loadClientName = async () => {
+      if (!budgetPlan?.personId) return;
+
+      try {
+        const response = await fetch(`/api/people/${budgetPlan.personId}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+
+        if (response.ok) {
+          const person = await response.json();
+          setClientName(person.name || "");
+        }
+      } catch (err) {
+        console.error("Error loading client name:", err);
+      }
+    };
+
+    loadClientName();
+  }, [budgetPlan?.personId, jwt]);
 
   // Load actual spending and returned amounts from care tasks
   React.useEffect(() => {
@@ -389,25 +412,45 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
       {/* Summary Cards */}
       <div className="summary-cards">
         <div className="summary-card">
-          <div className="summary-label">Total Budget</div>
+          <div className="summary-label-with-tooltip">
+            <span className="summary-label">Total Budget</span>
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+                Annual spending limit for the client. This is the sum of budgets across all categories and their items.
+              </span>
+            </span>
+          </div>
           <div className="summary-value" style={{ color: '#1f2937' }}>
             {formatCurrency(totalBudget)}
           </div>
-          <div className="summary-subtitle">Annual budget for {budgetPlan?.year || new Date().getFullYear()}</div>
+          <div className="summary-subtitle">Annual budget</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Scheduled</div>
-          <div className="summary-value scheduled">
+          <div className="summary-label-with-tooltip">
+            <span className="summary-label">Reserved</span>
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">The amount of budget reserved for upcoming tasks that have been scheduled.</span>
+            </span>
+          </div>
+          <div className="summary-value reserved">
             {isLoadingSpending ? "..." : formatCurrency(totalExpected)}
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget is reserved for upcoming scheduled tasks`
-              : "0% of budget is reserved for upcoming scheduled tasks"}
+              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget reserved`
+              : "0% of budget reserved"}
           </div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Spent</div>
+          <div className="summary-label-with-tooltip">
+            <span className="summary-label">Spent</span>
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">Money that has already been spent on completed tasks.</span>
+            </span>
+          </div>
           <div
             className="summary-value spent"
             style={{
@@ -420,12 +463,18 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget is used for completed tasks`
-              : "0% of budget is used for completed tasks"}
+              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget used`
+              : "0% of budget used"}
           </div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Available</div>
+          <div className="summary-label-with-tooltip">
+            <span className="summary-label">Available</span>
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">Remaining budget that can be scheduled for new tasks.</span>
+            </span>
+          </div>
           <div
             className="summary-value"
             style={{ color: unallocated < 0 ? '#dc2626' : '#047857' }}
@@ -434,8 +483,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((unallocated / totalBudget) * 100)}% of budget is remaining for new tasks`
-              : "0% of budget is remaining for new tasks"}
+              ? `${Math.round((unallocated / totalBudget) * 100)}% of budget available`
+              : "0% of budget available"}
           </div>
         </div>
       </div>
@@ -503,10 +552,20 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         <div className="table-header">
           <div className="col-name">Category</div>
           <div className="col-amount">Budget</div>
-          <div className="col-amount">Scheduled</div>
+          <div className="col-amount">Reserved</div>
           <div className="col-amount">Spent</div>
           <div className="col-amount">Available</div>
-          <div className="col-progress">Progress</div>
+          <div className="col-progress">
+            <span>Progress</span>
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text tooltip-text-progress">
+                The coloured progress bar shows the proportion of budget already 
+                spent for the category/item, and the yellow line shows total 
+                commited spending - the sum of spent and reserved amounts.
+              </span>
+            </span>
+          </div>
         </div>
 
         {(budgetPlan?.categories || []).map((category) => {
@@ -551,16 +610,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                       ⚠️
                     </span>
                   )}
-                  {category.items && category.items.length > 0 && (
-                    <span className="item-count">
-                      ({category.items.length} items)
-                    </span>
-                  )}
                 </div>
                 <div className="col-amount">
                   {formatCurrency(category.budget)}
                 </div>
-                <div className="col-amount scheduled">
+                <div className="col-amount reserved">
                   {isLoadingSpending ? (
                     "..."
                   ) : (
@@ -614,7 +668,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         className="expected-marker"
                         style={{ left: `${expectedMarkerPct}%` }}
                         data-percentage={`${Math.round(expectedMarkerPct)}%`}
-                        title={`Scheduled: ${formatCurrency(categoryExpected)}`}
+                        title={`Reserved: ${formatCurrency(categoryExpected)}`}
                       />
                     )}
                   </div>
@@ -687,7 +741,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                         <div className="col-amount">
                           {formatCurrency(item.budget)}
                         </div>
-                        <div className="col-amount scheduled">
+                        <div className="col-amount reserved">
                           {isLoadingSpending ? (
                             "..."
                           ) : (
@@ -744,7 +798,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                                 className="expected-marker"
                                 style={{ left: `${itemExpectedMarkerPct}%` }}
                                 data-percentage={`${Math.round(itemExpectedMarkerPct)}%`}
-                                title={`Scheduled: ${formatCurrency(itemExpected)}`}
+                                title={`Reserved: ${formatCurrency(itemExpected)}`}
                               />
                             )}
                           </div>
@@ -1139,13 +1193,108 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
+        .summary-label-with-tooltip {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
         .summary-label {
           font-size: 0.875rem;
           color: #1f2937!important;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 0.5rem;
+        }
+
+        .tooltip-wrapper {
+          position: relative;
+          display: inline-flex;
+        }
+
+        .tooltip-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1rem;
+          height: 1rem;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #6b7280;
+          background: #f3f4f6;
+          border: 1px solid #d1d5db;
+          border-radius: 50%;
+          cursor: help;
+          transition: all 0.2s;
+        }
+
+        .tooltip-icon:hover {
+          color: #1f2937;
+          background: #e5e7eb;
+          border-color: #9ca3af;
+        }
+
+        .tooltip-text {
+          visibility: hidden;
+          opacity: 0;
+          position: absolute;
+          bottom: 125%;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: #1f2937;
+          color: white;
+          padding: 0.5rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: normal;
+          text-transform: none;
+          letter-spacing: normal;
+          white-space: normal;
+          width: 200px;
+          z-index: 1100;
+          transition: opacity 0.2s, visibility 0.2s;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .tooltip-text::after {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          border-width: 5px;
+          border-style: solid;
+          border-color: #1f2937 transparent transparent transparent;
+        }
+
+        /* Special positioning for Progress column tooltip */
+        .tooltip-text-progress {
+          bottom: auto;
+          top: 125%;
+          left: auto;
+          right: 0;
+          transform: none;
+          width: 250px;
+        }
+
+        .tooltip-text-progress::after {
+          top: auto;
+          bottom: 100%;
+          left: auto;
+          right: 1rem;
+          transform: none;
+          border-color: transparent transparent #1f2937 transparent;
+        }
+
+        .tooltip-wrapper:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
+        }
+
+        .table-header .tooltip-wrapper {
+          position: relative;
+          z-index: 1100;
         }
 
         .summary-value {
@@ -1155,7 +1304,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           /* Colors are set dynamically via inline styles */
         }
 
-        .summary-value.scheduled {
+        .summary-value.reserved {
           color: #eab308;
         }
 
@@ -1267,7 +1416,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .table-header {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           background: #f9fafb;
@@ -1277,6 +1426,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           color: #374151;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          position: relative;
+          z-index: 10;
         }
 
         .category-section {
@@ -1289,7 +1440,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .category-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           cursor: pointer;
@@ -1357,7 +1508,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           line-height: 1.5rem;
         }
 
-        .col-amount.scheduled {
+        .col-amount.reserved {
           color: #eab308;
         }
 
@@ -1392,6 +1543,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .col-progress {
           display: flex;
           align-items: center;
+        }
+
+        .table-header .col-progress {
+          justify-content: center;
+          gap: 0.25rem;
+        }
+
+        .tooltip-text-progress {
+          width: 250px;
         }
 
         .progress-container {
@@ -1486,7 +1646,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .item-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           border-top: 1px solid #e5e7eb;
