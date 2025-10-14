@@ -1247,10 +1247,11 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1.5fr;
           gap: 1rem;
-          padding: 0.75rem 1.5rem;
+          padding: 1rem 1.5rem;
           cursor: pointer;
           transition: background-color 0.15s;
           align-items: center;
+          min-height: 4rem;
         }
 
         .category-row:hover {
@@ -1309,9 +1310,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .col-amount {
           text-align: right;
           font-weight: 600;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
+          line-height: 1.5rem;
         }
 
         .col-amount.spent {
@@ -1350,7 +1349,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           background: #e5e7eb;
           border-radius: 999px;
           overflow: visible;
-          margin: 1rem 0;
         }
 
         .progress-bar {
@@ -1438,9 +1436,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1.5fr;
           gap: 1rem;
-          padding: 0.75rem 1.5rem 0.75rem 3.5rem;
+          padding: 1rem 1.5rem;
           border-top: 1px solid #e5e7eb;
           align-items: center;
+          min-height: 4rem;
+          position: relative;
+        }
+
+        .item-row .col-name {
+          padding-left: 2rem;
         }
 
         .item-row:first-child {
