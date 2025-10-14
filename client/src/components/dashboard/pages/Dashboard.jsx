@@ -481,6 +481,17 @@ function Dashboard() {
                   </button>
                 </div>
               )}
+              {!organizationData && (
+                <div className="organization-status">
+                  <a
+                    href="/organization"
+                    className="manage-org-btn"
+                    title="Add organization"
+                  >
+                    Add Organization
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1302,7 +1313,9 @@ function DashboardContent({ client, jwt, me }) {
 
         {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
         <div className="content-right">
-          {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
+          {(me?.role === "Family" ||
+            me?.role === "PoA" ||
+            me?.role === "Admin") && (
             <BudgetWidget budget={budget} client={client} />
           )}
 
@@ -1312,9 +1325,10 @@ function DashboardContent({ client, jwt, me }) {
               <div className="tip-content">
                 <strong>Quick Guide</strong>
                 <p>
-                  Check today's schedule on the left to see your assigned tasks. Visit the{" "}
-                  <a href="/clients">Clients page</a> to review medical information,
-                  allergies, and emergency contacts for this client.
+                  Check today's schedule on the left to see your assigned tasks.
+                  Visit the <a href="/clients">Clients page</a> to review
+                  medical information, allergies, and emergency contacts for
+                  this client.
                 </p>
               </div>
             </div>
@@ -3338,7 +3352,11 @@ function BudgetWidget({ budget, client }) {
               </div>
               <div className="summary-item">
                 <div className="summary-label">Spent</div>
-                <div className={`summary-value spent ${percentSpent >= 80 ? 'high-spending' : 'normal-spending'}`}>
+                <div
+                  className={`summary-value spent ${
+                    percentSpent >= 80 ? "high-spending" : "normal-spending"
+                  }`}
+                >
                   ${budget.spent.toLocaleString()}
                 </div>
               </div>
@@ -4480,22 +4498,57 @@ function OrganizationManagementModal({
       return;
     }
 
-    // Confirm with user
+    const isFirstTimeJoining = !user?.organizationId;
+    const isSwitchingOrgs =
+      user?.organizationId && user.organizationId !== newOrgId;
     const selectedOrgName =
       organizations.find((o) => o._id === newOrgId)?.name ||
       "the selected organization";
-    const confirmChange = window.confirm(
-      `Are you sure you want to change to "${selectedOrgName}"?\n\n` +
-        `This will move all your clients to the new organization.`
-    );
 
-    if (!confirmChange) {
-      return;
+    let migrateClients = false;
+
+    // Role-specific confirmation messages
+    if (user.role === "Family" || user.role === "PoA") {
+      let confirmMessage;
+
+      if (isFirstTimeJoining) {
+        confirmMessage =
+          `Join "${selectedOrgName}"?\n\n` +
+          `Your clients and their budget plans will be moved to this organization.\n\n` +
+          `Click OK to proceed.`;
+      } else if (isSwitchingOrgs) {
+        confirmMessage =
+          `Switch to "${selectedOrgName}"?\n\n` +
+          `Your clients and their budget plans will be moved to the new organization.\n` +
+          `Staff and admin access from your current organization will be revoked.\n\n` +
+          `Click OK to proceed.`;
+      }
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+      migrateClients = true;
+    } else if (user.role === "Admin" || user.role === "GeneralCareStaff") {
+      let confirmMessage;
+
+      if (isSwitchingOrgs) {
+        confirmMessage =
+          `Switch to "${selectedOrgName}"?\n\n` +
+          `You will leave your current organization.\n` +
+          `Your access to clients in the current organization will be revoked.\n\n` +
+          `Click OK to proceed.`;
+      } else {
+        confirmMessage =
+          `Join "${selectedOrgName}"?\n\n` + `Click OK to proceed.`;
+      }
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
     }
 
     setIsChanging(true);
     try {
-      // Use the same endpoint as OrganizationPage
       const response = await fetch("/api/users/me/organization", {
         method: "PATCH",
         headers: {
@@ -4504,7 +4557,7 @@ function OrganizationManagementModal({
         },
         body: JSON.stringify({
           organizationId: newOrgId,
-          migrateClients: true, // For Family/PoA roles
+          migrateClients,
         }),
       });
 
@@ -4518,13 +4571,48 @@ function OrganizationManagementModal({
       // Show success message with cascade info if available
       if (data.cascade) {
         const c = data.cascade;
-        alert(
-          `Successfully changed to "${selectedOrgName}".\n\n` +
-            `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks.\n` +
-            `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
-        );
+        let successMessage;
+
+        if (isFirstTimeJoining) {
+          successMessage =
+            `Successfully joined "${selectedOrgName}".\n\n` +
+            `Moved: ${c.personsMoved} client${
+              c.personsMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.budgetPlansMoved} budget plan${
+              c.budgetPlansMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}.\n` +
+            (c.familyMoved > 0
+              ? `${c.familyMoved} family/PoA member${
+                  c.familyMoved !== 1 ? "s" : ""
+                } also joined.`
+              : "");
+        } else {
+          successMessage =
+            `Successfully switched to "${selectedOrgName}".\n\n` +
+            `Moved: ${c.personsMoved} client${
+              c.personsMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.budgetPlansMoved} budget plan${
+              c.budgetPlansMoved !== 1 ? "s" : ""
+            }, ` +
+            `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}.\n` +
+            (c.familyMoved > 0 ? `${c.familyMoved} family/PoA moved. ` : "") +
+            (c.staffRevoked > 0
+              ? `${c.staffRevoked} staff/admin access${
+                  c.staffRevoked !== 1 ? "es" : ""
+                } revoked.`
+              : "");
+        }
+
+        alert(successMessage);
       } else {
-        alert(`Successfully joined "${selectedOrgName}".`);
+        alert(
+          isFirstTimeJoining
+            ? `Successfully joined "${selectedOrgName}".`
+            : `Successfully switched to "${selectedOrgName}".`
+        );
       }
 
       onSuccess();

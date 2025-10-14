@@ -80,18 +80,54 @@ function OrganizationPage() {
         return;
       }
 
+      const isFirstTimeJoining = !me?.organizationId;
+      const isSwitchingOrgs =
+        me?.organizationId && me.organizationId !== pendingOrgId;
       let migrateClients = false;
 
       if (me.role === "Family" || me.role === "PoA") {
-        const ok = window.confirm(
-          "Are you sure to change organization?\n\nClick OK to proceed."
-        );
+        let confirmMessage;
+
+        if (isFirstTimeJoining) {
+          confirmMessage =
+            "Join this organisation?\n\n" +
+            "Your clients and their budget plans will be moved to this organisation.\n\n" +
+            "Click OK to proceed.";
+        } else if (isSwitchingOrgs) {
+          confirmMessage =
+            "Switch to a different organisation?\n\n" +
+            "Your clients and their budget plans will be moved to the new organisation.\n" +
+            "Staff and admin access from your current organisation will be revoked.\n\n" +
+            "Click OK to proceed.";
+        }
+
+        const ok = window.confirm(confirmMessage);
         if (!ok) {
           setOrgSaveMsg("Change cancelled. No updates made.");
           setIsProcessing(false);
           return;
         }
         migrateClients = true;
+      } else if (me.role === "Admin" || me.role === "GeneralCareStaff") {
+        let confirmMessage;
+
+        if (isSwitchingOrgs) {
+          confirmMessage =
+            "Switch to a different organisation?\n\n" +
+            "You will leave your current organisation.\n" +
+            "Your access to clients in the current organisation will be revoked.\n\n" +
+            "Click OK to proceed.";
+        } else {
+          confirmMessage =
+            "Join this organisation?\n\n" + "Click OK to proceed.";
+        }
+
+        const ok = window.confirm(confirmMessage);
+        if (!ok) {
+          setOrgSaveMsg("Change cancelled. No updates made.");
+          setIsProcessing(false);
+          return;
+        }
       }
 
       const r = await fetch("/api/users/me/organization", {
@@ -114,13 +150,46 @@ function OrganizationPage() {
 
       if (d.cascade) {
         const c = d.cascade;
-        setOrgSaveMsg(
-          `Successfully changed to "${chosenName}". ` +
-            `Moved: ${c.personsMoved} clients, ${c.itemsMoved} items, ${c.tasksMoved} tasks. ` +
-            `${c.familyMoved} family/PoA moved, ${c.staffRevoked} staff/admin access revoked.`
-        );
+        if (isFirstTimeJoining) {
+          setOrgSaveMsg(
+            `Successfully joined "${chosenName}". ` +
+              `Moved: ${c.personsMoved} client${
+                c.personsMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.budgetPlansMoved} budget plan${
+                c.budgetPlansMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
+              (c.familyMoved > 0
+                ? `${c.familyMoved} family/PoA member${
+                    c.familyMoved !== 1 ? "s" : ""
+                  } also joined.`
+                : "")
+          );
+        } else {
+          setOrgSaveMsg(
+            `Successfully switched to "${chosenName}". ` +
+              `Moved: ${c.personsMoved} client${
+                c.personsMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.budgetPlansMoved} budget plan${
+                c.budgetPlansMoved !== 1 ? "s" : ""
+              }, ` +
+              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
+              (c.familyMoved > 0 ? `${c.familyMoved} family/PoA moved. ` : "") +
+              (c.staffRevoked > 0
+                ? `${c.staffRevoked} staff/admin access${
+                    c.staffRevoked !== 1 ? "es" : ""
+                  } revoked.`
+                : "")
+          );
+        }
       } else {
-        setOrgSaveMsg(`Successfully joined "${chosenName}".`);
+        setOrgSaveMsg(
+          isFirstTimeJoining
+            ? `Successfully joined "${chosenName}".`
+            : `Successfully switched to "${chosenName}".`
+        );
       }
 
       // Refresh user data
@@ -222,10 +291,6 @@ function OrganizationPage() {
               <div className="no-org-info">
                 <p className="warning-text">
                   You are not currently associated with any organization.
-                </p>
-                <p className="info-text">
-                  You must set your organization before you can add or manage
-                  clients.
                 </p>
                 {!editing && (
                   <button

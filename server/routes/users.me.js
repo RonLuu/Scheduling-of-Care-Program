@@ -17,7 +17,7 @@ const router = Router();
  * If migrateClients = true and the requester is Family/PoA:
  * 1) personIds = all persons directly linked to requester via Family/PoA (active only)
  * 2) familyUserIds = all users with Family/PoA links (active) to any of personIds (include requester)
- * 3) Move those persons, their items & tasks to new org
+ * 3) Move those persons, their budget plan, & tasks to new org
  * 4) Move those Family/PoA users to new org
  * 5) Revoke Admin/GeneralCareStaff links for those persons (active=false, endAt=now)
  */
@@ -31,13 +31,30 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
   const org = await Organization.findById(organizationId).lean();
   if (!org) return res.status(404).json({ error: "ORG_NOT_FOUND" });
 
+  const isFirstTimeJoining = !me.organizationId;
+  const isSwitchingOrgs =
+    me.organizationId && String(me.organizationId) !== String(organizationId);
+
   // Simple self update if not cascading
   if (!migrateClients) {
+    // If switching orgs, need to revoke their active links
+    if (
+      isSwitchingOrgs &&
+      (me.role === "Admin" || me.role === "GeneralCareStaff")
+    ) {
+      await PersonUserLink.updateMany(
+        { userId: me._id, active: true },
+        { $set: { active: false, endAt: new Date() } }
+      );
+    }
+
     me.organizationId = organizationId;
     await me.save();
     return res.json({
       ok: true,
       user: { id: me._id, organizationId: me.organizationId },
+      isFirstTimeJoining,
+      isSwitchingOrgs,
     });
   }
 
@@ -48,7 +65,7 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
   const session = await mongoose.startSession();
   let result = {
     personsMoved: 0,
-    itemsMoved: 0,
+    budgetPlansMoved: 0,
     tasksMoved: 0,
     familyMoved: 0,
     staffRevoked: 0,
@@ -77,6 +94,33 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
         return;
       }
 
+      // VALIDATION: Check if any persons have conflicting Family/PoA in different orgs
+      if (isSwitchingOrgs) {
+        const conflictingLinks = await PersonUserLink.find({
+          personId: { $in: personIds },
+          relationshipType: { $in: ["Family", "PoA"] },
+          active: true,
+          userId: { $ne: me._id },
+        })
+          .populate("userId", "organizationId")
+          .lean()
+          .session(session);
+
+        const hasConflicts = conflictingLinks.some(
+          (link) =>
+            link.userId?.organizationId &&
+            String(link.userId.organizationId) !== String(organizationId) &&
+            String(link.userId.organizationId) !== String(me.organizationId)
+        );
+
+        if (hasConflicts) {
+          throw new Error(
+            "Cannot switch: Some clients have family members in other organisations. " +
+              "Please resolve these conflicts first."
+          );
+        }
+      }
+
       // 2) Family/PoA users directly linked to those persons (include requester)
       const famLinks = await PersonUserLink.find({
         personId: { $in: personIds },
@@ -98,26 +142,28 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
         { session }
       );
 
-      // 4) Move persons, their items & tasks to new org
+      // 4) Move persons to new org
       const personsRes = await PersonWithNeeds.updateMany(
         { _id: { $in: personIds } },
         { $set: { organizationId } },
         { session }
       );
 
-      const itemsRes = await CareNeedItem.updateMany(
+      // 5) Move budget plans (which contain categories & items) to new org
+      const budgetPlansRes = await BudgetPlan.updateMany(
         { personId: { $in: personIds } },
         { $set: { organizationId } },
         { session }
       );
 
+      // 6) Move tasks to new org
       const tasksRes = await CareTask.updateMany(
         { personId: { $in: personIds } },
         { $set: { organizationId } },
         { session }
       );
 
-      // 5) Revoke Admin/GeneralCareStaff links for those persons
+      // 7) Revoke Admin/GeneralCareStaff links for those persons
       const revokeRes = await PersonUserLink.updateMany(
         {
           personId: { $in: personIds },
@@ -128,15 +174,14 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
         { session }
       );
 
-      // 6) Ensure requester record reflects new org
+      // 8) Ensure requester record reflects new org
       me.organizationId = organizationId;
       await me.save({ session });
 
       result = {
         personsMoved: personsRes.modifiedCount || 0,
-        itemsMoved: itemsRes.modifiedCount || 0,
+        budgetPlansMoved: budgetPlansRes.modifiedCount || 0,
         tasksMoved: tasksRes.modifiedCount || 0,
-        // exclude requester when reporting "other family moved"
         familyMoved: Math.max((moveUsersRes.modifiedCount || 0) - 1, 0),
         staffRevoked: revokeRes.modifiedCount || 0,
       };
@@ -146,6 +191,8 @@ router.patch("/me/organization", requireAuth, async (req, res) => {
       ok: true,
       user: { id: me._id, organizationId },
       cascade: result,
+      isFirstTimeJoining,
+      isSwitchingOrgs,
     });
   } catch (e) {
     return res.status(400).json({ error: e.message });
