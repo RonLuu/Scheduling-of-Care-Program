@@ -431,7 +431,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <span className="summary-label">Reserved</span>
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
-              <span className="tooltip-text">The amount of budget reserved for upcoming tasks that have been scheduled.</span>
+              <span className="tooltip-text">The amount of budget reserved for 
+                upcoming tasks that have been scheduled, but not yet completed.</span>
             </span>
           </div>
           <div className="summary-value reserved">
@@ -439,7 +440,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget reserved`
+              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget reserved for upcoming tasks`
               : "0% of budget reserved"}
           </div>
         </div>
@@ -463,8 +464,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget used`
-              : "0% of budget used"}
+              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget already spent on completed tasks`
+              : "0% of budget already spent"}
           </div>
         </div>
         <div className="summary-card">
@@ -472,7 +473,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
             <span className="summary-label">Available</span>
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
-              <span className="tooltip-text">Remaining budget that can be scheduled for new tasks.</span>
+              <span className="tooltip-text">Available budget that can be 
+                scheduled for new tasks, or reallocated into any item 
+                approaching their spending limit and needs more budget.</span>
             </span>
           </div>
           <div
@@ -561,8 +564,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
               <span className="tooltip-icon">?</span>
               <span className="tooltip-text tooltip-text-progress">
                 The coloured progress bar shows the proportion of budget already 
-                spent for the category/item, and the yellow line shows total 
-                commited spending - the sum of spent and reserved amounts.
+                spent for the category/item, and the yellow line shows the 
+                proportion of total commited spending - the sum of spent and 
+                reserved amounts.
               </span>
             </span>
           </div>
@@ -934,7 +938,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                   className={`filter-btn ${reallocateFilter === "smart" ? "active" : ""}`}
                   onClick={() => setReallocateFilter("smart")}
                 >
-                  Items with Most Budget Left
+                  Items with Most Available Budget
                 </button>
                 <button
                   className={`filter-btn ${reallocateFilter === "same-category" ? "active" : ""}`}
@@ -952,7 +956,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
               {reallocateFilter === "smart" && (
                 <p className="smart-sort-hint">
-                  Items with the most unused budget will appear first. Enter the amount you want to reallocate from an item
+                  Items with the most available budget will appear first. Enter the amount you want to reallocate from an item
                   (you can reallocate from multiple items). Then Scroll down and click Save Changes to apply your updates. 
                 </p>
               )}
@@ -978,7 +982,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     const sourceGrossSpent = getItemSpent(cat.id, item._id);
                     const sourceReturned = getItemReturned(cat.id, item._id);
                     const sourceNetSpent = sourceGrossSpent - sourceReturned;
-                    const availableToReallocate = item.budget - sourceNetSpent;
+                    const sourceExpected = getItemExpected(cat.id, item._id);
+                    const availableToReallocate = item.budget - sourceNetSpent - sourceExpected;
 
                     // Only include items with available budget
                     if (availableToReallocate > 0) {
@@ -1052,8 +1057,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                               </span>
                             </div>
                             <span className="source-item-budget">
-                              Budget: {formatCurrency(sourceItem.budget)} |
-                              Spent: {formatCurrency(sourceNetSpent)} | <br />Available:{" "}
+                              Available:{" "}
                               <strong className="available-highlight">{formatCurrency(availableToReallocate)}</strong>
                             </span>
                           </div>
@@ -2021,7 +2025,6 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .smart-sort-hint {
           background: #eef2ff;
-          border-left: 4px solid #6366f1;
           padding: 0.75rem 1rem;
           margin-bottom: 1rem;
           border-radius: 4px;
