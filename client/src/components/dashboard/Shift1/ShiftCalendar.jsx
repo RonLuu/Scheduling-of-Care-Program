@@ -216,17 +216,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         </span>
       </div>
 
-      {/* <div
-        ref={calRef}
-        className="fc fc-media-screen"
-        style={{
-          border: "1px solid #eee",
-          borderRadius: 10,
-          padding: 6,
-          background: "linear-gradient(180deg,#fff, #fafafa)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-        }}
-      /> */}
       <div className="shiftcalendar-view">
         <CalendarWeek/>
       </div>
@@ -248,10 +237,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           }}
         />
       )}
-
-      <style jsx>{`
-        
-      `}</style>
     </div>
   );
 }
