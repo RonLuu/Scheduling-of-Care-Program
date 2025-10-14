@@ -4726,89 +4726,104 @@ function OrganizationManagementModal({
           <div className="org-actions">
             <div className="action-section">
               <h4>Actions</h4>
-              <p className="action-description">
-                You can change to a different organization, or leave your
-                current organization.
-              </p>
+              {(user.role === "Family" || user.role === "PoA") && (
+                <p className="action-description">
+                  You can change to a different organization, or leave your
+                  current organization.
+                </p>
+              )}
+
+              {(user.role === "Admin" || user.role === "GeneralCareStaff") && (
+                <p className="action-description">
+                  You can leave your current organization.
+                </p>
+              )}
 
               <div className="action-buttons">
                 {/* Change Organization */}
-                {!showChangeOrg ? (
-                  <button
-                    className="change-org-btn"
-                    onClick={() => setShowChangeOrg(true)}
-                  >
-                    Change Organization
-                  </button>
-                ) : (
-                  <div className="change-org-form">
-                    <h5>Change Organization</h5>
-                    <p className="form-description">
-                      Select the organization you want to join:
-                    </p>
-
-                    {loadingOrgs ? (
-                      <div className="loading-orgs">
-                        Loading organizations...
-                      </div>
-                    ) : orgError ? (
-                      <div className="org-error">Error: {orgError}</div>
+                {(user.role === "Family" || user.role === "PoA") && (
+                  <>
+                    {!showChangeOrg ? (
+                      <button
+                        className="change-org-btn"
+                        onClick={() => setShowChangeOrg(true)}
+                      >
+                        Change Organization
+                      </button>
                     ) : (
-                      <>
-                        <select
-                          value={newOrgId}
-                          onChange={(e) => setNewOrgId(e.target.value)}
-                          className="org-select"
-                          disabled={isChanging}
-                        >
-                          <option value="">— Select organization —</option>
-                          {organizations.map((org) => (
-                            <option key={org._id} value={org._id}>
-                              {org.name}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="change-org-form">
+                        <h5>Change Organization</h5>
+                        <p className="form-description">
+                          Select the organization you want to join:
+                        </p>
 
-                        {(user?.role === "Family" || user?.role === "PoA") &&
-                          newOrgId &&
-                          newOrgId !== String(user.organizationId) && (
-                            <div className="migration-warning">
-                              <strong>Important:</strong> Changing organizations
-                              will:
-                              <ul>
-                                <li>
-                                  Move all your clients to the new organization
-                                </li>
-                                <li>Transfer associated family/PoA members</li>
-                                <li>
-                                  Revoke all staff/admin access to your clients
-                                </li>
-                              </ul>
-                            </div>
-                          )}
-                      </>
+                        {loadingOrgs ? (
+                          <div className="loading-orgs">
+                            Loading organizations...
+                          </div>
+                        ) : orgError ? (
+                          <div className="org-error">Error: {orgError}</div>
+                        ) : (
+                          <>
+                            <select
+                              value={newOrgId}
+                              onChange={(e) => setNewOrgId(e.target.value)}
+                              className="org-select"
+                              disabled={isChanging}
+                            >
+                              <option value="">— Select organization —</option>
+                              {organizations.map((org) => (
+                                <option key={org._id} value={org._id}>
+                                  {org.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            {newOrgId &&
+                              newOrgId !== String(user.organizationId) && (
+                                <div className="migration-warning">
+                                  <strong>Important:</strong> Changing
+                                  organizations will:
+                                  <ul>
+                                    <li>
+                                      Move all your clients to the new
+                                      organization
+                                    </li>
+                                    <li>
+                                      Transfer associated family/PoA members
+                                    </li>
+                                    <li>
+                                      Revoke all staff/admin access to your
+                                      clients
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                          </>
+                        )}
+
+                        <div className="form-actions">
+                          <button
+                            className="confirm-change-btn"
+                            onClick={handleChangeOrganization}
+                            disabled={isChanging || !newOrgId || loadingOrgs}
+                          >
+                            {isChanging ? "Changing..." : "Change Organization"}
+                          </button>
+                          <button
+                            className="cancel-change-btn"
+                            onClick={() => {
+                              setShowChangeOrg(false);
+                              setNewOrgId("");
+                            }}
+                            disabled={isChanging}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
-
-                    <div className="form-actions">
-                      <button
-                        className="confirm-change-btn"
-                        onClick={handleChangeOrganization}
-                        disabled={isChanging || !newOrgId || loadingOrgs}
-                      >
-                        {isChanging ? "Changing..." : "Change Organization"}
-                      </button>
-                      <button
-                        className="cancel-change-btn"
-                        onClick={() => {
-                          setShowChangeOrg(false);
-                          setNewOrgId("");
-                        }}
-                        disabled={isChanging}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Leave Organization */}
@@ -4821,11 +4836,24 @@ function OrganizationManagementModal({
                   </button>
                 ) : (
                   <div className="leave-confirm">
-                    <p className="warning-text">
-                      ⚠️ Are you sure you want to leave "
-                      {organizationData?.name}"? This will remove all access to
-                      the workers and shift allocations in this organization.
-                    </p>
+                    {(user.role === "Family" || user.role === "PoA") && (
+                      <p className="warning-text">
+                        ⚠️ Are you sure you want to leave "
+                        {organizationData?.name}"? This will remove all access
+                        to the workers and shift allocations in this
+                        organization.
+                      </p>
+                    )}
+
+                    {(user.role === "Admin" ||
+                      user.role === "GeneralCareStaff") && (
+                      <p className="warning-text">
+                        ⚠️ Are you sure you want to leave "
+                        {organizationData?.name}"? This will lost all access to
+                        data in this organization.
+                      </p>
+                    )}
+
                     <div className="confirm-actions">
                       <button
                         className="confirm-leave-btn"
