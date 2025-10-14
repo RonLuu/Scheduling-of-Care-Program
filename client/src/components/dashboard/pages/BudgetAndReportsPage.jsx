@@ -18,7 +18,6 @@ import {
   BiHome,
   BiClipboard,
   BiPencil,
-  BiCopy,
   BiBulb,
   BiFolder,
   BiPlus,
@@ -57,10 +56,6 @@ function BudgetPlanningPage() {
   });
   const [openActionMenu, setOpenActionMenu] = React.useState(null);
 
-  const nextYearDefault = selectedYear + 1;
-  const [planCopyYear, setPlanCopyYear] = React.useState(nextYearDefault);
-  const [categoryCopyYears, setCategoryCopyYears] = React.useState({});
-  const [itemCopyYears, setItemCopyYears] = React.useState({});
 
   const {
     budgetPlan,
@@ -92,9 +87,6 @@ function BudgetPlanningPage() {
   }, [budgetPlan, isBudgetPlanComplete, hasInitialized]);
 
   React.useEffect(() => {
-    setPlanCopyYear(selectedYear + 1);
-    setCategoryCopyYears({});
-    setItemCopyYears({});
     setHasInitialized(false); // Reset initialization when year changes
   }, [selectedYear]);
 
@@ -566,191 +558,6 @@ function BudgetPlanningPage() {
     return years;
   };
 
-  const getFutureYears = () => {
-    const years = [];
-    for (let y = selectedYear + 1; y <= selectedYear + 10; y++) years.push(y);
-    return years;
-  };
-
-  const apiGetPlan = async (personId, year) => {
-    const resp = await fetch(
-      `/api/budget-plans?personId=${encodeURIComponent(
-        personId
-      )}&year=${encodeURIComponent(year)}`,
-      { headers: { Authorization: `Bearer ${jwt}` } }
-    );
-    const data = await resp.json();
-    if (!resp.ok)
-      throw new Error(data.error || "Failed to load target budget plan");
-    return data.budgetPlan || null;
-  };
-
-  const apiUpsertPlan = async (personId, year, payload, hasExistingPlan) => {
-    const resp = await fetch("/api/budget-plans", {
-      method: hasExistingPlan ? "PUT" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ personId, year, ...payload }),
-    });
-    const data = await resp.json();
-    if (!resp.ok)
-      throw new Error(data.error || "Failed to save target budget plan");
-    return data.budgetPlan;
-  };
-
-  const sumItemBudgets = (items = []) =>
-    items.reduce((s, it) => s + (parseFloat(it.budget) || 0), 0);
-
-  const recomputeTotals = (categories = []) => {
-    const cats = categories.map((c) => ({
-      ...c,
-      budget: sumItemBudgets(c.items || []),
-    }));
-    const yearlyBudget = cats.reduce((s, c) => s + (c.budget || 0), 0);
-    return { categories: cats, yearlyBudget };
-  };
-
-  const ensureCategoryInTarget = (targetCategories, sourceCatMeta) => {
-    const idx = targetCategories.findIndex((c) => c.id === sourceCatMeta.id);
-    if (idx >= 0) {
-      return targetCategories[idx];
-    }
-    const newCat = {
-      id: sourceCatMeta.id,
-      name: sourceCatMeta.name,
-      emoji: sourceCatMeta.emoji || BiClipboard,
-      description: sourceCatMeta.description || "",
-      isCustom: !!sourceCatMeta.isCustom,
-      items: [],
-      budget: 0,
-    };
-    targetCategories.push(newCat);
-    return newCat;
-  };
-
-  const upsertItemByName = (categoryObj, item) => {
-    const existingIdx = (categoryObj.items || []).findIndex(
-      (it) => it.name === item.name
-    );
-    const clean = {
-      name: item.name,
-      description: item.description || "",
-      budget: parseFloat(item.budget) || 0,
-    };
-    if (existingIdx >= 0) {
-      categoryObj.items[existingIdx] = clean;
-    } else {
-      categoryObj.items.push(clean);
-    }
-  };
-
-  const copySingleItem = async (categoryId, item, targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
-    try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-      const srcCategoryMeta =
-        (budgetPlan.categories || []).find((c) => c.id === categoryId) ||
-        getAllAvailableCategories().find((c) => c.id === categoryId);
-
-      const targetCat = ensureCategoryInTarget(baseCategories, srcCategoryMeta);
-      upsertItemByName(targetCat, item);
-
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
-        yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied "${item.name}" to ${targetYear} in "${srcCategoryMeta.name}".`
-      );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy item");
-    }
-  };
-
-  const copyWholeCategory = async (categoryId, targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
-    const src = (budgetPlan.categories || []).find((c) => c.id === categoryId);
-    if (!src || !src.items || src.items.length === 0) {
-      alert("This category has no items to copy.");
-      return;
-    }
-    try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-
-      const targetCat = ensureCategoryInTarget(baseCategories, src);
-      (src.items || []).forEach((it) => upsertItemByName(targetCat, it));
-
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
-        yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied category "${src.name}" (${src.items.length} item${
-          src.items.length !== 1 ? "s" : ""
-        }) to ${targetYear}.`
-      );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy category");
-    }
-  };
-
-  const copyWholePlan = async (targetYear) => {
-    if (!selectedClient || !budgetPlan) return;
-    const srcCats = (budgetPlan.categories || []).filter(
-      (c) => (c.items || []).length > 0
-    );
-    if (srcCats.length === 0) {
-      alert("There are no items in this budget plan to copy.");
-      return;
-    }
-    try {
-      const target = await apiGetPlan(selectedClient._id, targetYear);
-      const baseCategories = target?.categories ? [...target.categories] : [];
-
-      srcCats.forEach((srcCat) => {
-        const tcat = ensureCategoryInTarget(baseCategories, srcCat);
-        (srcCat.items || []).forEach((it) => upsertItemByName(tcat, it));
-      });
-
-      const { categories, yearlyBudget } = recomputeTotals(baseCategories);
-      const payload = {
-        categories,
-        yearlyBudget,
-        deletedCategories: target?.deletedCategories || [],
-        budgetPeriodStart: new Date(targetYear, 0, 1),
-        budgetPeriodEnd: new Date(targetYear, 11, 31),
-      };
-      await apiUpsertPlan(selectedClient._id, targetYear, payload, !!target);
-      alert(
-        `Copied ${srcCats.reduce(
-          (s, c) => s + (c.items?.length || 0),
-          0
-        )} item(s) across ${srcCats.length} categor${
-          srcCats.length === 1 ? "y" : "ies"
-        } to ${targetYear}.`
-      );
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to copy budget plan");
-    }
-  };
-
   if (loading) {
     return (
       <div className="page">
@@ -896,7 +703,7 @@ function BudgetPlanningPage() {
                     <ol>
                       <li>Select budget categories (or add custom ones)</li>
                       <li>Add items with budgets to each category</li>
-                      <li>Use copy controls to plan for future years</li>
+                      <li>Click "Finish & View Overview" when done</li>
                     </ol>
                   </div>
 
@@ -990,8 +797,6 @@ function BudgetPlanningPage() {
                             budgetPlan?.categories || []
                           ).find((cat) => cat.id === category.id);
                           const itemCount = categoryData?.items?.length || 0;
-                          const targetYearForCat =
-                            categoryCopyYears[category.id] || selectedYear + 1;
 
                           return (
                             <div key={category.id} className="category-card">
@@ -1027,40 +832,6 @@ function BudgetPlanningPage() {
                                 </div>
 
                                 <div className="category-actions">
-                                  {itemCount > 0 && (
-                                    <div className="copy-controls">
-                                      <select
-                                        value={targetYearForCat}
-                                        onChange={(e) =>
-                                          setCategoryCopyYears((prev) => ({
-                                            ...prev,
-                                            [category.id]: parseInt(
-                                              e.target.value
-                                            ),
-                                          }))
-                                        }
-                                        className="year-copy-select-sm"
-                                      >
-                                        {getFutureYears().map((y) => (
-                                          <option key={y} value={y}>
-                                            {y}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <button
-                                        className="copy-btn-sm"
-                                        onClick={() =>
-                                          copyWholeCategory(
-                                            category.id,
-                                            targetYearForCat
-                                          )
-                                        }
-                                        title="Copy all items to selected year"
-                                      >
-                                        <BiCopy />
-                                      </button>
-                                    </div>
-                                  )}
                                   {itemCount === 0 && (
                                     <button
                                       className="delete-category-btn"
@@ -1084,8 +855,7 @@ function BudgetPlanningPage() {
                     <div className="step-header">
                       <h3>Step 2: Add Budget Items</h3>
                       <p className="step-description">
-                        Add items with budgets. Use the three-dot menu for
-                        copy/edit/delete actions.
+                        Add items with budgets. Use the three-dot menu to edit or delete items.
                       </p>
                     </div>
 
@@ -1146,8 +916,6 @@ function BudgetPlanningPage() {
                                           category.id &&
                                         editingItem?.itemIndex === itemIndex;
                                       const key = `${category.id}:${itemIndex}`;
-                                      const itemTargetYear =
-                                        itemCopyYears[key] || selectedYear + 1;
                                       const isMenuOpen = openActionMenu === key;
 
                                       return (
@@ -1254,49 +1022,6 @@ function BudgetPlanningPage() {
                                                   </button>
                                                   {isMenuOpen && (
                                                     <div className="action-menu">
-                                                      <div className="copy-section">
-                                                        <label>Copy to:</label>
-                                                        <select
-                                                          value={itemTargetYear}
-                                                          onChange={(e) =>
-                                                            setItemCopyYears(
-                                                              (prev) => ({
-                                                                ...prev,
-                                                                [key]: parseInt(
-                                                                  e.target.value
-                                                                ),
-                                                              })
-                                                            )
-                                                          }
-                                                          className="year-select-menu"
-                                                        >
-                                                          {getFutureYears().map(
-                                                            (y) => (
-                                                              <option
-                                                                key={y}
-                                                                value={y}
-                                                              >
-                                                                {y}
-                                                              </option>
-                                                            )
-                                                          )}
-                                                        </select>
-                                                        <button
-                                                          className="menu-item copy"
-                                                          onClick={() => {
-                                                            copySingleItem(
-                                                              category.id,
-                                                              item,
-                                                              itemTargetYear
-                                                            );
-                                                            setOpenActionMenu(
-                                                              null
-                                                            );
-                                                          }}
-                                                        >
-                                                          <BiCopy /> Copy
-                                                        </button>
-                                                      </div>
                                                       <button
                                                         className="menu-item edit"
                                                         onClick={() => {
@@ -1946,29 +1671,8 @@ function BudgetPlanningPage() {
           border-radius: 6px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           z-index: 100;
-          min-width: 200px;
+          min-width: 120px;
           padding: 0.5rem;
-          max-height: 320px;
-          overflow-y: auto;
-        }
-        .copy-section {
-          padding: 0.5rem;
-          border-bottom: 1px solid #e5e7eb;
-          margin-bottom: 0.25rem;
-        }
-        .copy-section label {
-          display: block;
-          font-size: 0.75rem;
-          color: #6b7280;
-          margin-bottom: 0.375rem;
-        }
-        .year-select-menu {
-          width: 100%;
-          padding: 0.375rem;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 0.8rem;
-          margin-bottom: 0.375rem;
         }
         .menu-item {
           display: block;
@@ -1984,13 +1688,6 @@ function BudgetPlanningPage() {
         }
         .menu-item:hover {
           background: #f3f4f6;
-        }
-        .menu-item.copy {
-          background: #eff6ff;
-          color: #1d4ed8;
-        }
-        .menu-item.copy:hover {
-          background: #dbeafe;
         }
         .menu-item.edit {
           color: #374151;
