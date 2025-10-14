@@ -1477,7 +1477,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           text-transform: uppercase;
           letter-spacing: 0.5px;
           position: relative;
-          z-index: 10;
+          z-index: 1;
         }
 
         .category-section {

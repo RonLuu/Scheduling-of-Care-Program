@@ -1239,10 +1239,28 @@ function DashboardContent({ client, jwt, me }) {
 
         console.log('[Dashboard] itemWarnings:', itemWarnings);
 
+        // Calculate total expected/reserved budget
+        let totalExpected = 0;
+        if (spendingData?.expected) {
+          Object.keys(spendingData.expected).forEach((categoryId) => {
+            const catExpected = spendingData.expected[categoryId];
+            Object.values(catExpected.items || {}).forEach((itemExpected) => {
+              totalExpected += itemExpected || 0;
+            });
+          });
+        }
+
+        console.log('[Dashboard] totalExpected:', totalExpected);
+
+        // Available = Total Budget - Spent - Reserved
+        const totalAvailable = (budgetPlan?.yearlyBudget || 0) - totalSpent - totalExpected;
+
         const budgetStats = budgetPlan
           ? {
               allocated: budgetPlan.yearlyBudget || 0,
               spent: totalSpent,
+              reserved: totalExpected,
+              available: totalAvailable,
               remaining: (budgetPlan.yearlyBudget || 0) - totalSpent,
               categories: budgetPlan.categories || [],
               categoryCount: (budgetPlan.categories || []).length,
@@ -1255,6 +1273,8 @@ function DashboardContent({ client, jwt, me }) {
           : {
               allocated: 0,
               spent: 0,
+              reserved: 0,
+              available: 0,
               remaining: 0,
               categories: [],
               categoryCount: 0,
@@ -3387,10 +3407,18 @@ function BudgetWidget({ budget, client }) {
                   ${budget.spent.toLocaleString()}
                 </div>
               </div>
+            </div>
+            <div className="summary-row">
               <div className="summary-item">
-                <div className="summary-label">Remaining</div>
-                <div className="summary-value remaining">
-                  ${budget.remaining.toLocaleString()}
+                <div className="summary-label">Reserved</div>
+                <div className="summary-value reserved">
+                  ${budget.reserved.toLocaleString()}
+                </div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-label">Available</div>
+                <div className="summary-value" style={{ color: budget.available < 0 ? '#dc2626' : '#047857' }}>
+                  ${budget.available.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -3570,8 +3598,13 @@ function BudgetWidget({ budget, client }) {
 
         .summary-row {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .summary-row:last-child {
+          margin-bottom: 0;
         }
 
         .summary-item {
@@ -3594,6 +3627,10 @@ function BudgetWidget({ budget, client }) {
           font-size: 1.5rem;
           font-weight: 700;
           color: #1f2937;
+        }
+
+        .summary-value.reserved {
+          color: #eab308;
         }
 
         .summary-value.spent.high-spending {
@@ -3644,6 +3681,53 @@ function BudgetWidget({ budget, client }) {
           height: 100%;
           transition: width 0.3s ease;
           border-radius: 6px;
+        }
+
+        .budget-quick-stats {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .budget-breakdown {
+          display: flex;
+          align-items: center;
+          justify-content: space-around;
+          background: #f9fafb;
+          border-radius: 8px;
+          padding: 1rem;
+        }
+
+        .breakdown-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .breakdown-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.25rem;
+          font-weight: 600;
+        }
+
+        .breakdown-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #2c3f70;
+        }
+
+        .breakdown-value.reserved {
+          color: #eab308;
+        }
+
+        .breakdown-divider {
+          width: 1px;
+          height: 2.5rem;
+          background: #d1d5db;
         }
 
         .top-categories {
