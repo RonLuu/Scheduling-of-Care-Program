@@ -393,17 +393,17 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           <div className="summary-value" style={{ color: '#1f2937' }}>
             {formatCurrency(totalBudget)}
           </div>
-          <div className="summary-subtitle">Annual budget</div>
+          <div className="summary-subtitle">Annual budget for {budgetPlan?.year || new Date().getFullYear()}</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Allocated</div>
-          <div className="summary-value allocated">
+          <div className="summary-label">Scheduled</div>
+          <div className="summary-value scheduled">
             {isLoadingSpending ? "..." : formatCurrency(totalExpected)}
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget`
-              : "0% of budget"}
+              ? `${Math.round((totalExpected / totalBudget) * 100)}% of budget is reserved for upcoming scheduled tasks`
+              : "0% of budget is reserved for upcoming scheduled tasks"}
           </div>
         </div>
         <div className="summary-card">
@@ -420,8 +420,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget`
-              : "0% of budget"}
+              ? `${Math.round((totalNetSpent / totalBudget) * 100)}% of budget is used for completed tasks`
+              : "0% of budget is used for completed tasks"}
           </div>
         </div>
         <div className="summary-card">
@@ -434,8 +434,8 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           </div>
           <div className="summary-subtitle">
             {totalBudget > 0
-              ? `${Math.round((unallocated / totalBudget) * 100)}% of budget`
-              : "0% of budget"}
+              ? `${Math.round((unallocated / totalBudget) * 100)}% of budget is remaining for new tasks`
+              : "0% of budget is remaining for new tasks"}
           </div>
         </div>
       </div>
@@ -503,8 +503,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         <div className="table-header">
           <div className="col-name">Category</div>
           <div className="col-amount">Budget</div>
-          <div className="col-amount">Allocated</div>
+          <div className="col-amount">Scheduled</div>
           <div className="col-amount">Spent</div>
+          <div className="col-amount">Available</div>
           <div className="col-progress">Progress</div>
         </div>
 
@@ -513,6 +514,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           const categoryReturned = getCategoryReturned(category.id);
           const categoryNetSpent = categoryGrossSpent - categoryReturned;
           const categoryExpected = getCategoryExpected(category.id);
+          const categoryAvailable = category.budget - categoryNetSpent - categoryExpected;
           const progressPct = getProgressPercentage(
             categoryNetSpent,
             category.budget
@@ -575,6 +577,16 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     <>{formatCurrency(categoryNetSpent)}</>
                   )}
                 </div>
+                <div
+                  className="col-amount available"
+                  style={{ color: categoryAvailable < 0 ? '#dc2626' : '#047857' }}
+                >
+                  {isLoadingSpending ? (
+                    "..."
+                  ) : (
+                    <>{formatCurrency(categoryAvailable)}</>
+                  )}
+                </div>
                 <div className="col-progress">
                   <div className="progress-container">
                     <div
@@ -617,6 +629,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     const itemReturned = getItemReturned(category.id, item._id);
                     const itemNetSpent = itemGrossSpent - itemReturned;
                     const itemExpected = getItemExpected(category.id, item._id);
+                    const itemAvailable = item.budget - itemNetSpent - itemExpected;
                     const itemProgressPct = getProgressPercentage(
                       itemNetSpent,
                       item.budget
@@ -691,6 +704,16 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                             <div className="spent-details">
                               <span>{formatCurrency(itemNetSpent)}</span>
                             </div>
+                          )}
+                        </div>
+                        <div
+                          className="col-amount available"
+                          style={{ color: itemAvailable < 0 ? '#dc2626' : '#047857' }}
+                        >
+                          {isLoadingSpending ? (
+                            "..."
+                          ) : (
+                            <>{formatCurrency(itemAvailable)}</>
                           )}
                         </div>
                         <div className="col-progress">
@@ -1118,7 +1141,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .summary-label {
           font-size: 0.875rem;
-          color: #6b7280;
+          color: #1f2937!important;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -1132,13 +1155,13 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           /* Colors are set dynamically via inline styles */
         }
 
-        .summary-value.allocated {
+        .summary-value.scheduled {
           color: #eab308;
         }
 
         .summary-subtitle {
           font-size: 0.75rem;
-          color: #9ca3af;
+          color: #60646bff;
         }
 
         /* Budget Warning Section */
@@ -1244,7 +1267,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .table-header {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           background: #f9fafb;
@@ -1266,7 +1289,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .category-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           cursor: pointer;
@@ -1340,6 +1363,10 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .col-amount.spent {
           /* Color is set dynamically via inline style based on progress percentage */
+        }
+
+        .col-amount.available {
+          /* Color is set dynamically via inline style: green if positive, red if negative */
         }
 
         .returned-hint {
@@ -1459,7 +1486,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
 
         .item-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+          grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
           gap: 1rem;
           padding: 1rem 1.5rem;
           border-top: 1px solid #e5e7eb;
