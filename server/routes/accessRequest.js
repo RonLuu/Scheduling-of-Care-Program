@@ -38,7 +38,7 @@ router.post("/", requireAuth, async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ error: "ORG_MISMATCH (MUST BE IN SAME ORG)" });
+        .json({ error: "ORG_MISMATCH (TWO USER MUST BE IN THE SAME ORG)" });
     }
 
     if (!t.personIds || t.personIds.length === 0)
@@ -105,16 +105,16 @@ router.get("/incoming", requireAuth, async (req, res) => {
     issuerId: req.user.id,
     status: "Pending",
   })
-    .populate('requesterId', 'name email')
-    .populate('organizationId', 'name')
+    .populate("requesterId", "name email")
+    .populate("organizationId", "name")
     .sort({ createdAt: -1 })
     .lean();
 
   // Transform the response to include requester details at the top level
-  const transformedList = list.map(request => ({
+  const transformedList = list.map((request) => ({
     ...request,
     requesterName: request.requesterId?.name,
-    organizationName: request.organizationId?.name
+    organizationName: request.organizationId?.name,
   }));
 
   res.json(transformedList);
