@@ -564,7 +564,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                     {!isLoadingSpending && progressPct > 0 && (
                       <span
                         className="progress-text"
-                        style={{ left: `${progressPct}%` }}
+                        style={{
+                          left: `${progressPct}%`,
+                          borderColor: getProgressColor(progressPct),
+                          top: Math.abs(progressPct - Math.round(expectedMarkerPct)) <= 2 ? '-1.8rem' : '-1.5rem',
+                        }}
+                        data-border-color={getProgressColor(progressPct)}
                       >
                         {progressPct}%
                       </span>
@@ -668,7 +673,12 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
                             {!isLoadingSpending && itemProgressPct > 0 && (
                               <span
                                 className="progress-text"
-                                style={{ left: `${itemProgressPct}%` }}
+                                style={{
+                                  left: `${itemProgressPct}%`,
+                                  borderColor: getProgressColor(itemProgressPct),
+                                  top: Math.abs(itemProgressPct - Math.round(itemExpectedMarkerPct)) <= 2 ? '-1.8rem' : '-1.5rem',
+                                }}
+                                data-border-color={getProgressColor(itemProgressPct)}
                               >
                                 {itemProgressPct}%
                               </span>
@@ -1237,7 +1247,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1.5fr;
           gap: 1rem;
-          padding: 1rem 1.5rem;
+          padding: 0.75rem 1.5rem;
           cursor: pointer;
           transition: background-color 0.15s;
           align-items: center;
@@ -1287,7 +1297,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           font-size: 0.75rem;
           color: #9ca3af;
           font-weight: normal;
-          margin-left: 0.5rem;
+          margin-left: auto;
         }
 
         .return-indicator {
@@ -1299,6 +1309,9 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .col-amount {
           text-align: right;
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
         }
 
         .col-amount.spent {
@@ -1333,7 +1346,7 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
         .progress-container {
           position: relative;
           width: 100%;
-          height: 1rem;
+          height: 0.5rem;
           background: #e5e7eb;
           border-radius: 999px;
           overflow: visible;
@@ -1371,13 +1384,15 @@ function BudgetOverviewView({ budgetPlan, jwt, budgetPeriod, onReconfigure }) {
           height: 0;
           border-left: 4px solid transparent;
           border-right: 4px solid transparent;
-          border-top: 4px solid #10b981;
+          border-top-width: 4px;
+          border-top-style: solid;
+          border-top-color: inherit;
         }
 
         .expected-marker {
           position: absolute;
-          top: 0;
-          bottom: 0;
+          top: -0.25rem;
+          bottom: -0.25rem;
           width: 3px;
           background: #eab308;
           transform: translateX(-50%);
