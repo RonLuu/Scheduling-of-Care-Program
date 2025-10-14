@@ -133,38 +133,31 @@ router.patch("/:id/revoke", requireAuth, async (req, res) => {
       (requesterRole === "Family" || requesterRole === "PoA") &&
       link.relationshipType === "Admin"
     ) {
-      const session = await mongoose.startSession();
+      // Check if we can use transactions
+      const useTransactions = process.env.NODE_ENV === "production";
       let staffRes = { modifiedCount: 0 };
 
-      try {
-        await session.withTransaction(async () => {
-          // Revoke targeted admin link
-          await PersonUserLink.updateOne(
-            { _id: link._id, active: true },
-            { $set: { active: false, endAt: now } },
-            { session }
-          );
-
-          // Revoke all GeneralCareStaff for this person (do NOT touch other admins)
-          staffRes = await PersonUserLink.updateMany(
-            {
-              personId: link.personId,
-              relationshipType: "GeneralCareStaff",
-              active: true,
-            },
-            { $set: { active: false, endAt: now } },
-            { session }
-          );
-        });
-
-        return res.json({
-          ok: true,
-          revokedId: link._id,
-          cascade: { staffRevoked: staffRes.modifiedCount || 0 },
-        });
-      } finally {
-        session.endSession();
+      if (useTransactions) {
+        // Use transactions in production
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            staffRes = await performAdminRevocation(link, now, session);
+          });
+        } finally {
+          session.endSession();
+        }
+      } else {
+        // No transactions in development
+        console.log("[DEV] Revoking admin and staff without transactions");
+        staffRes = await performAdminRevocation(link, now, null);
       }
+
+      return res.json({
+        ok: true,
+        revokedId: link._id,
+        cascade: { staffRevoked: staffRes.modifiedCount || 0 },
+      });
     }
 
     // Default: simple revoke of the one link
@@ -174,9 +167,33 @@ router.patch("/:id/revoke", requireAuth, async (req, res) => {
 
     res.json({ ok: true, revokedId: link._id });
   } catch (e) {
+    console.error("Revoke link error:", e);
     res.status(400).json({ error: e.message });
   }
 });
+
+// Helper function for revoking admin and cascading to staff
+async function performAdminRevocation(link, now, session) {
+  // Revoke targeted admin link
+  await PersonUserLink.updateOne(
+    { _id: link._id, active: true },
+    { $set: { active: false, endAt: now } },
+    { session }
+  );
+
+  // Revoke all GeneralCareStaff for this person (do NOT touch other admins)
+  const staffRes = await PersonUserLink.updateMany(
+    {
+      personId: link.personId,
+      relationshipType: "GeneralCareStaff",
+      active: true,
+    },
+    { $set: { active: false, endAt: now } },
+    { session }
+  );
+
+  return staffRes;
+}
 
 // GET /api/person-user-links/assignable-users?personId=...
 // Returns [{ userId, name, email, role }]
