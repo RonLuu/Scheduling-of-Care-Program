@@ -3354,6 +3354,8 @@ function SuppliesWidget({ supplies, client }) {
 function BudgetWidget({ budget, client }) {
   const percentSpent =
     budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
+  const percentCommitted =
+    budget.allocated > 0 ? ((budget.spent + budget.reserved) / budget.allocated) * 100 : 0;
   const isOverBudget = budget.spent > budget.allocated;
   const isNearLimit = percentSpent >= 80 && !isOverBudget;
 
@@ -3440,6 +3442,13 @@ function BudgetWidget({ budget, client }) {
                   backgroundColor: status.color,
                 }}
               />
+              {budget.reserved > 0 && (
+                <div
+                  className="expected-marker"
+                  style={{ left: `${Math.min(percentCommitted, 100)}%` }}
+                  title={`Total Commitment: ${percentCommitted.toFixed(1)}% (Spent + Reserved)`}
+                />
+              )}
             </div>
           </div>
 
@@ -3673,7 +3682,7 @@ function BudgetWidget({ budget, client }) {
           height: 12px;
           background: #e5e7eb;
           border-radius: 6px;
-          overflow: hidden;
+          overflow: visible;
           position: relative;
         }
 
@@ -3681,6 +3690,18 @@ function BudgetWidget({ budget, client }) {
           height: 100%;
           transition: width 0.3s ease;
           border-radius: 6px;
+        }
+
+        .progress-bar .expected-marker {
+          position: absolute;
+          top: -4px;
+          bottom: -4px;
+          width: 3px;
+          background: #eab308;
+          transform: translateX(-50%);
+          z-index: 5;
+          box-shadow: 0 0 4px rgba(234, 179, 8, 0.6);
+          border-radius: 2px;
         }
 
         .budget-quick-stats {

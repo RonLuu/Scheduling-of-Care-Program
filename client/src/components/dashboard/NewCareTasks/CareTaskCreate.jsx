@@ -30,6 +30,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
   const [affectedYears, setAffectedYears] = React.useState([]);
   const [actualSpending, setActualSpending] = React.useState({});
   const [returnedAmounts, setReturnedAmounts] = React.useState({});
+  const [expectedCosts, setExpectedCosts] = React.useState({});
   const [isLoadingSpending, setIsLoadingSpending] = React.useState(false);
 
   const sourceYear = React.useMemo(() => {
@@ -196,6 +197,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
       if (!selectedClient || !sourceYear) {
         setActualSpending({});
         setReturnedAmounts({});
+        setExpectedCosts({});
         return;
       }
 
@@ -212,6 +214,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
           const data = await response.json();
           setActualSpending(data.spending || {});
           setReturnedAmounts(data.returned || {});
+          setExpectedCosts(data.expected || {});
         }
       } catch (err) {
         console.error("Error loading spending data:", err);
@@ -232,6 +235,12 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
 
   const getItemReturned = (categoryId, itemId) => {
     const cat = returnedAmounts?.[String(categoryId)];
+    const items = cat?.items || {};
+    return items[String(itemId)] || 0;
+  };
+
+  const getItemExpected = (categoryId, itemId) => {
+    const cat = expectedCosts?.[String(categoryId)];
     const items = cat?.items || {};
     return items[String(itemId)] || 0;
   };
@@ -448,15 +457,16 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
               const itemGrossSpent = getItemSpent(budgetCategoryId, budgetItemId);
               const itemReturned = getItemReturned(budgetCategoryId, budgetItemId);
               const itemNetSpent = itemGrossSpent - itemReturned;
-              const remainingBudget = selectedItem.budget - itemNetSpent;
+              const itemReserved = getItemExpected(budgetCategoryId, budgetItemId);
+              const availableBudget = selectedItem.budget - itemNetSpent - itemReserved;
 
               return (
                 <>
                   <div className="budget-info-box">
                     <div className="budget-info-row">
-                      <span className="budget-info-label">Remaining Budget for {selectedItem.name}:</span>
-                      <span className={`budget-info-value remaining ${remainingBudget < 0 ? 'negative' : ''}`}>
-                        {isLoadingSpending ? "Loading..." : formatCurrency(remainingBudget)}
+                      <span className="budget-info-label">Available Budget for {selectedItem.name}:</span>
+                      <span className={`budget-info-value available ${availableBudget < 0 ? 'negative' : ''}`}>
+                        {isLoadingSpending ? "Loading..." : formatCurrency(availableBudget)}
                       </span>
                     </div>
                   </div>
@@ -976,10 +986,10 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
         .budget-info-value.spent {
           color: #f59e0b;
         }
-        .budget-info-value.remaining {
+        .budget-info-value.available {
           color: #059669;
         }
-        .budget-info-value.remaining.negative {
+        .budget-info-value.available.negative {
           color: #dc2626;
         }
         .tip-box {
