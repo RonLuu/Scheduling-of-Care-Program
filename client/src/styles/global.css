@@ -160,3 +160,20 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* Override FullCalendar z-index to ensure nav overlay (z-index: 998) covers it */
+.fc,
+.fc *,
+.fc-header-toolbar,
+.fc-toolbar,
+.fc-view-harness,
+.fc-view,
+.fc-daygrid,
+.fc-timegrid,
+.fc-list,
+.fc-col-header,
+.fc-scrollgrid,
+.fc-theme-standard {
+  position: relative;
+  z-index: 1 !important;
+}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-//import "../../styles/RegisterUser.css"
+import Select from 'react-select';
+import "../../styles/AuthPages.css";
 import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -17,6 +18,13 @@ const RegisterUser = () => {
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const options = [
+    {value: 'Family', label: ' Family'},
+    {value: 'Power of Attorney', label: 'Power of Attorney'},
+    {value:'Organization Representative', label:'Organization Representative'},
+    {value:'Career', label:'Career'},
+  ];
+  const selectedOption = options.find((opt) => opt.value === role) || null;
   function onAuthed(userWithJwt) {
     setMe(userWithJwt);
     localStorage.setItem("jwt", userWithJwt.jwt);
@@ -58,12 +66,7 @@ const RegisterUser = () => {
         );
       }
       onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      // Redirect based on user role
-      if (data?.user?.role === "Family") {
-        navigate("/dashboard");
-      } else {
-        navigate("/profile");
-      }
+      navigate("/profile");
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -72,90 +75,114 @@ const RegisterUser = () => {
   }
 
   return (
-    <div className="bg-wallpaper">
-      <div className="box">
-        <div className="register-box2 h80m20">
-          <form onSubmit={submit}>
-            <div className="left top">
-              <h2>Register User</h2>
-              <input
-                className="form"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
-              <input
-                className="form"
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-              <input
-                className="form"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={6}
-              />
-            </div>
-            <div className="left center">
-              <h3 style={{ color: "#8b8b8bff" }}>Choose your role:</h3>
-              <div className="select-container">
-                <select
-                  className={` form role ${role === "" ? "italic" : ""}`}
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  onBlur={() => setIsOpen(false)}
-                  onClick={() => setIsOpen(!isOpen)}
-                >
-                  <option style={{ fontStyle: "italic" }} value="">
-                    -- Select a role --
-                  </option>
-                  <option className="role" value="Family">
-                    Family Member
-                  </option>
-                  <option className="role" value="PoA">
-                    PoA
-                  </option>
-                  <option className="role" value="Admin">
-                    Admin
-                  </option>
-                  <option className="role" value="GeneralCareStaff">
-                    Caretaker
-                  </option>
-                </select>
-                <FontAwesomeIcon
-                  icon={faChevronDown}
-                  className={`icon ${isOpen ? "open" : "close"}`}
-                />
-              </div>
-            </div>
-            <div className="left bottom">
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? "Registering..." : "Register"}
-              </button>
-            </div>
-            {err && <p className="error">{err}</p>}
-          </form>
+    <div className="auth-container">
+      <div className="auth-card" style={{ maxWidth: "500px" }}>
+        <div className="auth-header">
+          <h2>Create Account</h2>
+          <p>Register to get started</p>
         </div>
 
-        <div className="register-box1 h20">
-          <div className="left">
-            <p>Already a member?</p>
-            <Link to="/login">
-              <button className="btn">Login</button>
-            </Link>
+        <form onSubmit={submit} className="auth-form">
+          {err && <div className="auth-error">{err}</div>}
+
+          <div className="auth-form-group">
+            <label>
+              Full Name <span className="required-mark">*</span>
+            </label>
+            <input
+              placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+            />
           </div>
-          {err && <p className="error">{err}</p>}
+
+          <div className="auth-form-group">
+            <label>
+              Email <span className="required-mark">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="auth-form-group">
+            <label>
+              Password <span className="required-mark">*</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Password (at least 6 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={6}
+            />
+          </div>
+
+          <div className="auth-form-group">
+            <label>
+              Role <span className="required-mark">*</span>
+              &nbsp;
+              <span className="help-wrapper">
+                <span className="help-icon">?</span>
+                <span className="tool-tip">Your relationship with the Person 
+                  With Special Needs you want to care for</span>
+              </span>
+            </label>
+            <div className="select-container access-select">
+              <Select
+                options={options}
+                value={selectedOption || null}
+                onChange={(option) => setRole(option ? option.value : "")}
+                onMenuOpen={() => setIsOpen(true)}
+                onMenuClose={() => setIsOpen(false)}
+                classNamePrefix="role-select"
+                isClearable
+                placeholder="-- Select a role --"
+                unstyled
+                components={{
+                  DropdownIndicator: () => null,
+                  IndicatorSeparator: () => null,
+                }}
+                classNames={{
+                  control: () => 'select__control',
+                  menu: () => 'select__menu',
+                  option: ({ isFocused, isSelected }) =>
+                    `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
+                  placeholder: () => 'select__placeholder',
+                  singleValue: () => 'select__single-value',
+                  clearIndicator: () => 'client-select__clear-indicator',
+                }}
+              />
+              <FontAwesomeIcon
+                icon={faChevronDown}
+                className={`icon ${isOpen ? "open" : "close"}`}
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Registering..." : "Register"}
+          </button>
+        </form>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <div className="auth-footer">
+          <p>Already have an account?</p>
+          <Link to="/login" className="auth-footer-link">
+            Sign In
+          </Link>
         </div>
       </div>
     </div>
