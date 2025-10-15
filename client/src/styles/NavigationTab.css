@@ -126,7 +126,7 @@
   width: 100vw;
   height:100%;
   background-color: rgba(0, 0, 0, 0.5); /* semi-transparent black */
-  z-index: 5; /* below the nav panel */
+  z-index: 998; /* below the nav panel (999) but above all content */
   opacity: 0;
   animation: fadeIn 0.3s forwards;
 }

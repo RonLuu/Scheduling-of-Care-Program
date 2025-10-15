@@ -40,7 +40,7 @@ function LogIn() {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
-      navigate("/profile");
+      navigate("/dashboard");
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {
