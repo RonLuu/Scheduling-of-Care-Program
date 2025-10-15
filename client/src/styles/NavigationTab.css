@@ -87,10 +87,10 @@
 .navigationtab-link.as-button {
   display: flex;
   align-items: center;
-  width: 100%;              
+  width: 100%;
   height: 60px;
-  padding: 0 1.5rem;         
-  box-sizing: border-box; 
+  padding: 0 1.5rem;
+  box-sizing: border-box;
   text-decoration: none;
   font-family: "Inter", sans-serif;
   font-weight: bold;
@@ -101,13 +101,9 @@
   outline: none;
   cursor: pointer;
   transition: background-color 0.25s ease;
-
-  /* reset button defaults /
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 0; / keep spacing handled by margins & icon /
-  text-align: left; / make text align like a link */
+  text-align: left;
+  margin: 0;
+  justify-content: flex-start;
 }
 
 .navigationtab-link:hover,
