@@ -1,6 +1,5 @@
 import React from "react";
-import "../../css/login_layout.css";
-import "../../css/additional_help.css"
+import "../../styles/AuthPages.css";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../dashboard/hooks/useAuth";
 
@@ -20,7 +19,7 @@ function LogIn() {
   async function submit(e) {
     e.preventDefault();
     setErr("");
-    setLoading(true); // start loading
+    setLoading(true);
     try {
       const r = await fetch("/api/auth/login", {
         method: "POST",
@@ -44,71 +43,63 @@ function LogIn() {
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {
-      setLoading(false); // always stop loading
+      setLoading(false);
     }
   }
 
   return (
-    <div className="bg-wallpaper">
-      <div className="box">
-        <div className="register-box1 h45m40">
-          <div className="left">
-            <h3>Not a member yet?</h3>
-            <Link to="/registeruser">
-              <button className="btn">Register</button>
-            </Link>
-          </div>
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h2>Welcome to Schedule of Care</h2>
+          <p>Sign in to your account to continue</p>
         </div>
-        <div className="register-box2 h55">
-          <div className="left">
-            <h2>Member Login</h2>
-            <form onSubmit={submit}>
-                {/* Important tip */}
-                <label className="login-label">
-                  Email
-                  <span className="help-wrapper">
-                    <span className="important-info">*</span>
-                    <span className="tool-tip">Required</span>
-                  </span>
-                  <span className="help-wrapper">
-                    <span className="help-icon">?</span>
-                    <span className="tool-tip">The Email you use when register</span>
-                  </span>
-                </label>
 
-              <input
-                className="form"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              ></input>
-               <label className="login-label">Password 
-                {/* Important tip */}
-                <div className="help-wrapper">
-                    <span className="important-info"> * </span>
-                    <span className="tool-tip">Required</span>
-                </div>
+        <form onSubmit={submit} className="auth-form">
+          {err && <div className="auth-error">{err}</div>}
 
-                {/* Q&A tip */}
-
-                 <div className="help-wrapper">
-                      <span className="help-icon " >?</span>
-                      <span className="tool-tip">The password you set up in register</span>
-                    </div>
-                </label>
-              <input
-                className="form"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              ></input>
-              <button className="btn" disabled={loading}>
-                {loading ? "Logging in…" : "Login"}
-              </button>
-            </form>
-            {err && <p className="error">{err}</p>}
+          <div className="auth-form-group">
+            <label>
+              Email <span className="required-mark">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
           </div>
+
+          <div className="auth-form-group">
+            <label>
+              Password <span className="required-mark">*</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <div className="auth-footer">
+          <p>Don't have an account?</p>
+          <Link to="/registeruser" className="auth-footer-link">
+            Create Account
+          </Link>
         </div>
       </div>
     </div>

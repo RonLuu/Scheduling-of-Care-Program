@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Select from 'react-select';
+import "../../styles/AuthPages.css";
 import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,9 +20,9 @@ const RegisterUser = () => {
   const [isOpen, setIsOpen] = useState(false);
   const options = [
     {value: 'Family', label: ' Family'},
-    {value: 'Person of Authority', label: 'Person of Authority'},
-    {value:'Admin', label:'Admin'},
-    {value:'Caretaker', label:'Caretaker'},
+    {value: 'Power of Attorney', label: 'Power of Attorney'},
+    {value:'Organization Representative', label:'Organization Representative'},
+    {value:'Career', label:'Career'},
   ];
   const selectedOption = options.find((opt) => opt.value === role) || null;
   function onAuthed(userWithJwt) {
@@ -74,95 +75,70 @@ const RegisterUser = () => {
   }
 
   return (
-    <div className="bg-wallpaper">
-      <div className="box">
-        <div className="register-box2 h80m20">
-          <form onSubmit={submit}>
-            <div className="left top">
-              <h2>Register User</h2>
-              <label className="login-label" >Enter Your Name 
-                {/* Important tip */}
-                <div className="help-wrapper">
-                    <span className="important-info"> * </span>
-                    <span className="tool-tip">Required</span>
-                </div>
-                <div className="help-wrapper">
-                  <span className="help-icon " >?</span>
-                <span className="tool-tip">Please type your First Name + Last Name</span>
-                </div>
-                
-                </label>
-              <input
-                className="form"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
-              <label className="login-label">Enter Your Email 
-                {/* Important tip */}
-                <div className="help-wrapper">
-                    <span className="important-info"> * </span>
-                    <span className="tool-tip">Required</span>
-                </div>
-                    <div className="help-wrapper">
-                      <span className="help-icon " >?</span>
-                      <span className="tool-tip">Please type a legit email!</span>
-                    </div>
-                
-                </label>
+    <div className="auth-container">
+      <div className="auth-card" style={{ maxWidth: "500px" }}>
+        <div className="auth-header">
+          <h2>Create Account</h2>
+          <p>Register to get started</p>
+        </div>
 
-              <input
-                className="form"
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-              <label className="login-label">Enter Your Password 
-                {/* Important tip */}
-                <div className="help-wrapper">
-                    <span className="important-info"> * </span>
-                    <span className="tool-tip">Required</span>
-                </div>
+        <form onSubmit={submit} className="auth-form">
+          {err && <div className="auth-error">{err}</div>}
 
-                {/* Q&A tip */}
+          <div className="auth-form-group">
+            <label>
+              Full Name <span className="required-mark">*</span>
+            </label>
+            <input
+              placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+            />
+          </div>
 
-                 <div className="help-wrapper">
-                      <span className="help-icon " >?</span>
-                      <span className="tool-tip">Password should have more than 6 characters</span>
-                    </div>
-                </label>
+          <div className="auth-form-group">
+            <label>
+              Email <span className="required-mark">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
+          </div>
 
-              <input
-                className="form"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={6}
-              />
-            </div>
-            <div className="left center ">
-              <h3 style={{fontWeight:"normal", color: "#2C3F70" }}>Choose your role: &nbsp;
-                                {/* Important tip */}
-                <div className="help-wrapper">
-                    <span className="important-info"> * </span>
-                    <span className="tool-tip">Required</span>
-                </div>
-                 
-                    <div className="help-wrapper">
-                      <span className="help-icon " >?</span>
-                      <span className="tool-tip">Your relationship with the client</span>
-                    </div>
-              </h3>
-              <div className="select-container  access-select" >
-                <Select
+          <div className="auth-form-group">
+            <label>
+              Password <span className="required-mark">*</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Password (at least 6 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={6}
+            />
+          </div>
+
+          <div className="auth-form-group">
+            <label>
+              Role <span className="required-mark">*</span>
+              &nbsp;
+              <span className="help-wrapper">
+                <span className="help-icon">?</span>
+                <span className="tool-tip">Your relationship with the Person 
+                  With Special Needs you want to care for</span>
+              </span>
+            </label>
+            <div className="select-container access-select">
+              <Select
                 options={options}
                 value={selectedOption || null}
                 onChange={(option) => setRole(option ? option.value : "")}
@@ -173,43 +149,40 @@ const RegisterUser = () => {
                 placeholder="-- Select a role --"
                 unstyled
                 components={{
-                DropdownIndicator: () => null, // hide default dropdown arrow
-                IndicatorSeparator: () => null,
+                  DropdownIndicator: () => null,
+                  IndicatorSeparator: () => null,
                 }}
                 classNames={{
-                control: () => 'select__control',
-                menu: () => 'select__menu',
-                option: ({ isFocused, isSelected }) => 
-                  `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
-                placeholder: () => 'select__placeholder',
-                singleValue: () => 'select__single-value',
-                clearIndicator: () => 'client-select__clear-indicator',
-
+                  control: () => 'select__control',
+                  menu: () => 'select__menu',
+                  option: ({ isFocused, isSelected }) =>
+                    `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
+                  placeholder: () => 'select__placeholder',
+                  singleValue: () => 'select__single-value',
+                  clearIndicator: () => 'client-select__clear-indicator',
                 }}
-                />
-                <FontAwesomeIcon
-                  icon={faChevronDown}
-                  className={`icon ${isOpen ? "open" : "close"}`}
-                />
-              </div>
+              />
+              <FontAwesomeIcon
+                icon={faChevronDown}
+                className={`icon ${isOpen ? "open" : "close"}`}
+              />
             </div>
-            <div className="left bottom">
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? "Registering..." : "Register"}
-              </button>
-            </div>
-            {err && <p className="error">{err}</p>}
-          </form>
+          </div>
+
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Registering..." : "Register"}
+          </button>
+        </form>
+
+        <div className="auth-divider">
+          <span>or</span>
         </div>
 
-        <div className="register-box1 h20">
-          <div className="left">
-            <p>Already a member?</p>
-            <Link to="/login">
-              <button className="btn">Login</button>
-            </Link>
-          </div>
-          {err && <p className="error">{err}</p>}
+        <div className="auth-footer">
+          <p>Already have an account?</p>
+          <Link to="/login" className="auth-footer-link">
+            Sign In
+          </Link>
         </div>
       </div>
     </div>
