@@ -9,11 +9,11 @@
 }
 
 .navigationtab-panel {
-  width: 20%;
+  width: 20%;                
   height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;      
   position: fixed;
   z-index: 999;
   top: 0;
@@ -54,17 +54,17 @@
   height: 40%;
   width: 30%;
   border-radius: 30%;
-  border: none; /* Added to remove default button border */
+  border: none; 
   cursor: pointer;
 }
 
 .navigationtab-button-menu.off {
-  background-color: white;
+  background-color: transparent;
   color: #2c3f70;
 }
 
 .navigationtab-button-menu.on {
-  background-color: #8189d2;
+  background-color: transparent;
   color: #ffffff;
 }
 
@@ -79,20 +79,28 @@
   height: 86%;
   display: flex;
   flex-direction: column;
+  padding: 0;
+  gap: 0;   
 }
 
 .navigationtab-link,
 .navigationtab-link.as-button {
   display: flex;
   align-items: center;
-  width: 100%;
+  width: 100%;              
+  height: 60px;
+  padding: 0 1.5rem;         
+  box-sizing: border-box; 
   text-decoration: none;
-  font-family: "inter";
+  font-family: "Inter", sans-serif;
   font-weight: bold;
-  cursor: pointer;
-  font-size: 1.5vw;
+  font-size: 1.1rem;
   color: #fff;
-  margin: 0 0 5vh 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
 
   /* reset button defaults /
   background: transparent;
@@ -110,7 +118,27 @@
 }
 
 .navigationtab-icon {
-  margin: 0 0.25vw 0 2.75vw;
-  font-size: 1.5vw;
-  color: #fff;
+  margin-right: 12px;  
+  font-size: 1.5rem;
+  flex-shrink: 0;       
+}
+.navigationtab-overlay
+{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height:100%;
+  background-color: rgba(0, 0, 0, 0.5); /* semi-transparent black */
+  z-index: 5; /* below the nav panel */
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

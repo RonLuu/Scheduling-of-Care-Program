@@ -1,5 +1,6 @@
 import React from "react";
 import "../../css/login_layout.css";
+import "../../css/additional_help.css"
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../dashboard/hooks/useAuth";
 
@@ -39,15 +40,7 @@ function LogIn() {
         );
       }
       onAuthed({ ...d.user, jwt, expiresIn });
-      // Redirect based on user role
-      console.log("User role on login:", d.user.role);
-      if (d.user.role === "Family" || d.user.role === "Admin" || d.user.role === "PoA" || d.user.role === "GeneralCareStaff") {
-        console.log("Redirecting to /dashboard");
-        navigate("/dashboard");
-      } else {
-        console.log("Redirecting to /profile");
-        navigate("/profile");
-      }
+      navigate("/profile");
     } catch {
       setErr("Incorrect email or password. Please try again");
     } finally {
@@ -70,12 +63,39 @@ function LogIn() {
           <div className="left">
             <h2>Member Login</h2>
             <form onSubmit={submit}>
+                {/* Important tip */}
+                <label className="login-label">
+                  Email
+                  <span className="help-wrapper">
+                    <span className="important-info">*</span>
+                    <span className="tool-tip">Required</span>
+                  </span>
+                  <span className="help-wrapper">
+                    <span className="help-icon">?</span>
+                    <span className="tool-tip">The Email you use when register</span>
+                  </span>
+                </label>
+
               <input
                 className="form"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               ></input>
+               <label className="login-label">Password 
+                {/* Important tip */}
+                <div className="help-wrapper">
+                    <span className="important-info"> * </span>
+                    <span className="tool-tip">Required</span>
+                </div>
+
+                {/* Q&A tip */}
+
+                 <div className="help-wrapper">
+                      <span className="help-icon " >?</span>
+                      <span className="tool-tip">The password you set up in register</span>
+                    </div>
+                </label>
               <input
                 className="form"
                 type="password"

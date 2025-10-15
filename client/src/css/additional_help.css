@@ -217,4 +217,48 @@ h3 {
   color: #ff0000;
   font-size: 14px;
   background-color: ligthen(#A5231C, 0.1);
-}/*# sourceMappingURL=global_style.css.map */
+}
+
+.important-info {
+  color: #ff0000;
+  cursor: pointer;
+}
+
+.help-wrapper {
+  position: relative; /* anchor tooltip here */
+  display: inline-block;
+}
+
+.help-icon {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  border: 1px solid #A5231C;
+  border-radius: 50%;
+  padding: 0 5px;
+  font-size: 12px;
+  color: #A5231C;
+}
+
+.tool-tip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+  top: 25px;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show tooltip when hovering wrapper or icon */
+.help-wrapper:hover .tool-tip {
+  visibility: visible;
+  opacity: 1;
+  z-index: 11;
+}/*# sourceMappingURL=additional_help.css.map */
