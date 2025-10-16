@@ -931,6 +931,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           cursor: pointer;
           transition: all 0.2s;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          margin: 0 auto !important;
         }
 
         .generate-btn:hover:not(:disabled) {
