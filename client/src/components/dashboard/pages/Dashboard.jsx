@@ -96,23 +96,42 @@ function Dashboard() {
             {/* Content Section */}
             <div className="onboarding-content">
               <div className="onboarding-steps">
+                <div className="step">
+                  <div className="step-number">1</div>
+                  <div className="step-content">
+                    <h3>Add Your First Client</h3>
+                    <p>
+                      Start by adding a client (Person With Special Needs) to begin
+                      managing their care. 
+                    </p>
+                    <a href="/clients" className="step-button">
+                      Add Client
+                    </a>
+                  </div>
+                </div>
+
                 <div
                   className={`step ${hasJoinedOrganization ? "completed" : ""}`}
                 >
                   <div className="step-number">
-                    {hasJoinedOrganization ? "✓" : "1"}
+                    {hasJoinedOrganization ? "✓" : "2"}
                   </div>
                   <div className="step-content">
-                    <h3>Join an Organization</h3>
+                    <h3>Join an Organization (Optional)</h3>
                     <p>
                       {hasJoinedOrganization
-                        ? "You have successfully joined an organization and can now proceed to add clients."
-                        : "First, you need to join a care organization that manages clients. This is required before you can add or access any clients."}
+                        ? "You have successfully joined an organization. "
+                        : "Join an organization to let other carers access your client's information, or continue without joining. You can always join later."}
                     </p>
                     {!hasJoinedOrganization && (
-                      <a href="/organization" className="step-button">
-                        Join Organization
-                      </a>
+                      <div className="step-buttons">
+                        <button className="step-button disabled" disabled>
+                          Join Organization
+                        </button>
+                        <button className="step-text-button disabled" disabled>
+                          Skip for Now
+                        </button>
+                      </div>
                     )}
                     {hasJoinedOrganization && (
                       <a href="/organization" className="step-button secondary">
@@ -123,31 +142,12 @@ function Dashboard() {
                 </div>
 
                 <div className="step">
-                  <div className="step-number">2</div>
-                  <div className="step-content">
-                    <h3>Add Your First Client</h3>
-                    <p>
-                      Once you've joined an organization, you can add clients to
-                      start managing their care.
-                    </p>
-                    <a
-                      href="/clients"
-                      className={`step-button ${
-                        !hasJoinedOrganization ? "disabled" : ""
-                      }`}
-                    >
-                      Add Client
-                    </a>
-                  </div>
-                </div>
-
-                <div className="step">
                   <div className="step-number">3</div>
                   <div className="step-content">
                     <h3>Start Managing Care</h3>
                     <p>
-                      With clients added, you'll be able to manage tasks,
-                      supplies, schedules, and budgets from this dashboard.
+                      Once you've added clients, you'll be able to manage tasks,
+                      schedules, and budgets from this dashboard.
                     </p>
                   </div>
                 </div>
@@ -155,8 +155,7 @@ function Dashboard() {
 
               <div className="help-note">
                 <p>
-                  <strong>Need help?</strong> Contact your care organization
-                  administrator if you're unsure about the joining process.
+                  <strong>Need help?</strong> You can start by adding a client directly, or contact a care organization administrator if you'd like to join an organization.
                 </p>
               </div>
             </div>
@@ -242,20 +241,6 @@ function Dashboard() {
             border-color: #22c55e;
           }
 
-          .step.completed::before {
-            background: #22c55e;
-          }
-
-          .step::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: #8189d2;
-            border-radius: 16px 16px 0 0;
-          }
 
           .step-number {
             width: 4rem;
@@ -321,9 +306,12 @@ function Dashboard() {
             text-decoration: none;
             font-weight: 600;
             font-size: 1rem;
+            line-height: 1.5;
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-sizing: border-box;
+            min-height: 3.5rem;
           }
 
           .step-button:hover {
@@ -332,10 +320,12 @@ function Dashboard() {
           }
 
           .step-button.disabled {
-            background: #cbd5e1;
+            opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
-            box-shadow: none;
+          }
+
+          .step-button.disabled:hover {
             transform: none;
           }
 
@@ -356,6 +346,43 @@ function Dashboard() {
 
           .step-button.secondary:hover {
             box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+          }
+
+          .step-text-button {
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+          }
+
+          .step-text-button:hover {
+            color: #374151;
+          }
+
+          .step-text-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+          }
+
+          .step-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+          }
+
+          .step-buttons .step-button {
+            flex: 0 0 auto;
+            width: auto;
+            margin: 0;
           }
 
           .help-note {
