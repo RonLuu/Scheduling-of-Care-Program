@@ -626,7 +626,7 @@ function AddClient({ me, jwt, setClients }) {
           padding: 0;
           background: transparent;
           width: 100%;
-          margin: 0;
+          margin: 0 auto;
         }
 
         form {
