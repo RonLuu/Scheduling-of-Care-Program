@@ -120,6 +120,7 @@ function ClientsPage() {
                 me={me}
                 jwt={jwt}
                 clients={clients}
+                onClientUpdate={refresh} // Add this line
               />
             )}
 

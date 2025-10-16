@@ -1,6 +1,6 @@
 import React from "react";
 
-function ClientInfoManager({ me, jwt, clients }) {
+function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [selectedClientId, setSelectedClientId] = React.useState("");
   const [accessLinks, setAccessLinks] = React.useState([]);
   const [accessErr, setAccessErr] = React.useState("");
@@ -313,26 +313,13 @@ function ClientInfoManager({ me, jwt, clients }) {
       if (!response.ok)
         throw new Error(data.error || "Failed to update client");
 
-      // Refresh the client data
-      const updatedResponse = await fetch(
-        `/api/person-with-needs/${selectedClient._id}`,
-        {
-          headers: { Authorization: "Bearer " + jwt },
-        }
-      );
-      const updatedClient = await updatedResponse.json();
-
-      // Update the clients array
-      const updatedClients = clients.map((c) =>
-        c._id === updatedClient._id ? updatedClient : c
-      );
-
-      // Close the panel
+      // Close the panel first
       closeEditPanel();
 
-      // Force a re-render by updating the selected client
-      setSelectedClientId("");
-      setTimeout(() => setSelectedClientId(updatedClient._id), 0);
+      // Call the parent's refresh function to reload all clients
+      if (onClientUpdate) {
+        await onClientUpdate();
+      }
     } catch (err) {
       setSaveError(err.message || String(err));
     } finally {
