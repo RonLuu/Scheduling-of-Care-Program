@@ -842,6 +842,7 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         .select-type-btn {
           width: 100%;
+          margin: 0 !important;
           padding: 0.75rem 1.5rem;
           border: none;
           border-radius: 6px;
@@ -1009,6 +1010,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           cursor: pointer;
           transition: all 0.2s;
           flex-shrink: 0;
+          margin: 0 !important;
         }
 
         .copy-btn:hover {
