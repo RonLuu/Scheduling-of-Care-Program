@@ -6,6 +6,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
   const [name, setName] = React.useState(me?.name || "");
   const [mobile, setMobile] = React.useState(me?.mobile || "");
   const [address, setAddress] = React.useState(me?.address || "");
+  const [title, setTitle] = React.useState(me?.title || "");
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState("");
@@ -17,6 +18,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
     setName(me?.name || "");
     setMobile(me?.mobile || "");
     setAddress(me?.address || "");
+    setTitle(me?.title || "");
   }, [me]);
 
   const handleFileSelect = (e) => {
@@ -118,17 +120,24 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
       }
 
       // Update profile info
+      const payload = {
+        name: name?.trim(),
+        mobile: mobile?.trim() || null,
+        address: address?.trim() || null,
+      };
+
+      // Include title field only for Admin users
+      if (me?.role === "Admin") {
+        payload.title = title?.trim() || null;
+      }
+
       const r = await fetch("/api/users/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer " + jwt,
         },
-        body: JSON.stringify({
-          name: name?.trim(),
-          mobile: mobile?.trim() || null,
-          address: address?.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to update profile");
@@ -214,6 +223,19 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
+          {/* Title field - Only for Admin users */}
+          {me?.role === "Admin" && (
+            <div className="userprofile-input-group">
+              <label className="userprofile-input-label">Role Title</label>
+              <input
+                className="userprofile-input"
+                placeholder="e.g., Manager, Supervisor"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="userprofile-input-group">
             <label className="userprofile-input-label">Phone Number</label>

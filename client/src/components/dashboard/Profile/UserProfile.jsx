@@ -12,6 +12,11 @@ function UserProfile({ me, refreshMe, jwt }) {
 
   // Map backend role to display name
   const getRoleDisplayName = (role) => {
+    // For Admin users, use their custom title if available
+    if (role === 'Admin' && me?.title) {
+      return me.title;
+    }
+
     const roleMap = {
       'GeneralCareStaff': 'Carer',
       'PoA': 'Power of Attorney',

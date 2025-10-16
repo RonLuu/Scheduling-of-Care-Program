@@ -25,6 +25,9 @@ const UserSchema = new Schema(
       index: true,
     },
 
+    // Custom title for Admin users (e.g., "Manager", "Supervisor")
+    title: { type: String, trim: true, default: null },
+
     mobile: { type: String, trim: true, default: null },
     address: { type: String, trim: true, default: null },
 
