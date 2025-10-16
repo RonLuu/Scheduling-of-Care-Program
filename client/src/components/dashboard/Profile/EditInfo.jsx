@@ -249,12 +249,14 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
       <style jsx>{`
         .avatar-upload-section {
-          margin-bottom: 2rem;
+          margin-bottom: 1.25rem;
           padding: 1.5rem;
           border: 2px dashed #d1d5db;
           border-radius: 12px;
           background: #f9fafb;
           transition: all 0.2s ease;
+          box-sizing: border-box;
+          width: 100%;
         }
 
         .avatar-upload-section:hover {
