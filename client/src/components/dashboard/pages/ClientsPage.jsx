@@ -99,12 +99,14 @@ function ClientsPage() {
             {canAddClient ? (
               <div>
                 <p>
-                  You don't have access to any clients yet.
+                  You don't have access to any clients at the moment.
                 </p>
                 <p style={{ marginTop: "1rem" }}>
                   You can either:<br />
-                  • Click "Add New Client" to create a completely new client, or<br />
-                  • Click "Join Existing Client" to enter an invite token and access an existing client
+                  • Click "Add New Client" to create a new client, or<br />
+                  • Click "Join Existing Client" to enter an invite token 
+                  you’ve received from a Family/Power of Attorney to 
+                  access an existing client.
                 </p>
               </div>
             ) : (

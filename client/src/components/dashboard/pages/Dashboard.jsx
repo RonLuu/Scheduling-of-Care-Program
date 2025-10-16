@@ -117,7 +117,7 @@ function Dashboard() {
                     {hasJoinedOrganization ? "✓" : "2"}
                   </div>
                   <div className="step-content">
-                    <h3>Join an Organization (Optional)</h3>
+                    <h3>Join an Organization</h3>
                     <p>
                       {hasJoinedOrganization
                         ? "You have successfully joined an organization. "
@@ -155,7 +155,7 @@ function Dashboard() {
 
               <div className="help-note">
                 <p>
-                  <strong>Need help?</strong> You can start by adding a client directly, or contact a care organization administrator if you'd like to join an organization.
+                  <strong>Need help?</strong> You can start by adding a client directly, or contact a care organization representative if you'd like to join an organization.
                 </p>
               </div>
             </div>
@@ -187,7 +187,7 @@ function Dashboard() {
             background: #8189d2;
             color: white;
             padding: 3rem 2rem;
-            text-align: center;
+            text-align: left;
           }
 
           .onboarding-header h2 {
@@ -195,6 +195,7 @@ function Dashboard() {
             font-size: 2.5rem;
             font-weight: 700;
             color: white;
+            text-align: left;
           }
 
           .onboarding-header p {
@@ -202,9 +203,7 @@ function Dashboard() {
             opacity: 0.95;
             font-size: 1.25rem;
             line-height: 1.6;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+            color: white;
           }
 
           .onboarding-content {
@@ -285,6 +284,7 @@ function Dashboard() {
             margin: 0 0 0.75rem 0;
             font-size: 1.5rem;
             font-weight: 600;
+            text-align: left;
           }
 
           .step-content p {
@@ -351,17 +351,21 @@ function Dashboard() {
           .step-text-button {
             background: transparent;
             border: none;
-            color: #6b7280;
+            color: #1a202c !important;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            padding: 0.5rem 1rem;
+            padding: 1rem;
             text-decoration: underline;
             transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            min-height: 3.5rem;
+            box-sizing: border-box;
           }
 
           .step-text-button:hover {
-            color: #374151;
+            color: #4b5563 !important;
           }
 
           .step-text-button.disabled {
@@ -373,7 +377,7 @@ function Dashboard() {
           .step-buttons {
             display: flex;
             gap: 1rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
             margin: 0;
             padding: 0;
@@ -409,7 +413,7 @@ function Dashboard() {
             margin: 0;
             color: #475569;
             font-size: 1rem;
-            text-align: center;
+            text-align: left;
           }
 
           .help-note strong {
