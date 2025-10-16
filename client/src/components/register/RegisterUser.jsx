@@ -77,8 +77,12 @@ const RegisterUser = () => {
           String(Date.now() + expiresIn * 1000)
         );
       }
-      onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      navigate("/profile");
+      const userData = { ...(data?.user ?? null), jwt, expiresIn };
+      onAuthed(userData);
+      // Small delay to ensure state updates before navigation
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 0);
     } catch {
       setErr("Network error. Please try again.");
     } finally {
