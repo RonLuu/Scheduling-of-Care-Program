@@ -18,12 +18,29 @@ function Dashboard() {
   // Check if user has joined an organization
   const hasJoinedOrganization = Boolean(me?.organizationId);
 
+  // Check if user has completed onboarding (Step 2)
+  const hasCompletedOnboarding = localStorage.getItem(`onboarding_completed_${me?.id}`) === 'true';
+
+  // Mark onboarding as completed
+  const completeOnboarding = () => {
+    if (me?.id) {
+      localStorage.setItem(`onboarding_completed_${me.id}`, 'true');
+    }
+  };
+
   // Auto-select first client when clients load
   React.useEffect(() => {
     if (clients.length > 0 && !selectedClient) {
       setSelectedClient(clients[0]);
     }
   }, [clients, selectedClient]);
+
+  // Auto-complete onboarding when user joins an organization
+  React.useEffect(() => {
+    if (hasJoinedOrganization && clients.length > 0 && !hasCompletedOnboarding) {
+      completeOnboarding();
+    }
+  }, [hasJoinedOrganization, clients.length, hasCompletedOnboarding]);
 
   // Fetch organization data
   React.useEffect(() => {
@@ -81,7 +98,13 @@ function Dashboard() {
     );
   }
 
-  if (clients.length === 0) {
+  // Show onboarding if user hasn't completed it yet
+  const shouldShowOnboarding = !hasCompletedOnboarding;
+
+  if (shouldShowOnboarding) {
+    // Check if Step 1 is completed (has at least one client)
+    const hasCompletedStep1 = clients.length > 0;
+
     return (
       <div className="page">
         <NavigationTab />
@@ -96,17 +119,25 @@ function Dashboard() {
             {/* Content Section */}
             <div className="onboarding-content">
               <div className="onboarding-steps">
-                <div className="step">
-                  <div className="step-number">1</div>
+                <div className={`step ${hasCompletedStep1 ? "completed" : ""}`}>
+                  <div className="step-number">{hasCompletedStep1 ? "✓" : "1"}</div>
                   <div className="step-content">
                     <h3>Add Your First Client</h3>
                     <p>
-                      Start by adding a client (Person With Special Needs) to begin
-                      managing their care. 
+                      {hasCompletedStep1
+                        ? "You've successfully added your first client. "
+                        : "Start by adding a client (Person With Special Needs) to begin managing their care."}
                     </p>
-                    <a href="/clients" className="step-button">
-                      Add Client
-                    </a>
+                    {!hasCompletedStep1 && (
+                      <a href="/clients" className="step-button">
+                        Add Client
+                      </a>
+                    )}
+                    {hasCompletedStep1 && (
+                      <a href="/clients" className="step-button secondary">
+                        View Clients
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -125,12 +156,28 @@ function Dashboard() {
                     </p>
                     {!hasJoinedOrganization && (
                       <div className="step-buttons">
-                        <button className="step-button disabled" disabled>
-                          Join Organization
-                        </button>
-                        <button className="step-text-button disabled" disabled>
-                          Skip for Now
-                        </button>
+                        {hasCompletedStep1 ? (
+                          <>
+                            <a href="/organization" className="step-button">
+                              Join Organization
+                            </a>
+                            <button
+                              className="step-text-button"
+                              onClick={completeOnboarding}
+                            >
+                              Skip for Now
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="step-button disabled" disabled>
+                              Join Organization
+                            </button>
+                            <button className="step-text-button disabled" disabled>
+                              Skip for Now
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                     {hasJoinedOrganization && (
