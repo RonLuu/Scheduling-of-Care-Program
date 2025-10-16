@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { BiBuilding, BiEdit, BiLogOut } from "react-icons/bi";
+import { useNavigate } from "react-router-dom";
 import NavigationTab from "../../NavigationTab";
 import useAuth from "../hooks/useAuth";
 
 function OrganizationPage() {
   const { me, setMe } = useAuth();
   const jwt = localStorage.getItem("jwt");
+  const navigate = useNavigate();
 
   const [orgs, setOrgs] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -14,6 +16,16 @@ function OrganizationPage() {
   const [orgSaveMsg, setOrgSaveMsg] = useState("");
   const [editing, setEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(() => {
+    // Check localStorage for success message on mount
+    const savedMessage = localStorage.getItem('org_success_message');
+    if (savedMessage) {
+      localStorage.removeItem('org_success_message');
+      return savedMessage;
+    }
+    return "";
+  });
+  const skipOrgReload = useRef(false);
 
   const refreshMe = async () => {
     try {
@@ -28,8 +40,22 @@ function OrganizationPage() {
     }
   };
 
+  // Debug: Check if component is mounting/unmounting
+  useEffect(() => {
+    console.log("OrganizationPage MOUNTED");
+    return () => {
+      console.log("OrganizationPage UNMOUNTED");
+    };
+  }, []);
+
   // Load organizations on mount
   useEffect(() => {
+    // Skip reload if we just joined/left an organization
+    if (skipOrgReload.current) {
+      skipOrgReload.current = false;
+      return;
+    }
+
     let active = true;
     (async () => {
       try {
@@ -67,14 +93,14 @@ function OrganizationPage() {
       setIsProcessing(true);
 
       if (!pendingOrgId) {
-        setOrgSaveMsg("Please select an organisation.");
+        setOrgSaveMsg("Please select an organization.");
         setIsProcessing(false);
         return;
       }
 
       // No-op if same org selected
       if (me?.organizationId && pendingOrgId === String(me.organizationId)) {
-        setOrgSaveMsg("You're already in this organisation. No changes made.");
+        setOrgSaveMsg("You're already in this organization. No changes made.");
         setEditing(false);
         setIsProcessing(false);
         return;
@@ -90,14 +116,13 @@ function OrganizationPage() {
 
         if (isFirstTimeJoining) {
           confirmMessage =
-            "Join this organisation?\n\n" +
-            "Your clients and their budget plans will be moved to this organisation.\n\n" +
+            "Join this organization?\n\n" +
             "Click OK to proceed.";
         } else if (isSwitchingOrgs) {
           confirmMessage =
-            "Switch to a different organisation?\n\n" +
-            "Your clients and their budget plans will be moved to the new organisation.\n" +
-            "Staff and admin access from your current organisation will be revoked.\n\n" +
+            "Switch to a different organization?\n\n" +
+            "Your clients and their budget plans will be moved to the new organization.\n" +
+            "Staff and admin access from your current organization will be revoked.\n\n" +
             "Click OK to proceed.";
         }
 
@@ -113,13 +138,13 @@ function OrganizationPage() {
 
         if (isSwitchingOrgs) {
           confirmMessage =
-            "Switch to a different organisation?\n\n" +
-            "You will leave your current organisation.\n" +
-            "Your access to clients in the current organisation will be revoked.\n\n" +
+            "Switch to a different organization?\n\n" +
+            "You will leave your current organization.\n" +
+            "Your access to clients in the current organization will be revoked.\n\n" +
             "Click OK to proceed.";
         } else {
           confirmMessage =
-            "Join this organisation?\n\n" + "Click OK to proceed.";
+            "Join this organization?\n\n" + "Click OK to proceed.";
         }
 
         const ok = window.confirm(confirmMessage);
@@ -142,59 +167,28 @@ function OrganizationPage() {
         }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to save organisation");
+      if (!r.ok) throw new Error(d.error || "Failed to save organization");
 
       // Success
       const chosenName =
-        orgs.find((o) => o._id === pendingOrgId)?.name || "Organisation";
+        orgs.find((o) => o._id === pendingOrgId)?.name || "Organization";
 
-      if (d.cascade) {
-        const c = d.cascade;
-        if (isFirstTimeJoining) {
-          setOrgSaveMsg(
-            `Successfully joined "${chosenName}". ` +
-              `Moved: ${c.personsMoved} client${
-                c.personsMoved !== 1 ? "s" : ""
-              }, ` +
-              `${c.budgetPlansMoved} budget plan${
-                c.budgetPlansMoved !== 1 ? "s" : ""
-              }, ` +
-              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
-              (c.familyMoved > 0
-                ? `${c.familyMoved} family/PoA member${
-                    c.familyMoved !== 1 ? "s" : ""
-                  } also joined.`
-                : "")
-          );
-        } else {
-          setOrgSaveMsg(
-            `Successfully switched to "${chosenName}". ` +
-              `Moved: ${c.personsMoved} client${
-                c.personsMoved !== 1 ? "s" : ""
-              }, ` +
-              `${c.budgetPlansMoved} budget plan${
-                c.budgetPlansMoved !== 1 ? "s" : ""
-              }, ` +
-              `${c.tasksMoved} task${c.tasksMoved !== 1 ? "s" : ""}. ` +
-              (c.familyMoved > 0 ? `${c.familyMoved} family/PoA moved. ` : "") +
-              (c.staffRevoked > 0
-                ? `${c.staffRevoked} staff/admin access${
-                    c.staffRevoked !== 1 ? "es" : ""
-                  } revoked.`
-                : "")
-          );
-        }
-      } else {
-        setOrgSaveMsg(
-          isFirstTimeJoining
-            ? `Successfully joined "${chosenName}".`
-            : `Successfully switched to "${chosenName}".`
-        );
-      }
-
-      // Refresh user data
-      await refreshMe();
+      // Save success message to localStorage to survive component remount
+      localStorage.setItem('org_success_message', `Successfully joined "${chosenName}"!`);
+      console.log("Success message saved to localStorage:", `Successfully joined "${chosenName}"!`);
+      setOrgSaveMsg("");
       setEditing(false);
+
+      // Skip the useEffect reload on next render
+      skipOrgReload.current = true;
+
+      // Refresh user data - this will cause component to remount
+      await refreshMe();
+
+      // After remount, scroll to top
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
     } catch (e) {
       setOrgSaveMsg("Error: " + (e.message || e));
     } finally {
@@ -204,7 +198,7 @@ function OrganizationPage() {
 
   const handleLeaveOrganization = async () => {
     if (!me?.organizationId) {
-      setOrgSaveMsg("You are not currently in an organisation.");
+      setOrgSaveMsg("You haven’t joined any organization yet.");
       return;
     }
 
@@ -213,19 +207,19 @@ function OrganizationPage() {
 
     if (me.role === "Family" || me.role === "PoA") {
       confirmMessage =
-        "Leave this organisation?\n\n" +
+        "Leave this organization?\n\n" +
         "Your clients and their data will leave with you.\n" +
-        "• Your clients will no longer be in any organisation\n" +
+        "• Your clients will no longer be in any organization\n" +
         "• Budget plans and tasks will remain with your clients\n" +
         "• Staff and admin access to your clients will be revoked\n" +
         "• Other family/PoA members of your clients will also leave\n\n" +
         "Click OK to proceed.";
     } else if (me.role === "Admin" || me.role === "GeneralCareStaff") {
       confirmMessage =
-        "Leave this organisation?\n\n" +
-        "You will lose access to all clients in this organisation.\n" +
+        "Leave this organization?\n\n" +
+        "You will lose access to all clients in this organization.\n" +
         "• Your access to current clients will be revoked\n" +
-        "• Clients will remain in the organisation\n\n" +
+        "• Clients will remain in the organization\n\n" +
         "Click OK to proceed.";
     }
 
@@ -245,7 +239,7 @@ function OrganizationPage() {
         },
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to leave organisation");
+      if (!r.ok) throw new Error(d.error || "Failed to leave organization");
 
       // Show success message based on user type
       let successMsg;
@@ -253,7 +247,7 @@ function OrganizationPage() {
       if (d.userType === "family_poa" && d.cascade) {
         const c = d.cascade;
         successMsg =
-          "Successfully left organisation. " +
+          "Successfully left organization. " +
           `Moved ${c.personsMoved} client${
             c.personsMoved !== 1 ? "s" : ""
           } out. ` +
@@ -268,12 +262,12 @@ function OrganizationPage() {
       } else if (d.userType === "admin_staff" && d.cascade) {
         const c = d.cascade;
         successMsg =
-          `Successfully left organisation. ` +
+          `Successfully left organization. ` +
           `Your access to ${c.linksRevoked} client${
             c.linksRevoked !== 1 ? "s" : ""
           } revoked.`;
       } else {
-        successMsg = "You have successfully left the organisation.";
+        successMsg = "You have successfully left the organization.";
       }
 
       setOrgSaveMsg(successMsg);
@@ -282,7 +276,7 @@ function OrganizationPage() {
       // Refresh user data
       await refreshMe();
     } catch (e) {
-      setOrgSaveMsg("Error leaving organisation: " + (e.message || e));
+      setOrgSaveMsg("Error leaving organization: " + (e.message || e));
     } finally {
       setIsProcessing(false);
     }
@@ -294,6 +288,9 @@ function OrganizationPage() {
     setOrgSaveMsg("");
   };
 
+  // Debug log
+  console.log("Rendering OrganizationPage, successMessage:", successMessage);
+
   return (
     <div className="page">
       <NavigationTab />
@@ -303,6 +300,25 @@ function OrganizationPage() {
             <BiBuilding className="org-icon" />
             <h1>Organization Settings</h1>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="success-message">
+              <div className="success-content">
+                <span className="success-icon">✓</span>
+                <div>
+                  <p className="success-text">{successMessage}</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="return-dashboard-btn"
+                  >
+                    Return to Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Current Organization Status */}
           <div className="org-status-card">
@@ -340,10 +356,12 @@ function OrganizationPage() {
                 )}
               </div>
             ) : (
-              <div className="no-org-info">
-                <p className="warning-text">
-                  You are not currently associated with any organization.
-                </p>
+              <>
+                <div className="no-org-info">
+                  <p className="warning-text">
+                    You haven't joined any organization yet.
+                  </p>
+                </div>
                 {!editing && (
                   <button
                     className="btn-primary"
@@ -353,7 +371,7 @@ function OrganizationPage() {
                     <BiBuilding /> Join Organization
                   </button>
                 )}
-              </div>
+              </>
             )}
           </div>
 
@@ -446,11 +464,11 @@ function OrganizationPage() {
               <h4>Your Role: {me?.role || "Not Set"}</h4>
               {(me?.role === "Family" || me?.role === "PoA") && (
                 <ul>
-                  <li>You can grant access to manager of the organization.</li>
-                  <li>Changing organizations will migrate all your clients</li>
+                  <li>You can grant client access to the organization's representative.</li>
+                  <li>If you change organizations, all yur clients will be moved to the new one.</li>
                   <li>
-                    You can grant or revoke access to any worker and staff of
-                    the organization
+                    You can grant or revoke access for any staff within 
+                    the organization.
                   </li>
                 </ul>
               )}
@@ -480,7 +498,7 @@ function OrganizationPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          background: #f3f4f6;
+          background: #f8f9fa;
         }
 
         .page-main {
@@ -492,7 +510,7 @@ function OrganizationPage() {
         .organization-container {
           display: flex;
           flex-direction: column;
-          gap: 1.5rem;
+          gap: 2rem;
         }
 
         .org-header {
@@ -504,79 +522,103 @@ function OrganizationPage() {
 
         .org-icon {
           font-size: 2.5rem;
-          color: #3b82f6;
+          color: #8189d2;
         }
 
         .org-header h1 {
           margin: 0;
-          color: #111827;
+          color: #1a202c;
           font-size: 2rem;
+          font-weight: 700;
         }
 
         .org-status-card,
         .org-edit-card,
         .info-card {
           background: white;
-          border-radius: 0.5rem;
-          padding: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border-radius: 20px;
+          padding: 2.5rem;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .org-status-card:hover,
+        .org-edit-card:hover,
+        .info-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1), 0 12px 24px rgba(0, 0, 0, 0.08);
         }
 
         .org-status-card h2,
         .org-edit-card h3,
         .info-card h3 {
-          margin: 0 0 1rem 0;
-          color: #111827;
+          margin: 0 0 1.5rem 0;
+          color: #1a202c;
+          font-weight: 700;
+          font-size: 1.5rem;
+          text-align: left;
         }
 
         .current-org-info {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
         .org-name,
         .org-id {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 1rem;
+          padding: 1rem;
+          background: #f8f9fa;
+          border-radius: 10px;
         }
 
         .label {
           font-weight: 600;
-          color: #6b7280;
-          min-width: 100px;
+          color: #1a202c;
+          min-width: 120px;
+          font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .value {
-          color: #111827;
-          font-size: 1rem;
+          color: #1a202c;
+          font-size: 1.125rem;
+          font-weight: 500;
         }
 
         .org-id code {
-          background: #f3f4f6;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
+          background: #e9ecef;
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
           font-family: monospace;
           font-size: 0.875rem;
+          color: #495057;
         }
 
         .org-actions {
           display: flex;
           gap: 1rem;
-          margin-top: 1rem;
+          margin-top: 1.5rem;
+          flex-wrap: wrap;
         }
 
         .no-org-info {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
+          padding: 1.5rem;
+          background: #fef3c7;
+          border-radius: 12px;
+          border: 2px solid #fbbf24;
+          margin-bottom: 1.5rem;
         }
 
         .warning-text {
-          color: #dc2626;
+          color: #92400e;
           font-weight: 600;
           margin: 0;
+          font-size: 1.125rem;
         }
 
         .info-text {
@@ -587,155 +629,259 @@ function OrganizationPage() {
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
         .form-group label {
           font-weight: 600;
           color: #374151;
           font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .org-select {
           width: 100%;
-          padding: 0.625rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
+          padding: 0.875rem 1rem;
+          border: 2px solid #e5e7eb;
+          border-radius: 10px;
           font-size: 1rem;
           background: white;
+          color: #111827;
+          font-family: "Segoe UI", Arial, sans-serif;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+
+        .org-select:focus {
+          border-color: #8189d2;
+          box-shadow: 0 0 0 3px rgba(129, 137, 210, 0.1);
         }
 
         .org-select:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          background: #f3f4f6;
         }
 
         .migration-warning {
           background: #fef3c7;
-          border: 1px solid #fbbf24;
-          border-radius: 0.375rem;
-          padding: 1rem;
-          margin-bottom: 1rem;
+          border: 2px solid #fbbf24;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
           color: #92400e;
         }
 
         .migration-warning strong {
           display: block;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
+          font-size: 1.125rem;
         }
 
         .migration-warning ul {
-          margin: 0.5rem 0 0 1.5rem;
+          margin: 0.75rem 0 0 1.5rem;
           padding: 0;
+          line-height: 1.6;
         }
 
         .edit-actions {
           display: flex;
           gap: 1rem;
+          flex-wrap: wrap;
         }
 
         .btn-primary,
         .btn-secondary,
         .btn-danger {
-          padding: 0.625rem 1.25rem;
-          border-radius: 0.375rem;
+          padding: 0.875rem 1.5rem;
+          border-radius: 50px;
           font-weight: 600;
           cursor: pointer;
           border: none;
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          transition: all 0.2s;
+          transition: all 0.3s ease;
+          font-size: 1rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .btn-primary {
-          background: #3b82f6;
+          background: #8189d2;
           color: white;
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
+          background: #6d76c4;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(129, 137, 210, 0.4);
         }
 
         .btn-secondary {
-          background: #f3f4f6;
+          background: #e5e7eb;
           color: #374151 !important;
-          border: 1px solid #d1d5db;
+          border: 2px solid #d1d5db;
         }
 
         .btn-secondary:hover:not(:disabled) {
-          background: #e5e7eb;
+          background: #d1d5db;
+          transform: translateY(-2px);
         }
 
         .btn-danger {
           background: #fee2e2;
           color: #991b1b !important;
-          border: 1px solid #fecaca;
+          border: 2px solid #fecaca;
         }
 
         .btn-danger:hover:not(:disabled) {
           background: #fecaca;
+          transform: translateY(-2px);
         }
 
         button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+          transform: none !important;
         }
 
         .status-message {
-          padding: 1rem;
-          border-radius: 0.375rem;
+          padding: 1.25rem 1.5rem;
+          border-radius: 12px;
           margin-top: 1rem;
+          font-weight: 500;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .status-message.success {
           background: #d1fae5;
           color: #065f46;
-          border: 1px solid #a7f3d0;
+          border: 2px solid #a7f3d0;
         }
 
         .status-message.error {
           background: #fee2e2;
           color: #991b1b;
-          border: 1px solid #fecaca;
+          border: 2px solid #fecaca;
         }
 
         .loading {
           color: #6b7280;
           font-style: italic;
-          padding: 1rem;
+          padding: 1.5rem;
+          text-align: center;
         }
 
         .error-message {
-          color: #dc2626;
-          padding: 1rem;
+          color: #991b1b;
+          padding: 1.25rem 1.5rem;
           background: #fee2e2;
-          border-radius: 0.375rem;
+          border-radius: 12px;
+          border: 2px solid #fecaca;
+          font-weight: 500;
         }
 
         .info-content {
           color: #374151;
+          line-height: 1.7;
         }
 
         .info-content h4 {
-          margin: 1rem 0 0.5rem 0;
-          color: #111827;
+          margin: 1.5rem 0 0.75rem 0;
+          color: #1a202c;
+          font-weight: 600;
+          font-size: 1.125rem;
+        }
+
+        .info-content p {
+          margin-bottom: 1rem;
+          font-size: 1.125rem;
+          color: #1a202c;
+          font-weight: 500;
         }
 
         .info-content ul {
-          margin: 0.5rem 0 0 1.5rem;
+          margin: 0.75rem 0 0 1.5rem;
           padding: 0;
-          color: #6b7280;
+          color: #1a202c;
         }
 
         .info-content li {
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .success-message {
+          background: #10b981;
+          color: white;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .success-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+
+        .success-icon {
+          font-size: 1.5rem;
+          font-weight: bold;
+          background: white;
+          color: #75e2beff;
+          width: 2rem;
+          height: 2rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .success-text {
+          margin: 0 0 0.75rem 0;
+          font-size: 1rem;
+          font-weight: 500;
+          color: white;
+        }
+
+        .return-dashboard-btn {
+          padding: 0.5rem 1rem;
+          background: white;
+          color: #75e2beff!important;
+          border: none;
+          border-radius: 0.375rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .return-dashboard-btn:hover {
+          background: #f0fdf4;
+          transform: translateY(-1px);
         }
 
         @media (max-width: 768px) {
           .page-main {
-            padding: 1rem 0.5rem;
+            padding: 1.5rem 1rem;
+          }
+
+          .organization-container {
+            gap: 1.5rem;
+          }
+
+          .org-status-card,
+          .org-edit-card,
+          .info-card {
+            padding: 1.5rem;
+          }
+
+          .org-header h1 {
+            font-size: 1.5rem;
           }
 
           .org-actions,
@@ -746,6 +892,16 @@ function OrganizationPage() {
           button {
             width: 100%;
             justify-content: center;
+          }
+
+          .org-name,
+          .org-id {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .label {
+            min-width: unset;
           }
         }
       `}</style>

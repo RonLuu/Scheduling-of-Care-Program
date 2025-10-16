@@ -18,13 +18,16 @@ function Dashboard() {
   // Check if user has joined an organization
   const hasJoinedOrganization = Boolean(me?.organizationId);
 
-  // Check if user has completed onboarding (Step 2)
-  const hasCompletedOnboarding = localStorage.getItem(`onboarding_completed_${me?.id}`) === 'true';
+  // Check if user has completed onboarding (Step 2) - use state for reactivity
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState(() => {
+    return localStorage.getItem(`onboarding_completed_${me?.id}`) === 'true';
+  });
 
   // Mark onboarding as completed
   const completeOnboarding = () => {
     if (me?.id) {
       localStorage.setItem(`onboarding_completed_${me.id}`, 'true');
+      setHasCompletedOnboarding(true);
     }
   };
 
@@ -566,7 +569,7 @@ function Dashboard() {
                     className="manage-org-btn"
                     title="Add organization"
                   >
-                    Add Organization
+                    Join Organization
                   </a>
                 </div>
               )}
