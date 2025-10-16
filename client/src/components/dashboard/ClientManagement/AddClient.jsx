@@ -1,6 +1,8 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 function AddClient({ me, jwt, setClients }) {
+  const navigate = useNavigate();
   const [formData, setFormData] = React.useState({
     name: "",
     dateOfBirth: "",
@@ -24,6 +26,7 @@ function AddClient({ me, jwt, setClients }) {
 
   const [adding, setAdding] = React.useState(false);
   const [addErr, setAddErr] = React.useState("");
+  const [successMessage, setSuccessMessage] = React.useState("");
 
   // Medical custom field inputs
   const [newMedicalFieldTitle, setNewMedicalFieldTitle] = React.useState("");
@@ -250,6 +253,9 @@ function AddClient({ me, jwt, setClients }) {
       );
       setClients(persons);
 
+      // Show success message
+      setSuccessMessage(`Client "${formData.name}" has been successfully added!`);
+
       // Clear form
       setFormData({
         name: "",
@@ -271,8 +277,12 @@ function AddClient({ me, jwt, setClients }) {
         customMedicalFields: [],
         customAdditionalFields: [],
       });
+
+      // Scroll to top to show success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setAddErr(err.message || String(err));
+      setSuccessMessage("");
     } finally {
       setAdding(false);
     }
@@ -280,6 +290,31 @@ function AddClient({ me, jwt, setClients }) {
 
   return (
     <div className="card">
+      {successMessage && (
+        <div className="success-message">
+          <div className="success-content">
+            <span className="success-icon">✓</span>
+            <div>
+              <p className="success-text">{successMessage}</p>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="return-dashboard-btn"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="close-success-btn"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card-header">
         <h3>Add a Client (Person with Special Needs)</h3>
         <p className="card-description">
@@ -622,6 +657,80 @@ function AddClient({ me, jwt, setClients }) {
       </form>
 
       <style jsx>{`
+        .success-message {
+          background: #10b981;
+          color: white;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .success-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+
+        .success-icon {
+          font-size: 1.5rem;
+          font-weight: bold;
+          background: white;
+          color: #10b981;
+          width: 2rem;
+          height: 2rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .success-text {
+          margin: 0 0 0.75rem 0;
+          font-size: 1rem;
+          font-weight: 500;
+        }
+
+        .return-dashboard-btn {
+          padding: 0.5rem 1rem;
+          background: white;
+          color: #10b981;
+          border: none;
+          border-radius: 0.375rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .return-dashboard-btn:hover {
+          background: #f0fdf4;
+          transform: translateY(-1px);
+        }
+
+        .close-success-btn {
+          background: transparent;
+          border: none;
+          color: white;
+          font-size: 2rem;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0;
+          width: 2rem;
+          height: 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.25rem;
+          transition: background 0.2s ease;
+          margin-left: auto;
+        }
+
+        .close-success-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
         .card {
           padding: 0;
           background: transparent;

@@ -18,12 +18,32 @@ function Dashboard() {
   // Check if user has joined an organization
   const hasJoinedOrganization = Boolean(me?.organizationId);
 
+  // Check if user has completed onboarding (Step 2) - use state for reactivity
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState(() => {
+    return localStorage.getItem(`onboarding_completed_${me?.id}`) === 'true';
+  });
+
+  // Mark onboarding as completed
+  const completeOnboarding = () => {
+    if (me?.id) {
+      localStorage.setItem(`onboarding_completed_${me.id}`, 'true');
+      setHasCompletedOnboarding(true);
+    }
+  };
+
   // Auto-select first client when clients load
   React.useEffect(() => {
     if (clients.length > 0 && !selectedClient) {
       setSelectedClient(clients[0]);
     }
   }, [clients, selectedClient]);
+
+  // Auto-complete onboarding when user joins an organization
+  React.useEffect(() => {
+    if (hasJoinedOrganization && clients.length > 0 && !hasCompletedOnboarding) {
+      completeOnboarding();
+    }
+  }, [hasJoinedOrganization, clients.length, hasCompletedOnboarding]);
 
   // Fetch organization data
   React.useEffect(() => {
@@ -81,7 +101,13 @@ function Dashboard() {
     );
   }
 
-  if (clients.length === 0) {
+  // Show onboarding if user hasn't completed it yet
+  const shouldShowOnboarding = !hasCompletedOnboarding;
+
+  if (shouldShowOnboarding) {
+    // Check if Step 1 is completed (has at least one client)
+    const hasCompletedStep1 = clients.length > 0;
+
     return (
       <div className="page">
         <NavigationTab />
@@ -96,23 +122,66 @@ function Dashboard() {
             {/* Content Section */}
             <div className="onboarding-content">
               <div className="onboarding-steps">
+                <div className={`step ${hasCompletedStep1 ? "completed" : ""}`}>
+                  <div className="step-number">{hasCompletedStep1 ? "✓" : "1"}</div>
+                  <div className="step-content">
+                    <h3>Add Your First Client</h3>
+                    <p>
+                      {hasCompletedStep1
+                        ? "You've successfully added your first client. "
+                        : "Start by adding a client (Person With Special Needs) to begin managing their care."}
+                    </p>
+                    {!hasCompletedStep1 && (
+                      <a href="/clients" className="step-button">
+                        Add Client
+                      </a>
+                    )}
+                    {hasCompletedStep1 && (
+                      <a href="/clients" className="step-button secondary">
+                        View Clients
+                      </a>
+                    )}
+                  </div>
+                </div>
+
                 <div
                   className={`step ${hasJoinedOrganization ? "completed" : ""}`}
                 >
                   <div className="step-number">
-                    {hasJoinedOrganization ? "✓" : "1"}
+                    {hasJoinedOrganization ? "✓" : "2"}
                   </div>
                   <div className="step-content">
                     <h3>Join an Organization</h3>
                     <p>
                       {hasJoinedOrganization
-                        ? "You have successfully joined an organization and can now proceed to add clients."
-                        : "First, you need to join a care organization that manages clients. This is required before you can add or access any clients."}
+                        ? "You have successfully joined an organization. "
+                        : "Join an organization to let other carers access your client's information, or continue without joining. You can always join later."}
                     </p>
                     {!hasJoinedOrganization && (
-                      <a href="/organization" className="step-button">
-                        Join Organization
-                      </a>
+                      <div className="step-buttons">
+                        {hasCompletedStep1 ? (
+                          <>
+                            <a href="/organization" className="step-button">
+                              Join Organization
+                            </a>
+                            <button
+                              className="step-text-button"
+                              onClick={completeOnboarding}
+                            >
+                              Skip for Now
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="step-button disabled" disabled>
+                              Join Organization
+                            </button>
+                            <button className="step-text-button disabled" disabled>
+                              Skip for Now
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                     {hasJoinedOrganization && (
                       <a href="/organization" className="step-button secondary">
@@ -123,31 +192,12 @@ function Dashboard() {
                 </div>
 
                 <div className="step">
-                  <div className="step-number">2</div>
-                  <div className="step-content">
-                    <h3>Add Your First Client</h3>
-                    <p>
-                      Once you've joined an organization, you can add clients to
-                      start managing their care.
-                    </p>
-                    <a
-                      href="/clients"
-                      className={`step-button ${
-                        !hasJoinedOrganization ? "disabled" : ""
-                      }`}
-                    >
-                      Add Client
-                    </a>
-                  </div>
-                </div>
-
-                <div className="step">
                   <div className="step-number">3</div>
                   <div className="step-content">
                     <h3>Start Managing Care</h3>
                     <p>
-                      With clients added, you'll be able to manage tasks,
-                      supplies, schedules, and budgets from this dashboard.
+                      Once you've added clients, you'll be able to manage tasks,
+                      schedules, and budgets from this dashboard.
                     </p>
                   </div>
                 </div>
@@ -155,8 +205,7 @@ function Dashboard() {
 
               <div className="help-note">
                 <p>
-                  <strong>Need help?</strong> Contact your care organization
-                  administrator if you're unsure about the joining process.
+                  <strong>Need help?</strong> You can start by adding a client directly, or contact a care organization representative if you'd like to join an organization.
                 </p>
               </div>
             </div>
@@ -188,7 +237,7 @@ function Dashboard() {
             background: #8189d2;
             color: white;
             padding: 3rem 2rem;
-            text-align: center;
+            text-align: left;
           }
 
           .onboarding-header h2 {
@@ -196,6 +245,7 @@ function Dashboard() {
             font-size: 2.5rem;
             font-weight: 700;
             color: white;
+            text-align: left;
           }
 
           .onboarding-header p {
@@ -203,9 +253,7 @@ function Dashboard() {
             opacity: 0.95;
             font-size: 1.25rem;
             line-height: 1.6;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+            color: white;
           }
 
           .onboarding-content {
@@ -242,20 +290,6 @@ function Dashboard() {
             border-color: #22c55e;
           }
 
-          .step.completed::before {
-            background: #22c55e;
-          }
-
-          .step::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: #8189d2;
-            border-radius: 16px 16px 0 0;
-          }
 
           .step-number {
             width: 4rem;
@@ -300,6 +334,7 @@ function Dashboard() {
             margin: 0 0 0.75rem 0;
             font-size: 1.5rem;
             font-weight: 600;
+            text-align: left;
           }
 
           .step-content p {
@@ -321,9 +356,12 @@ function Dashboard() {
             text-decoration: none;
             font-weight: 600;
             font-size: 1rem;
+            line-height: 1.5;
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-sizing: border-box;
+            min-height: 3.5rem;
           }
 
           .step-button:hover {
@@ -332,10 +370,12 @@ function Dashboard() {
           }
 
           .step-button.disabled {
-            background: #cbd5e1;
+            opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
-            box-shadow: none;
+          }
+
+          .step-button.disabled:hover {
             transform: none;
           }
 
@@ -356,6 +396,47 @@ function Dashboard() {
 
           .step-button.secondary:hover {
             box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+          }
+
+          .step-text-button {
+            background: transparent;
+            border: none;
+            color: #1a202c !important;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 1rem;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            min-height: 3.5rem;
+            box-sizing: border-box;
+          }
+
+          .step-text-button:hover {
+            color: #4b5563 !important;
+          }
+
+          .step-text-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+          }
+
+          .step-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: nowrap;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+          }
+
+          .step-buttons .step-button {
+            flex: 0 0 auto;
+            width: auto;
+            margin: 0;
           }
 
           .help-note {
@@ -382,7 +463,7 @@ function Dashboard() {
             margin: 0;
             color: #475569;
             font-size: 1rem;
-            text-align: center;
+            text-align: left;
           }
 
           .help-note strong {
@@ -488,7 +569,7 @@ function Dashboard() {
                     className="manage-org-btn"
                     title="Add organization"
                   >
-                    Add Organization
+                    Join Organization
                   </a>
                 </div>
               )}

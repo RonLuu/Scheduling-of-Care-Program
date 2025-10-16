@@ -7,7 +7,7 @@
   justify-content: center;
   background-image: url("../components/img/wallpaper.jpg");
   background-size: cover;
-  background-repeat: no-repeat;
+  background-repeat: repeat;
   background-position: center;
   padding: 20px;
   font-family: "Inter", sans-serif;
