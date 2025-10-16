@@ -10,6 +10,22 @@ function UserProfile({ me, refreshMe, jwt }) {
 
   const avatarUrl = me?.avatarFileId?.urlOrPath;
 
+  // Map backend role to display name
+  const getRoleDisplayName = (role) => {
+    // For Admin users, use their custom title if available
+    if (role === 'Admin' && me?.title) {
+      return me.title;
+    }
+
+    const roleMap = {
+      'GeneralCareStaff': 'Carer',
+      'PoA': 'Power of Attorney',
+      'Admin': 'Organization Representative',
+      'Family': 'Family'
+    };
+    return roleMap[role] || role;
+  };
+
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
       {showEdit && (
@@ -28,27 +44,27 @@ function UserProfile({ me, refreshMe, jwt }) {
         <div className="userprofile-content">
           {/* Profile Header Card */}
           <div className="userprofile-header-card">
-            <div className="userprofile-avatar-section">
-              <div className="userprofile-avatar-wrapper">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="userprofile-avatar-image"
-                  />
-                ) : (
-                  <BiUser className="userprofile-avatar-icon" />
-                )}
-              </div>
+            <div className="userprofile-avatar-wrapper">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="userprofile-avatar-image"
+                />
+              ) : (
+                <BiUser className="userprofile-avatar-icon" />
+              )}
             </div>
 
             <div className="userprofile-header-info">
-              <h1 className="userprofile-name">
-                {me?.name || "User Name"}
-              </h1>
-              <div className="userprofile-role-badge">
-                <BiBriefcase className="userprofile-role-icon" />
-                <span>{me?.role || "Role"}</span>
+              <div className="userprofile-name-role-section">
+                <h1 className="userprofile-name">
+                  {me?.name || "User Name"}
+                </h1>
+                <div className="userprofile-role-badge">
+                  <BiBriefcase className="userprofile-role-icon" />
+                  <span>{getRoleDisplayName(me?.role) || "Role"}</span>
+                </div>
               </div>
               <button
                 className="userprofile-edit-button"

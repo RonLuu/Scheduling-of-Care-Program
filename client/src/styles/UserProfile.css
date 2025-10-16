@@ -7,7 +7,19 @@
 }
 
 .userprofile-wrapper.showEditOn {
-  background: rgba(0, 0, 0, 0.3);
+  background: #f8f9fa;
+}
+
+.userprofile-wrapper.showEditOn::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  pointer-events: none;
 }
 
 .userprofile-edit-wrapper {
@@ -103,6 +115,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .userprofile-input-label {
@@ -144,7 +158,8 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
-  margin-top: 1rem;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .userprofile-save-button:hover:not(:disabled) {
@@ -166,6 +181,8 @@
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .organizationmanagement-wrapper {
@@ -293,10 +310,10 @@
 .userprofile-header-card {
   background: white;
   border-radius: 20px;
-  padding: 3rem;
+  padding: 2rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 2rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -307,21 +324,17 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1), 0 12px 24px rgba(0, 0, 0, 0.08);
 }
 
-.userprofile-avatar-section {
-  display: flex;
-  justify-content: center;
-}
-
 .userprofile-avatar-wrapper {
-  width: 140px;
-  height: 140px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: #8189d2;
-  padding: 5px;
+  padding: 4px;
   box-shadow: 0 8px 24px rgba(129, 137, 210, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .userprofile-avatar-image {
@@ -329,7 +342,7 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid white;
+  border: 3px solid white;
 }
 
 .userprofile-avatar-icon {
@@ -339,15 +352,22 @@
 }
 
 .userprofile-header-info {
-  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.userprofile-name-role-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .userprofile-name {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: #1a202c;
   margin: 0;
@@ -357,17 +377,20 @@
 .userprofile-role-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: #8189d2;
-  color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 50px;
-  font-weight: 600;
-  font-size: 1rem;
+  gap: 0.4rem;
+  background: #f0f1f9;
+  color: #5a62a3;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  width: fit-content;
+  border: 1px solid #d8dae8;
 }
 
 .userprofile-role-icon {
-  font-size: 1.2rem;
+  font-size: 1rem;
+  color: #5a62a3;
 }
 
 .userprofile-edit-button {
@@ -377,13 +400,14 @@
   background: #8189d2;
   color: white;
   border: none;
-  padding: 0.875rem 2rem;
+  padding: 0.625rem 1.5rem;
   border-radius: 50px;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
+  white-space: nowrap;
 }
 
 .userprofile-edit-button:hover {
@@ -495,16 +519,34 @@
   }
 
   .userprofile-header-card {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
   }
 
   .userprofile-avatar-wrapper {
-    width: 120px;
-    height: 120px;
+    width: 90px;
+    height: 90px;
+  }
+
+  .userprofile-header-info {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .userprofile-name-role-section {
+    align-items: center;
+    width: 100%;
   }
 
   .userprofile-name {
-    font-size: 2rem;
+    font-size: 1.5rem;
+  }
+
+  .userprofile-edit-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .userprofile-details-card {

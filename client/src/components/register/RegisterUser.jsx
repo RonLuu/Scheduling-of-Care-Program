@@ -18,11 +18,20 @@ const RegisterUser = () => {
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  // Map display names to backend role values
+  const roleMapping = {
+    'Family': 'Family',
+    'Power of Attorney': 'PoA',
+    'Organization Representative': 'Admin',
+    'Carer': 'GeneralCareStaff',
+  };
+
   const options = [
-    {value: 'Family', label: ' Family'},
+    {value: 'Family', label: 'Family'},
     {value: 'Power of Attorney', label: 'Power of Attorney'},
-    {value:'Organization Representative', label:'Organization Representative'},
-    {value:'Career', label:'Career'},
+    {value: 'Organization Representative', label: 'Organization Representative'},
+    {value: 'Carer', label: 'Carer'},
   ];
   const selectedOption = options.find((opt) => opt.value === role) || null;
   function onAuthed(userWithJwt) {
@@ -35,10 +44,13 @@ const RegisterUser = () => {
     setErr("");
     setLoading(true);
     try {
+      // Map the display role to the backend role value
+      const backendRole = roleMapping[role] || role;
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role: backendRole }),
       });
 
       // Try to parse JSON safely
@@ -65,8 +77,12 @@ const RegisterUser = () => {
           String(Date.now() + expiresIn * 1000)
         );
       }
-      onAuthed({ ...(data?.user ?? null), jwt, expiresIn });
-      navigate("/profile");
+      const userData = { ...(data?.user ?? null), jwt, expiresIn };
+      onAuthed(userData);
+      // Small delay to ensure state updates before navigation
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 0);
     } catch {
       setErr("Network error. Please try again.");
     } finally {
