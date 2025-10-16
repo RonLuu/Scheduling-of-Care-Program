@@ -1923,6 +1923,12 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           background: #8189d2;
           color: white;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          width: 100%;
+          margin: 0;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
         }
 
         .select-type-btn.primary:hover {
@@ -1935,6 +1941,12 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           background: #10b981;
           color: white;
           box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+          width: 100%;
+          margin: 0;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
         }
 
         .select-type-btn.secondary:hover {
