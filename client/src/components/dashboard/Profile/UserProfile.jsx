@@ -10,6 +10,17 @@ function UserProfile({ me, refreshMe, jwt }) {
 
   const avatarUrl = me?.avatarFileId?.urlOrPath;
 
+  // Map backend role to display name
+  const getRoleDisplayName = (role) => {
+    const roleMap = {
+      'GeneralCareStaff': 'Carer',
+      'PoA': 'Power of Attorney',
+      'Admin': 'Organization Representative',
+      'Family': 'Family'
+    };
+    return roleMap[role] || role;
+  };
+
   return (
     <div className={`userprofile-wrapper ${showEdit ? "showEditOn" : ""}`}>
       {showEdit && (
@@ -47,7 +58,7 @@ function UserProfile({ me, refreshMe, jwt }) {
                 </h1>
                 <div className="userprofile-role-badge">
                   <BiBriefcase className="userprofile-role-icon" />
-                  <span>{me?.role || "Role"}</span>
+                  <span>{getRoleDisplayName(me?.role) || "Role"}</span>
                 </div>
               </div>
               <button

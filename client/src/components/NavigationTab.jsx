@@ -103,10 +103,12 @@ const NavigationTab = () => {
               <BiTask className="navigationtab-icon" />
               Tasks
             </NavItem>
-            <NavItem to="/budget-and-reports">
-              <BiDollarCircle className="navigationtab-icon" />
-              Budget & Reports
-            </NavItem>
+            {me?.role !== "GeneralCareStaff" && (
+              <NavItem to="/budget-and-reports">
+                <BiDollarCircle className="navigationtab-icon" />
+                Budget & Reports
+              </NavItem>
+            )}
             <NavItem to="/clients">
               <BiGroup className="navigationtab-icon" />
               Clients
