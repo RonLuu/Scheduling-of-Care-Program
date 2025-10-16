@@ -1,6 +1,6 @@
 import React from "react";
 
-function ClientInfoManager({ me, jwt, clients }) {
+function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [selectedClientId, setSelectedClientId] = React.useState("");
   const [accessLinks, setAccessLinks] = React.useState([]);
   const [accessErr, setAccessErr] = React.useState("");
@@ -11,7 +11,42 @@ function ClientInfoManager({ me, jwt, clients }) {
   const [tokenError, setTokenError] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
 
+  // Edit panel state
+  const [editPanel, setEditPanel] = React.useState(false);
+  const [editFormData, setEditFormData] = React.useState({});
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState("");
+
+  // Custom fields state for edit panel
+  const [newMedicalFieldTitle, setNewMedicalFieldTitle] = React.useState("");
+  const [newMedicalFieldValue, setNewMedicalFieldValue] = React.useState("");
+  const [newAdditionalFieldTitle, setNewAdditionalFieldTitle] =
+    React.useState("");
+  const [newAdditionalFieldValue, setNewAdditionalFieldValue] =
+    React.useState("");
+
   const selectedClient = clients.find((c) => c._id === selectedClientId);
+
+  const australianStates = [
+    { value: "", label: "Select State" },
+    { value: "NSW", label: "New South Wales" },
+    { value: "VIC", label: "Victoria" },
+    { value: "QLD", label: "Queensland" },
+    { value: "WA", label: "Western Australia" },
+    { value: "SA", label: "South Australia" },
+    { value: "TAS", label: "Tasmania" },
+    { value: "ACT", label: "Australian Capital Territory" },
+    { value: "NT", label: "Northern Territory" },
+  ];
+
+  const sexOptions = [
+    { value: "", label: "Select" },
+    { value: "Male", label: "Male" },
+    { value: "Female", label: "Female" },
+    { value: "Prefer not to say", label: "Prefer not to say" },
+  ];
+
+  const canEdit = me?.role === "Family" || me?.role === "PoA";
 
   const loadAccessLinks = async (pid) => {
     setIsLoading(true);
@@ -37,6 +72,220 @@ function ClientInfoManager({ me, jwt, clients }) {
     const canManage =
       me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
     if (value && canManage) loadAccessLinks(value);
+  };
+
+  const openEditPanel = () => {
+    if (!selectedClient) return;
+
+    const medicalCustomFields = (selectedClient.customFields || []).filter(
+      (f) => f.category === "Medical"
+    );
+    const additionalCustomFields = (selectedClient.customFields || []).filter(
+      (f) => f.category === "Additional" || !f.category
+    );
+
+    const initialData = {
+      // Basic Information
+      dateOfBirth: selectedClient.dateOfBirth
+        ? new Date(selectedClient.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      sex: selectedClient.sex || "",
+      mobilePhone: selectedClient.mobilePhone || "",
+      address: selectedClient.address?.street || "",
+      suburb: selectedClient.address?.suburb || "",
+      state: selectedClient.address?.state || "",
+      postcode: selectedClient.address?.postcode || "",
+      // Emergency Contact
+      emergencyContactName: selectedClient.emergencyContact?.name || "",
+      emergencyContactPhone: selectedClient.emergencyContact?.phone || "",
+      // Medical Information
+      medicalProblems: selectedClient.medicalInfo?.problems || "",
+      allergies: selectedClient.medicalInfo?.allergies || "",
+      medications: selectedClient.medicalInfo?.medications || "",
+      mobilityNeeds: selectedClient.medicalInfo?.mobilityNeeds || "",
+      communicationNeeds: selectedClient.medicalInfo?.communicationNeeds || "",
+      dietaryRequirements:
+        selectedClient.medicalInfo?.dietaryRequirements || "",
+      customMedicalFields: medicalCustomFields,
+      // Additional Information
+      customAdditionalFields: additionalCustomFields,
+    };
+
+    setEditFormData(initialData);
+    setEditPanel(true);
+    setSaveError("");
+    setNewMedicalFieldTitle("");
+    setNewMedicalFieldValue("");
+    setNewAdditionalFieldTitle("");
+    setNewAdditionalFieldValue("");
+  };
+
+  const closeEditPanel = () => {
+    setEditPanel(false);
+    setEditFormData({});
+    setSaveError("");
+  };
+
+  const handleEditInputChange = (field) => (e) => {
+    setEditFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const addMedicalCustomField = () => {
+    if (newMedicalFieldTitle && newMedicalFieldValue) {
+      setEditFormData((prev) => ({
+        ...prev,
+        customMedicalFields: [
+          ...(prev.customMedicalFields || []),
+          { title: newMedicalFieldTitle, value: newMedicalFieldValue },
+        ],
+      }));
+      setNewMedicalFieldTitle("");
+      setNewMedicalFieldValue("");
+    }
+  };
+
+  const removeMedicalCustomField = (index) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customMedicalFields: prev.customMedicalFields.filter(
+        (_, i) => i !== index
+      ),
+    }));
+  };
+
+  const updateMedicalFieldTitle = (index, newTitle) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customMedicalFields: prev.customMedicalFields.map((field, i) =>
+        i === index ? { ...field, title: newTitle } : field
+      ),
+    }));
+  };
+
+  const updateMedicalFieldValue = (index, newValue) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customMedicalFields: prev.customMedicalFields.map((field, i) =>
+        i === index ? { ...field, value: newValue } : field
+      ),
+    }));
+  };
+
+  const addAdditionalCustomField = () => {
+    if (newAdditionalFieldTitle && newAdditionalFieldValue) {
+      setEditFormData((prev) => ({
+        ...prev,
+        customAdditionalFields: [
+          ...(prev.customAdditionalFields || []),
+          { title: newAdditionalFieldTitle, value: newAdditionalFieldValue },
+        ],
+      }));
+      setNewAdditionalFieldTitle("");
+      setNewAdditionalFieldValue("");
+    }
+  };
+
+  const removeAdditionalCustomField = (index) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.filter(
+        (_, i) => i !== index
+      ),
+    }));
+  };
+
+  const updateAdditionalFieldTitle = (index, newTitle) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.map((field, i) =>
+        i === index ? { ...field, title: newTitle } : field
+      ),
+    }));
+  };
+
+  const updateAdditionalFieldValue = (index, newValue) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      customAdditionalFields: prev.customAdditionalFields.map((field, i) =>
+        i === index ? { ...field, value: newValue } : field
+      ),
+    }));
+  };
+
+  const saveEditPanel = async () => {
+    if (!selectedClient) return;
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      // Combine all custom fields with categories
+      const allCustomFields = [
+        ...(editFormData.customMedicalFields || []).map((f) => ({
+          ...f,
+          category: "Medical",
+        })),
+        ...(editFormData.customAdditionalFields || []).map((f) => ({
+          ...f,
+          category: "Additional",
+        })),
+      ];
+
+      const updateData = {
+        dateOfBirth: editFormData.dateOfBirth
+          ? new Date(editFormData.dateOfBirth).toISOString()
+          : undefined,
+        sex: editFormData.sex || undefined,
+        mobilePhone: editFormData.mobilePhone,
+        address: {
+          street: editFormData.address,
+          suburb: editFormData.suburb,
+          state: editFormData.state,
+          postcode: editFormData.postcode,
+        },
+        emergencyContact: {
+          name: editFormData.emergencyContactName,
+          phone: editFormData.emergencyContactPhone,
+        },
+        medicalInfo: {
+          problems: editFormData.medicalProblems,
+          allergies: editFormData.allergies,
+          medications: editFormData.medications,
+          mobilityNeeds: editFormData.mobilityNeeds,
+          communicationNeeds: editFormData.communicationNeeds,
+          dietaryRequirements: editFormData.dietaryRequirements,
+        },
+        customFields: allCustomFields,
+      };
+
+      const response = await fetch(
+        `/api/person-with-needs/${selectedClient._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + jwt,
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to update client");
+
+      // Close the panel first
+      closeEditPanel();
+
+      // Call the parent's refresh function to reload all clients
+      if (onClientUpdate) {
+        await onClientUpdate();
+      }
+    } catch (err) {
+      setSaveError(err.message || String(err));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getMedicalInfoDisplay = (medicalInfo, customFields = []) => {
@@ -216,8 +465,6 @@ function ClientInfoManager({ me, jwt, clients }) {
         maxUses: 1,
       };
 
-      // Include organizationId for MANAGER_TOKEN and STAFF_TOKEN
-      // Also include it for FAMILY_TOKEN if user has an organization
       if (type === "MANAGER_TOKEN" || type === "STAFF_TOKEN") {
         body.organizationId = me.organizationId;
       } else if (type === "FAMILY_TOKEN" && me.organizationId) {
@@ -266,6 +513,24 @@ function ClientInfoManager({ me, jwt, clients }) {
   const canManageAccess =
     me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
   const hasOrganization = me?.organizationId;
+
+  const hasBasicInfo =
+    selectedClient &&
+    (selectedClient.dateOfBirth ||
+      selectedClient.sex ||
+      selectedClient.mobilePhone ||
+      (selectedClient.address &&
+        (selectedClient.address.street || selectedClient.address.suburb)));
+
+  const hasEmergencyContact =
+    selectedClient &&
+    selectedClient.emergencyContact &&
+    (selectedClient.emergencyContact.name ||
+      selectedClient.emergencyContact.phone);
+
+  const hasMedicalInfo = medicalInfoDisplay && medicalInfoDisplay.length > 0;
+  const hasAdditionalInfo =
+    additionalInfoDisplay && additionalInfoDisplay.length > 0;
 
   return (
     <div className="client-info-manager">
@@ -319,82 +584,121 @@ function ClientInfoManager({ me, jwt, clients }) {
             <div className="client-info-section">
               <div className="section-header">
                 <h3>{selectedClient.name}</h3>
+                {canEdit && (
+                  <button className="edit-client-btn" onClick={openEditPanel}>
+                    Edit Client Information
+                  </button>
+                )}
               </div>
 
               <div className="info-grid">
                 <div className="info-block">
-                  <h4>Basic Information</h4>
-                  {selectedClient.dateOfBirth && (
-                    <div className="info-row">
-                      <span className="label">Age:</span>
-                      <span className="value">
-                        {calculateAge(selectedClient.dateOfBirth)} years old
-                      </span>
-                    </div>
-                  )}
-                  {selectedClient.sex && (
-                    <div className="info-row">
-                      <span className="label">Sex:</span>
-                      <span className="value">{selectedClient.sex}</span>
-                    </div>
-                  )}
-                  {selectedClient.mobilePhone && (
-                    <div className="info-row">
-                      <span className="label">Phone:</span>
-                      <span className="value">
-                        {selectedClient.mobilePhone}
-                      </span>
-                    </div>
-                  )}
-                  <div className="info-row">
-                    <span className="label">Address:</span>
-                    <span className="value">
-                      {getAddressDisplay(selectedClient.address)}
-                    </span>
+                  <div className="block-header">
+                    <h4>Basic Information</h4>
                   </div>
+                  {hasBasicInfo ? (
+                    <>
+                      {selectedClient.dateOfBirth && (
+                        <div className="info-row">
+                          <span className="label">Age:</span>
+                          <span className="value">
+                            {calculateAge(selectedClient.dateOfBirth)} years old
+                          </span>
+                        </div>
+                      )}
+                      {selectedClient.sex && (
+                        <div className="info-row">
+                          <span className="label">Sex:</span>
+                          <span className="value">{selectedClient.sex}</span>
+                        </div>
+                      )}
+                      {selectedClient.mobilePhone && (
+                        <div className="info-row">
+                          <span className="label">Phone:</span>
+                          <span className="value">
+                            {selectedClient.mobilePhone}
+                          </span>
+                        </div>
+                      )}
+                      <div className="info-row">
+                        <span className="label">Address:</span>
+                        <span className="value">
+                          {getAddressDisplay(selectedClient.address)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="empty-block-text">
+                      No basic information added yet.
+                    </p>
+                  )}
                 </div>
 
                 <div className="info-block">
-                  <h4>Emergency Contact</h4>
-                  <div className="info-row">
-                    <span className="value">
-                      {getEmergencyContactDisplay(
-                        selectedClient.emergencyContact
-                      )}
-                    </span>
+                  <div className="block-header">
+                    <h4>Emergency Contact</h4>
                   </div>
+                  {hasEmergencyContact ? (
+                    <div className="info-row">
+                      <span className="value">
+                        {getEmergencyContactDisplay(
+                          selectedClient.emergencyContact
+                        )}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="empty-block-text">
+                      No emergency contact added yet.
+                    </p>
+                  )}
                 </div>
 
-                {medicalInfoDisplay && medicalInfoDisplay.length > 0 && (
-                  <div className="info-block full-width">
+                <div className="info-block full-width">
+                  <div className="block-header">
                     <h4>Medical Information</h4>
-                    <p className="block-description">
-                      Includes standard medical fields and any custom medical
-                      information added for this client.
-                    </p>
-                    {medicalInfoDisplay.map((item, index) => (
-                      <div key={index} className="info-row">
-                        <span className="label">{item.label}:</span>
-                        <span className="value">{item.value}</span>
-                      </div>
-                    ))}
                   </div>
-                )}
+                  {hasMedicalInfo ? (
+                    <>
+                      <p className="block-description">
+                        Includes standard medical fields and any custom medical
+                        information added for this client.
+                      </p>
+                      {medicalInfoDisplay.map((item, index) => (
+                        <div key={index} className="info-row">
+                          <span className="label">{item.label}:</span>
+                          <span className="value">{item.value}</span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="empty-block-text">
+                      No medical information added yet.
+                    </p>
+                  )}
+                </div>
 
-                {additionalInfoDisplay && additionalInfoDisplay.length > 0 && (
-                  <div className="info-block full-width">
+                <div className="info-block full-width">
+                  <div className="block-header">
                     <h4>Additional Information</h4>
-                    <p className="block-description">
-                      Custom information and notes specific to this client.
-                    </p>
-                    {additionalInfoDisplay.map((field, index) => (
-                      <div key={index} className="info-row">
-                        <span className="label">{field.title}:</span>
-                        <span className="value">{field.value}</span>
-                      </div>
-                    ))}
                   </div>
-                )}
+                  {hasAdditionalInfo ? (
+                    <>
+                      <p className="block-description">
+                        Custom information and notes specific to this client.
+                      </p>
+                      {additionalInfoDisplay.map((field, index) => (
+                        <div key={index} className="info-row">
+                          <span className="label">{field.title}:</span>
+                          <span className="value">{field.value}</span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="empty-block-text">
+                      No additional information added yet.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -475,6 +779,391 @@ function ClientInfoManager({ me, jwt, clients }) {
         )}
       </div>
 
+      {/* Edit Panel Modal */}
+      {editPanel && (
+        <div className="edit-modal-overlay" onClick={closeEditPanel}>
+          <div
+            className="edit-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="edit-modal-header">
+              <h3>Edit Client Information</h3>
+              <button className="modal-close" onClick={closeEditPanel}>
+                ×
+              </button>
+            </div>
+
+            <div className="edit-modal-body">
+              {/* Basic Information */}
+              <div className="edit-section">
+                <h4>Basic Information</h4>
+                <div className="edit-row">
+                  <div className="edit-field">
+                    <label>Date of birth</label>
+                    <input
+                      type="date"
+                      value={editFormData.dateOfBirth || ""}
+                      onChange={handleEditInputChange("dateOfBirth")}
+                    />
+                  </div>
+                  <div className="edit-field">
+                    <label>Sex</label>
+                    <select
+                      value={editFormData.sex || ""}
+                      onChange={handleEditInputChange("sex")}
+                    >
+                      {sexOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="edit-field">
+                  <label>Mobile phone</label>
+                  <input
+                    type="tel"
+                    value={editFormData.mobilePhone || ""}
+                    onChange={handleEditInputChange("mobilePhone")}
+                    placeholder="+61 4XX XXX XXX"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Street address</label>
+                  <input
+                    value={editFormData.address || ""}
+                    onChange={handleEditInputChange("address")}
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="edit-row">
+                  <div className="edit-field">
+                    <label>Suburb/City</label>
+                    <input
+                      value={editFormData.suburb || ""}
+                      onChange={handleEditInputChange("suburb")}
+                      placeholder="e.g., Sydney"
+                    />
+                  </div>
+                  <div className="edit-field">
+                    <label>State</label>
+                    <select
+                      value={editFormData.state || ""}
+                      onChange={handleEditInputChange("state")}
+                    >
+                      {australianStates.map((state) => (
+                        <option key={state.value} value={state.value}>
+                          {state.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="edit-field">
+                    <label>Postcode</label>
+                    <input
+                      type="text"
+                      pattern="[0-9]{4}"
+                      maxLength="4"
+                      value={editFormData.postcode || ""}
+                      onChange={handleEditInputChange("postcode")}
+                      placeholder="0000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact */}
+              <div className="edit-section">
+                <h4>Emergency Contact</h4>
+                <div className="edit-row">
+                  <div className="edit-field">
+                    <label>Contact name</label>
+                    <input
+                      value={editFormData.emergencyContactName || ""}
+                      onChange={handleEditInputChange("emergencyContactName")}
+                      placeholder="Emergency contact name"
+                    />
+                  </div>
+                  <div className="edit-field">
+                    <label>Contact phone</label>
+                    <input
+                      type="tel"
+                      value={editFormData.emergencyContactPhone || ""}
+                      onChange={handleEditInputChange("emergencyContactPhone")}
+                      placeholder="+61 4XX XXX XXX"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Medical Information */}
+              <div className="edit-section">
+                <h4>Medical Information</h4>
+                <p className="section-description">
+                  Document the client's medical conditions, medications, and
+                  care needs. You can add custom medical fields below if you
+                  need to record additional health information.
+                </p>
+
+                <div className="edit-field">
+                  <label>Medical problems/conditions</label>
+                  <textarea
+                    value={editFormData.medicalProblems || ""}
+                    onChange={handleEditInputChange("medicalProblems")}
+                    placeholder="e.g., Diabetes, Heart conditions, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Allergies</label>
+                  <textarea
+                    value={editFormData.allergies || ""}
+                    onChange={handleEditInputChange("allergies")}
+                    placeholder="e.g., Peanuts, Penicillin, Latex, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Current medications</label>
+                  <textarea
+                    value={editFormData.medications || ""}
+                    onChange={handleEditInputChange("medications")}
+                    placeholder="List all current medications and dosages"
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Mobility needs</label>
+                  <textarea
+                    value={editFormData.mobilityNeeds || ""}
+                    onChange={handleEditInputChange("mobilityNeeds")}
+                    placeholder="e.g., Wheelchair, Walker, Assistance required"
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Communication needs</label>
+                  <textarea
+                    value={editFormData.communicationNeeds || ""}
+                    onChange={handleEditInputChange("communicationNeeds")}
+                    placeholder="e.g., Sign language, Speech assistance, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Dietary requirements</label>
+                  <textarea
+                    value={editFormData.dietaryRequirements || ""}
+                    onChange={handleEditInputChange("dietaryRequirements")}
+                    placeholder="e.g., Vegetarian, Gluten-free, Soft foods only"
+                    rows="2"
+                  />
+                </div>
+
+                {/* Custom Medical Fields */}
+                <div className="custom-fields-subsection">
+                  <h5>Add Custom Medical Information</h5>
+                  <p className="subsection-hint">
+                    Add any additional medical details not covered above (e.g.,
+                    Vision needs, Hearing aids, etc.)
+                  </p>
+
+                  {editFormData.customMedicalFields &&
+                    editFormData.customMedicalFields.length > 0 && (
+                      <div className="custom-fields-list">
+                        {editFormData.customMedicalFields.map(
+                          (field, index) => (
+                            <div key={index} className="custom-field-item">
+                              <div className="field-inputs">
+                                <div className="field-input-group">
+                                  <label>Header:</label>
+                                  <input
+                                    type="text"
+                                    value={field.title}
+                                    onChange={(e) =>
+                                      updateMedicalFieldTitle(
+                                        index,
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="e.g., Vision needs"
+                                  />
+                                </div>
+                                <div className="field-input-group">
+                                  <label>Details:</label>
+                                  <textarea
+                                    value={field.value}
+                                    onChange={(e) =>
+                                      updateMedicalFieldValue(
+                                        index,
+                                        e.target.value
+                                      )
+                                    }
+                                    rows="2"
+                                    placeholder="Enter details..."
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeMedicalCustomField(index)}
+                                className="remove-field-btn"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+
+                  <div className="add-custom-field">
+                    <div className="field-input-group">
+                      <label>Header</label>
+                      <input
+                        placeholder="e.g., Vision needs"
+                        value={newMedicalFieldTitle}
+                        onChange={(e) =>
+                          setNewMedicalFieldTitle(e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="field-input-group">
+                      <label>Details</label>
+                      <textarea
+                        placeholder="e.g., Requires prescription glasses"
+                        value={newMedicalFieldValue}
+                        onChange={(e) =>
+                          setNewMedicalFieldValue(e.target.value)
+                        }
+                        rows="2"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addMedicalCustomField}
+                      className="add-custom-field-btn"
+                    >
+                      Add Field
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="edit-section">
+                <h4>Additional Information</h4>
+                <p className="section-description">
+                  Add any other relevant information about the client that
+                  doesn't fit in the categories above (e.g., Hobbies,
+                  Preferences, Special notes, etc.)
+                </p>
+
+                {editFormData.customAdditionalFields &&
+                  editFormData.customAdditionalFields.length > 0 && (
+                    <div className="custom-fields-list">
+                      {editFormData.customAdditionalFields.map(
+                        (field, index) => (
+                          <div key={index} className="custom-field-item">
+                            <div className="field-inputs">
+                              <div className="field-input-group">
+                                <label>Header:</label>
+                                <input
+                                  type="text"
+                                  value={field.title}
+                                  onChange={(e) =>
+                                    updateAdditionalFieldTitle(
+                                      index,
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="e.g., Hobbies"
+                                />
+                              </div>
+                              <div className="field-input-group">
+                                <label>Details:</label>
+                                <textarea
+                                  value={field.value}
+                                  onChange={(e) =>
+                                    updateAdditionalFieldValue(
+                                      index,
+                                      e.target.value
+                                    )
+                                  }
+                                  rows="2"
+                                  placeholder="Enter details..."
+                                />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalCustomField(index)}
+                              className="remove-field-btn"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                <div className="add-custom-field">
+                  <div className="field-input-group">
+                    <label>Header</label>
+                    <input
+                      placeholder="e.g., Hobbies, Preferences"
+                      value={newAdditionalFieldTitle}
+                      onChange={(e) =>
+                        setNewAdditionalFieldTitle(e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="field-input-group">
+                    <label>Details</label>
+                    <textarea
+                      placeholder="e.g., Enjoys painting, Loves outdoor activities"
+                      value={newAdditionalFieldValue}
+                      onChange={(e) =>
+                        setNewAdditionalFieldValue(e.target.value)
+                      }
+                      rows="2"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addAdditionalCustomField}
+                    className="add-custom-field-btn"
+                  >
+                    Add Field
+                  </button>
+                </div>
+              </div>
+
+              {saveError && (
+                <div className="save-error">
+                  <p>Error: {saveError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="edit-modal-footer">
+              <button className="cancel-btn" onClick={closeEditPanel}>
+                Cancel
+              </button>
+              <button
+                className="save-btn"
+                onClick={saveEditPanel}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Token Generation Modal */}
       {showTokenForm && (
         <div className="modal-overlay" onClick={closeTokenModal}>
@@ -490,10 +1179,8 @@ function ClientInfoManager({ me, jwt, clients }) {
               {!generatedToken ? (
                 <>
                   {!tokenType ? (
-                    // Step 1: Choose token type
                     <>
                       {me.role === "Admin" ? (
-                        // Admin view - direct to staff token
                         <>
                           <p className="modal-intro">
                             Generate an invite token to share with care staff in
@@ -508,7 +1195,6 @@ function ClientInfoManager({ me, jwt, clients }) {
                           </button>
                         </>
                       ) : (
-                        // Family/PoA view - choose between two types
                         <>
                           <p className="modal-intro">
                             Choose who you want to share access with:
@@ -579,14 +1265,12 @@ function ClientInfoManager({ me, jwt, clients }) {
                       )}
                     </>
                   ) : (
-                    // Step 2: Generating token (loading state)
                     <div className="generating-state">
                       <p>Generating your invite token...</p>
                     </div>
                   )}
                 </>
               ) : (
-                // Step 3: Token generated successfully
                 <div className="token-result">
                   <p className="success-message">
                     Token generated successfully!
@@ -739,7 +1423,421 @@ function ClientInfoManager({ me, jwt, clients }) {
           box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
         }
 
-        /* Modal Styles */
+        .client-info-section {
+          background: #f9fafb;
+          padding: 1.5rem;
+          border-radius: 0.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
+          border-bottom: 2px solid #e5e7eb;
+        }
+
+        .section-header h3 {
+          margin: 0;
+          color: #111827;
+          font-size: 1.25rem;
+        }
+
+        .edit-client-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .edit-client-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .info-block {
+          background: white;
+          padding: 1rem;
+          border-radius: 0.375rem;
+        }
+
+        .info-block.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .block-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .info-block h4 {
+          margin: 0;
+          color: #4b5563;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .block-description {
+          color: #9ca3af;
+          font-size: 0.75rem;
+          margin: 0 0 0.75rem 0;
+          font-style: italic;
+        }
+
+        .info-row {
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: flex-start;
+        }
+
+        .info-row:last-child {
+          margin-bottom: 0;
+        }
+
+        .info-row .label {
+          font-weight: 500;
+          color: #6b7280;
+          margin-right: 0.5rem;
+          min-width: 140px;
+          font-size: 0.875rem;
+        }
+
+        .info-row .value {
+          color: #111827;
+          font-size: 0.875rem;
+          flex: 1;
+        }
+
+        .empty-block-text {
+          color: #9ca3af;
+          font-size: 0.875rem;
+          font-style: italic;
+          margin: 0;
+        }
+
+        /* Edit Modal Styles */
+        .edit-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+
+        .edit-modal-content {
+          background: white;
+          border-radius: 12px;
+          max-width: 700px;
+          width: 100%;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .edit-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .edit-modal-header h3 {
+          margin: 0;
+          color: #374151;
+          font-size: 1.25rem;
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: 2rem;
+          line-height: 1;
+          cursor: pointer;
+          color: #6b7280;
+          padding: 0;
+          width: 2rem;
+          height: 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .modal-close:hover {
+          color: #374151;
+        }
+
+        .edit-modal-body {
+          padding: 1.5rem;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .edit-section {
+          margin-bottom: 2rem;
+          padding-bottom: 2rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .edit-section:last-of-type {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .edit-section h4 {
+          margin: 0 0 1rem 0;
+          color: #374151;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+
+        .edit-field {
+          margin-bottom: 1rem;
+        }
+
+        .edit-field label {
+          display: block;
+          margin-bottom: 0.25rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #4b5563;
+        }
+
+        .edit-field input,
+        .edit-field select,
+        .edit-field textarea {
+          width: 100%;
+          padding: 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          box-sizing: border-box;
+        }
+
+        .edit-field textarea {
+          resize: vertical;
+        }
+
+        .edit-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .section-description {
+          color: #6b7280;
+          font-size: 0.8125rem;
+          margin-bottom: 1rem;
+          font-style: italic;
+          line-height: 1.4;
+        }
+
+        .custom-fields-subsection {
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .custom-fields-subsection h5 {
+          margin: 0 0 0.25rem 0;
+          color: #4b5563;
+          font-size: 0.9375rem;
+          font-weight: 600;
+        }
+
+        .subsection-hint {
+          color: #9ca3af;
+          font-size: 0.75rem;
+          margin-bottom: 0.75rem;
+          font-style: italic;
+        }
+
+        .custom-fields-list {
+          background: #f9fafb;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .custom-field-item {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 0.75rem;
+          align-items: start;
+          padding: 0.75rem;
+          margin-bottom: 0.75rem;
+          background: white;
+          border-radius: 0.375rem;
+          border: 1px solid #e5e7eb;
+        }
+
+        .custom-field-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .field-inputs {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          min-width: 0;
+        }
+
+        .field-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .field-input-group label {
+          display: block;
+          margin-bottom: 0.25rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #4b5563;
+        }
+
+        .field-input-group input,
+        .field-input-group textarea {
+          width: 100%;
+          padding: 0.5rem;
+          font-size: 0.875rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+        }
+
+        .remove-field-btn {
+          padding: 0.375rem 0.625rem;
+          background: #ef4444;
+          color: white;
+          border: none;
+          border-radius: 0.25rem;
+          cursor: pointer;
+          font-size: 0.75rem;
+          white-space: nowrap;
+          height: fit-content;
+          min-width: fit-content;
+        }
+
+        .remove-field-btn:hover {
+          background: #dc2626;
+        }
+
+        .add-custom-field {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #f9fafb;
+          border-radius: 0.375rem;
+          border: 1px dashed #d1d5db;
+        }
+
+        .add-custom-field-btn {
+          padding: 0.625rem 1rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          align-self: flex-start;
+        }
+
+        .add-custom-field-btn:hover {
+          background: #2563eb;
+        }
+
+        .save-error {
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .save-error p {
+          margin: 0;
+          color: #991b1b;
+          font-size: 0.875rem;
+        }
+
+        .edit-modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.75rem;
+          padding: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .cancel-btn {
+          padding: 0.625rem 1.25rem;
+          background: white;
+          color: #374151;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cancel-btn:hover {
+          background: #f9fafb;
+        }
+
+        .save-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .save-btn:hover:not(:disabled) {
+          background: #6d76c4;
+        }
+
+        .save-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        /* Token Modal Styles */
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -776,25 +1874,6 @@ function ClientInfoManager({ me, jwt, clients }) {
           margin: 0;
           color: #374151;
           font-size: 1.25rem;
-        }
-
-        .modal-close {
-          background: none;
-          border: none;
-          font-size: 2rem;
-          line-height: 1;
-          cursor: pointer;
-          color: #6b7280;
-          padding: 0;
-          width: 2rem;
-          height: 2rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .modal-close:hover {
-          color: #374151;
         }
 
         .modal-body {
@@ -840,22 +1919,16 @@ function ClientInfoManager({ me, jwt, clients }) {
           line-height: 1.6;
         }
 
-        .select-type-btn {
-          width: 100%;
-          margin: 0 !important;
-          padding: 0.75rem 1.5rem;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.9375rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
         .select-type-btn.primary {
           background: #8189d2;
           color: white;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          width: 100%;
+          margin: 0;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
         }
 
         .select-type-btn.primary:hover {
@@ -868,6 +1941,12 @@ function ClientInfoManager({ me, jwt, clients }) {
           background: #10b981;
           color: white;
           box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+          width: 100%;
+          margin: 0;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
         }
 
         .select-type-btn.secondary:hover {
@@ -931,6 +2010,7 @@ function ClientInfoManager({ me, jwt, clients }) {
           cursor: pointer;
           transition: all 0.2s;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          margin: 0 auto !important;
         }
 
         .generate-btn:hover:not(:disabled) {
@@ -1045,84 +2125,6 @@ function ClientInfoManager({ me, jwt, clients }) {
 
         .instructions-list li:last-child {
           margin-bottom: 0;
-        }
-
-        .client-info-section {
-          background: #f9fafb;
-          padding: 1.5rem;
-          border-radius: 0.5rem;
-          margin-bottom: 2rem;
-        }
-
-        .section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 2px solid #e5e7eb;
-        }
-
-        .section-header h3 {
-          margin: 0;
-          color: #111827;
-          font-size: 1.25rem;
-        }
-
-        .info-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-
-        .info-block {
-          background: white;
-          padding: 1rem;
-          border-radius: 0.375rem;
-        }
-
-        .info-block.full-width {
-          grid-column: 1 / -1;
-        }
-
-        .info-block h4 {
-          margin: 0 0 0.5rem 0;
-          color: #4b5563;
-          font-size: 0.875rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .block-description {
-          color: #9ca3af;
-          font-size: 0.75rem;
-          margin: 0 0 0.75rem 0;
-          font-style: italic;
-        }
-
-        .info-row {
-          margin-bottom: 0.5rem;
-          display: flex;
-          align-items: flex-start;
-        }
-
-        .info-row:last-child {
-          margin-bottom: 0;
-        }
-
-        .info-row .label {
-          font-weight: 500;
-          color: #6b7280;
-          margin-right: 0.5rem;
-          min-width: 140px;
-          font-size: 0.875rem;
-        }
-
-        .info-row .value {
-          color: #111827;
-          font-size: 0.875rem;
-          flex: 1;
         }
 
         .access-section {
@@ -1267,12 +2269,26 @@ function ClientInfoManager({ me, jwt, clients }) {
             padding: 0.5rem;
           }
 
-          .modal-content {
+          .modal-content,
+          .edit-modal-content {
             max-width: 95%;
+            width: 95%;
           }
 
           .token-type-selection {
             gap: 0.75rem;
+          }
+
+          .edit-row {
+            grid-template-columns: 1fr;
+          }
+
+          .custom-field-item {
+            grid-template-columns: 1fr;
+          }
+
+          .remove-field-btn {
+            width: 100%;
           }
         }
       `}</style>
