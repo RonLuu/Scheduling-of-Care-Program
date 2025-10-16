@@ -12,7 +12,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   // Edit panel state
-  const [editPanel, setEditPanel] = React.useState(null); // 'basic' | 'emergency' | 'medical' | 'additional'
+  const [editPanel, setEditPanel] = React.useState(false);
   const [editFormData, setEditFormData] = React.useState({});
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState("");
@@ -74,54 +74,45 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
     if (value && canManage) loadAccessLinks(value);
   };
 
-  const openEditPanel = (panelType) => {
+  const openEditPanel = () => {
     if (!selectedClient) return;
 
-    let initialData = {};
+    const medicalCustomFields = (selectedClient.customFields || []).filter(
+      (f) => f.category === "Medical"
+    );
+    const additionalCustomFields = (selectedClient.customFields || []).filter(
+      (f) => f.category === "Additional" || !f.category
+    );
 
-    if (panelType === "basic") {
-      initialData = {
-        dateOfBirth: selectedClient.dateOfBirth
-          ? new Date(selectedClient.dateOfBirth).toISOString().split("T")[0]
-          : "",
-        sex: selectedClient.sex || "",
-        mobilePhone: selectedClient.mobilePhone || "",
-        address: selectedClient.address?.street || "",
-        suburb: selectedClient.address?.suburb || "",
-        state: selectedClient.address?.state || "",
-        postcode: selectedClient.address?.postcode || "",
-      };
-    } else if (panelType === "emergency") {
-      initialData = {
-        emergencyContactName: selectedClient.emergencyContact?.name || "",
-        emergencyContactPhone: selectedClient.emergencyContact?.phone || "",
-      };
-    } else if (panelType === "medical") {
-      const medicalCustomFields = (selectedClient.customFields || []).filter(
-        (f) => f.category === "Medical"
-      );
-      initialData = {
-        medicalProblems: selectedClient.medicalInfo?.problems || "",
-        allergies: selectedClient.medicalInfo?.allergies || "",
-        medications: selectedClient.medicalInfo?.medications || "",
-        mobilityNeeds: selectedClient.medicalInfo?.mobilityNeeds || "",
-        communicationNeeds:
-          selectedClient.medicalInfo?.communicationNeeds || "",
-        dietaryRequirements:
-          selectedClient.medicalInfo?.dietaryRequirements || "",
-        customMedicalFields: medicalCustomFields,
-      };
-    } else if (panelType === "additional") {
-      const additionalCustomFields = (selectedClient.customFields || []).filter(
-        (f) => f.category === "Additional" || !f.category
-      );
-      initialData = {
-        customAdditionalFields: additionalCustomFields,
-      };
-    }
+    const initialData = {
+      // Basic Information
+      dateOfBirth: selectedClient.dateOfBirth
+        ? new Date(selectedClient.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      sex: selectedClient.sex || "",
+      mobilePhone: selectedClient.mobilePhone || "",
+      address: selectedClient.address?.street || "",
+      suburb: selectedClient.address?.suburb || "",
+      state: selectedClient.address?.state || "",
+      postcode: selectedClient.address?.postcode || "",
+      // Emergency Contact
+      emergencyContactName: selectedClient.emergencyContact?.name || "",
+      emergencyContactPhone: selectedClient.emergencyContact?.phone || "",
+      // Medical Information
+      medicalProblems: selectedClient.medicalInfo?.problems || "",
+      allergies: selectedClient.medicalInfo?.allergies || "",
+      medications: selectedClient.medicalInfo?.medications || "",
+      mobilityNeeds: selectedClient.medicalInfo?.mobilityNeeds || "",
+      communicationNeeds: selectedClient.medicalInfo?.communicationNeeds || "",
+      dietaryRequirements:
+        selectedClient.medicalInfo?.dietaryRequirements || "",
+      customMedicalFields: medicalCustomFields,
+      // Additional Information
+      customAdditionalFields: additionalCustomFields,
+    };
 
     setEditFormData(initialData);
-    setEditPanel(panelType);
+    setEditPanel(true);
     setSaveError("");
     setNewMedicalFieldTitle("");
     setNewMedicalFieldValue("");
@@ -130,7 +121,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   };
 
   const closeEditPanel = () => {
-    setEditPanel(null);
+    setEditPanel(false);
     setEditFormData({});
     setSaveError("");
   };
@@ -228,74 +219,44 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
     setSaveError("");
 
     try {
-      let updateData = {};
+      // Combine all custom fields with categories
+      const allCustomFields = [
+        ...(editFormData.customMedicalFields || []).map((f) => ({
+          ...f,
+          category: "Medical",
+        })),
+        ...(editFormData.customAdditionalFields || []).map((f) => ({
+          ...f,
+          category: "Additional",
+        })),
+      ];
 
-      if (editPanel === "basic") {
-        updateData = {
-          dateOfBirth: editFormData.dateOfBirth
-            ? new Date(editFormData.dateOfBirth).toISOString()
-            : undefined,
-          sex: editFormData.sex || undefined,
-          mobilePhone: editFormData.mobilePhone,
-          address: {
-            street: editFormData.address,
-            suburb: editFormData.suburb,
-            state: editFormData.state,
-            postcode: editFormData.postcode,
-          },
-        };
-      } else if (editPanel === "emergency") {
-        updateData = {
-          emergencyContact: {
-            name: editFormData.emergencyContactName,
-            phone: editFormData.emergencyContactPhone,
-          },
-        };
-      } else if (editPanel === "medical") {
-        // Get existing custom fields that are NOT medical
-        const existingNonMedicalFields = (
-          selectedClient.customFields || []
-        ).filter((f) => f.category !== "Medical");
-
-        // Combine with updated medical custom fields
-        const allCustomFields = [
-          ...existingNonMedicalFields,
-          ...(editFormData.customMedicalFields || []).map((f) => ({
-            ...f,
-            category: "Medical",
-          })),
-        ];
-
-        updateData = {
-          medicalInfo: {
-            problems: editFormData.medicalProblems,
-            allergies: editFormData.allergies,
-            medications: editFormData.medications,
-            mobilityNeeds: editFormData.mobilityNeeds,
-            communicationNeeds: editFormData.communicationNeeds,
-            dietaryRequirements: editFormData.dietaryRequirements,
-          },
-          customFields: allCustomFields,
-        };
-      } else if (editPanel === "additional") {
-        // Get existing custom fields that are NOT additional
-        const existingMedicalFields = (
-          selectedClient.customFields || []
-        ).filter((f) => f.category === "Medical");
-
-        // Combine with updated additional custom fields
-        const allCustomFields = [
-          ...existingMedicalFields,
-          ...(editFormData.customAdditionalFields || []).map((f) => ({
-            ...f,
-            category: "Additional",
-          })),
-        ];
-
-        updateData = {
-          customFields: allCustomFields,
-        };
-      }
+      const updateData = {
+        dateOfBirth: editFormData.dateOfBirth
+          ? new Date(editFormData.dateOfBirth).toISOString()
+          : undefined,
+        sex: editFormData.sex || undefined,
+        mobilePhone: editFormData.mobilePhone,
+        address: {
+          street: editFormData.address,
+          suburb: editFormData.suburb,
+          state: editFormData.state,
+          postcode: editFormData.postcode,
+        },
+        emergencyContact: {
+          name: editFormData.emergencyContactName,
+          phone: editFormData.emergencyContactPhone,
+        },
+        medicalInfo: {
+          problems: editFormData.medicalProblems,
+          allergies: editFormData.allergies,
+          medications: editFormData.medications,
+          mobilityNeeds: editFormData.mobilityNeeds,
+          communicationNeeds: editFormData.communicationNeeds,
+          dietaryRequirements: editFormData.dietaryRequirements,
+        },
+        customFields: allCustomFields,
+      };
 
       const response = await fetch(
         `/api/person-with-needs/${selectedClient._id}`,
@@ -623,20 +584,17 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             <div className="client-info-section">
               <div className="section-header">
                 <h3>{selectedClient.name}</h3>
+                {canEdit && (
+                  <button className="edit-client-btn" onClick={openEditPanel}>
+                    Edit Client Information
+                  </button>
+                )}
               </div>
 
               <div className="info-grid">
                 <div className="info-block">
                   <div className="block-header">
                     <h4>Basic Information</h4>
-                    {canEdit && (
-                      <button
-                        className="edit-btn"
-                        onClick={() => openEditPanel("basic")}
-                      >
-                        {hasBasicInfo ? "Edit" : "Add"}
-                      </button>
-                    )}
                   </div>
                   {hasBasicInfo ? (
                     <>
@@ -679,14 +637,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                 <div className="info-block">
                   <div className="block-header">
                     <h4>Emergency Contact</h4>
-                    {canEdit && (
-                      <button
-                        className="edit-btn"
-                        onClick={() => openEditPanel("emergency")}
-                      >
-                        {hasEmergencyContact ? "Edit" : "Add"}
-                      </button>
-                    )}
                   </div>
                   {hasEmergencyContact ? (
                     <div className="info-row">
@@ -706,14 +656,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                 <div className="info-block full-width">
                   <div className="block-header">
                     <h4>Medical Information</h4>
-                    {canEdit && (
-                      <button
-                        className="edit-btn"
-                        onClick={() => openEditPanel("medical")}
-                      >
-                        {hasMedicalInfo ? "Edit" : "Add"}
-                      </button>
-                    )}
                   </div>
                   {hasMedicalInfo ? (
                     <>
@@ -738,14 +680,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                 <div className="info-block full-width">
                   <div className="block-header">
                     <h4>Additional Information</h4>
-                    {canEdit && (
-                      <button
-                        className="edit-btn"
-                        onClick={() => openEditPanel("additional")}
-                      >
-                        {hasAdditionalInfo ? "Edit" : "Add"}
-                      </button>
-                    )}
                   </div>
                   {hasAdditionalInfo ? (
                     <>
@@ -853,99 +787,96 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="edit-modal-header">
-              <h3>
-                {editPanel === "basic" && "Edit Basic Information"}
-                {editPanel === "emergency" && "Edit Emergency Contact"}
-                {editPanel === "medical" && "Edit Medical Information"}
-                {editPanel === "additional" && "Edit Additional Information"}
-              </h3>
+              <h3>Edit Client Information</h3>
               <button className="modal-close" onClick={closeEditPanel}>
                 ×
               </button>
             </div>
 
             <div className="edit-modal-body">
-              {editPanel === "basic" && (
-                <>
-                  <div className="edit-row">
-                    <div className="edit-field">
-                      <label>Date of birth</label>
-                      <input
-                        type="date"
-                        value={editFormData.dateOfBirth || ""}
-                        onChange={handleEditInputChange("dateOfBirth")}
-                      />
-                    </div>
-                    <div className="edit-field">
-                      <label>Sex</label>
-                      <select
-                        value={editFormData.sex || ""}
-                        onChange={handleEditInputChange("sex")}
-                      >
-                        {sexOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+              {/* Basic Information */}
+              <div className="edit-section">
+                <h4>Basic Information</h4>
+                <div className="edit-row">
                   <div className="edit-field">
-                    <label>Mobile phone</label>
+                    <label>Date of birth</label>
                     <input
-                      type="tel"
-                      value={editFormData.mobilePhone || ""}
-                      onChange={handleEditInputChange("mobilePhone")}
-                      placeholder="+61 4XX XXX XXX"
+                      type="date"
+                      value={editFormData.dateOfBirth || ""}
+                      onChange={handleEditInputChange("dateOfBirth")}
                     />
                   </div>
                   <div className="edit-field">
-                    <label>Street address</label>
+                    <label>Sex</label>
+                    <select
+                      value={editFormData.sex || ""}
+                      onChange={handleEditInputChange("sex")}
+                    >
+                      {sexOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="edit-field">
+                  <label>Mobile phone</label>
+                  <input
+                    type="tel"
+                    value={editFormData.mobilePhone || ""}
+                    onChange={handleEditInputChange("mobilePhone")}
+                    placeholder="+61 4XX XXX XXX"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Street address</label>
+                  <input
+                    value={editFormData.address || ""}
+                    onChange={handleEditInputChange("address")}
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="edit-row">
+                  <div className="edit-field">
+                    <label>Suburb/City</label>
                     <input
-                      value={editFormData.address || ""}
-                      onChange={handleEditInputChange("address")}
-                      placeholder="Street address"
+                      value={editFormData.suburb || ""}
+                      onChange={handleEditInputChange("suburb")}
+                      placeholder="e.g., Sydney"
                     />
                   </div>
-                  <div className="edit-row">
-                    <div className="edit-field">
-                      <label>Suburb/City</label>
-                      <input
-                        value={editFormData.suburb || ""}
-                        onChange={handleEditInputChange("suburb")}
-                        placeholder="e.g., Sydney"
-                      />
-                    </div>
-                    <div className="edit-field">
-                      <label>State</label>
-                      <select
-                        value={editFormData.state || ""}
-                        onChange={handleEditInputChange("state")}
-                      >
-                        {australianStates.map((state) => (
-                          <option key={state.value} value={state.value}>
-                            {state.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="edit-field">
-                      <label>Postcode</label>
-                      <input
-                        type="text"
-                        pattern="[0-9]{4}"
-                        maxLength="4"
-                        value={editFormData.postcode || ""}
-                        onChange={handleEditInputChange("postcode")}
-                        placeholder="0000"
-                      />
-                    </div>
+                  <div className="edit-field">
+                    <label>State</label>
+                    <select
+                      value={editFormData.state || ""}
+                      onChange={handleEditInputChange("state")}
+                    >
+                      {australianStates.map((state) => (
+                        <option key={state.value} value={state.value}>
+                          {state.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </>
-              )}
+                  <div className="edit-field">
+                    <label>Postcode</label>
+                    <input
+                      type="text"
+                      pattern="[0-9]{4}"
+                      maxLength="4"
+                      value={editFormData.postcode || ""}
+                      onChange={handleEditInputChange("postcode")}
+                      placeholder="0000"
+                    />
+                  </div>
+                </div>
+              </div>
 
-              {editPanel === "emergency" && (
-                <>
+              {/* Emergency Contact */}
+              <div className="edit-section">
+                <h4>Emergency Contact</h4>
+                <div className="edit-row">
                   <div className="edit-field">
                     <label>Contact name</label>
                     <input
@@ -963,170 +894,85 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                       placeholder="+61 4XX XXX XXX"
                     />
                   </div>
-                </>
-              )}
+                </div>
+              </div>
 
-              {editPanel === "medical" && (
-                <>
-                  <div className="edit-field">
-                    <label>Medical problems/conditions</label>
-                    <textarea
-                      value={editFormData.medicalProblems || ""}
-                      onChange={handleEditInputChange("medicalProblems")}
-                      placeholder="e.g., Diabetes, Heart conditions, etc."
-                      rows="2"
-                    />
-                  </div>
-                  <div className="edit-field">
-                    <label>Allergies</label>
-                    <textarea
-                      value={editFormData.allergies || ""}
-                      onChange={handleEditInputChange("allergies")}
-                      placeholder="e.g., Peanuts, Penicillin, Latex, etc."
-                      rows="2"
-                    />
-                  </div>
-                  <div className="edit-field">
-                    <label>Current medications</label>
-                    <textarea
-                      value={editFormData.medications || ""}
-                      onChange={handleEditInputChange("medications")}
-                      placeholder="List all current medications and dosages"
-                      rows="2"
-                    />
-                  </div>
-                  <div className="edit-field">
-                    <label>Mobility needs</label>
-                    <textarea
-                      value={editFormData.mobilityNeeds || ""}
-                      onChange={handleEditInputChange("mobilityNeeds")}
-                      placeholder="e.g., Wheelchair, Walker, Assistance required"
-                      rows="2"
-                    />
-                  </div>
-                  <div className="edit-field">
-                    <label>Communication needs</label>
-                    <textarea
-                      value={editFormData.communicationNeeds || ""}
-                      onChange={handleEditInputChange("communicationNeeds")}
-                      placeholder="e.g., Sign language, Speech assistance, etc."
-                      rows="2"
-                    />
-                  </div>
-                  <div className="edit-field">
-                    <label>Dietary requirements</label>
-                    <textarea
-                      value={editFormData.dietaryRequirements || ""}
-                      onChange={handleEditInputChange("dietaryRequirements")}
-                      placeholder="e.g., Vegetarian, Gluten-free, Soft foods only"
-                      rows="2"
-                    />
-                  </div>
+              {/* Medical Information */}
+              <div className="edit-section">
+                <h4>Medical Information</h4>
+                <p className="section-description">
+                  Document the client's medical conditions, medications, and
+                  care needs. You can add custom medical fields below if you
+                  need to record additional health information.
+                </p>
 
-                  {/* Custom Medical Fields */}
-                  <div className="custom-fields-section">
-                    <h5>Custom Medical Information</h5>
-                    <p className="section-hint">
-                      Add any additional medical details not covered above
-                    </p>
+                <div className="edit-field">
+                  <label>Medical problems/conditions</label>
+                  <textarea
+                    value={editFormData.medicalProblems || ""}
+                    onChange={handleEditInputChange("medicalProblems")}
+                    placeholder="e.g., Diabetes, Heart conditions, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Allergies</label>
+                  <textarea
+                    value={editFormData.allergies || ""}
+                    onChange={handleEditInputChange("allergies")}
+                    placeholder="e.g., Peanuts, Penicillin, Latex, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Current medications</label>
+                  <textarea
+                    value={editFormData.medications || ""}
+                    onChange={handleEditInputChange("medications")}
+                    placeholder="List all current medications and dosages"
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Mobility needs</label>
+                  <textarea
+                    value={editFormData.mobilityNeeds || ""}
+                    onChange={handleEditInputChange("mobilityNeeds")}
+                    placeholder="e.g., Wheelchair, Walker, Assistance required"
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Communication needs</label>
+                  <textarea
+                    value={editFormData.communicationNeeds || ""}
+                    onChange={handleEditInputChange("communicationNeeds")}
+                    placeholder="e.g., Sign language, Speech assistance, etc."
+                    rows="2"
+                  />
+                </div>
+                <div className="edit-field">
+                  <label>Dietary requirements</label>
+                  <textarea
+                    value={editFormData.dietaryRequirements || ""}
+                    onChange={handleEditInputChange("dietaryRequirements")}
+                    placeholder="e.g., Vegetarian, Gluten-free, Soft foods only"
+                    rows="2"
+                  />
+                </div>
 
-                    {editFormData.customMedicalFields &&
-                      editFormData.customMedicalFields.length > 0 && (
-                        <div className="custom-fields-list">
-                          {editFormData.customMedicalFields.map(
-                            (field, index) => (
-                              <div key={index} className="custom-field-item">
-                                <div className="field-inputs">
-                                  <div className="field-input-group">
-                                    <label>Header:</label>
-                                    <input
-                                      type="text"
-                                      value={field.title}
-                                      onChange={(e) =>
-                                        updateMedicalFieldTitle(
-                                          index,
-                                          e.target.value
-                                        )
-                                      }
-                                      placeholder="e.g., Vision needs"
-                                    />
-                                  </div>
-                                  <div className="field-input-group">
-                                    <label>Details:</label>
-                                    <textarea
-                                      value={field.value}
-                                      onChange={(e) =>
-                                        updateMedicalFieldValue(
-                                          index,
-                                          e.target.value
-                                        )
-                                      }
-                                      rows="2"
-                                      placeholder="Enter details..."
-                                    />
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeMedicalCustomField(index)
-                                  }
-                                  className="remove-field-btn"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      )}
-
-                    <div className="add-custom-field">
-                      <div className="field-input-group">
-                        <label>Header</label>
-                        <input
-                          placeholder="e.g., Vision needs"
-                          value={newMedicalFieldTitle}
-                          onChange={(e) =>
-                            setNewMedicalFieldTitle(e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="field-input-group">
-                        <label>Details</label>
-                        <textarea
-                          placeholder="e.g., Requires prescription glasses"
-                          value={newMedicalFieldValue}
-                          onChange={(e) =>
-                            setNewMedicalFieldValue(e.target.value)
-                          }
-                          rows="2"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={addMedicalCustomField}
-                        className="add-custom-field-btn"
-                      >
-                        Add Field
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {editPanel === "additional" && (
-                <>
-                  <p className="section-description">
-                    Add any other relevant information about the client that
-                    doesn't fit in the categories above (e.g., Hobbies,
-                    Preferences, Special notes, etc.)
+                {/* Custom Medical Fields */}
+                <div className="custom-fields-subsection">
+                  <h5>Add Custom Medical Information</h5>
+                  <p className="subsection-hint">
+                    Add any additional medical details not covered above (e.g.,
+                    Vision needs, Hearing aids, etc.)
                   </p>
 
-                  {editFormData.customAdditionalFields &&
-                    editFormData.customAdditionalFields.length > 0 && (
+                  {editFormData.customMedicalFields &&
+                    editFormData.customMedicalFields.length > 0 && (
                       <div className="custom-fields-list">
-                        {editFormData.customAdditionalFields.map(
+                        {editFormData.customMedicalFields.map(
                           (field, index) => (
                             <div key={index} className="custom-field-item">
                               <div className="field-inputs">
@@ -1136,12 +982,12 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                                     type="text"
                                     value={field.title}
                                     onChange={(e) =>
-                                      updateAdditionalFieldTitle(
+                                      updateMedicalFieldTitle(
                                         index,
                                         e.target.value
                                       )
                                     }
-                                    placeholder="e.g., Hobbies"
+                                    placeholder="e.g., Vision needs"
                                   />
                                 </div>
                                 <div className="field-input-group">
@@ -1149,7 +995,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                                   <textarea
                                     value={field.value}
                                     onChange={(e) =>
-                                      updateAdditionalFieldValue(
+                                      updateMedicalFieldValue(
                                         index,
                                         e.target.value
                                       )
@@ -1161,9 +1007,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                               </div>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  removeAdditionalCustomField(index)
-                                }
+                                onClick={() => removeMedicalCustomField(index)}
                                 className="remove-field-btn"
                               >
                                 Remove
@@ -1178,34 +1022,124 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                     <div className="field-input-group">
                       <label>Header</label>
                       <input
-                        placeholder="e.g., Hobbies, Preferences"
-                        value={newAdditionalFieldTitle}
+                        placeholder="e.g., Vision needs"
+                        value={newMedicalFieldTitle}
                         onChange={(e) =>
-                          setNewAdditionalFieldTitle(e.target.value)
+                          setNewMedicalFieldTitle(e.target.value)
                         }
                       />
                     </div>
                     <div className="field-input-group">
                       <label>Details</label>
                       <textarea
-                        placeholder="e.g., Enjoys painting, Loves outdoor activities"
-                        value={newAdditionalFieldValue}
+                        placeholder="e.g., Requires prescription glasses"
+                        value={newMedicalFieldValue}
                         onChange={(e) =>
-                          setNewAdditionalFieldValue(e.target.value)
+                          setNewMedicalFieldValue(e.target.value)
                         }
                         rows="2"
                       />
                     </div>
                     <button
                       type="button"
-                      onClick={addAdditionalCustomField}
+                      onClick={addMedicalCustomField}
                       className="add-custom-field-btn"
                     >
                       Add Field
                     </button>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="edit-section">
+                <h4>Additional Information</h4>
+                <p className="section-description">
+                  Add any other relevant information about the client that
+                  doesn't fit in the categories above (e.g., Hobbies,
+                  Preferences, Special notes, etc.)
+                </p>
+
+                {editFormData.customAdditionalFields &&
+                  editFormData.customAdditionalFields.length > 0 && (
+                    <div className="custom-fields-list">
+                      {editFormData.customAdditionalFields.map(
+                        (field, index) => (
+                          <div key={index} className="custom-field-item">
+                            <div className="field-inputs">
+                              <div className="field-input-group">
+                                <label>Header:</label>
+                                <input
+                                  type="text"
+                                  value={field.title}
+                                  onChange={(e) =>
+                                    updateAdditionalFieldTitle(
+                                      index,
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="e.g., Hobbies"
+                                />
+                              </div>
+                              <div className="field-input-group">
+                                <label>Details:</label>
+                                <textarea
+                                  value={field.value}
+                                  onChange={(e) =>
+                                    updateAdditionalFieldValue(
+                                      index,
+                                      e.target.value
+                                    )
+                                  }
+                                  rows="2"
+                                  placeholder="Enter details..."
+                                />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalCustomField(index)}
+                              className="remove-field-btn"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                <div className="add-custom-field">
+                  <div className="field-input-group">
+                    <label>Header</label>
+                    <input
+                      placeholder="e.g., Hobbies, Preferences"
+                      value={newAdditionalFieldTitle}
+                      onChange={(e) =>
+                        setNewAdditionalFieldTitle(e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="field-input-group">
+                    <label>Details</label>
+                    <textarea
+                      placeholder="e.g., Enjoys painting, Loves outdoor activities"
+                      value={newAdditionalFieldValue}
+                      onChange={(e) =>
+                        setNewAdditionalFieldValue(e.target.value)
+                      }
+                      rows="2"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addAdditionalCustomField}
+                    className="add-custom-field-btn"
+                  >
+                    Add Field
+                  </button>
+                </div>
+              </div>
 
               {saveError && (
                 <div className="save-error">
@@ -1511,6 +1445,25 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-size: 1.25rem;
         }
 
+        .edit-client-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .edit-client-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -1541,22 +1494,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-        }
-
-        .edit-btn {
-          padding: 0.375rem 0.75rem;
-          background: #8189d2;
-          color: white;
-          border: none;
-          border-radius: 0.25rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .edit-btn:hover {
-          background: #6d76c4;
         }
 
         .block-description {
@@ -1663,6 +1600,25 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           flex: 1;
         }
 
+        .edit-section {
+          margin-bottom: 2rem;
+          padding-bottom: 2rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .edit-section:last-of-type {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .edit-section h4 {
+          margin: 0 0 1rem 0;
+          color: #374151;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+
         .edit-field {
           margin-bottom: 1rem;
         }
@@ -1705,24 +1661,24 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           line-height: 1.4;
         }
 
-        .section-hint {
-          color: #9ca3af;
-          font-size: 0.75rem;
-          margin-bottom: 0.75rem;
-          font-style: italic;
-        }
-
-        .custom-fields-section {
+        .custom-fields-subsection {
           margin-top: 1.5rem;
           padding-top: 1.5rem;
           border-top: 1px solid #e5e7eb;
         }
 
-        .custom-fields-section h5 {
+        .custom-fields-subsection h5 {
           margin: 0 0 0.25rem 0;
           color: #4b5563;
           font-size: 0.9375rem;
           font-weight: 600;
+        }
+
+        .subsection-hint {
+          color: #9ca3af;
+          font-size: 0.75rem;
+          margin-bottom: 0.75rem;
+          font-style: italic;
         }
 
         .custom-fields-list {
@@ -1961,18 +1917,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           color: #6b7280;
           font-size: 0.875rem;
           line-height: 1.6;
-        }
-
-        .select-type-btn {
-          width: 100%;
-          margin: 0 !important;
-          padding: 0.75rem 1.5rem;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.9375rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
         }
 
         .select-type-btn.primary {
