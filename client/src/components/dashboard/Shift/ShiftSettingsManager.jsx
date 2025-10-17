@@ -166,9 +166,9 @@ function ShiftSettingsManager({ jwt, organizationId }) {
             align-items: center;
             gap: 0.5rem;
             padding: 0.625rem 1rem;
-            background: white;
-            color: #4b5563 !important;
-            border: 1px solid #d1d5db;
+            background: #8189d2;
+            color: #ffffff !important;
+            border: none;
             border-radius: 0.375rem;
             font-weight: 500;
             cursor: pointer;
@@ -176,9 +176,9 @@ function ShiftSettingsManager({ jwt, organizationId }) {
           }
 
           .btn-settings:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
-            color: #111827;
+            background: #6b73c5;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(129, 137, 210, 0.3);
           }
         `}</style>
       </div>

@@ -204,79 +204,80 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
 
   return (
     <div className="shift-allocation-card">
-      <h4>Allocate a Shift</h4>
-      {err && <p className="error-message">Error: {err}</p>}
+      <div className="shift-allocation-header">
+        <h2>Allocate a Shift</h2>
+        <p>Schedule a new shift for the selected staff member</p>
+      </div>
+      
+      {err && <div className="shift-error-message">{err}</div>}
 
-      <div className="form-section">
-        <div className="form-row">
-          <div className="form-group">
-            <label>Staff Member</label>
-            <select
-              value={staffUserId}
-              onChange={(e) => setStaffUserId(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">— Select staff —</option>
-              {assignables.map((u) => (
-                <option key={u.userId} value={u.userId}>
-                  {u.name} ({u.role})
-                </option>
-              ))}
-            </select>
-          </div>
+      <form className="shift-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <div className="shift-form-group">
+          <label>Staff Member <span className="required-mark">*</span></label>
+          <select
+            className="shift-form-control"
+            value={staffUserId}
+            onChange={(e) => setStaffUserId(e.target.value)}
+            disabled={loading}
+          >
+            <option value="">Select staff member</option>
+            {assignables.map((u) => (
+              <option key={u.userId} value={u.userId}>
+                {u.name} ({u.role})
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="form-group">
-            <label>Shift</label>
-            <select
-              value={shiftSelection}
-              onChange={(e) => setShiftSelection(e.target.value)}
-              disabled={loading}
-            >
-              {shiftSettings?.morning?.enabled !== false && (
-                <option value="morning">
-                  {getShiftOptionLabel("morning")}
-                </option>
-              )}
-              {shiftSettings?.afternoon?.enabled !== false && (
-                <option value="afternoon">
-                  {getShiftOptionLabel("afternoon")}
-                </option>
-              )}
-              {shiftSettings?.evening?.enabled !== false && (
-                <option value="evening">
-                  {getShiftOptionLabel("evening")}
-                </option>
-              )}
-              <option value="custom">{getShiftOptionLabel("custom")}</option>
-            </select>
-          </div>
+        <div className="shift-form-group">
+          <label>Shift Type <span className="required-mark">*</span></label>
+          <select
+            className="shift-form-control"
+            value={shiftSelection}
+            onChange={(e) => setShiftSelection(e.target.value)}
+            disabled={loading}
+          >
+            {shiftSettings?.morning?.enabled !== false && (
+              <option value="morning">
+                {getShiftOptionLabel("morning")}
+              </option>
+            )}
+            {shiftSettings?.afternoon?.enabled !== false && (
+              <option value="afternoon">
+                {getShiftOptionLabel("afternoon")}
+              </option>
+            )}
+            {shiftSettings?.evening?.enabled !== false && (
+              <option value="evening">
+                {getShiftOptionLabel("evening")}
+              </option>
+            )}
+            <option value="custom">{getShiftOptionLabel("custom")}</option>
+          </select>
         </div>
 
         {/* For predefined shifts - only show date */}
         {!isCustomShift && (
-          <div className="form-row">
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="form-group">
-              {/* Empty space to maintain grid layout */}
-            </div>
+          <div className="shift-form-group">
+            <label>Date <span className="required-mark">*</span></label>
+            <input
+              className="shift-form-control"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              disabled={loading}
+            />
           </div>
         )}
 
         {/* For custom shifts - show full date/time controls */}
         {isCustomShift && (
           <>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start Date</label>
+            <div className="shift-form-row">
+              <div className="shift-form-group">
+                <label>Start Date <span className="required-mark">*</span></label>
                 <input
+                  className="shift-form-control"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
@@ -284,9 +285,10 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Start Time</label>
+              <div className="shift-form-group">
+                <label>Start Time <span className="required-mark">*</span></label>
                 <input
+                  className="shift-form-control"
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
@@ -295,15 +297,16 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
+            <div className="shift-form-row">
+              <div className="shift-form-group">
                 <label>
                   End Date{" "}
-                  <span className="optional-label">
-                    (leave blank for same day)
+                  <span className="shift-optional-label">
+                    (optional - leave blank for same day)
                   </span>
                 </label>
                 <input
+                  className="shift-form-control"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
@@ -312,9 +315,10 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
                 />
               </div>
 
-              <div className="form-group">
-                <label>End Time</label>
+              <div className="shift-form-group">
+                <label>End Time <span className="required-mark">*</span></label>
                 <input
+                  className="shift-form-control"
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
@@ -325,138 +329,192 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
           </>
         )}
 
-        <div className="form-row">
-          <div className="form-group full-width">
-            <label>
-              Notes <span className="optional-label">(optional)</span>
-            </label>
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any special instructions or notes"
-              disabled={loading}
-            />
-          </div>
+        <div className="shift-form-group shift-full-width">
+          <label>
+            Notes{" "}
+            <span className="shift-optional-label">(optional)</span>
+          </label>
+          <textarea
+            className="shift-form-control shift-textarea"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add any special instructions or notes"
+            disabled={loading}
+            rows="3"
+          />
         </div>
 
-        <div className="form-actions">
+        <div className="shift-form-actions">
           <button
-            className="btn-primary"
-            onClick={submit}
+            type="submit"
+            className="shift-submit-btn"
             disabled={loading || !staffUserId || !startDate}
           >
-            {loading ? "Creating..." : "Create Shift"}
+            {loading ? "Creating Shift..." : "Create Shift"}
           </button>
         </div>
-      </div>
+      </form>
 
       <style jsx>{`
         .shift-allocation-card {
-          background: white;
-          border-radius: 0.5rem;
-          padding: 1.5rem;
-          margin-top: 1rem;
+          background: #ffffff;
+          border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          padding: 24px;
+          margin: 0;
+          max-width: 100%;
+          font-family: "Inter", sans-serif;
+          border: 1px solid #e5e7eb;
         }
 
-        .shift-allocation-card h4 {
-          margin: 0 0 1rem 0;
-          color: #111827;
-          font-size: 1.125rem;
+        .shift-allocation-header {
+          text-align: left;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid #e5e7eb;
         }
 
-        .error-message {
+        .shift-allocation-header h2 {
+          font-size: 20px;
+          font-weight: 600;
+          color: #1f2937;
+          margin: 0 0 6px 0;
+        }
+
+        .shift-allocation-header p {
+          font-size: 13px;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        .shift-error-message {
+          padding: 12px 16px;
+          background-color: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 8px;
           color: #dc2626;
-          background: #fee2e2;
-          padding: 0.75rem;
-          border-radius: 0.375rem;
-          margin-bottom: 1rem;
+          font-size: 14px;
+          margin-bottom: 20px;
+          text-align: center;
         }
 
-        .form-section {
+        .shift-form {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 16px;
         }
 
-        .form-row {
+        .shift-form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1rem;
+          gap: 16px;
         }
 
-        .form-group {
+        .shift-form-group {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 8px;
         }
 
-        .form-group.full-width {
+        .shift-form-group.shift-full-width,
+        .shift-full-width {
           grid-column: 1 / -1;
         }
 
-        .form-group label {
-          font-size: 0.875rem;
-          font-weight: 500;
+        .shift-form-group label {
+          font-size: 14px;
+          font-weight: 600;
           color: #374151;
         }
 
-        .optional-label {
+        .required-mark {
+          color: #dc2626;
+          margin-left: 2px;
+        }
+
+        .shift-optional-label {
           font-weight: 400;
-          color: #6b7280;
-          font-size: 0.813rem;
+          color: #9ca3af;
+          font-size: 12px;
         }
 
-        .form-group select,
-        .form-group input {
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          font-size: 0.875rem;
-          background: white;
+        .shift-form-control {
+          padding: 12px 16px;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          font-size: 15px;
+          font-family: "Inter", sans-serif;
+          transition: all 0.2s ease;
+          background: #ffffff;
         }
 
-        .form-group select:focus,
-        .form-group input:focus {
+        .shift-form-control:focus {
           outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          border-color: #8189d2;
+          box-shadow: 0 0 0 3px rgba(129, 137, 210, 0.1);
         }
 
-        .form-group select:disabled,
-        .form-group input:disabled {
+        .shift-form-control:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          background: #f9fafb;
         }
 
-        .form-actions {
-          margin-top: 1rem;
-          display: flex;
-          justify-content: flex-end;
+        .shift-form-control::placeholder {
+          color: #9ca3af;
         }
 
-        .btn-primary {
-          padding: 0.625rem 1.25rem;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 0.375rem;
-          font-weight: 600;
+        select.shift-form-control {
           cursor: pointer;
-          transition: background 0.2s;
         }
 
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
+        .shift-textarea {
+          resize: vertical;
+          min-height: 80px;
         }
 
-        .btn-primary:disabled {
-          opacity: 0.5;
+        .shift-form-actions {
+          margin-top: 12px;
+          display: flex;
+          justify-content: center;
+        }
+
+        .shift-submit-btn {
+          padding: 12px 24px;
+          background: #2C3F70;
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: "Inter", sans-serif;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          width: 100%;
+        }
+
+        .shift-submit-btn:hover:not(:disabled) {
+          background: #252E47;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(44, 63, 112, 0.4);
+        }
+
+        .shift-submit-btn:disabled {
+          opacity: 0.6;
           cursor: not-allowed;
+          transform: none;
         }
 
         @media (max-width: 768px) {
-          .form-row {
+          .shift-allocation-card {
+            padding: 20px 16px;
+          }
+
+          .shift-allocation-header h2 {
+            font-size: 18px;
+          }
+
+          .shift-form-row {
             grid-template-columns: 1fr;
           }
         }
