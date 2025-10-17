@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import ClientManagement from "../ClientManagement";
@@ -6,6 +7,7 @@ import { useClients } from "../hooks/useClients";
 
 function ClientsPage() {
   const { me } = useAuth();
+  const navigate = useNavigate();
   const jwt = localStorage.getItem("jwt");
   const { clients, loading, error, refresh } = useClients(me, jwt);
   const [showAddClient, setShowAddClient] = React.useState(false);
@@ -51,8 +53,19 @@ function ClientsPage() {
             {/* Success Message */}
             {successMessage && (
               <div className="success-message">
-                <span className="success-icon">✓</span>
-                {successMessage}
+                <div className="success-content">
+                  <span className="success-icon">✓</span>
+                  <div>
+                    <p className="success-text">{successMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/dashboard')}
+                      className="return-dashboard-btn"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -323,30 +336,57 @@ function ClientsPage() {
           }
 
           .success-message {
-            background: #dcfce7;
-            border: 1px solid #86efac;
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
+            background: #10b981!important;
+            color: white;
+            padding: 1.5rem;
             margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: #166534;
-            font-weight: 500;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
             animation: slideIn 0.3s ease-out;
           }
 
+          .success-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
           .success-icon {
-            display: inline-flex;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: white;
+            color: #10b981!important;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
             align-items: center;
             justify-content: center;
-            width: 1.5rem;
-            height: 1.5rem;
-            background: #22c55e;
-            color: white;
-            border-radius: 50%;
-            font-weight: bold;
+            flex-shrink: 0;
+          }
+
+          .success-text {
+            margin: 0 0 0.75rem 0;
             font-size: 1rem;
+            font-weight: 500;
+            color: white;
+          }
+
+          .return-dashboard-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            color: #10b981!important;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .return-dashboard-btn:hover {
+            background: #f0fdf4;
+            transform: translateY(-1px);
           }
 
           @keyframes slideIn {

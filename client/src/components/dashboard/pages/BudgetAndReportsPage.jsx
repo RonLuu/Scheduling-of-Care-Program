@@ -83,20 +83,30 @@ function BudgetPlanningPage() {
 
   // Initialize showWizard - only set on first load
   const [showWizard, setShowWizard] = React.useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
   const initializedRef = React.useRef({});
 
-  // Only auto-switch to overview on initial load if budget is complete
+  // Only auto-switch to overview on initial load if budget is complete, but not if user has started interacting
   React.useEffect(() => {
     const key = `${selectedClient?._id}-${selectedYear}`;
 
-    if (budgetPlan !== null && budgetPlan !== undefined && !initializedRef.current[key]) {
+    // Only initialize once per client/year combination and only when budgetPlan first loads
+    // Don't auto-close if user has already started interacting with the wizard
+    if (budgetPlan !== null && budgetPlan !== undefined && !initializedRef.current[key] && !hasUserInteracted) {
       const isComplete = budgetPlan?.yearlyBudget &&
                         budgetPlan?.categories?.length > 0 &&
                         budgetPlan?.categories?.some((cat) => cat.items && cat.items.length > 0);
       setShowWizard(!isComplete);
       initializedRef.current[key] = true;
     }
-  }, [budgetPlan, selectedClient?._id, selectedYear]);
+  }, [budgetPlan, selectedClient?._id, selectedYear, hasUserInteracted]);
+
+  // Reset initialization and interaction state when client or year changes
+  React.useEffect(() => {
+    // Clear all initialization flags when client or year changes
+    initializedRef.current = {};
+    setHasUserInteracted(false);
+  }, [selectedClient?._id, selectedYear]);
 
   const predefinedCategories = [
     {
@@ -220,6 +230,9 @@ function BudgetPlanningPage() {
       alert("Please enter a category name");
       return;
     }
+
+    // Mark that user has started interacting with the wizard
+    setHasUserInteracted(true);
     const newCategory = {
       id: `custom_${Date.now()}`,
       name: newCategoryName.trim(),
@@ -301,6 +314,9 @@ function BudgetPlanningPage() {
       alert("Please enter a valid budget amount");
       return;
     }
+
+    // Mark that user has started interacting with the wizard
+    setHasUserInteracted(true);
     const newItem = {
       name: itemName.trim(),
       budget: parseFloat(itemBudget),
