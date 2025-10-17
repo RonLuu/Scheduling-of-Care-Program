@@ -198,9 +198,12 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
       initialView: "timeGridWeek",
       headerToolbar: {
-        left: "prev,next today",
-        center: "title",
+        left: "prev,next",
+        center: "title", 
         right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+      },
+      customButtons: {
+        today: false, // Explicitly disable today button
       },
       height: 650,
       slotMinTime: "00:00:00",
@@ -251,36 +254,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
             const timeGrid = el.closest('.fc-timegrid-body');
             const slotElements = timeGrid?.querySelectorAll('.fc-timegrid-slot');
             
-            console.log('Detailed positioning debug:', {
-              eventTitle: event.title,
-              startHour: start.getHours(),
-              viewType: info.view.type,
-              
-              // Element positions
-              elementTop: el.style.top,
-              elementComputedTop: window.getComputedStyle(el).top,
-              elementVisible: el.offsetHeight > 0,
-              
-              // Harness positions  
-              harnessTop: harness?.style.top,
-              harnessComputedTop: harness ? window.getComputedStyle(harness).top : 'none',
-              harnessVisible: harness ? harness.offsetHeight > 0 : false,
-              
-              // Outer harness positions
-              outerHarnessTop: outerHarness?.style.top,
-              outerHarnessComputedTop: outerHarness ? window.getComputedStyle(outerHarness).top : 'none',
-              outerHarnessVisible: outerHarness ? outerHarness.offsetHeight > 0 : false,
-              
-              // Parent container info
-              timeGridBody: timeGrid,
-              parentColumn: el.closest('.fc-timegrid-col'),
-              
-              // Elements
-              element: el,
-              harness: harness,
-              outerHarness: outerHarness
-            });
-            
             // Calculate expected position based on start hour
             let hourHeight = 60;
             if (slotElements && slotElements.length > 0) {
@@ -290,62 +263,56 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
             const expectedHeight = Math.max(20, durationHours * hourHeight);
             const expectedTop = start.getHours() * hourHeight + (start.getMinutes() / 60) * hourHeight;
             
-            console.log('Expected positioning:', {
-              expectedTop: expectedTop + 'px',
-              expectedHeight: expectedHeight + 'px',
-              hourHeight: hourHeight
-            });
-            
-            // Different approach for day view vs week view
+            // Simplified positioning that preserves click events
             const applyPositioning = () => {
-              if (info.view.type === 'timeGridDay') {
-                // Day view specific approach
-                if (outerHarness) {
-                  outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
-                  outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
-                  outerHarness.style.setProperty('position', 'absolute', 'important');
-                  outerHarness.style.setProperty('left', '0', 'important');
-                  outerHarness.style.setProperty('right', '0', 'important');
-                  outerHarness.style.setProperty('z-index', '1', 'important');
-                  outerHarness.style.setProperty('display', 'block', 'important');
-                  outerHarness.style.setProperty('visibility', 'visible', 'important');
-                }
-                
-                if (harness) {
-                  harness.style.setProperty('height', expectedHeight + 'px', 'important');
-                  harness.style.setProperty('position', 'relative', 'important');
-                  harness.style.setProperty('display', 'block', 'important');
-                  harness.style.setProperty('visibility', 'visible', 'important');
-                }
-                
-                el.style.setProperty('height', '100%', 'important');
-                el.style.setProperty('position', 'absolute', 'important');
-                el.style.setProperty('top', '0', 'important');
-                el.style.setProperty('left', '0', 'important');
-                el.style.setProperty('right', '2px', 'important');
-                el.style.setProperty('display', 'block', 'important');
-                el.style.setProperty('visibility', 'visible', 'important');
-                el.style.setProperty('z-index', '1', 'important');
-              } else {
-                // Week view approach (working)
-                if (outerHarness) {
-                  outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
-                  outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
-                  outerHarness.style.setProperty('position', 'absolute', 'important');
-                }
-                
-                if (harness) {
-                  harness.style.setProperty('height', expectedHeight + 'px', 'important');
-                  harness.style.setProperty('position', 'relative', 'important');
-                }
-                
-                el.style.setProperty('height', '100%', 'important');
-                el.style.setProperty('position', 'absolute', 'important');
-                el.style.setProperty('top', '0', 'important');
-                el.style.setProperty('left', '0', 'important');
-                el.style.setProperty('right', '2px', 'important');
+              // Only modify the outer harness for positioning and height
+              if (outerHarness) {
+                outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
+                outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
+                // Don't change position - let FullCalendar handle it
+                outerHarness.style.setProperty('pointer-events', 'auto', 'important');
+                outerHarness.style.setProperty('cursor', 'pointer', 'important');
               }
+              
+              // Only modify height for inner harness
+              if (harness) {
+                harness.style.setProperty('height', expectedHeight + 'px', 'important');
+                harness.style.setProperty('pointer-events', 'auto', 'important');
+                harness.style.setProperty('cursor', 'pointer', 'important');
+              }
+              
+              // Minimal changes to the event element itself
+              el.style.setProperty('pointer-events', 'auto', 'important');
+              el.style.setProperty('cursor', 'pointer', 'important');
             };
+            
+            // Add click event listeners to all parts of the event
+            const handleEventClick = (e) => {
+              console.log('Event clicked:', event.title);
+              e.preventDefault();
+              e.stopPropagation();
+              setDrawer({
+                open: true,
+                shift: {
+                  id: event.id,
+                  title: event.title,
+                  start: event.start,
+                  end: event.end,
+                  notes: event.extendedProps?.notes || "",
+                  staffId: event.extendedProps?.staffId || "",
+                  shiftType: event.extendedProps?.shiftType || "custom",
+                },
+              });
+            };
+            
+            // Add listeners to multiple elements to ensure clicks are caught
+            el.addEventListener('click', handleEventClick);
+            if (harness) {
+              harness.addEventListener('click', handleEventClick);
+            }
+            if (outerHarness) {
+              outerHarness.addEventListener('click', handleEventClick);
+            }
             
             // Apply immediately
             applyPositioning();
@@ -368,8 +335,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
                 attributeFilter: ['style'] 
               });
             }
-            
-            console.log('Applied positioning for:', event.title, expectedTop + 'px');
           }
         }
       },
@@ -540,6 +505,21 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         .fc-timegrid-event-harness-inset .fc-timegrid-event {
           box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2) !important;
           /* Don't override any positioning - let our JavaScript handle height only */
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        /* Ensure all time grid event containers are clickable */
+        .fc-timegrid-event-harness,
+        .fc-timegrid-event-harness-inset,
+        .fc-timegrid-event {
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        /* Override any potential pointer-events blocking */
+        .fc-timegrid-col-events {
+          pointer-events: auto !important;
         }
 
         /* Force FullCalendar to calculate correct heights */

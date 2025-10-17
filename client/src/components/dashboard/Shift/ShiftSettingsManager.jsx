@@ -191,9 +191,6 @@ function ShiftSettingsManager({ jwt, organizationId }) {
         <h3>
           <BiTime /> Organization Shift Settings
         </h3>
-        <button className="btn-close" onClick={() => setShowSettings(false)}>
-          <BiX />
-        </button>
       </div>
 
       {loading ? (
@@ -204,9 +201,9 @@ function ShiftSettingsManager({ jwt, organizationId }) {
         <>
           <div className="settings-content">
             <p className="settings-description">
-              Configure the default times for predefined shifts in your
-              organization. These times will be automatically applied when staff
-              select a predefined shift type.
+              Set the start and end times for your organisation’s predefined 
+              shifts. These times will fill in automatically when you choose 
+              a shift type.
             </p>
 
             {/* Morning Shift */}
@@ -370,13 +367,6 @@ function ShiftSettingsManager({ jwt, organizationId }) {
               disabled={!hasChanges || saving}
             >
               <BiSave /> {saving ? "Saving..." : "Save Changes"}
-            </button>
-            <button
-              className="btn-cancel"
-              onClick={cancelChanges}
-              disabled={!hasChanges || saving}
-            >
-              Cancel
             </button>
           </div>
         </>
@@ -579,8 +569,7 @@ function ShiftSettingsManager({ jwt, organizationId }) {
           border-top: 1px solid #e5e7eb;
         }
 
-        .btn-save,
-        .btn-cancel {
+        .btn-save {
           padding: 0.625rem 1rem;
           border-radius: 0.375rem;
           font-weight: 500;
@@ -606,15 +595,6 @@ function ShiftSettingsManager({ jwt, organizationId }) {
           cursor: not-allowed;
         }
 
-        .btn-cancel {
-          background: white;
-          color: #374151;
-          border: 1px solid #d1d5db;
-        }
-
-        .btn-cancel:hover:not(:disabled) {
-          background: #f9fafb;
-        }
 
         @media (max-width: 640px) {
           .time-inputs {
@@ -625,8 +605,7 @@ function ShiftSettingsManager({ jwt, organizationId }) {
             flex-direction: column;
           }
 
-          .btn-save,
-          .btn-cancel {
+          .btn-save {
             width: 100%;
             justify-content: center;
           }

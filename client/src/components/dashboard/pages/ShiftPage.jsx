@@ -62,9 +62,6 @@ function ShiftPage() {
                       </option>
                     ))}
                   </select>
-                  <button className="btn-refresh" onClick={bump} disabled={!personId}>
-                    Refresh
-                  </button>
                 </div>
               </div>
 
@@ -73,6 +70,14 @@ function ShiftPage() {
                   {/* Left Column - Shift Allocation (Admin only) */}
                   {me?.role === "Admin" && (
                     <div className="left-column">
+                      {/* Tip Box */}
+                      <div className="tip-box">
+                        <div className="tip-icon">💡</div>
+                        <div className="tip-content">
+                          <strong>Tip:</strong> Want to change your organization's shift hours? Scroll down and click the "Change Organization Shift Settings" at the bottom of this section.
+                        </div>
+                      </div>
+                      
                       <ShiftAllocation jwt={jwt} personId={personId} onCreated={bump} />
                       
                       {/* Admin-only shift settings management */}
@@ -186,30 +191,10 @@ function ShiftPage() {
           box-shadow: 0 0 0 3px rgba(129, 137, 210, 0.1);
         }
 
-        .btn-refresh {
-          padding: 0.5rem 1rem;
-          background: #8189d2;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: background 0.2s;
-          font-family: "Inter", sans-serif;
-        }
-
-        .btn-refresh:hover:not(:disabled) {
-          background: #6366f1;
-        }
-
-        .btn-refresh:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
 
         .shift-content.admin-layout {
           display: grid;
-          grid-template-columns: 450px 1fr;
+          grid-template-columns: 380px 1fr;
           gap: 2rem;
           align-items: start;
         }
@@ -240,6 +225,34 @@ function ShiftPage() {
           color: #1f2937;
           font-size: 1.25rem;
           font-weight: 600;
+        }
+
+        .tip-box {
+          background: #f0f9ff;
+          border: 1px solid #0ea5e9;
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .tip-icon {
+          font-size: 1.25rem;
+          flex-shrink: 0;
+          margin-top: 0.125rem;
+        }
+
+        .tip-content {
+          font-size: 0.875rem;
+          line-height: 1.5;
+          color: #1e40af;
+        }
+
+        .tip-content strong {
+          font-weight: 600;
+          color: #1e3a8a;
         }
 
         @media (max-width: 1200px) {

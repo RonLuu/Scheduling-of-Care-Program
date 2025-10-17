@@ -202,6 +202,19 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
 
   const isCustomShift = shiftSelection === "custom";
 
+  // Function to get the display role for staff members
+  const getDisplayRole = (user) => {
+    if (user.role === "Admin") {
+      // Use self-defined role title if available, otherwise default to "organization representative"
+      return user.roleTitle || "Organization Representative";
+    } else if (user.role === "GeneralCareStaff") {
+      return "Carer";
+    } else {
+      // For any other roles, show the role as-is
+      return user.role;
+    }
+  };
+
   return (
     <div className="shift-allocation-card">
       <div className="shift-allocation-header">
@@ -223,7 +236,7 @@ function ShiftAllocation({ jwt, personId, onCreated }) {
             <option value="">Select staff member</option>
             {assignables.map((u) => (
               <option key={u.userId} value={u.userId}>
-                {u.name} ({u.role})
+                {u.name} ({getDisplayRole(u)})
               </option>
             ))}
           </select>
