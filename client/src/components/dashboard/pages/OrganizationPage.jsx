@@ -831,7 +831,7 @@ function OrganizationPage() {
           font-size: 1.5rem;
           font-weight: bold;
           background: white;
-          color: #75e2beff;
+          color: #10b981;
           width: 2rem;
           height: 2rem;
           border-radius: 50%;
@@ -851,7 +851,7 @@ function OrganizationPage() {
         .return-dashboard-btn {
           padding: 0.5rem 1rem;
           background: white;
-          color: #75e2beff!important;
+          color: #10b981!important;
           border: none;
           border-radius: 0.375rem;
           font-weight: 600;

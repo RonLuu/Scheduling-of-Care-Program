@@ -426,7 +426,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
                 <option value="">Select a category...</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.emoji} {category.name}
+                    {category.name}
                   </option>
                 ))}
               </select>
