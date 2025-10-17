@@ -98,7 +98,7 @@ function RequestAccess({ jwt }) {
         </div>
 
         <div>
-          <label htmlFor="access-message">Message (optional)</label>
+          <label htmlFor="access-message">Message</label>
           <input
             id="access-message"
             type="text"

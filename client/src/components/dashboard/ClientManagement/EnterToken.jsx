@@ -56,7 +56,7 @@ function EnterToken({ me, jwt, onSuccess }) {
     <div className="enter-token-container">
       <form onSubmit={handleSubmit} className="enter-token-form">
         <div className="form-group">
-          <label htmlFor="token-input">Invite Token</label>
+          <label htmlFor="token-input">Invite Token *</label>
           <input
             id="token-input"
             type="text"
@@ -72,7 +72,7 @@ function EnterToken({ me, jwt, onSuccess }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="message-input">Message (Optional)</label>
+          <label htmlFor="message-input">Message</label>
           <textarea
             id="message-input"
             value={message}
