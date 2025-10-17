@@ -5,6 +5,7 @@ import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
 import CareTasks from "../CareTasks";
+import AllocatedStaffWidget from "../widgets/AllocatedStaffWidget";
 
 function Dashboard() {
   const { me } = useAuth();
@@ -1481,9 +1482,9 @@ function DashboardContent({ client, jwt, me }) {
         />
       )}
 
-      {/* Horizontal Layout for Main Content */}
+      {/* Two Column Layout */}
       <div className="dashboard-content">
-        {/* Left: Getting Started / Schedule */}
+        {/* Left: Schedule + Care Staff (for Family/PoA) OR Schedule + Tips (for Admin/Staff) */}
         <div className="content-left">
           <GettingStartedOrSchedule
             client={client}
@@ -1491,6 +1492,37 @@ function DashboardContent({ client, jwt, me }) {
             hasBudget={budget.allocated > 0}
             hasTasks={tasks.total > 0}
           />
+          
+          {/* Allocated Staff Widget - Only for Family and PoA */}
+          {(me?.role === "Family" || me?.role === "PoA") && (
+            <AllocatedStaffWidget 
+              jwt={jwt} 
+              clientId={client._id} 
+              clientName={client.name} 
+            />
+          )}
+
+          {/* Staff Tip Box - Only for GeneralCareStaff */}
+          {me?.role === "GeneralCareStaff" && (
+            <div className="staff-tip-box">
+              <div className="tip-icon">💡</div>
+              <div className="tip-content">
+                <strong>Welcome to your dashboard!</strong>
+                <p>
+                  Here you can view today's schedule, access tasks, and find
+                  important information for providing excellent care.
+                </p>
+                <p>
+                  <strong>Need help?</strong> You can view detailed client
+                  information including{" "}
+                  <a href="/clients" className="tip-link">
+                    medical information, allergies, and emergency contacts
+                  </a>{" "}
+                  for this client.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
@@ -1578,10 +1610,16 @@ function DashboardContent({ client, jwt, me }) {
 
         .content-left {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
 
         .content-right {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
 
         .dashboard-loading,
@@ -2615,10 +2653,11 @@ function TodaysScheduleWidget({ scheduleData, client }) {
 
       <style jsx>{`
         .todays-schedule {
-          background: #f8fafc;
+          background: white;
           border-radius: 12px;
           padding: 1.5rem;
           border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .schedule-header {
@@ -3021,10 +3060,12 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
 
       <style jsx>{`
         .todays-schedule {
-          background: #f8fafc;
+          background: white;
           border-radius: 12px;
           padding: 1.5rem;
           margin-bottom: 1.5rem;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .schedule-header {
