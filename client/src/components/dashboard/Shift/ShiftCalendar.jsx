@@ -52,8 +52,24 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       let from, to;
       if (fcRef.current) {
         const v = fcRef.current.view;
-        from = v.activeStart.toISOString().slice(0, 10);
-        to = v.activeEnd.toISOString().slice(0, 10);
+        
+        // For day view, expand the range to catch overnight shifts
+        if (v.type === 'timeGridDay') {
+          // Start one day earlier and end one day later to catch overnight shifts
+          const startDate = new Date(v.activeStart);
+          startDate.setDate(startDate.getDate() - 1);
+          const endDate = new Date(v.activeEnd);
+          endDate.setDate(endDate.getDate() + 1);
+          
+          from = startDate.toISOString().slice(0, 10);
+          to = endDate.toISOString().slice(0, 10);
+        } else {
+          from = v.activeStart.toISOString().slice(0, 10);
+          to = v.activeEnd.toISOString().slice(0, 10);
+        }
+        
+        // Debug logging for development
+        // console.log('Loading shifts for view:', v.type, 'from:', from, 'to:', to);
       }
       const url =
         `/api/shift-allocations?personId=${personId}` +
@@ -142,7 +158,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         
         // Filter out null events and add each event individually to ensure proper rendering
         const validEvents = evs.filter(event => event !== null);
-        
         validEvents.forEach(event => {
           fcRef.current.addEvent(event);
         });
@@ -223,44 +238,138 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           const event = info.event;
           const el = info.el;
           
-          // FullCalendar is positioning correctly - just ensure our height changes don't break positioning
-          
-          // Get the event duration in hours
+          // Debug what's happening with positioning
           const start = event.start;
           const end = event.end;
           if (start && end) {
             const durationMs = end.getTime() - start.getTime();
             const durationHours = durationMs / (1000 * 60 * 60);
             
-            // Find the time grid and calculate the actual hour height
+            // Get all the parent elements
+            const harness = el.closest('.fc-timegrid-event-harness-inset');
+            const outerHarness = el.closest('.fc-timegrid-event-harness');
             const timeGrid = el.closest('.fc-timegrid-body');
             const slotElements = timeGrid?.querySelectorAll('.fc-timegrid-slot');
-            let hourHeight = 60; // Default fallback
             
+            console.log('Detailed positioning debug:', {
+              eventTitle: event.title,
+              startHour: start.getHours(),
+              viewType: info.view.type,
+              
+              // Element positions
+              elementTop: el.style.top,
+              elementComputedTop: window.getComputedStyle(el).top,
+              elementVisible: el.offsetHeight > 0,
+              
+              // Harness positions  
+              harnessTop: harness?.style.top,
+              harnessComputedTop: harness ? window.getComputedStyle(harness).top : 'none',
+              harnessVisible: harness ? harness.offsetHeight > 0 : false,
+              
+              // Outer harness positions
+              outerHarnessTop: outerHarness?.style.top,
+              outerHarnessComputedTop: outerHarness ? window.getComputedStyle(outerHarness).top : 'none',
+              outerHarnessVisible: outerHarness ? outerHarness.offsetHeight > 0 : false,
+              
+              // Parent container info
+              timeGridBody: timeGrid,
+              parentColumn: el.closest('.fc-timegrid-col'),
+              
+              // Elements
+              element: el,
+              harness: harness,
+              outerHarness: outerHarness
+            });
+            
+            // Calculate expected position based on start hour
+            let hourHeight = 60;
             if (slotElements && slotElements.length > 0) {
-              // Calculate actual hour height from the grid
-              const firstSlot = slotElements[0];
-              hourHeight = firstSlot.offsetHeight;
+              hourHeight = slotElements[0].offsetHeight;
             }
             
             const expectedHeight = Math.max(20, durationHours * hourHeight);
+            const expectedTop = start.getHours() * hourHeight + (start.getMinutes() / 60) * hourHeight;
             
-            // Force the correct height on the event element
-            el.style.setProperty('height', expectedHeight + 'px', 'important');
-            el.style.setProperty('min-height', expectedHeight + 'px', 'important');
+            console.log('Expected positioning:', {
+              expectedTop: expectedTop + 'px',
+              expectedHeight: expectedHeight + 'px',
+              hourHeight: hourHeight
+            });
             
-            // Fix the parent harness that contains the event
-            const harness = el.closest('.fc-timegrid-event-harness-inset');
-            if (harness) {
-              harness.style.setProperty('height', expectedHeight + 'px', 'important');
-              harness.style.setProperty('min-height', expectedHeight + 'px', 'important');
+            // Different approach for day view vs week view
+            const applyPositioning = () => {
+              if (info.view.type === 'timeGridDay') {
+                // Day view specific approach
+                if (outerHarness) {
+                  outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
+                  outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
+                  outerHarness.style.setProperty('position', 'absolute', 'important');
+                  outerHarness.style.setProperty('left', '0', 'important');
+                  outerHarness.style.setProperty('right', '0', 'important');
+                  outerHarness.style.setProperty('z-index', '1', 'important');
+                  outerHarness.style.setProperty('display', 'block', 'important');
+                  outerHarness.style.setProperty('visibility', 'visible', 'important');
+                }
+                
+                if (harness) {
+                  harness.style.setProperty('height', expectedHeight + 'px', 'important');
+                  harness.style.setProperty('position', 'relative', 'important');
+                  harness.style.setProperty('display', 'block', 'important');
+                  harness.style.setProperty('visibility', 'visible', 'important');
+                }
+                
+                el.style.setProperty('height', '100%', 'important');
+                el.style.setProperty('position', 'absolute', 'important');
+                el.style.setProperty('top', '0', 'important');
+                el.style.setProperty('left', '0', 'important');
+                el.style.setProperty('right', '2px', 'important');
+                el.style.setProperty('display', 'block', 'important');
+                el.style.setProperty('visibility', 'visible', 'important');
+                el.style.setProperty('z-index', '1', 'important');
+              } else {
+                // Week view approach (working)
+                if (outerHarness) {
+                  outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
+                  outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
+                  outerHarness.style.setProperty('position', 'absolute', 'important');
+                }
+                
+                if (harness) {
+                  harness.style.setProperty('height', expectedHeight + 'px', 'important');
+                  harness.style.setProperty('position', 'relative', 'important');
+                }
+                
+                el.style.setProperty('height', '100%', 'important');
+                el.style.setProperty('position', 'absolute', 'important');
+                el.style.setProperty('top', '0', 'important');
+                el.style.setProperty('left', '0', 'important');
+                el.style.setProperty('right', '2px', 'important');
+              }
+            };
+            
+            // Apply immediately
+            applyPositioning();
+            
+            // Also apply after a small delay to handle any FullCalendar re-rendering
+            setTimeout(applyPositioning, 10);
+            setTimeout(applyPositioning, 50);
+            
+            // Use MutationObserver to reapply if FullCalendar changes the positioning
+            if (outerHarness && !outerHarness.dataset.observerAttached) {
+              outerHarness.dataset.observerAttached = 'true';
+              const observer = new MutationObserver(() => {
+                if (outerHarness.style.top !== expectedTop + 'px') {
+                  console.log('FullCalendar changed positioning, reapplying...');
+                  applyPositioning();
+                }
+              });
+              observer.observe(outerHarness, { 
+                attributes: true, 
+                attributeFilter: ['style'] 
+              });
             }
             
-            // Also fix the outer harness
-            const outerHarness = el.closest('.fc-timegrid-event-harness');
-            if (outerHarness) {
-              outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
-            }
+            console.log('Applied positioning for:', event.title, expectedTop + 'px');
           }
         }
       },
@@ -427,25 +536,10 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           height: 100% !important;
         }
 
-        /* Critical: Ensure events fill their time duration */
-        .fc-timegrid-event-harness-inset {
-          height: 100% !important;
-          /* Override any computed height that might be wrong */
-          min-height: inherit !important;
-          /* Ensure the harness respects positioning */
-          position: relative !important;
-        }
-
+        /* Let FullCalendar handle positioning, only enhance styling */
         .fc-timegrid-event-harness-inset .fc-timegrid-event {
           box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2) !important;
-          height: 100% !important;
-          top: 0 !important;
-          bottom: 0 !important;
-          position: absolute !important;
-          left: 0 !important;
-          right: 2px !important;
-          /* Ensure the event fills the harness completely */
-          width: calc(100% - 2px) !important;
+          /* Don't override any positioning - let our JavaScript handle height only */
         }
 
         /* Force FullCalendar to calculate correct heights */
@@ -491,13 +585,24 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           border-width: 6px !important;
         }
 
+        /* List view specific text color fix */
+        .fc-list-event-title, 
+        .fc-list-event-time {
+          color: #000000 !important;
+        }
+
         /* More Events Popover */
         .fc-popover .fc-event {
           margin: 2px 0 !important;
         }
 
-        /* Ensure proper contrast for all shift types */
-        .fc-event {
+        /* Ensure proper contrast for time grid views */
+        .fc-timegrid-event {
+          color: white !important;
+        }
+
+        /* Ensure proper contrast for day grid views */
+        .fc-daygrid-event {
           color: white !important;
         }
 
