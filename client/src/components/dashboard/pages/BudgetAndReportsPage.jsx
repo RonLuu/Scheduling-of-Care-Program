@@ -677,7 +677,6 @@ function BudgetPlanningPage() {
                       (c) => c._id === e.target.value
                     );
                     setSelectedClient(client);
-                    setHasInitialized(false); // Reset initialization when client changes
                     setNewCategoryName("");
                     setNewCategoryDescription("");
                     setShowAddCategory(false);
@@ -777,12 +776,10 @@ function BudgetPlanningPage() {
                   <div className="budget-step">
                     <div className="step-header">
                       <h3>{isBudgetPlanComplete ? 'Step 1: Edit Categories' : 'Step 1: Select Categories'}</h3>
-                      {isBudgetPlanComplete && (
-                        <p className="step-description">
-                          Add or remove categories as needed. 
-                          You can also add custom categories.
-                        </p>
-                      )}
+                      <p className="step-description">
+                        Add or remove categories as needed. 
+                        You can also add custom categories.
+                      </p>
                     </div>
 
                     <div className="categories-section">
