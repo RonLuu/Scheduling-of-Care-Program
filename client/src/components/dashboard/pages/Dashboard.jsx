@@ -5,6 +5,7 @@ import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import { useClients } from "../hooks/useClients";
 import CareTasks from "../CareTasks";
+import AllocatedStaffWidget from "../widgets/AllocatedStaffWidget";
 
 function Dashboard() {
   const { me } = useAuth();
@@ -219,9 +220,12 @@ function Dashboard() {
           }
 
           .page-main {
-            max-width: 1400px;
+            max-width: calc(100vw - 220px);
             margin: 0 auto;
             padding: 2rem 1rem;
+            /* Ensure content doesn't overlap with nav and print buttons */
+            margin-left: 100px;
+            margin-right: 120px;
           }
 
           .onboarding-guide {
@@ -474,6 +478,17 @@ function Dashboard() {
           @media (max-width: 768px) {
             .page-main {
               padding: 1rem 0.5rem;
+              margin-left: 70px;
+              margin-right: 70px;
+              max-width: calc(100vw - 140px);
+            }
+          }
+          
+          @media (max-width: 1200px) {
+            .page-main {
+              margin-left: 90px;
+              margin-right: 100px;
+              max-width: calc(100vw - 190px);
             }
 
             .onboarding-header {
@@ -645,9 +660,12 @@ function Dashboard() {
         }
 
         .page-main {
-          max-width: 1400px;
+          max-width: calc(100vw - 220px);
           margin: 0 auto;
           padding: 2rem 1rem;
+          /* Ensure content doesn't overlap with nav and print buttons */
+          margin-left: 100px;
+          margin-right: 120px;
         }
 
         .dashboard-container {
@@ -655,6 +673,14 @@ function Dashboard() {
           border-radius: 12px;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
           overflow: hidden;
+          width: 100%;
+          max-width: 100%;
+        }
+        
+        /* Force all dashboard content to respect container bounds */
+        .page-main *, .dashboard-container *, .onboarding-guide * {
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         .dashboard-header {
@@ -1079,6 +1105,17 @@ function Dashboard() {
         @media (max-width: 768px) {
           .page-main {
             padding: 1rem 0.5rem;
+            margin-left: 70px;
+            margin-right: 70px;
+            max-width: calc(100vw - 140px);
+          }
+        }
+        
+        @media (max-width: 1200px) {
+          .page-main {
+            margin-left: 90px;
+            margin-right: 100px;
+            max-width: calc(100vw - 190px);
           }
 
           .dashboard-header {
@@ -1445,9 +1482,9 @@ function DashboardContent({ client, jwt, me }) {
         />
       )}
 
-      {/* Horizontal Layout for Main Content */}
+      {/* Two Column Layout */}
       <div className="dashboard-content">
-        {/* Left: Getting Started / Schedule */}
+        {/* Left: Schedule + Care Staff (for Family/PoA) OR Schedule + Tips (for Admin/Staff) */}
         <div className="content-left">
           <GettingStartedOrSchedule
             client={client}
@@ -1455,6 +1492,37 @@ function DashboardContent({ client, jwt, me }) {
             hasBudget={budget.allocated > 0}
             hasTasks={tasks.total > 0}
           />
+          
+          {/* Allocated Staff Widget - Only for Family and PoA */}
+          {(me?.role === "Family" || me?.role === "PoA") && (
+            <AllocatedStaffWidget 
+              jwt={jwt} 
+              clientId={client._id} 
+              clientName={client.name} 
+            />
+          )}
+
+          {/* Staff Tip Box - Only for GeneralCareStaff */}
+          {me?.role === "GeneralCareStaff" && (
+            <div className="staff-tip-box">
+              <div className="tip-icon">💡</div>
+              <div className="tip-content">
+                <strong>Welcome to your dashboard!</strong>
+                <p>
+                  Here you can view today's schedule, access tasks, and find
+                  important information for providing excellent care.
+                </p>
+                <p>
+                  <strong>Need help?</strong> You can view detailed client
+                  information including{" "}
+                  <a href="/clients" className="tip-link">
+                    medical information, allergies, and emergency contacts
+                  </a>{" "}
+                  for this client.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Budget Widget for Family/PoA/Admin OR Tip Box for Staff */}
@@ -1542,10 +1610,16 @@ function DashboardContent({ client, jwt, me }) {
 
         .content-left {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
 
         .content-right {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
 
         .dashboard-loading,
@@ -2579,10 +2653,11 @@ function TodaysScheduleWidget({ scheduleData, client }) {
 
       <style jsx>{`
         .todays-schedule {
-          background: #f8fafc;
+          background: white;
           border-radius: 12px;
           padding: 1.5rem;
           border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .schedule-header {
@@ -2985,10 +3060,12 @@ function TodaysScheduleOrGuidance_OLD({ client, jwt }) {
 
       <style jsx>{`
         .todays-schedule {
-          background: #f8fafc;
+          background: white;
           border-radius: 12px;
           padding: 1.5rem;
           margin-bottom: 1.5rem;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .schedule-header {

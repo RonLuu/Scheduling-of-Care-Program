@@ -52,8 +52,24 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       let from, to;
       if (fcRef.current) {
         const v = fcRef.current.view;
-        from = v.activeStart.toISOString().slice(0, 10);
-        to = v.activeEnd.toISOString().slice(0, 10);
+        
+        // For day view, expand the range to catch overnight shifts
+        if (v.type === 'timeGridDay') {
+          // Start one day earlier and end one day later to catch overnight shifts
+          const startDate = new Date(v.activeStart);
+          startDate.setDate(startDate.getDate() - 1);
+          const endDate = new Date(v.activeEnd);
+          endDate.setDate(endDate.getDate() + 1);
+          
+          from = startDate.toISOString().slice(0, 10);
+          to = endDate.toISOString().slice(0, 10);
+        } else {
+          from = v.activeStart.toISOString().slice(0, 10);
+          to = v.activeEnd.toISOString().slice(0, 10);
+        }
+        
+        // Debug logging for development
+        // console.log('Loading shifts for view:', v.type, 'from:', from, 'to:', to);
       }
       const url =
         `/api/shift-allocations?personId=${personId}` +
@@ -66,7 +82,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
 
       const evs = d.map((s) => {
         // Determine shift type for color coding
-        let color = "#2563eb"; // Default blue for custom
+        let color = "#3b82f6"; // Default blue for custom
         let shiftLabel = "";
 
         if (s.shiftType) {
@@ -76,37 +92,75 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
               shiftLabel = " (Morning)";
               break;
             case "afternoon":
-              color = "#f97316"; // Orange for afternoon
+              color = "#fb923c"; // Orange for afternoon
               shiftLabel = " (Afternoon)";
               break;
             case "evening":
-              color = "#8b5cf6"; // Purple for evening
+              color = "#9333ea"; // Purple for evening
               shiftLabel = " (Evening)";
               break;
             default:
               shiftLabel = " (Custom)";
           }
         }
-
+        
+        // Create the event object - ensure proper date formatting for FullCalendar
+        // Parse dates carefully
+        let startDate, endDate;
+        
+        if (typeof s.start === 'string') {
+          startDate = new Date(s.start);
+        } else {
+          startDate = s.start;
+        }
+        
+        if (typeof s.end === 'string') {
+          endDate = new Date(s.end);
+        } else {
+          endDate = s.end;
+        }
+        
+        // Validate dates
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.error('Invalid dates for shift:', s);
+          return null;
+        }
+        
+        // Calculate duration
+        const durationMs = endDate.getTime() - startDate.getTime();
+        const durationHours = durationMs / (1000 * 60 * 60);
+        
+        // Pass the properly parsed Date objects to FullCalendar
         return {
           id: s._id,
           title: (s.staff?.name || "Unknown") + shiftLabel,
-          start: s.start,
-          end: s.end,
-          allDay: false, // Never all-day anymore
+          start: startDate, // Use parsed Date object with correct local timezone
+          end: endDate, // Use parsed Date object with correct local timezone
           backgroundColor: color,
           borderColor: color,
+          textColor: '#ffffff',
+          allDay: false, // Explicitly set to false to ensure time-based events
+          display: 'block', // Force block display for this specific event
+          overlap: true,
+          editable: false,
           extendedProps: {
             notes: s.notes || "",
             staffId: s.staff?.id || s.staffUserId,
             shiftType: s.shiftType || "custom",
+            duration: durationHours,
           },
         };
       });
 
       if (fcRef.current) {
+        // Clear all events
         fcRef.current.removeAllEvents();
-        fcRef.current.addEventSource(evs);
+        
+        // Filter out null events and add each event individually to ensure proper rendering
+        const validEvents = evs.filter(event => event !== null);
+        validEvents.forEach(event => {
+          fcRef.current.addEvent(event);
+        });
       }
     } catch (e) {
       setErr(e.message || String(e));
@@ -144,24 +198,146 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
       initialView: "timeGridWeek",
       headerToolbar: {
-        left: "prev,next today",
-        center: "title",
+        left: "prev,next",
+        center: "title", 
         right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
       },
-      height: "auto",
-      expandRows: true,
+      customButtons: {
+        today: false, // Explicitly disable today button
+      },
+      height: 650,
       slotMinTime: "00:00:00",
       slotMaxTime: "24:00:00",
+      slotDuration: "01:00:00", // 1 hour slots
+      slotLabelInterval: "01:00:00", // Show label every hour
       nowIndicator: true,
       eventOverlap: true,
       selectable: false,
+      editable: false,
       displayEventTime: true,
-      eventTimeFormat: { hour: "numeric", minute: "2-digit", hour12: true },
-      themeSystem: "standard",
-      dayMaxEvents: true,
+      displayEventEnd: true, // Show end time
+      eventTimeFormat: { 
+        hour: "numeric", 
+        minute: "2-digit", 
+        hour12: true
+      },
+      slotLabelFormat: {
+        hour: "numeric",
+        hour12: true
+      },
       firstDay: 1, // Monday
-      aspectRatio: 1.8,
-      slotEventOverlap: true,
+      weekends: true,
+      timeZone: "local", // Use local timezone
+      eventDisplay: 'block', // Force block display for events
+      dayMaxEvents: false, // Don't limit events per day
+      eventMinHeight: 15, // Minimum height for events
+      expandRows: true, // Allow rows to expand for overlapping events
+      slotEventOverlap: false, // Don't overlap events in time slots
+      eventOrderStrict: true, // Maintain strict event ordering
+      nextDayThreshold: '00:00:00', // Events ending at midnight belong to that day
+      eventDidMount: (info) => {
+        // Only apply fixes to time grid views (week/day), not day grid (month)
+        if (info.view.type.includes('timeGrid')) {
+          const event = info.event;
+          const el = info.el;
+          
+          // Debug what's happening with positioning
+          const start = event.start;
+          const end = event.end;
+          if (start && end) {
+            const durationMs = end.getTime() - start.getTime();
+            const durationHours = durationMs / (1000 * 60 * 60);
+            
+            // Get all the parent elements
+            const harness = el.closest('.fc-timegrid-event-harness-inset');
+            const outerHarness = el.closest('.fc-timegrid-event-harness');
+            const timeGrid = el.closest('.fc-timegrid-body');
+            const slotElements = timeGrid?.querySelectorAll('.fc-timegrid-slot');
+            
+            // Calculate expected position based on start hour
+            let hourHeight = 60;
+            if (slotElements && slotElements.length > 0) {
+              hourHeight = slotElements[0].offsetHeight;
+            }
+            
+            const expectedHeight = Math.max(20, durationHours * hourHeight);
+            const expectedTop = start.getHours() * hourHeight + (start.getMinutes() / 60) * hourHeight;
+            
+            // Simplified positioning that preserves click events
+            const applyPositioning = () => {
+              // Only modify the outer harness for positioning and height
+              if (outerHarness) {
+                outerHarness.style.setProperty('top', expectedTop + 'px', 'important');
+                outerHarness.style.setProperty('height', expectedHeight + 'px', 'important');
+                // Don't change position - let FullCalendar handle it
+                outerHarness.style.setProperty('pointer-events', 'auto', 'important');
+                outerHarness.style.setProperty('cursor', 'pointer', 'important');
+              }
+              
+              // Only modify height for inner harness
+              if (harness) {
+                harness.style.setProperty('height', expectedHeight + 'px', 'important');
+                harness.style.setProperty('pointer-events', 'auto', 'important');
+                harness.style.setProperty('cursor', 'pointer', 'important');
+              }
+              
+              // Minimal changes to the event element itself
+              el.style.setProperty('pointer-events', 'auto', 'important');
+              el.style.setProperty('cursor', 'pointer', 'important');
+            };
+            
+            // Add click event listeners to all parts of the event
+            const handleEventClick = (e) => {
+              console.log('Event clicked:', event.title);
+              e.preventDefault();
+              e.stopPropagation();
+              setDrawer({
+                open: true,
+                shift: {
+                  id: event.id,
+                  title: event.title,
+                  start: event.start,
+                  end: event.end,
+                  notes: event.extendedProps?.notes || "",
+                  staffId: event.extendedProps?.staffId || "",
+                  shiftType: event.extendedProps?.shiftType || "custom",
+                },
+              });
+            };
+            
+            // Add listeners to multiple elements to ensure clicks are caught
+            el.addEventListener('click', handleEventClick);
+            if (harness) {
+              harness.addEventListener('click', handleEventClick);
+            }
+            if (outerHarness) {
+              outerHarness.addEventListener('click', handleEventClick);
+            }
+            
+            // Apply immediately
+            applyPositioning();
+            
+            // Also apply after a small delay to handle any FullCalendar re-rendering
+            setTimeout(applyPositioning, 10);
+            setTimeout(applyPositioning, 50);
+            
+            // Use MutationObserver to reapply if FullCalendar changes the positioning
+            if (outerHarness && !outerHarness.dataset.observerAttached) {
+              outerHarness.dataset.observerAttached = 'true';
+              const observer = new MutationObserver(() => {
+                if (outerHarness.style.top !== expectedTop + 'px') {
+                  console.log('FullCalendar changed positioning, reapplying...');
+                  applyPositioning();
+                }
+              });
+              observer.observe(outerHarness, { 
+                attributes: true, 
+                attributeFilter: ['style'] 
+              });
+            }
+          }
+        }
+      },
       datesSet: () => loadShifts(),
       eventClick: (info) => {
         const e = info.event;
@@ -273,15 +449,193 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .legend-color.afternoon {
-          background: #f97316;
+          background: #fb923c;
         }
 
         .legend-color.evening {
-          background: #8b5cf6;
+          background: #9333ea;
         }
 
         .legend-color.custom {
-          background: #2563eb;
+          background: #3b82f6;
+        }
+      `}</style>
+      
+      <style jsx global>{`
+        /* FullCalendar Event Styling for Block Display */
+        .fc-event {
+          border: none !important;
+          padding: 2px 4px !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          border-radius: 4px !important;
+          cursor: pointer !important;
+          transition: opacity 0.2s !important;
+          overflow: hidden !important;
+        }
+
+        .fc-event:hover {
+          opacity: 0.85 !important;
+        }
+
+        /* Time Grid Event Styling - Force Block Display */
+        .fc-timegrid-event {
+          border-radius: 4px !important;
+          overflow: hidden !important;
+          min-height: 20px !important;
+          display: block !important;
+          height: 100% !important;
+        }
+
+        .fc-timegrid-event .fc-event-main {
+          padding: 4px 6px !important;
+          height: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+        }
+
+        .fc-timegrid-event-harness {
+          margin-right: 2px !important;
+          /* Force the harness to respect the calculated height */
+          height: 100% !important;
+        }
+
+        /* Let FullCalendar handle positioning, only enhance styling */
+        .fc-timegrid-event-harness-inset .fc-timegrid-event {
+          box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2) !important;
+          /* Don't override any positioning - let our JavaScript handle height only */
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        /* Ensure all time grid event containers are clickable */
+        .fc-timegrid-event-harness,
+        .fc-timegrid-event-harness-inset,
+        .fc-timegrid-event {
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        /* Override any potential pointer-events blocking */
+        .fc-timegrid-col-events {
+          pointer-events: auto !important;
+        }
+
+        /* Force FullCalendar to calculate correct heights */
+        .fc-timegrid-col-events {
+          position: relative !important;
+        }
+        
+        /* Let our JavaScript eventDidMount handle height calculations */
+        .fc-timegrid-event-harness {
+          /* Don't override height - let our JS handle it */
+        }
+
+        /* Day Grid Event Styling */
+        .fc-daygrid-event {
+          border-radius: 4px !important;
+          padding: 2px 4px !important;
+          margin: 1px 2px !important;
+        }
+
+        .fc-daygrid-block-event .fc-event-main {
+          padding: 2px 4px !important;
+        }
+
+        /* Event Title Text */
+        .fc-event-title {
+          font-weight: 500 !important;
+          color: white !important;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+          font-size: 11px !important;
+          line-height: 1.2 !important;
+        }
+
+        .fc-event-time {
+          font-weight: 600 !important;
+          color: white !important;
+          opacity: 0.95 !important;
+          font-size: 10px !important;
+          line-height: 1.2 !important;
+        }
+
+        /* List View Styling */
+        .fc-list-event-dot {
+          border-width: 6px !important;
+        }
+
+        /* List view specific text color fix */
+        .fc-list-event-title, 
+        .fc-list-event-time {
+          color: #000000 !important;
+        }
+
+        /* More Events Popover */
+        .fc-popover .fc-event {
+          margin: 2px 0 !important;
+        }
+
+        /* Ensure proper contrast for time grid views */
+        .fc-timegrid-event {
+          color: white !important;
+        }
+
+        /* Ensure proper contrast for day grid views */
+        .fc-daygrid-event {
+          color: white !important;
+        }
+
+        /* Remove default borders */
+        .fc-timegrid-event-harness-inset .fc-timegrid-event,
+        .fc-daygrid-event-harness .fc-daygrid-event {
+          border: none !important;
+        }
+
+        /* Improve visibility of overlapping events */
+        .fc-timegrid-event-harness {
+          z-index: 1 !important;
+        }
+
+        .fc-timegrid-event-harness:hover {
+          z-index: 2 !important;
+        }
+
+        /* Force time-based events to span their full duration */
+        .fc-timegrid-slot-lane {
+          position: relative !important;
+        }
+
+        /* Ensure events don't collapse to single line height */
+        .fc-timegrid-col .fc-timegrid-event-harness {
+          position: absolute !important;
+          left: 0 !important;
+          right: 0 !important;
+        }
+
+        /* Override any min-height restrictions */
+        .fc-timegrid-event .fc-event-main-frame {
+          height: 100% !important;
+        }
+
+        /* Additional fixes for event duration display */
+        .fc-timegrid-event-harness-inset {
+          inset: 0 !important;
+        }
+
+        /* Ensure event content spans full height */
+        .fc-event-main {
+          height: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Fix for events that might not be displaying correct duration */
+        .fc-timegrid-col-events {
+          position: relative !important;
+        }
+
+        .fc-timegrid-event-harness[style*="top"][style*="height"] {
+          /* Preserve inline styles for positioning and height */
         }
       `}</style>
     </div>
