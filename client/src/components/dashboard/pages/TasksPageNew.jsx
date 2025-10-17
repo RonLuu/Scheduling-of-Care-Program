@@ -127,9 +127,12 @@ function TasksPageNew() {
         }
 
         .page-main {
-          max-width: 1400px;
+          max-width: calc(100vw - 200px);
           margin: 0 auto;
           padding: 2rem 1rem;
+          /* Ensure content doesn't overlap with nav and print buttons */
+          margin-left: 90px;
+          margin-right: 110px;
         }
 
         .tasks-page-container {
@@ -137,6 +140,13 @@ function TasksPageNew() {
           border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
+          width: 100%;
+          max-width: 100%;
+        }
+        
+        .tasks-page-container * {
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         .page-header {
@@ -178,6 +188,9 @@ function TasksPageNew() {
           grid-template-columns: 450px 1fr;
           gap: 2rem;
           align-items: start;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         /* When only management section exists (staff view), make it full width */
@@ -251,6 +264,9 @@ function TasksPageNew() {
         .management-section {
           animation: fadeIn 0.4s ease-in;
           min-width: 0;
+          width: 100%;
+          max-width: 100%;
+          overflow-x: auto;
         }
 
         .section-title {
@@ -332,11 +348,20 @@ function TasksPageNew() {
           .create-section {
             position: static;
           }
+          
+          .page-main {
+            margin-left: 80px;
+            margin-right: 90px;
+            max-width: calc(100vw - 170px);
+          }
         }
 
         @media (max-width: 768px) {
           .page-main {
             padding: 1rem 0.5rem;
+            margin-left: 70px;
+            margin-right: 70px;
+            max-width: calc(100vw - 140px);
           }
 
           .page-header {

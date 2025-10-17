@@ -219,9 +219,12 @@ function Dashboard() {
           }
 
           .page-main {
-            max-width: 1400px;
+            max-width: calc(100vw - 220px);
             margin: 0 auto;
             padding: 2rem 1rem;
+            /* Ensure content doesn't overlap with nav and print buttons */
+            margin-left: 100px;
+            margin-right: 120px;
           }
 
           .onboarding-guide {
@@ -474,6 +477,17 @@ function Dashboard() {
           @media (max-width: 768px) {
             .page-main {
               padding: 1rem 0.5rem;
+              margin-left: 70px;
+              margin-right: 70px;
+              max-width: calc(100vw - 140px);
+            }
+          }
+          
+          @media (max-width: 1200px) {
+            .page-main {
+              margin-left: 90px;
+              margin-right: 100px;
+              max-width: calc(100vw - 190px);
             }
 
             .onboarding-header {
@@ -645,9 +659,12 @@ function Dashboard() {
         }
 
         .page-main {
-          max-width: 1400px;
+          max-width: calc(100vw - 220px);
           margin: 0 auto;
           padding: 2rem 1rem;
+          /* Ensure content doesn't overlap with nav and print buttons */
+          margin-left: 100px;
+          margin-right: 120px;
         }
 
         .dashboard-container {
@@ -655,6 +672,14 @@ function Dashboard() {
           border-radius: 12px;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
           overflow: hidden;
+          width: 100%;
+          max-width: 100%;
+        }
+        
+        /* Force all dashboard content to respect container bounds */
+        .page-main *, .dashboard-container *, .onboarding-guide * {
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         .dashboard-header {
@@ -1079,6 +1104,17 @@ function Dashboard() {
         @media (max-width: 768px) {
           .page-main {
             padding: 1rem 0.5rem;
+            margin-left: 70px;
+            margin-right: 70px;
+            max-width: calc(100vw - 140px);
+          }
+        }
+        
+        @media (max-width: 1200px) {
+          .page-main {
+            margin-left: 90px;
+            margin-right: 100px;
+            max-width: calc(100vw - 190px);
           }
 
           .dashboard-header {
