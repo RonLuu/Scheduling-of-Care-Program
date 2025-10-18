@@ -15,6 +15,7 @@ import userMeRouter from "./users.me.js";
 import accessRequestRouter from "./accessRequest.js";
 import shiftAllocationRouter from "./shiftAllocation.js";
 import budgetPlanRouter from "./budgetPlan.js";
+import notificationsRouter from "./notifications.js";
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use("/reports", reportRouter);
 router.use("/access-requests", accessRequestRouter);
 router.use("/shift-allocations", shiftAllocationRouter);
 router.use("/budget-plans", budgetPlanRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;

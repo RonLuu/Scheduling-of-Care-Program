@@ -1,5 +1,6 @@
 import { Router } from "express";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
+import PersonUserLink from "../models/PersonUserLink.js";
 import Organization from "../models/Organization.js";
 import { requireAuth } from "../middleware/authz.js";
 
@@ -79,6 +80,24 @@ async function postPerson(req, res) {
     }
 
     const newPerson = await PersonWithNeeds.create(personData);
+    
+    // Automatically create PersonUserLink for Family/PoA creators
+    if (req.user && (req.user.role === 'Family' || req.user.role === 'PoA')) {
+      try {
+        await PersonUserLink.create({
+          personId: newPerson._id,
+          userId: req.user.id,
+          relationshipType: req.user.role,
+          active: true,
+          startAt: new Date()
+        });
+        console.log(`Created PersonUserLink for ${req.user.role} user ${req.user.id} to person ${newPerson.name}`);
+      } catch (linkError) {
+        console.error('Failed to create PersonUserLink:', linkError);
+        // Don't fail the whole request if link creation fails
+      }
+    }
+    
     res.status(201).json(newPerson);
   } catch (error) {
     console.error("Error creating person:", error);

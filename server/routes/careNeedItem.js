@@ -6,6 +6,7 @@ import FileUpload from "../models/FileUpload.js";
 import Comment from "../models/Comment.js";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
 import { expandOccurrences } from "../utils/schedule.js";
+import { checkBudgetAndNotify } from "../services/budgetMonitor.js";
 
 import {
   requireAuth,
@@ -166,6 +167,19 @@ async function createItem(req, res) {
       createdByUserId: req.user.id,
       status: "Active",
     });
+
+    // Check budget and send notifications if item has a purchase cost
+    if (item.purchaseCost && item.purchaseCost > 0) {
+      // Run budget check asynchronously to avoid blocking the response
+      setImmediate(async () => {
+        try {
+          const currentYear = new Date().getFullYear();
+          await checkBudgetAndNotify(item.personId, currentYear);
+        } catch (error) {
+          console.error('Error checking budget after care need item creation:', error);
+        }
+      });
+    }
 
     res.status(201).json(item);
   } catch (e) {
@@ -427,6 +441,23 @@ async function updateItem(req, res) {
         await CareTask.updateOne(query, update, { upsert: true });
       }
     }
+  }
+
+  // Check budget if purchase cost was added or changed
+  const oldPurchaseCost = existing.purchaseCost || 0;
+  const newPurchaseCost = updated.purchaseCost || 0;
+  const purchaseCostChanged = oldPurchaseCost !== newPurchaseCost;
+  
+  if (purchaseCostChanged && newPurchaseCost > 0) {
+    // Run budget check asynchronously to avoid blocking the response
+    setImmediate(async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        await checkBudgetAndNotify(updated.personId, currentYear);
+      } catch (error) {
+        console.error('Error checking budget after care need item update:', error);
+      }
+    });
   }
 
   res.json(updated);
