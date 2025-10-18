@@ -193,42 +193,91 @@ router.post("/invite", requireAuth, async (req, res) => {
 
     // Check for organization mismatches and handle cascades
     if (inviterRole === "Family" || inviterRole === "PoA") {
-      // Case 1: Inviter has no org but invitee does
-      if (!inviterOrgId && invitee.organizationId) {
-        // Move inviter and their clients to invitee's org
-        cascadeResult = await handleOrgCascade(
-          inviterId,
-          invitee.organizationId,
-          useTransactions
-        );
-      }
-      // Case 2: Inviter has org but invitee doesn't
-      else if (inviterOrgId && !invitee.organizationId) {
-        // Move invitee to inviter's org
-        invitee.organizationId = inviterOrgId;
-        await invitee.save();
-
-        // Also move the person if needed
-        if (
-          !person.organizationId ||
-          String(person.organizationId) !== String(inviterOrgId)
-        ) {
-          person.organizationId = inviterOrgId;
-          await person.save();
-        }
-      }
-      // Case 3: Both have orgs - must match
-      else if (inviterOrgId && invitee.organizationId) {
-        if (String(inviterOrgId) !== String(invitee.organizationId)) {
+      // Special handling when Family/PoA invites an Admin
+      if (invitee.role === "Admin") {
+        // Both have no org - error
+        if (!inviterOrgId && !invitee.organizationId) {
           return res.status(400).json({
             error:
-              "Organization mismatch. The user you're inviting belongs to a different organization. Please ensure they're in the same organization or contact support.",
+              "Cannot establish connection. At least one party must be part of an organization. Please join or create an organization first.",
           });
+        }
+
+        // Both have orgs but different - error (prevent cross-org connections)
+        if (
+          inviterOrgId &&
+          invitee.organizationId &&
+          String(inviterOrgId) !== String(invitee.organizationId)
+        ) {
+          return res.status(400).json({
+            error:
+              "Organization mismatch. You are in a different organization than the administrator you're trying to invite. Please contact support if you need to merge organizations.",
+          });
+        }
+
+        // Admin has org, inviter doesn't - cascade inviter to admin's org
+        if (invitee.organizationId && !inviterOrgId) {
+          cascadeResult = await handleOrgCascade(
+            inviterId,
+            invitee.organizationId,
+            useTransactions
+          );
+        }
+        // Admin has no org but inviter does - move admin to inviter's org
+        else if (inviterOrgId && !invitee.organizationId) {
+          invitee.organizationId = inviterOrgId;
+          await invitee.save();
+
+          // Also move the person if needed
+          if (
+            !person.organizationId ||
+            String(person.organizationId) !== String(inviterOrgId)
+          ) {
+            person.organizationId = inviterOrgId;
+            await person.save();
+          }
+        }
+        // Both in same org - no action needed
+      }
+      // Inviting Family/PoA (existing logic)
+      else {
+        // Case 1: Inviter has no org but invitee does
+        if (!inviterOrgId && invitee.organizationId) {
+          // Move inviter and their clients to invitee's org
+          cascadeResult = await handleOrgCascade(
+            inviterId,
+            invitee.organizationId,
+            useTransactions
+          );
+        }
+        // Case 2: Inviter has org but invitee doesn't
+        else if (inviterOrgId && !invitee.organizationId) {
+          // Move invitee to inviter's org
+          invitee.organizationId = inviterOrgId;
+          await invitee.save();
+
+          // Also move the person if needed
+          if (
+            !person.organizationId ||
+            String(person.organizationId) !== String(inviterOrgId)
+          ) {
+            person.organizationId = inviterOrgId;
+            await person.save();
+          }
+        }
+        // Case 3: Both have orgs - must match
+        else if (inviterOrgId && invitee.organizationId) {
+          if (String(inviterOrgId) !== String(invitee.organizationId)) {
+            return res.status(400).json({
+              error:
+                "Organization mismatch. The user you're inviting belongs to a different organization. Please ensure they're in the same organization or contact support.",
+            });
+          }
         }
       }
     }
 
-    // For Admin inviting staff
+    // For Admin inviting staff (existing logic remains unchanged)
     if (inviterRole === "Admin") {
       if (!inviterOrgId) {
         return res.status(400).json({
