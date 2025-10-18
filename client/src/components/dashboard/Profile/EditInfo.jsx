@@ -1,5 +1,5 @@
 import React from "react";
-import { BiX, BiUpload } from "react-icons/bi";
+import { BiX, BiUpload, BiPlus, BiTrash } from "react-icons/bi";
 import "../../../styles/UserProfile.css";
 
 const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
@@ -7,6 +7,9 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
   const [mobile, setMobile] = React.useState(me?.mobile || "");
   const [address, setAddress] = React.useState(me?.address || "");
   const [title, setTitle] = React.useState(me?.title || "");
+  const [emergencyContacts, setEmergencyContacts] = React.useState(
+    Array.isArray(me?.emergencyContacts) ? me.emergencyContacts : []
+  );
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState("");
@@ -14,30 +17,30 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
   const fileInputRef = React.useRef(null);
 
   React.useEffect(() => {
-    // if me changes while panel is open, sync values
     setName(me?.name || "");
     setMobile(me?.mobile || "");
     setAddress(me?.address || "");
     setTitle(me?.title || "");
+    // Ensure we always have an array, even if undefined
+    setEmergencyContacts(
+      Array.isArray(me?.emergencyContacts) ? me.emergencyContacts : []
+    );
   }, [me]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       setErr("Please select an image file");
       return;
     }
 
-    // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
       setErr("Image must be less than 10MB");
       return;
     }
 
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setAvatarPreview(reader.result);
@@ -69,7 +72,6 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to upload avatar");
 
-      // Refresh user data to get new avatar
       await refreshMe?.();
       setAvatarPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -110,6 +112,22 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
     }
   };
 
+  // Emergency contact handlers
+  const addEmergencyContact = () => {
+    setEmergencyContacts([...emergencyContacts, { name: "", phone: "" }]);
+  };
+
+  const updateEmergencyContact = (index, field, value) => {
+    const updated = [...emergencyContacts];
+    updated[index][field] = value;
+    setEmergencyContacts(updated);
+  };
+
+  const removeEmergencyContact = (index) => {
+    const updated = emergencyContacts.filter((_, i) => i !== index);
+    setEmergencyContacts(updated);
+  };
+
   const onConfirm = async () => {
     setSaving(true);
     setErr("");
@@ -119,11 +137,20 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         await uploadAvatar();
       }
 
+      // Validate and clean emergency contacts
+      const validContacts = emergencyContacts
+        .filter((contact) => contact && contact.name && contact.phone)
+        .map((contact) => ({
+          name: contact.name.trim(),
+          phone: contact.phone.trim(),
+        }));
+
       // Update profile info
       const payload = {
         name: name?.trim(),
         mobile: mobile?.trim() || null,
         address: address?.trim() || null,
+        emergencyContacts: validContacts,
       };
 
       // Include title field only for Admin users
@@ -140,11 +167,10 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         body: JSON.stringify(payload),
       });
       const d = await r.json();
+
       if (!r.ok) throw new Error(d.error || "Failed to update profile");
 
-      // refresh parent "me"
       await refreshMe?.();
-
       setShowEdit(false);
     } catch (e) {
       setErr(e.message || String(e));
@@ -257,6 +283,59 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
             />
           </div>
 
+          {/* Emergency Contacts Section */}
+          <div className="emergency-contacts-section">
+            <div className="emergency-contacts-header">
+              <label className="userprofile-input-label">
+                Emergency Contacts
+              </label>
+              <button
+                type="button"
+                className="add-contact-btn"
+                onClick={addEmergencyContact}
+              >
+                <BiPlus /> Add Contact
+              </button>
+            </div>
+
+            {emergencyContacts.length === 0 && (
+              <p className="no-contacts-message">
+                No emergency contacts added yet
+              </p>
+            )}
+
+            {emergencyContacts.map((contact, index) => (
+              <div key={index} className="emergency-contact-item">
+                <div className="emergency-contact-fields">
+                  <input
+                    className="userprofile-input emergency-contact-name"
+                    placeholder="Contact name"
+                    value={contact.name}
+                    onChange={(e) =>
+                      updateEmergencyContact(index, "name", e.target.value)
+                    }
+                  />
+                  <input
+                    className="userprofile-input emergency-contact-phone"
+                    placeholder="Contact number"
+                    value={contact.phone}
+                    onChange={(e) =>
+                      updateEmergencyContact(index, "phone", e.target.value)
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="remove-contact-btn"
+                  onClick={() => removeEmergencyContact(index)}
+                  title="Remove contact"
+                >
+                  <BiTrash />
+                </button>
+              </div>
+            ))}
+          </div>
+
           {err && <div className="userprofile-error">{err}</div>}
 
           <button
@@ -359,8 +438,91 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           cursor: not-allowed;
           transform: none;
         }
-        .userprofile-edit-header button
-        {
+
+        .emergency-contacts-section {
+          margin-bottom: 1.25rem;
+          padding: 1.5rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: #f9fafb;
+        }
+
+        .emergency-contacts-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .add-contact-btn {
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 8px;
+          background: #8189d2;
+          color: white;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          transition: all 0.2s ease;
+        }
+
+        .add-contact-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
+        }
+
+        .no-contacts-message {
+          text-align: center;
+          color: #6b7280;
+          font-size: 0.875rem;
+          padding: 1rem 0;
+        }
+
+        .emergency-contact-item {
+          display: flex;
+          gap: 0.75rem;
+          margin-bottom: 0.75rem;
+          align-items: flex-start;
+        }
+
+        .emergency-contact-fields {
+          flex: 1;
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        .emergency-contact-name,
+        .emergency-contact-phone {
+          flex: 1;
+          min-width: 150px;
+        }
+
+        .remove-contact-btn {
+          padding: 0.625rem;
+          border: none;
+          border-radius: 8px;
+          background: #ef4444;
+          color: white;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .remove-contact-btn:hover {
+          background: #dc2626;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .userprofile-edit-header button {
           margin: 0;
         }
       `}</style>

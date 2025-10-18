@@ -423,7 +423,7 @@ async function performLeaveWithClients(me, session) {
 // PATCH /api/users/me - update profile
 router.patch("/me", requireAuth, async (req, res) => {
   // whitelist: only allow these fields to be updated by self
-  const allowed = ["name", "mobile", "address", "title"];
+  const allowed = ["name", "mobile", "address", "title", "emergencyContacts"];
   const updates = {};
   for (const k of allowed) {
     if (k in req.body) updates[k] = req.body[k];
