@@ -9,6 +9,7 @@ import BudgetPlan from "../models/BudgetPlan.js";
 import FileUpload from "../models/FileUpload.js";
 import Comment from "../models/Comment.js";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
+import { checkBudgetAndNotify } from "../services/budgetMonitor.js";
 
 import {
   requireAuth,
@@ -264,6 +265,19 @@ async function completeTask(req, res) {
       .populate("completedByUserId", "name email role");
 
     if (!updated) return res.status(404).json({ error: "Not found" });
+
+    // Check budget and send notifications if task was completed with a cost
+    if (patch.status === "Completed" && patch.cost !== undefined && patch.cost > 0) {
+      // Run budget check asynchronously to avoid blocking the response
+      setImmediate(async () => {
+        try {
+          const currentYear = new Date().getFullYear();
+          await checkBudgetAndNotify(updated.personId, currentYear);
+        } catch (error) {
+          console.error('Error checking budget after task completion:', error);
+        }
+      });
+    }
 
     res.json(updated);
   } catch (e) {

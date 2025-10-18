@@ -40,6 +40,15 @@ const UserSchema = new Schema(
 
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
+    
+    // Email notification preferences
+    emailPreferences: {
+      budgetAlerts: { type: Boolean, default: true },
+      budgetThreshold: { type: Number, default: 80, min: 0, max: 100 }, // Percentage threshold for budget alerts
+      taskReminders: { type: Boolean, default: true },
+      weeklyReports: { type: Boolean, default: false },
+      lastBudgetAlertSent: { type: Map, of: Date }, // Track last alert per client/category to avoid spam
+    },
   },
   { timestamps: true }
 );
