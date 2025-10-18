@@ -1,4 +1,5 @@
 import React from "react";
+import "../../../styles/AddClient.css"
 import { useNavigate } from "react-router-dom";
 
 function AddClient({ me, jwt, setClients }) {
@@ -289,7 +290,7 @@ function AddClient({ me, jwt, setClients }) {
   };
 
   return (
-    <div className="card">
+    <div className="add-client-card">
       {successMessage && (
         <div className="success-message">
           <div className="success-content">
@@ -325,8 +326,9 @@ function AddClient({ me, jwt, setClients }) {
 
       <form onSubmit={addClient}>
         {/* Basic Information */}
-        <div className="section">
+        <div className="client-section">
           <h4>Basic Information</h4>
+          <label>Full Name <span className="required-mark">*</span></label>
           <input
             placeholder="Client name *"
             value={formData.name}
@@ -335,7 +337,7 @@ function AddClient({ me, jwt, setClients }) {
           />
           <div className="row">
             <div>
-              <label>Date of birth</label>
+              <label>Date of birth<span className="required-mark">*</span></label>
               <input
                 type="date"
                 value={formData.dateOfBirth}
@@ -343,7 +345,7 @@ function AddClient({ me, jwt, setClients }) {
               />
             </div>
             <div>
-              <label>Sex</label>
+              <label>Sex<span className="required-mark">*</span></label>
               <select value={formData.sex} onChange={handleInputChange("sex")}>
                 {sexOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -354,7 +356,7 @@ function AddClient({ me, jwt, setClients }) {
             </div>
           </div>
           <div>
-            <label>Mobile phone</label>
+            <label>Mobile phone<span className="required-mark">*</span></label>
             <input
               type="tel"
               value={formData.mobilePhone}
@@ -365,7 +367,7 @@ function AddClient({ me, jwt, setClients }) {
         </div>
 
         {/* Address Information */}
-        <div className="section">
+        <div className="client-section">
           <h4>Address</h4>
           <input
             placeholder="Street address"
@@ -409,7 +411,7 @@ function AddClient({ me, jwt, setClients }) {
         </div>
 
         {/* Emergency Contact */}
-        <div className="section">
+        <div className="client-section">
           <h4>Emergency Contact</h4>
           <div className="row">
             <div>
@@ -433,7 +435,7 @@ function AddClient({ me, jwt, setClients }) {
         </div>
 
         {/* Medical Information */}
-        <div className="section">
+        <div className="client-section">
           <h4>Medical Information</h4>
           <p className="section-description">
             Document the client's medical conditions, medications, and care
@@ -574,7 +576,7 @@ function AddClient({ me, jwt, setClients }) {
         </div>
 
         {/* Additional Information */}
-        <div className="section">
+        <div className="client-section">
           <h4>Additional Information</h4>
           <p className="section-description">
             Add any other relevant information about the client that doesn't fit
@@ -655,357 +657,7 @@ function AddClient({ me, jwt, setClients }) {
         </button>
         {addErr && <p style={{ color: "#b91c1c" }}>Error: {addErr}</p>}
       </form>
-
-      <style jsx>{`
-        .success-message {
-          background: #10b981;
-          color: white;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
-        }
-
-        .success-content {
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-        }
-
-        .success-icon {
-          font-size: 1.5rem;
-          font-weight: bold;
-          background: white;
-          color: #10b981;
-          width: 2rem;
-          height: 2rem;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .success-text {
-          margin: 0 0 0.75rem 0;
-          font-size: 1rem;
-          font-weight: 500;
-        }
-
-        .return-dashboard-btn {
-          padding: 0.5rem 1rem;
-          background: white;
-          color: #10b981;
-          border: none;
-          border-radius: 0.375rem;
-          font-weight: 600;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .return-dashboard-btn:hover {
-          background: #f0fdf4;
-          transform: translateY(-1px);
-        }
-
-        .close-success-btn {
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 2rem;
-          line-height: 1;
-          cursor: pointer;
-          padding: 0;
-          width: 2rem;
-          height: 2rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 0.25rem;
-          transition: background 0.2s ease;
-          margin-left: auto;
-        }
-
-        .close-success-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-
-        .card {
-          padding: 0;
-          background: transparent;
-          width: 100%;
-          margin: 0 auto;
-        }
-
-        form {
-          width: 100%;
-          margin: 0;
-          padding: 0 0 1rem 0;
-        }
-
-        .card-header {
-          padding: 1.5rem 1.5rem 1rem 1.5rem;
-          margin-bottom: 0;
-        }
-
-        h3 {
-          margin: 0 0 0.5rem 0;
-          padding: 0;
-        }
-
-        .card-description {
-          color: #6b7280;
-          font-size: 0.875rem;
-          margin-bottom: 0;
-          line-height: 1.5;
-          padding: 0;
-        }
-
-        .section {
-          margin-bottom: 1.5rem;
-          padding: 0 1.5rem 1rem 1.5rem;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .section h4 {
-          margin-bottom: 0.5rem;
-          color: #374151;
-          font-weight: 600;
-        }
-
-        .section-description {
-          color: #6b7280;
-          font-size: 0.8125rem;
-          margin-bottom: 1rem;
-          font-style: italic;
-          line-height: 1.4;
-        }
-
-        .custom-fields-subsection {
-          margin-top: 0;
-          padding-top: 0;
-        }
-
-        .custom-fields-subsection h5 {
-          margin-bottom: 0.25rem;
-          color: #4b5563;
-          font-size: 0.9375rem;
-          font-weight: 600;
-        }
-
-        .subsection-hint {
-          color: #9ca3af;
-          font-size: 0.75rem;
-          margin-bottom: 0.75rem;
-          font-style: italic;
-        }
-
-        .row {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .row > div {
-          flex: 1;
-        }
-
-        .col-md-4 {
-          flex: 0 0 33.333%;
-        }
-
-        label {
-          display: block;
-          margin-bottom: 0.25rem;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #4b5563;
-        }
-
-        input,
-        select,
-        textarea {
-          width: 100%;
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          font-size: 0.875rem;
-          box-sizing: border-box;
-        }
-
-        textarea {
-          resize: vertical;
-        }
-
-        .custom-field-input {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin-top: 0.75rem;
-          padding: 1rem;
-          background: #f9fafb;
-          border-radius: 0.375rem;
-          border: 1px dashed #d1d5db;
-        }
-        .custom-field-input > div {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-        .custom-field-input > div {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .custom-field-input input,
-        .custom-field-input textarea {
-          width: 100%;
-          min-width: 0;
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          font-size: 0.875rem;
-          box-sizing: border-box;
-        }
-
-        .add-field-btn {
-          padding: 0.625rem 1rem;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 500;
-          align-self: flex-start;
-          margin-left: 0;
-        }
-
-        .add-field-btn:hover {
-          background: #2563eb;
-        }
-
-        .custom-fields-list {
-          background: #f9fafb;
-          padding: 0.75rem;
-          border-radius: 0.375rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .custom-field-display {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 0.75rem;
-          align-items: start;
-          padding: 0.75rem;
-          margin-bottom: 0.75rem;
-          background: white;
-          border-radius: 0.375rem;
-          border: 1px solid #e5e7eb;
-        }
-
-        .custom-field-display:last-child {
-          margin-bottom: 0;
-        }
-
-        .field-content {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          min-width: 0;
-        }
-
-        .field-input-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .field-input-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .field-input-group:last-child {
-          margin-bottom: 0;
-        }
-
-        .field-input-group label {
-          display: block;
-          margin-bottom: 0.25rem;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #4b5563;
-        }
-
-        .field-input-group input,
-        .field-input-group textarea {
-          width: 100%;
-          padding: 0.5rem;
-          font-size: 0.875rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-        }
-
-        .remove-btn {
-          padding: 0.375rem 0.625rem;
-          background: #ef4444;
-          color: white;
-          border: none;
-          border-radius: 0.25rem;
-          cursor: pointer;
-          font-size: 0.75rem;
-          white-space: nowrap;
-          height: fit-content;
-          min-width: fit-content;
-        }
-
-        .remove-btn:hover {
-          background: #dc2626;
-        }
-
-        .submit-btn {
-          width: calc(100% - 3rem);
-          padding: 0.75rem;
-          background: #8189d2;
-          color: white;
-          border: none;
-          border-radius: 0.375rem;
-          font-weight: 600;
-          cursor: pointer;
-          margin: 1rem 1.5rem 1.5rem 1.5rem;
-          display: block;
-        }
-
-        .submit-btn:hover:not(:disabled) {
-          background: #6d76c4;
-        }
-
-        .submit-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        @media (max-width: 768px) {
-          .custom-field-input {
-            grid-template-columns: 1fr;
-          }
-
-          .custom-field-display {
-            grid-template-columns: 1fr;
-          }
-
-          .remove-btn {
-            width: 100%;
-          }
-        }
-      `}</style>
-    </div>
+  </div>
   );
 }
 

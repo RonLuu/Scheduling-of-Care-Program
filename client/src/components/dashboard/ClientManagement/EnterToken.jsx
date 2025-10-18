@@ -56,7 +56,7 @@ function EnterToken({ me, jwt, onSuccess }) {
     <div className="enter-token-container">
       <form onSubmit={handleSubmit} className="enter-token-form">
         <div className="form-group">
-          <label htmlFor="token-input">Invite Token *</label>
+          <label htmlFor="token-input">Invite Token <span className="required-mark">*</span></label>
           <input
             id="token-input"
             type="text"

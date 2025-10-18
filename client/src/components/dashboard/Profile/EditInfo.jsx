@@ -359,6 +359,10 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           cursor: not-allowed;
           transform: none;
         }
+        .userprofile-edit-header button
+        {
+          margin: 0;
+        }
       `}</style>
     </div>
   );

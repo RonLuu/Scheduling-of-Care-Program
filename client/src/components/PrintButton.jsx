@@ -113,10 +113,10 @@ const PrintButton = ({
           onClick={() => setShowOptions(!showOptions)}
           disabled={isCapturing}
           style={{
-            backgroundColor: "#4CAF50",
+            backgroundColor: "#1c7246ff",
             color: "white",
             border: "none",
-            borderRadius: "50%",
+            borderRadius: "10%",
             width: "48px",
             height: "48px",
             cursor: isCapturing ? "wait" : "pointer",
@@ -127,10 +127,10 @@ const PrintButton = ({
             transition: "all 0.3s ease",
           }}
           onMouseEnter={(e) =>
-            !isCapturing && (e.target.style.backgroundColor = "#45a049")
+            !isCapturing && (e.target.style.backgroundColor = "#1c7246ff")
           }
           onMouseLeave={(e) =>
-            !isCapturing && (e.target.style.backgroundColor = "#4CAF50")
+            !isCapturing && (e.target.style.backgroundColor = "#1c7246ff")
           }
         >
           {isCapturing ? (

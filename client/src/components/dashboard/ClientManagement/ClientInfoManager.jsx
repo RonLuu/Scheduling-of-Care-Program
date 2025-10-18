@@ -548,9 +548,10 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
         <div className="selector-container">
           <div className="client-selector">
-            <label>
+            <h4>
               Select a client (person with special needs) to view details
-            </label>
+              <span className="required-mark">*</span>
+            </h4>
             <select value={selectedClientId} onChange={handleClientChange}>
               <option value="">— Choose a client—</option>
               {clients.map((c) => (

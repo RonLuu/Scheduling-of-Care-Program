@@ -738,8 +738,8 @@ function TaskCompletionPage() {
 
         .remove-file-btn {
           padding: 0.25rem 0.75rem;
-          background: #fee2e2;
-          color: #dc2626;
+          background: #ff2d2dff;
+          color: #fff7f7ff;
           border: none;
           border-radius: 4px;
           font-size: 0.875rem;
@@ -749,7 +749,7 @@ function TaskCompletionPage() {
         }
 
         .remove-file-btn:hover {
-          background: #fecaca;
+          background: #9f3939ff;
         }
 
         .comments-textarea {

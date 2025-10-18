@@ -896,7 +896,7 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>{isBudgetPlanComplete ? 'Step 2: Edit Budget Items' : 'Step 2: Add Budget Items'}</h3>
+                      <h3>{isBudgetPlanComplete ? 'Step 2: Edit Budget Items (Sub-elements)' : 'Step 2: Add Budget Items'}</h3>
                       <p className="step-description">
                         {isBudgetPlanComplete
                           ? 'Click on a category to add new items.'
