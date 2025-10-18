@@ -1870,6 +1870,26 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           line-height: 1.6;
         }
 
+        .invite-user-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          white-space: nowrap;
+        }
+
+        .invite-user-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
         .select-type-btn.primary {
           background: #8189d2;
           color: white;
