@@ -97,29 +97,65 @@ const NavigationTab = () => {
               <NavItem to="/dashboard">
                 <BiHome className="navigationtab-icon" />
                 Dashboard
+              <span className="tooltip-wrapper">
+                <span className="tooltip-icon">?</span>
+                <span className="tooltip-text">
+                  Overview of Client's Schedule, Budget, and Care Taker
+                </span>
+            </span>
               </NavItem>
             )}
             <NavItem to="/tasks">
               <BiTask className="navigationtab-icon" />
               Tasks
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+              Create and View Tasks
+              </span>
+            </span>
             </NavItem>
             {me?.role !== "GeneralCareStaff" && (
               <NavItem to="/budget-and-reports">
                 <BiDollarCircle className="navigationtab-icon" />
                 Budget & Reports
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+              See your spending
+              </span>
+            </span>                
               </NavItem>
             )}
             <NavItem to="/clients">
               <BiGroup className="navigationtab-icon" />
               Clients
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+              Add or Track Clients
+              </span>
+            </span>
             </NavItem>
             <NavItem to="/shift-allocation">
               <BiCalendar className="navigationtab-icon" />
               Shift Allocation
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+              See Today's Caretakers' Shifts
+              </span>
+            </span>
             </NavItem>
             <NavItem to="/profile">
               <BiUser className="navigationtab-icon" />
               Profile
+            <span className="tooltip-wrapper">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+              Your Personal Information
+              </span>
+            </span>             
             </NavItem>
 
             {/* Log Out as a button but styled like links */}

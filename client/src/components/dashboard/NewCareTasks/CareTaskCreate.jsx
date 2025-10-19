@@ -400,7 +400,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
       <div className="form-content">
         {/* Client */}
         <div className="form-group">
-          <label>Client *</label>
+          <label>Client <span className="required-mark" title="This field is required">*</span></label>
           <select
             value={selectedClient}
             onChange={(e) => setSelectedClient(e.target.value)}
@@ -418,7 +418,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
         {selectedClient && (
           <div className="budget-settings">
             <div className="form-group">
-              <label>Budget Category *</label>
+              <label>Budget Category <span className="required-mark" title="This field is required">*</span></label>
               <select
                 value={budgetCategoryId}
                 onChange={(e) => setBudgetCategoryId(e.target.value)}
@@ -434,7 +434,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
 
             {budgetCategoryId && (
               <div className="form-group">
-                <label>Item Type *</label>
+                <label>Item Type <span className="required-mark" title="This field is required">*</span></label>
                 <select
                   value={budgetItemId}
                   onChange={(e) => setBudgetItemId(e.target.value)}
@@ -518,7 +518,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
 
         {/* Title */}
         <div className="form-group">
-          <label>Task Title *</label>
+          <label>Task Title<span className="required-mark" title="This field is required">*</span></label>
           <input
             type="text"
             value={taskData.title}
@@ -531,7 +531,7 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
 
         {/* Date */}
         <div className="form-group">
-          <label>{taskData.isRecurring ? "Start Date *" : "Due Date *"}</label>
+          <label>{taskData.isRecurring ? "Start Date *" : "Task's Due Date *"}</label>
           <input
             type="date"
             value={taskData.dueDate}

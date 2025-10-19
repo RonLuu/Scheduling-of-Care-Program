@@ -5231,7 +5231,7 @@ function OrganizationManagementModal({
 
           .modal-header h3 {
             margin: 0;
-            color: #374151;
+            color: #6e6e6e;
           }
 
           .modal-close {
@@ -5239,7 +5239,8 @@ function OrganizationManagementModal({
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
-            color: #6b7280;
+            color: #6e6e6e;
+            margin: 0;
           }
 
           .modal-body {
@@ -5321,7 +5322,7 @@ function OrganizationManagementModal({
           }
 
           .form-description {
-            color: #6b7280;
+            color: #6e6e6e;
             margin: 0 0 1rem 0;
             font-size: 0.875rem;
           }
@@ -5345,7 +5346,7 @@ function OrganizationManagementModal({
           .loading-orgs {
             padding: 1rem;
             text-align: center;
-            color: #6b7280;
+            color: #6e6e6e;
             font-style: italic;
           }
 
@@ -5404,7 +5405,7 @@ function OrganizationManagementModal({
           }
 
           .cancel-change-btn {
-            background: #6b7280;
+            background: #6e6e6e;
             color: white;
             border: none;
             border-radius: 6px;
