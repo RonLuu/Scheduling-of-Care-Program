@@ -89,7 +89,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         });
 
         const totalOverlapping = overlapping.length + 1; // Including self
-        const maxOverlap = Math.min(totalOverlapping, 4); // Cap at 4
+        const maxOverlap = Math.min(totalOverlapping, 6); // Cap at 6
 
         // Calculate which position this event should be in
         let position = 0;
@@ -713,11 +713,22 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .fc-timegrid-event-harness {
-          z-index: 1 !important;
+          z-index: 3 !important;
         }
 
         .fc-timegrid-event-harness:hover {
+          z-index: 4 !important;
+        }
+
+        /* Fix z-index issue with now-indicator */
+        .fc-timegrid-now-indicator-container {
           z-index: 2 !important;
+          pointer-events: none !important;
+        }
+
+        .fc-timegrid-now-indicator-arrow,
+        .fc-timegrid-now-indicator-line {
+          pointer-events: none !important;
         }
 
         .fc-timegrid-slot-lane {
