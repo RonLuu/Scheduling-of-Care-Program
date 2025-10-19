@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
 
-function CareTaskManagement({ jwt, clients, me }) {
+const CareTaskManagement = React.forwardRef(({ jwt, clients, me }, ref) => {
   const [selectedClient, setSelectedClient] = React.useState("");
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -12,33 +12,45 @@ function CareTaskManagement({ jwt, clients, me }) {
   const [showTaskModal, setShowTaskModal] = React.useState(false);
 
   // Load tasks for selected client
-  const loadTasks = async (clientId) => {
-    if (!clientId) {
-      setTasks([]);
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(`/api/care-tasks/client/${clientId}`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load tasks");
+  const loadTasks = React.useCallback(
+    async (clientId) => {
+      if (!clientId) {
+        setTasks([]);
+        return;
       }
 
-      const data = await response.json();
-      setTasks(data);
-    } catch (err) {
-      setError(err.message || "Failed to load tasks");
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`/api/care-tasks/client/${clientId}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load tasks");
+        }
+
+        const data = await response.json();
+        setTasks(data);
+      } catch (err) {
+        setError(err.message || "Failed to load tasks");
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [jwt]
+  );
+
+  // Expose reloadTasks method to parent component
+  React.useImperativeHandle(ref, () => ({
+    reloadTasks: () => {
+      if (selectedClient) {
+        loadTasks(selectedClient);
+      }
+    },
+  }));
 
   // Handle client change
   const handleClientChange = (e) => {
@@ -89,7 +101,7 @@ function CareTaskManagement({ jwt, clients, me }) {
       setSelectedClient(firstClientId);
       loadTasks(firstClientId);
     }
-  }, [clients]);
+  }, [clients, selectedClient, loadTasks]);
 
   return (
     <div className="task-management">
@@ -267,7 +279,9 @@ function CareTaskManagement({ jwt, clients, me }) {
       `}</style>
     </div>
   );
-}
+});
+
+CareTaskManagement.displayName = "CareTaskManagement";
 
 // Task Detail Modal
 function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
@@ -410,14 +424,6 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
       year: "numeric",
       month: "long",
       day: "numeric",
-    });
-  };
-
-  const formatTime = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
@@ -998,19 +1004,27 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                   Complete Task
                 </button>
               )}
-              {task.status !== "Completed" && task.status !== "Returned" && (me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
-                <button
-                  className="btn-reschedule"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Reschedule
-                </button>
-              )}
-              {task.status !== "Completed" && task.status !== "Returned" && (me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
-                <button className="btn-delete" onClick={onDelete}>
-                  Delete Task
-                </button>
-              )}
+              {task.status !== "Completed" &&
+                task.status !== "Returned" &&
+                (me?.role === "Family" ||
+                  me?.role === "PoA" ||
+                  me?.role === "Admin") && (
+                  <button
+                    className="btn-reschedule"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Reschedule
+                  </button>
+                )}
+              {task.status !== "Completed" &&
+                task.status !== "Returned" &&
+                (me?.role === "Family" ||
+                  me?.role === "PoA" ||
+                  me?.role === "Admin") && (
+                  <button className="btn-delete" onClick={onDelete}>
+                    Delete Task
+                  </button>
+                )}
               <button className="btn-close" onClick={onClose}>
                 Close
               </button>
@@ -1671,5 +1685,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
     </div>
   );
 }
+
+// TaskDetailModal component remains the same as in your original code
+// (Including all the modal code here for completeness)
 
 export default CareTaskManagement;

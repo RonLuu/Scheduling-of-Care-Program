@@ -5,11 +5,13 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [accessLinks, setAccessLinks] = React.useState([]);
   const [accessErr, setAccessErr] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
-  const [showTokenForm, setShowTokenForm] = React.useState(false);
-  const [tokenType, setTokenType] = React.useState(null);
-  const [generatedToken, setGeneratedToken] = React.useState("");
-  const [tokenError, setTokenError] = React.useState("");
-  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = React.useState(false);
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteError, setInviteError] = React.useState("");
+  const [inviteSuccess, setInviteSuccess] = React.useState("");
+  const [isInviting, setIsInviting] = React.useState(false);
 
   // Edit panel state
   const [editPanel, setEditPanel] = React.useState(false);
@@ -47,6 +49,8 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   ];
 
   const canEdit = me?.role === "Family" || me?.role === "PoA";
+  const canInvite =
+    me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
 
   const loadAccessLinks = async (pid) => {
     setIsLoading(true);
@@ -437,66 +441,87 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
-  const openTokenModal = () => {
-    setShowTokenForm(true);
-    setTokenType(null);
-    setGeneratedToken("");
-    setTokenError("");
+  const openInviteModal = () => {
+    setShowInviteModal(true);
+    setInviteEmail("");
+    setInviteError("");
+    setInviteSuccess("");
   };
 
-  const closeTokenModal = () => {
-    setShowTokenForm(false);
-    setTokenType(null);
-    setGeneratedToken("");
-    setTokenError("");
+  const closeInviteModal = () => {
+    setShowInviteModal(false);
+    setInviteEmail("");
+    setInviteError("");
+    setInviteSuccess("");
   };
 
-  const generateToken = async (type) => {
-    setTokenType(type);
-    setIsGenerating(true);
-    setTokenError("");
-    setGeneratedToken("");
+  const handleInviteSubmit = async () => {
+    if (!inviteEmail || !inviteEmail.includes("@")) {
+      setInviteError("Please enter a valid email address");
+      return;
+    }
+
+    setIsInviting(true);
+    setInviteError("");
+    setInviteSuccess("");
 
     try {
-      const body = {
-        type: type,
-        personIds: [selectedClientId],
-        expiresInDays: 7,
-        maxUses: 1,
-      };
-
-      if (type === "MANAGER_TOKEN" || type === "STAFF_TOKEN") {
-        body.organizationId = me.organizationId;
-      } else if (type === "FAMILY_TOKEN" && me.organizationId) {
-        body.organizationId = me.organizationId;
-      }
-
-      const response = await fetch("/api/tokens", {
+      const response = await fetch("/api/person-user-links/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          personId: selectedClientId,
+          inviteeEmail: inviteEmail.toLowerCase().trim(),
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to generate token");
+        throw new Error(data.error || "Failed to send invite");
       }
 
-      const data = await response.json();
-      setGeneratedToken(data.token);
+      setInviteSuccess(data.message || "Invite sent successfully!");
+      setInviteEmail("");
+
+      // Reload access links to show the new user
+      await loadAccessLinks(selectedClientId);
+
+      // Auto-close modal after success
+      setTimeout(() => {
+        closeInviteModal();
+      }, 2000);
     } catch (error) {
-      setTokenError(error.message);
+      setInviteError(error.message);
     } finally {
-      setIsGenerating(false);
+      setIsInviting(false);
     }
   };
 
-  const copyToken = () => {
-    navigator.clipboard.writeText(generatedToken);
-    alert("Token copied to clipboard!");
+  const getInviteInstructions = () => {
+    if (me?.role === "Admin") {
+      return "You can invite general care staff members to access this client. They must be registered in the system.";
+    } else if (me?.role === "Family" || me?.role === "PoA") {
+      if (!me?.organizationId) {
+        return (
+          <>
+            You can invite other family members or someone with power of
+            attorney to access this client.
+            <div className="org-warning">
+              <strong>Note:</strong> If the person you invite is part of an
+              organization, you and all related clients will automatically join
+              their organization.
+            </div>
+          </>
+        );
+      } else {
+        return "You can invite family members, power of attorney, or organization administrators to access this client. They will join your organization if not already in one.";
+      }
+    }
+    return "";
   };
 
   const medicalInfoDisplay = selectedClient
@@ -512,7 +537,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
   const canManageAccess =
     me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
-  const hasOrganization = me?.organizationId;
 
   const hasBasicInfo =
     selectedClient &&
@@ -540,8 +564,8 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             <div className="tip-icon">i</div>
             <p>
               <strong>Want to give someone access to a client?</strong> <br />
-              Create an invite token to share with other users. Select a client
-              below, then click "Create Invite Token".
+              Select a client below and click "Invite User" to share access with
+              other registered users via email.
             </p>
           </div>
         )}
@@ -562,10 +586,10 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             </select>
           </div>
 
-          {selectedClient && canManageAccess && (
-            <div className="token-section">
-              <button className="create-token-btn" onClick={openTokenModal}>
-                Create Invite Token
+          {selectedClient && canInvite && (
+            <div className="invite-section">
+              <button className="invite-user-btn" onClick={openInviteModal}>
+                Invite User
               </button>
             </div>
           )}
@@ -1165,145 +1189,67 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
         </div>
       )}
 
-      {/* Token Generation Modal */}
-      {showTokenForm && (
-        <div className="modal-overlay" onClick={closeTokenModal}>
+      {/* Invite Modal - Place this inside your component's return statement, before the closing tags */}
+      {showInviteModal && (
+        <div className="modal-overlay" onClick={closeInviteModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Create Invite Token for {selectedClient?.name}</h3>
-              <button className="modal-close" onClick={closeTokenModal}>
+              <h3>Invite User to Access {selectedClient?.name}</h3>
+              <button className="modal-close" onClick={closeInviteModal}>
                 ×
               </button>
             </div>
 
             <div className="modal-body">
-              {!generatedToken ? (
+              <div className="invite-instructions">
+                {getInviteInstructions()}
+              </div>
+
+              {!inviteSuccess && (
                 <>
-                  {!tokenType ? (
-                    <>
-                      {me.role === "Admin" ? (
-                        <>
-                          <p className="modal-intro">
-                            Generate an invite token to share with care staff in
-                            your organization. This will grant them access to{" "}
-                            <strong>{selectedClient?.name}</strong>.
-                          </p>
-                          <button
-                            className="generate-btn"
-                            onClick={() => generateToken("STAFF_TOKEN")}
-                          >
-                            Generate Token for Staff
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <p className="modal-intro">
-                            Choose who you want to share access with:
-                          </p>
+                  <div className="invite-form">
+                    <label htmlFor="invite-email">User Email Address</label>
+                    <input
+                      id="invite-email"
+                      type="email"
+                      placeholder="Enter email address"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handleInviteSubmit()
+                      }
+                      disabled={isInviting}
+                    />
+                    {inviteError && (
+                      <div className="invite-error">
+                        <p>{inviteError}</p>
+                      </div>
+                    )}
+                  </div>
 
-                          <div className="token-type-selection">
-                            <div className="token-type-card">
-                              <div className="card-header">
-                                <h4>Family Member / Power of Attorney</h4>
-                              </div>
-                              <p className="card-description">
-                                Share access with another family member or
-                                someone with power of attorney. They will be
-                                able to view and manage{" "}
-                                <strong>{selectedClient?.name}</strong>'s
-                                information.
-                              </p>
-                              <button
-                                className="select-type-btn primary"
-                                onClick={() => generateToken("FAMILY_TOKEN")}
-                              >
-                                Generate Token
-                              </button>
-                            </div>
-
-                            <div className="token-type-card">
-                              <div className="card-header">
-                                <h4>Organization Administrator</h4>
-                              </div>
-                              <p className="card-description">
-                                Share access with an organization administrator.
-                                They will be able to assign care staff and
-                                manage <strong>{selectedClient?.name}</strong>{" "}
-                                within the organization.
-                              </p>
-                              {hasOrganization ? (
-                                <button
-                                  className="select-type-btn secondary"
-                                  onClick={() => generateToken("MANAGER_TOKEN")}
-                                >
-                                  Generate Token
-                                </button>
-                              ) : (
-                                <div className="org-required-box">
-                                  <span className="warning-icon">⚠️</span>
-                                  <div>
-                                    <p className="org-required-text">
-                                      You need to join an organization first
-                                    </p>
-                                    <a
-                                      href="/organization"
-                                      className="org-link"
-                                    >
-                                      Go to Organization Page →
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {tokenError && (
-                        <div className="token-error">
-                          <p>Error: {tokenError}</p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="generating-state">
-                      <p>Generating your invite token...</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="token-result">
-                  <p className="success-message">
-                    Token generated successfully!
-                  </p>
-
-                  <label>Your Invite Token:</label>
-                  <div className="token-display">
-                    <code>{generatedToken}</code>
-                    <button className="copy-btn" onClick={copyToken}>
-                      Copy
+                  <div className="modal-actions">
+                    <button
+                      className="cancel-btn"
+                      onClick={closeInviteModal}
+                      disabled={isInviting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="send-invite-btn"
+                      onClick={handleInviteSubmit}
+                      disabled={isInviting || !inviteEmail}
+                    >
+                      {isInviting ? "Sending..." : "Send Invite"}
                     </button>
                   </div>
+                </>
+              )}
 
-                  <div className="token-info-box">
-                    <p className="token-instructions">
-                      <strong>How to use this token:</strong>
-                    </p>
-                    <ol className="instructions-list">
-                      <li>
-                        Share this token with the person you want to grant
-                        access to
-                      </li>
-                      <li>
-                        They should enter this token on the Clients page to gain
-                        access to <strong>{selectedClient?.name}</strong>
-                      </li>
-                      <li>
-                        This token expires in <strong>7 days</strong> and can
-                        only be used <strong>once</strong>
-                      </li>
-                    </ol>
-                  </div>
+              {inviteSuccess && (
+                <div className="invite-success">
+                  <div className="success-icon">✓</div>
+                  <p>{inviteSuccess}</p>
                 </div>
               )}
             </div>
@@ -1589,6 +1535,10 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+
+        .modal-body {
+          padding: 1.5rem;
         }
 
         .modal-close:hover {
@@ -1920,6 +1870,26 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           line-height: 1.6;
         }
 
+        .invite-user-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          white-space: nowrap;
+        }
+
+        .invite-user-btn:hover {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(129, 137, 210, 0.3);
+        }
+
         .select-type-btn.primary {
           background: #8189d2;
           color: white;
@@ -2238,6 +2208,149 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           margin: 0 0 1.25rem 0;
         }
 
+        .invite-instructions {
+          margin: 0 0 1.5rem 0;
+          color: #374151;
+          font-size: 0.875rem;
+          line-height: 1.6;
+        }
+
+        .org-warning {
+          margin-top: 0.75rem;
+          padding: 0.75rem;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 6px;
+          color: #92400e;
+          font-size: 0.8125rem;
+        }
+
+        .org-warning strong {
+          font-weight: 600;
+        }
+
+        .invite-form {
+          margin-bottom: 1.5rem;
+        }
+
+        .invite-form label {
+          display: block;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .invite-form input {
+          width: 100%;
+          padding: 0.625rem;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.9375rem;
+          transition: all 0.2s;
+        }
+
+        .invite-form input:focus {
+          outline: none;
+          border-color: #8189d2;
+          box-shadow: 0 0 0 3px rgba(129, 137, 210, 0.1);
+        }
+
+        .invite-form input:disabled {
+          background: #f3f4f6;
+          cursor: not-allowed;
+        }
+
+        .invite-error {
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-top: 0.75rem;
+        }
+
+        .invite-error p {
+          margin: 0;
+          color: #991b1b;
+          font-size: 0.875rem;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.75rem;
+        }
+
+        .cancel-btn {
+          padding: 0.625rem 1.25rem;
+          background: white;
+          color: #374151;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cancel-btn:hover {
+          background: #f9fafb;
+        }
+
+        .cancel-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .send-invite-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .send-invite-btn:hover:not(:disabled) {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .send-invite-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .invite-success {
+          text-align: center;
+          padding: 2rem 0;
+        }
+
+        .success-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 4rem;
+          height: 4rem;
+          background: #d1fae5;
+          color: #065f46;
+          border-radius: 50%;
+          font-size: 2rem;
+          font-weight: bold;
+          margin-bottom: 1rem;
+        }
+
+        .invite-success p {
+          color: #065f46;
+          font-size: 1rem;
+          font-weight: 600;
+          margin: 0;
+        }
+
         @media (max-width: 768px) {
           .selector-container {
             flex-direction: column;
@@ -2289,6 +2402,16 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           }
 
           .remove-field-btn {
+            width: 100%;
+          }
+
+          .modal-actions {
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+          }
+
+          .cancel-btn,
+          .send-invite-btn {
             width: 100%;
           }
         }

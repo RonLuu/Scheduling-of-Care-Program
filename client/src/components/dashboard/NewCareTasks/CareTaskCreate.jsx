@@ -1,6 +1,12 @@
 import React from "react";
 
-function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBudget }) {
+function CareTaskCreate({
+  jwt,
+  clients,
+  onTaskCreated,
+  onCancel,
+  onNavigateToBudget,
+}) {
   const todayStr = React.useMemo(
     () => new Date().toISOString().split("T")[0],
     []
@@ -333,7 +339,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
         recurrenceEndDate: taskData.isRecurring ? actualEndDate : undefined,
         budgetCategoryId: budgetCategoryId,
         budgetItemId: budgetItemId,
-        expectedCost: taskData.expectedCost ? parseFloat(taskData.expectedCost) : undefined,
+        expectedCost: taskData.expectedCost
+          ? parseFloat(taskData.expectedCost)
+          : undefined,
       };
 
       const response = await fetch("/api/care-tasks/standalone", {
@@ -449,54 +457,80 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
               </div>
             )}
 
-            {budgetItemId && (() => {
-              const selectedItem = budgetItems.find(item => item._id === budgetItemId);
-              if (!selectedItem) return null;
+            {budgetItemId &&
+              (() => {
+                const selectedItem = budgetItems.find(
+                  (item) => item._id === budgetItemId
+                );
+                if (!selectedItem) return null;
 
-              const itemGrossSpent = getItemSpent(budgetCategoryId, budgetItemId);
-              const itemReturned = getItemReturned(budgetCategoryId, budgetItemId);
-              const itemNetSpent = itemGrossSpent - itemReturned;
-              const itemReserved = getItemExpected(budgetCategoryId, budgetItemId);
-              const availableBudget = selectedItem.budget - itemNetSpent - itemReserved;
+                const itemGrossSpent = getItemSpent(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const itemReturned = getItemReturned(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const itemNetSpent = itemGrossSpent - itemReturned;
+                const itemReserved = getItemExpected(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const availableBudget =
+                  selectedItem.budget - itemNetSpent - itemReserved;
 
-              return (
-                <>
-                  <div className="budget-info-box">
-                    <div className="budget-info-row">
-                      <span className="budget-info-label">Available Budget for {selectedItem.name}:</span>
-                      <span className={`budget-info-value available ${availableBudget < 0 ? 'negative' : ''}`}>
-                        {isLoadingSpending ? "Loading..." : formatCurrency(availableBudget)}
-                      </span>
+                return (
+                  <>
+                    <div className="budget-info-box">
+                      <div className="budget-info-row">
+                        <span className="budget-info-label">
+                          Available Budget for {selectedItem.name}:
+                        </span>
+                        <span
+                          className={`budget-info-value available ${
+                            availableBudget < 0 ? "negative" : ""
+                          }`}
+                        >
+                          {isLoadingSpending
+                            ? "Loading..."
+                            : formatCurrency(availableBudget)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="form-group">
-                    <label>Expected Cost</label>
-                    <small>Enter the expected cost for this task. Leave it
-                       blank if there’s no cost. You can always come back and 
-                       add a cost later. </small>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={taskData.expectedCost}
-                      onChange={(e) =>
-                        setTaskData({ ...taskData, expectedCost: e.target.value })
-                      }
-                      placeholder="e.g., 50.00"
-                    />
-                    
-                  </div>
-                </>
-              );
-            })()}
+                    <div className="form-group">
+                      <label>Expected Cost</label>
+                      <small>
+                        Enter the expected cost for this task. Leave it blank if
+                        there’s no cost. You can always come back and add a cost
+                        later.{" "}
+                      </small>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={taskData.expectedCost}
+                        onChange={(e) =>
+                          setTaskData({
+                            ...taskData,
+                            expectedCost: e.target.value,
+                          })
+                        }
+                        placeholder="e.g., 50.00"
+                      />
+                    </div>
+                  </>
+                );
+              })()}
 
             <div className="tip-box">
               <span className="tip-icon">💡</span>
               <div className="tip-content">
                 <strong>Can't find the right category or item?</strong>
                 <p>
-                  Go to the {onNavigateToBudget ? (
+                  Go to the{" "}
+                  {onNavigateToBudget ? (
                     <a
                       href="#"
                       className="tip-link"
@@ -509,7 +543,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
                     </a>
                   ) : (
                     <span className="tip-link-text">Budget & Reports page</span>
-                  )} to add new categories or items to your budget plan before creating tasks.
+                  )}{" "}
+                  to add new categories or items to your budget plan before
+                  creating tasks.
                 </p>
               </div>
             </div>
@@ -574,9 +610,9 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
                     })
                   }
                 >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
+                  <option value="daily">by Day</option>
+                  <option value="weekly">by Week</option>
+                  <option value="monthly">by Month</option>
                 </select>
               </div>
 
@@ -1010,13 +1046,13 @@ function CareTaskCreate({ jwt, clients, onTaskCreated, onCancel, onNavigateToBud
         }
         .tip-content strong {
           display: block;
-          color: #000000ff!important;
+          color: #000000ff !important;
           font-size: 0.9rem;
           margin-bottom: 0.375rem;
         }
         .tip-content p {
           margin: 0;
-          color: #000000ff!important;
+          color: #000000ff !important;
           font-size: 0.85rem;
           line-height: 1.5;
         }

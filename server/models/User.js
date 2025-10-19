@@ -1,4 +1,13 @@
+// models/User.js
 import { Schema, model } from "mongoose";
+
+const EmergencyContactSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+  },
+  { _id: true }
+);
 
 const UserSchema = new Schema(
   {
@@ -30,6 +39,12 @@ const UserSchema = new Schema(
 
     mobile: { type: String, trim: true, default: null },
     address: { type: String, trim: true, default: null },
+
+    // Emergency contacts array
+    emergencyContacts: {
+      type: [EmergencyContactSchema],
+      default: [],
+    },
 
     // Profile image reference
     avatarFileId: {

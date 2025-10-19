@@ -1,3 +1,4 @@
+// personUserLink.js
 import { Router } from "express";
 import PersonWithNeeds from "../models/PersonWithNeeds.js";
 import User from "../models/User.js";
@@ -109,6 +110,361 @@ router.get("/by-person/:personId", requireAuth, async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+
+// POST /api/person-user-links/invite
+// Body: { personId, inviteeEmail }
+router.post("/invite", requireAuth, async (req, res) => {
+  const { personId, inviteeEmail } = req.body;
+
+  if (!personId || !inviteeEmail) {
+    return res
+      .status(400)
+      .json({ error: "Person ID and invitee email are required" });
+  }
+
+  const inviterRole = req.user.role;
+  const inviterId = req.user.id;
+  const inviterOrgId = req.user.organizationId;
+
+  try {
+    // 1. Check if inviter is trying to invite themselves
+    const normalizedEmail = inviteeEmail.toLowerCase().trim();
+    if (normalizedEmail === req.user.email.toLowerCase()) {
+      return res.status(400).json({ error: "You cannot invite yourself" });
+    }
+
+    // 2. Fetch the person (client) being shared
+    const person = await PersonWithNeeds.findById(personId);
+    if (!person) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // 3. Check if invitee exists
+    const invitee = await User.findOne({ email: normalizedEmail });
+    if (!invitee) {
+      return res.status(404).json({
+        error:
+          "User not found. The email address must belong to a registered user in the system.",
+      });
+    }
+
+    // 4. Check if there's already an active link
+    const existingLink = await PersonUserLink.findOne({
+      personId: personId,
+      userId: invitee._id,
+      active: true,
+    });
+
+    if (existingLink) {
+      return res.status(400).json({
+        error: "This user already has access to this client",
+      });
+    }
+
+    // 5. Validate role-based permissions
+    if (inviterRole === "GeneralCareStaff") {
+      return res.status(403).json({
+        error: "General care staff cannot invite other users",
+      });
+    }
+
+    // Admin can only invite GeneralCareStaff
+    if (inviterRole === "Admin") {
+      if (invitee.role !== "GeneralCareStaff") {
+        return res.status(403).json({
+          error: "Administrators can only invite general care staff members",
+        });
+      }
+    }
+
+    // Family/PoA can invite other Family/PoA or Admin
+    if (inviterRole === "Family" || inviterRole === "PoA") {
+      if (invitee.role === "GeneralCareStaff") {
+        return res.status(403).json({
+          error:
+            "You cannot directly invite care staff. They must be assigned by an administrator.",
+        });
+      }
+    }
+
+    // 6. Handle organization cascade logic
+    let cascadeResult = null;
+    const useTransactions = process.env.NODE_ENV === "production";
+
+    // Check for organization mismatches and handle cascades
+    if (inviterRole === "Family" || inviterRole === "PoA") {
+      // Special handling when Family/PoA invites an Admin
+      if (invitee.role === "Admin") {
+        // Both have no org - error
+        if (!inviterOrgId && !invitee.organizationId) {
+          return res.status(400).json({
+            error:
+              "Cannot establish connection. At least one party must be part of an organization. Please join or create an organization first.",
+          });
+        }
+
+        // Both have orgs but different - error (prevent cross-org connections)
+        if (
+          inviterOrgId &&
+          invitee.organizationId &&
+          String(inviterOrgId) !== String(invitee.organizationId)
+        ) {
+          return res.status(400).json({
+            error:
+              "Organization mismatch. You are in a different organization than the administrator you're trying to invite. Please contact support if you need to merge organizations.",
+          });
+        }
+
+        // Admin has org, inviter doesn't - cascade inviter to admin's org
+        if (invitee.organizationId && !inviterOrgId) {
+          cascadeResult = await handleOrgCascade(
+            inviterId,
+            invitee.organizationId,
+            useTransactions
+          );
+        }
+        // Admin has no org but inviter does - move admin to inviter's org
+        else if (inviterOrgId && !invitee.organizationId) {
+          invitee.organizationId = inviterOrgId;
+          await invitee.save();
+
+          // Also move the person if needed
+          if (
+            !person.organizationId ||
+            String(person.organizationId) !== String(inviterOrgId)
+          ) {
+            person.organizationId = inviterOrgId;
+            await person.save();
+          }
+        }
+        // Both in same org - no action needed
+      }
+      // Inviting Family/PoA (existing logic)
+      else {
+        // Case 1: Inviter has no org but invitee does
+        if (!inviterOrgId && invitee.organizationId) {
+          // Move inviter and their clients to invitee's org
+          cascadeResult = await handleOrgCascade(
+            inviterId,
+            invitee.organizationId,
+            useTransactions
+          );
+        }
+        // Case 2: Inviter has org but invitee doesn't
+        else if (inviterOrgId && !invitee.organizationId) {
+          // Move invitee to inviter's org
+          invitee.organizationId = inviterOrgId;
+          await invitee.save();
+
+          // Also move the person if needed
+          if (
+            !person.organizationId ||
+            String(person.organizationId) !== String(inviterOrgId)
+          ) {
+            person.organizationId = inviterOrgId;
+            await person.save();
+          }
+        }
+        // Case 3: Both have orgs - must match
+        else if (inviterOrgId && invitee.organizationId) {
+          if (String(inviterOrgId) !== String(invitee.organizationId)) {
+            return res.status(400).json({
+              error:
+                "Organization mismatch. The user you're inviting belongs to a different organization. Please ensure they're in the same organization or contact support.",
+            });
+          }
+        }
+      }
+    }
+
+    // For Admin inviting staff (existing logic remains unchanged)
+    if (inviterRole === "Admin") {
+      if (!inviterOrgId) {
+        return res.status(400).json({
+          error: "You must be part of an organization to invite staff members",
+        });
+      }
+
+      if (!invitee.organizationId) {
+        // Automatically add staff to admin's org
+        invitee.organizationId = inviterOrgId;
+        await invitee.save();
+      } else if (String(invitee.organizationId) !== String(inviterOrgId)) {
+        return res.status(400).json({
+          error: "This staff member belongs to a different organization",
+        });
+      }
+    }
+
+    // 7. Create or reactivate the link
+    let link = await PersonUserLink.findOne({
+      personId: personId,
+      userId: invitee._id,
+    });
+
+    if (link) {
+      // Reactivate existing inactive link
+      link.active = true;
+      link.startAt = new Date();
+      link.endAt = null;
+      link.relationshipType = invitee.role;
+      await link.save();
+    } else {
+      // Create new link
+      link = await PersonUserLink.create({
+        personId: personId,
+        userId: invitee._id,
+        relationshipType: invitee.role,
+        active: true,
+        startAt: new Date(),
+      });
+    }
+
+    // 8. Prepare success message
+    let message = `Successfully granted ${
+      invitee.name || invitee.email
+    } access to ${person.name}`;
+
+    if (cascadeResult) {
+      message += `. Organization update: ${cascadeResult.personsMoved} clients and ${cascadeResult.familyMoved} family members moved to the organization.`;
+    }
+
+    return res.json({
+      ok: true,
+      message: message,
+      link: {
+        id: link._id,
+        personId: link.personId,
+        userId: link.userId,
+        active: link.active,
+      },
+      cascade: cascadeResult,
+    });
+  } catch (error) {
+    console.error("Invite error:", error);
+    return res.status(500).json({
+      error: "An error occurred while processing the invite. Please try again.",
+    });
+  }
+});
+
+// Helper function for organization cascade (reuse from users.me.js)
+async function handleOrgCascade(userId, targetOrgId, useTransactions) {
+  const User = (await import("../models/User.js")).default;
+  const PersonWithNeeds = (await import("../models/PersonWithNeeds.js"))
+    .default;
+  const PersonUserLink = (await import("../models/PersonUserLink.js")).default;
+  const BudgetPlan = (await import("../models/BudgetPlan.js")).default;
+  const CareTask = (await import("../models/CareTask.js")).default;
+
+  let result = {
+    personsMoved: 0,
+    budgetPlansMoved: 0,
+    tasksMoved: 0,
+    familyMoved: 0,
+    staffRevoked: 0,
+  };
+
+  const performCascade = async (session) => {
+    const me = await User.findById(userId).session(session);
+
+    // Find persons linked to the user
+    const myLinks = await PersonUserLink.find({
+      userId: userId,
+      relationshipType: { $in: ["Family", "PoA"] },
+      active: true,
+    })
+      .select("personId")
+      .lean()
+      .session(session);
+
+    const personIds = Array.from(
+      new Set(myLinks.map((l) => String(l.personId)))
+    );
+
+    if (personIds.length === 0) {
+      me.organizationId = targetOrgId;
+      await me.save({ session });
+      return result;
+    }
+
+    // Find all family/PoA users for these persons
+    const famLinks = await PersonUserLink.find({
+      personId: { $in: personIds },
+      relationshipType: { $in: ["Family", "PoA"] },
+      active: true,
+    })
+      .select("userId")
+      .lean()
+      .session(session);
+
+    const familyUserIdSet = new Set(famLinks.map((l) => String(l.userId)));
+    familyUserIdSet.add(String(userId));
+    const familyUserIds = Array.from(familyUserIdSet);
+
+    // Move users to new org
+    const moveUsersRes = await User.updateMany(
+      { _id: { $in: familyUserIds } },
+      { $set: { organizationId: targetOrgId } },
+      { session }
+    );
+
+    // Move persons to new org
+    const personsRes = await PersonWithNeeds.updateMany(
+      { _id: { $in: personIds } },
+      { $set: { organizationId: targetOrgId } },
+      { session }
+    );
+
+    // Move budget plans
+    const budgetPlansRes = await BudgetPlan.updateMany(
+      { personId: { $in: personIds } },
+      { $set: { organizationId: targetOrgId } },
+      { session }
+    );
+
+    // Move tasks
+    const tasksRes = await CareTask.updateMany(
+      { personId: { $in: personIds } },
+      { $set: { organizationId: targetOrgId } },
+      { session }
+    );
+
+    // Revoke Admin/Staff links if moving to a new org
+    const revokeRes = await PersonUserLink.updateMany(
+      {
+        personId: { $in: personIds },
+        relationshipType: { $in: ["GeneralCareStaff", "Admin"] },
+        active: true,
+      },
+      { $set: { active: false, endAt: new Date() } },
+      { session }
+    );
+
+    return {
+      personsMoved: personsRes.modifiedCount || 0,
+      budgetPlansMoved: budgetPlansRes.modifiedCount || 0,
+      tasksMoved: tasksRes.modifiedCount || 0,
+      familyMoved: Math.max((moveUsersRes.modifiedCount || 0) - 1, 0),
+      staffRevoked: revokeRes.modifiedCount || 0,
+    };
+  };
+
+  if (useTransactions) {
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        result = await performCascade(session);
+      });
+    } finally {
+      session.endSession();
+    }
+  } else {
+    result = await performCascade(null);
+  }
+
+  return result;
+}
 
 // PATCH /api/person-user-links/:id/revoke
 router.patch("/:id/revoke", requireAuth, async (req, res) => {

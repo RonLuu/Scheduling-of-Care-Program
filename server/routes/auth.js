@@ -19,6 +19,7 @@ function sanitizeUser(user) {
     mobile: u.mobile || null,
     address: u.address || null,
     avatarFileId: u.avatarFileId || null,
+    emergencyContacts: u.emergencyContacts || null,
   };
 }
 
@@ -55,6 +56,7 @@ router.post("/register", async (req, res) => {
         organizationId: user.organizationId || null,
         mobile: user.mobile || null,
         address: user.address || null,
+        emergencyContacts: u.emergencyContacts || null,
       },
       session: { jwt: jwtToken, expiresIn: 3600 },
     });

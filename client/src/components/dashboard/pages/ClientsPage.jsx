@@ -11,22 +11,14 @@ function ClientsPage() {
   const jwt = localStorage.getItem("jwt");
   const { clients, loading, error, refresh } = useClients(me, jwt);
   const [showAddClient, setShowAddClient] = React.useState(false);
-  const [showEnterToken, setShowEnterToken] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState("");
 
   const canAddClient = me?.role === "Family" || me?.role === "PoA";
-  const canEnterToken =
-    me?.role === "Admin" ||
-    me?.role === "GeneralCareStaff" ||
-    me?.role === "Family" ||
-    me?.role === "PoA";
   const canViewClients =
     me?.role === "Admin" ||
     me?.role === "GeneralCareStaff" ||
     me?.role === "Family" ||
     me?.role === "PoA";
-  const canManageAccess =
-    me?.role === "Admin" || me?.role === "Family" || me?.role === "PoA";
 
   // Handler for successful client addition
   const handleClientAdded = () => {
@@ -37,6 +29,89 @@ function ClientsPage() {
     setTimeout(() => {
       setSuccessMessage("");
     }, 5000);
+  };
+
+  const getEmptyStateMessage = () => {
+    if (me?.role === "Family" || me?.role === "PoA") {
+      return (
+        <div>
+          <p>You don't have any clients yet.</p>
+          <p style={{ marginTop: "1rem" }}>
+            Click "Add New Client" above to create a new client profile. Once
+            created, you can invite other family members, power of attorney, or
+            care organizations to share access.
+          </p>
+        </div>
+      );
+    } else if (me?.role === "Admin") {
+      if (!me?.organizationId) {
+        return (
+          <div>
+            <p>You don't have access to any clients yet.</p>
+            <p style={{ marginTop: "1rem" }}>
+              To get started:
+              <br />
+              1. First, join or create an organization from the{" "}
+              <a
+                href="/organization"
+                style={{ color: "#8189d2", textDecoration: "underline" }}
+              >
+                Organization page
+              </a>
+              <br />
+              2. Then, wait for a family member to invite you to access their
+              clients
+            </p>
+          </div>
+        );
+      } else {
+        return (
+          <div>
+            <p>You don't have access to any clients yet.</p>
+            <p style={{ marginTop: "1rem" }}>
+              As an administrator, you'll gain access to clients when family
+              members invite your organization. Family members can invite you by
+              selecting their client and clicking "Invite User" to share access
+              with you.
+            </p>
+          </div>
+        );
+      }
+    } else if (me?.role === "GeneralCareStaff") {
+      if (!me?.organizationId) {
+        return (
+          <div>
+            <p>You don't have access to any clients yet.</p>
+            <p style={{ marginTop: "1rem" }}>
+              To get started:
+              <br />
+              1. First, join an organization from the{" "}
+              <a
+                href="/organization"
+                style={{ color: "#8189d2", textDecoration: "underline" }}
+              >
+                Organization page
+              </a>
+              <br />
+              2. Then, your organization administrator will assign you to
+              specific clients
+            </p>
+          </div>
+        );
+      } else {
+        return (
+          <div>
+            <p>You don't have access to any clients yet.</p>
+            <p style={{ marginTop: "1rem" }}>
+              As a care staff member, you'll gain access to clients when your
+              organization administrator assigns you to them. Please contact
+              your administrator if you believe you should have access to
+              specific clients.
+            </p>
+          </div>
+        );
+      }
+    }
   };
 
   return (
@@ -59,7 +134,7 @@ function ClientsPage() {
                     <p className="success-text">{successMessage}</p>
                     <button
                       type="button"
-                      onClick={() => navigate('/dashboard')}
+                      onClick={() => navigate("/dashboard")}
                       className="return-dashboard-btn"
                     >
                       Return to Dashboard
@@ -69,38 +144,18 @@ function ClientsPage() {
               </div>
             )}
 
-            {/* Action Buttons Section */}
-            <div className="action-buttons-container">
-              {/* Add Client Button - For Family/PoA only */}
-              {canAddClient && (
+            {/* Add Client Button - For Family/PoA only */}
+            {canAddClient && (
+              <div className="action-buttons-container">
                 <button
                   className="action-btn"
-                  onClick={() => {
-                    setShowAddClient(!showAddClient);
-                    setShowEnterToken(false);
-                  }}
+                  onClick={() => setShowAddClient(!showAddClient)}
                 >
                   <span className="btn-icon">{showAddClient ? "−" : "+"}</span>
                   {showAddClient ? "Cancel" : "Add New Client"}
                 </button>
-              )}
-
-              {/* Enter Token Button - For all roles */}
-              <button
-                className="action-btn"
-                onClick={() => {
-                  setShowEnterToken(!showEnterToken);
-                  setShowAddClient(false);
-                }}
-              >
-                <span className="btn-icon">{showEnterToken ? "−" : "+"}</span>
-                {showEnterToken
-                  ? "Cancel"
-                  : canAddClient
-                  ? "Join Existing Client"
-                  : "Add New Client"}
-              </button>
-            </div>
+              </div>
+            )}
 
             {/* Add Client Form */}
             {showAddClient && (
@@ -113,27 +168,13 @@ function ClientsPage() {
               </div>
             )}
 
-            {/* Enter Token Form */}
-            {showEnterToken && (
-              <div className="form-wrapper">
-                <ClientManagement.EnterToken
-                  me={me}
-                  jwt={jwt}
-                  onSuccess={() => {
-                    refresh();
-                    setShowEnterToken(false);
-                  }}
-                />
-              </div>
-            )}
-
             {/* Client Information Manager - Always shown after action buttons */}
             {canViewClients && clients.length > 0 && (
               <ClientManagement.ClientInfoManager
                 me={me}
                 jwt={jwt}
                 clients={clients}
-                onClientUpdate={refresh} // Add this line
+                onClientUpdate={refresh}
               />
             )}
 
@@ -141,29 +182,7 @@ function ClientsPage() {
             {clients.length === 0 && !loading && (
               <div className="empty-state-card">
                 <h3>No Clients Yet</h3>
-                {canAddClient ? (
-                  <div>
-                    <p>You don't have access to any clients yet.</p>
-                    <p style={{ marginTop: "1rem" }}>
-                      You can either:
-                      <br />
-                      • Click "Add New Client" to create a completely new
-                      client, or
-                      <br />• Click "Join Existing Client" to enter an invite
-                      token and access an existing client
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p>You don't have access to any clients yet.</p>
-                    <p style={{ marginTop: "1rem" }}>
-                      To gain access to a client, enter an invite token that was
-                      shared with you by a Family/Power of Attorney.
-                      <br />
-                      Click the button above to get started.
-                    </p>
-                  </div>
-                )}
+                {getEmptyStateMessage()}
               </div>
             )}
 
@@ -336,7 +355,7 @@ function ClientsPage() {
           }
 
           .success-message {
-            background: #10b981!important;
+            background: #10b981 !important;
             color: white;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
@@ -355,7 +374,7 @@ function ClientsPage() {
             font-size: 1.5rem;
             font-weight: bold;
             background: white;
-            color: #10b981!important;
+            color: #10b981 !important;
             width: 2rem;
             height: 2rem;
             border-radius: 50%;
@@ -375,7 +394,7 @@ function ClientsPage() {
           .return-dashboard-btn {
             padding: 0.5rem 1rem;
             background: white;
-            color: #10b981!important;
+            color: #10b981 !important;
             border: none;
             border-radius: 0.375rem;
             font-weight: 600;
