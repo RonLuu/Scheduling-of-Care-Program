@@ -176,32 +176,6 @@
     }
 }
 
-// .select-container {
-//     position: relative;
-//     select{
-//     appearance: none;
-//     -webkit-appearance: none;
-//     -moz-appearance: none;
-//     color: $white;
-//     // width: 100%;
-//     padding-right: 40px;
-//     }
-//     .icon {    
-//     color: $white;
-//     position: absolute;
-//     top: 50%;
-//     right: 5%;
-//     transform: translateY(-50%);
-//     pointer-events: none;
-//     transition: transform 0.3s ease;
-//     transform: translateY(-50%) rotate(0deg);
-
-//     &.open {
-//         transform: translateY(-50%) rotate(180deg);}   
-//     }
-
-// }
-// @import 'global_style.scss';
 
 .select-container {
 

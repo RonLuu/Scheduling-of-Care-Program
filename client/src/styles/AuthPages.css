@@ -169,6 +169,28 @@
   color: #dc2626;
   margin-left: 2px;
 }
+.required-mark::after {
+    content: 'Required';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1f2937;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    margin-bottom: 5px;
+}
+
+.required-mark:hover::after {
+    opacity: 1;
+}
+
 
 /* Help icon and tooltip styling (matching budget page style) */
 .help-wrapper {

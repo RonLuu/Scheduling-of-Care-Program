@@ -103,7 +103,7 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Full Name <span className="required-mark">*</span>
+              Full Name <span className="required-mark" title="This field is required">*</span>
             </label>
             <input
               placeholder="Enter your full name"
@@ -116,7 +116,7 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Email <span className="required-mark">*</span>
+              Email <span className="required-mark" title="This field is required">*</span>
             </label>
             <input
               type="email"
@@ -130,7 +130,7 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Password <span className="required-mark">*</span>
+              Password <span className="required-mark" title="This field is required">*</span>
             </label>
             <input
               type="password"
@@ -145,7 +145,7 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Role <span className="required-mark">*</span>
+              Role <span className="required-mark" title="This field is required">*</span>
               &nbsp;
               <span className="help-wrapper">
                 <span className="help-icon">?</span>
