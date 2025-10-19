@@ -1,7 +1,6 @@
 import React from "react";
 import { Calendar } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 
 function CareTaskCalendar({ tasks, onTaskClick }) {
@@ -26,25 +25,9 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           return "#6b7280"; // Gray fallback
         };
 
-        // Determine color based on status
         const color = getColor();
 
-        // Timed event
-        if (t.scheduleType === "Timed" && t.startAt && t.endAt) {
-          return {
-            id: t._id,
-            title: t.title,
-            start: t.startAt,
-            end: t.endAt,
-            allDay: false,
-            backgroundColor: color,
-            borderColor: color,
-            textColor: "#ffffff",
-            display: "block", // Force block display instead of dot
-          };
-        }
-
-        // All-day event
+        // All tasks are treated as all-day events
         const d = new Date(t.dueDate);
         if (Number.isNaN(d.getTime())) {
           return null;
@@ -71,18 +54,18 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
     if (!elRef.current) return;
 
     const calendar = new Calendar(elRef.current, {
-      plugins: [dayGridPlugin, timeGridPlugin, listPlugin],
+      plugins: [dayGridPlugin, listPlugin],
       initialView: "dayGridMonth",
       headerToolbar: {
-        left: "prev,next today",
+        left: "prev,next",
         center: "title",
-        right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+        right: "dayGridMonth,listMonth",
       },
       height: "auto",
       nowIndicator: true,
       timeZone: "local",
-      eventDisplay: "block", // Display all events as blocks instead of dots
-      displayEventTime: false, // Don't display event time in month view
+      eventDisplay: "block",
+      displayEventTime: false,
       eventClick: (info) => {
         const taskId = info.event.id;
         const task = tasks.find((t) => t._id === taskId);
@@ -200,12 +183,6 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           .legend-label {
             font-size: 0.8125rem;
           }
-        }
-
-        /* Hide time prefix in month view for timed events */
-        :global(.fc-daygrid-event .fc-event-time),
-        :global(.fc-event-time) {
-          display: none !important;
         }
       `}</style>
     </div>

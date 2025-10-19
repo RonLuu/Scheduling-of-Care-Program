@@ -1,4 +1,5 @@
 import React from "react";
+import { BiX, BiCalendar, BiTime, BiUser, BiNote } from "react-icons/bi";
 
 function ShiftEditDrawer({
   jwt,
@@ -59,7 +60,6 @@ function ShiftEditDrawer({
       setStartTime(shiftConfig.startTime);
       setEndTime(shiftConfig.endTime);
     } else if (shiftSelection === "custom") {
-      // Keep existing times or reset to defaults
       if (!shift.start) {
         setStartTime("09:00");
         setEndTime("17:00");
@@ -90,9 +90,7 @@ function ShiftEditDrawer({
         end = new Date(`${startDate}T${shiftConfig.endTime}:00`);
       }
     } else {
-      // Custom shift
       if (!endDate || endDate === startDate) {
-        // Same day custom shift
         start = new Date(`${startDate}T${startTime}:00`);
         end = new Date(`${startDate}T${endTime}:00`);
         if (end <= start) {
@@ -101,7 +99,6 @@ function ShiftEditDrawer({
           );
         }
       } else {
-        // Multi-day custom shift
         start = new Date(`${startDate}T${startTime}:00`);
         end = new Date(`${endDate}T${endTime}:00`);
         if (end <= start) {
@@ -187,314 +184,566 @@ function ShiftEditDrawer({
 
   const isCustomShift = shiftSelection === "custom";
 
+  // Format dates for display
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (date) => {
+    return new Date(date).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   return (
-    <div className="shift-drawer">
-      <div className="drawer-header">
-        <h4>{isAdmin ? "Edit Shift" : "Shift Details"}</h4>
-        <button className="btn-close" onClick={onClose}>
-          ✕
-        </button>
-      </div>
+    <>
+      {/* Backdrop */}
+      <div className="modal-backdrop" onClick={onClose} />
 
-      {err && <p className="error-message">Error: {err}</p>}
-
-      <div className="drawer-content">
-        <div className="form-group">
-          <label>Staff</label>
-          <select
-            value={staffUserId}
-            onChange={(e) => setStaffUserId(e.target.value)}
-            disabled={!isAdmin || loading}
-          >
-            <option value="">— Select staff —</option>
-            {assignables.map((u) => (
-              <option key={u.userId} value={u.userId}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+      {/* Modal */}
+      <div className="shift-modal">
+        <div className="modal-header">
+          <h3 className="modal-title">
+            {isAdmin ? "Edit Shift" : "Shift Details"}
+          </h3>
+          <button className="btn-close" onClick={onClose} aria-label="Close">
+            <BiX />
+          </button>
         </div>
 
-        <div className="form-group">
-          <label>Shift</label>
-          <select
-            value={shiftSelection}
-            onChange={(e) => setShiftSelection(e.target.value)}
-            disabled={!isAdmin || loading}
-          >
-            {shiftSettings?.morning?.enabled !== false && (
-              <option value="morning">{getShiftOptionLabel("morning")}</option>
-            )}
-            {shiftSettings?.afternoon?.enabled !== false && (
-              <option value="afternoon">
-                {getShiftOptionLabel("afternoon")}
-              </option>
-            )}
-            {shiftSettings?.evening?.enabled !== false && (
-              <option value="evening">{getShiftOptionLabel("evening")}</option>
-            )}
-            <option value="custom">{getShiftOptionLabel("custom")}</option>
-          </select>
-        </div>
+        {err && <div className="error-banner">{err}</div>}
 
-        {/* For predefined shifts - only show date */}
-        {!isCustomShift && (
-          <div className="form-group">
-            <label>Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={!isAdmin || loading}
-            />
-          </div>
-        )}
+        <div className="modal-content">
+          {/* View Mode - Show for non-admins */}
+          {!isAdmin && (
+            <div className="view-mode">
+              <div className="info-card">
+                <div className="info-item">
+                  <BiUser className="info-icon" />
+                  <div className="info-content">
+                    <label>Staff Member</label>
+                    <p>{shift.staffName || "Unknown"}</p>
+                  </div>
+                </div>
 
-        {/* For custom shifts - show date/time controls */}
-        {isCustomShift && (
-          <>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={!isAdmin || loading}
-                />
-              </div>
-              <div className="form-group">
-                <label>Start Time</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  disabled={!isAdmin || loading}
-                />
+                <div className="info-item">
+                  <BiCalendar className="info-icon" />
+                  <div className="info-content">
+                    <label>Date</label>
+                    <p>{formatDate(shift.start)}</p>
+                  </div>
+                </div>
+
+                <div className="info-item">
+                  <BiTime className="info-icon" />
+                  <div className="info-content">
+                    <label>Time</label>
+                    <p>
+                      {formatTime(shift.start)} - {formatTime(shift.end)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="info-item">
+                  <div className="shift-type-badge">{shift.shiftType}</div>
+                </div>
+
+                {shift.notes && (
+                  <div className="info-item full-width">
+                    <BiNote className="info-icon" />
+                    <div className="info-content">
+                      <label>Notes</label>
+                      <p>{shift.notes}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="form-row">
+          {/* Edit Mode - Show for admins */}
+          {isAdmin && (
+            <div className="edit-mode">
               <div className="form-group">
                 <label>
-                  End Date <span className="optional-label"></span>
+                  <BiUser className="label-icon" /> Staff Member
                 </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                  disabled={!isAdmin || loading}
-                />
+                <select
+                  value={staffUserId}
+                  onChange={(e) => setStaffUserId(e.target.value)}
+                  disabled={loading}
+                  className="form-control"
+                >
+                  <option value="">— Select staff —</option>
+                  {assignables.map((u) => (
+                    <option key={u.userId} value={u.userId}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
               <div className="form-group">
-                <label>End Time</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  disabled={!isAdmin || loading}
+                <label>Shift Type</label>
+                <select
+                  value={shiftSelection}
+                  onChange={(e) => setShiftSelection(e.target.value)}
+                  disabled={loading}
+                  className="form-control"
+                >
+                  {shiftSettings?.morning?.enabled !== false && (
+                    <option value="morning">
+                      {getShiftOptionLabel("morning")}
+                    </option>
+                  )}
+                  {shiftSettings?.afternoon?.enabled !== false && (
+                    <option value="afternoon">
+                      {getShiftOptionLabel("afternoon")}
+                    </option>
+                  )}
+                  {shiftSettings?.evening?.enabled !== false && (
+                    <option value="evening">
+                      {getShiftOptionLabel("evening")}
+                    </option>
+                  )}
+                  <option value="custom">
+                    {getShiftOptionLabel("custom")}
+                  </option>
+                </select>
+              </div>
+
+              {!isCustomShift && (
+                <div className="form-group">
+                  <label>
+                    <BiCalendar className="label-icon" /> Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={loading}
+                    className="form-control"
+                  />
+                </div>
+              )}
+
+              {isCustomShift && (
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>
+                        <BiCalendar className="label-icon" /> Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        disabled={loading}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>
+                        <BiTime className="label-icon" /> Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        disabled={loading}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>End Date (optional)</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate}
+                        disabled={loading}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>
+                        <BiTime className="label-icon" /> End Time
+                      </label>
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        disabled={loading}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="form-group">
+                <label>
+                  <BiNote className="label-icon" /> Notes
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  disabled={loading}
+                  rows="4"
+                  placeholder="Add any special instructions or notes"
+                  className="form-control"
                 />
               </div>
             </div>
-          </>
-        )}
-
-        <div className="form-group">
-          <label>Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={!isAdmin || loading}
-            rows="3"
-            placeholder="Add any special instructions or notes"
-          />
+          )}
         </div>
 
         {isAdmin && (
-          <div className="drawer-actions">
-            <button className="btn-save" onClick={save} disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+          <div className="modal-footer">
+            <button
+              className="btn btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
             </button>
-            <button className="btn-delete" onClick={del} disabled={loading}>
-              Delete
+            <button className="btn btn-danger" onClick={del} disabled={loading}>
+              Delete Shift
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={save}
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
+
+        {!isAdmin && (
+          <div className="modal-footer">
+            <button className="btn btn-primary full-width" onClick={onClose}>
+              Close
             </button>
           </div>
         )}
       </div>
 
       <style jsx>{`
-        .shift-drawer {
+        .modal-backdrop {
           position: fixed;
-          right: 16px;
-          top: 90px;
-          bottom: 16px;
-          width: 420px;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-          display: flex;
-          flex-direction: column;
-          z-index: 50;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          z-index: 100;
+          animation: fadeIn 0.2s ease-out;
         }
 
-        .drawer-header {
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .shift-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 90%;
+          max-width: 600px;
+          max-height: 85vh;
+          background: white;
+          border-radius: 1rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          z-index: 101;
+          display: flex;
+          flex-direction: column;
+          animation: slideUp 0.3s ease-out;
+        }
+
+        .modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 1.25rem;
+          padding: 1.5rem;
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .drawer-header h4 {
+        .modal-title {
           margin: 0;
+          font-size: 1.5rem;
+          font-weight: 600;
           color: #111827;
         }
 
         .btn-close {
           background: transparent;
           border: none;
-          font-size: 1.5rem;
+          font-size: 1.75rem;
           cursor: pointer;
           color: #6b7280;
-          padding: 0;
-          width: 32px;
-          height: 32px;
+          padding: 0.25rem;
+          width: 40px;
+          height: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 0.375rem;
+          border-radius: 0.5rem;
+          transition: all 0.2s;
         }
 
         .btn-close:hover {
           background: #f3f4f6;
+          color: #111827;
         }
 
-        .drawer-content {
-          flex: 1;
-          padding: 1.25rem;
-          overflow-y: auto;
-        }
-
-        .error-message {
-          color: #dc2626;
+        .error-banner {
           background: #fee2e2;
-          padding: 0.75rem;
-          border-radius: 0.375rem;
-          margin: 0 1.25rem 1rem;
+          color: #991b1b;
+          padding: 1rem 1.5rem;
+          border-left: 4px solid #dc2626;
+          margin: 0 1.5rem;
+          margin-top: 1rem;
+          border-radius: 0.5rem;
+          font-weight: 500;
+        }
+
+        .modal-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1.5rem;
+        }
+
+        /* View Mode Styles */
+        .view-mode {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .info-card {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .info-item {
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+        }
+
+        .info-item.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .info-icon {
+          font-size: 1.5rem;
+          color: #3b82f6;
+          flex-shrink: 0;
+        }
+
+        .info-content {
+          flex: 1;
+        }
+
+        .info-content label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.25rem;
+        }
+
+        .info-content p {
+          margin: 0;
+          font-size: 1rem;
+          color: #111827;
+          font-weight: 500;
+        }
+
+        .shift-type-badge {
+          padding: 0.5rem 1rem;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          border-radius: 0.5rem;
+          font-weight: 600;
+          text-transform: capitalize;
+          font-size: 0.875rem;
+          text-align: center;
+        }
+
+        /* Edit Mode Styles */
+        .edit-mode {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
         }
 
         .form-group {
-          margin-bottom: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .form-group label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #374151;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .label-icon {
+          font-size: 1.125rem;
+          color: #6b7280;
+        }
+
+        .form-control {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.5rem;
+          font-size: 0.875rem;
+          background: white;
+          transition: all 0.2s;
+        }
+
+        .form-control:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-control:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          background: #f9fafb;
+        }
+
+        textarea.form-control {
+          resize: vertical;
+          min-height: 100px;
         }
 
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
-          margin-bottom: 1rem;
         }
 
-        .form-group label {
-          display: block;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #374151;
-          margin-bottom: 0.25rem;
-        }
-
-        .optional-label {
-          font-weight: 400;
-          color: #6b7280;
-          font-size: 0.75rem;
-        }
-
-        .form-group select,
-        .form-group input,
-        .form-group textarea {
-          width: 100%;
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          font-size: 0.875rem;
-          background: white;
-        }
-
-        .form-group select:focus,
-        .form-group input:focus,
-        .form-group textarea:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-group select:disabled,
-        .form-group input:disabled,
-        .form-group textarea:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          background: #f9fafb;
-        }
-
-        .form-group textarea {
-          resize: vertical;
-        }
-
-        .drawer-actions {
+        .modal-footer {
           display: flex;
           gap: 0.75rem;
-          margin-top: 1.5rem;
+          padding: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+          background: #f9fafb;
+          border-radius: 0 0 1rem 1rem;
         }
 
-        .btn-save,
-        .btn-delete {
-          flex: 1;
-          padding: 0.625rem;
-          border-radius: 0.375rem;
+        .btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.5rem;
           font-weight: 600;
           cursor: pointer;
           border: none;
           transition: all 0.2s;
+          font-size: 0.875rem;
         }
 
-        .btn-save {
+        .btn.full-width {
+          flex: 1;
+        }
+
+        .btn-primary {
           background: #3b82f6;
           color: white;
+          flex: 1;
         }
 
-        .btn-save:hover:not(:disabled) {
+        .btn-primary:hover:not(:disabled) {
           background: #2563eb;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
         }
 
-        .btn-delete {
+        .btn-secondary {
+          background: white;
+          color: #374151;
+          border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background: #f9fafb;
+        }
+
+        .btn-danger {
           background: #fee2e2;
           color: #991b1b;
         }
 
-        .btn-delete:hover:not(:disabled) {
+        .btn-danger:hover:not(:disabled) {
           background: #fecaca;
         }
 
-        button:disabled {
+        .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
 
         @media (max-width: 640px) {
-          .shift-drawer {
-            width: 100%;
-            right: 0;
-            left: 0;
-            border-radius: 12px 12px 0 0;
+          .shift-modal {
+            width: 95%;
+            max-height: 90vh;
+          }
+
+          .info-card {
+            grid-template-columns: 1fr;
           }
 
           .form-row {
             grid-template-columns: 1fr;
           }
+
+          .modal-footer {
+            flex-direction: column;
+          }
+
+          .btn {
+            width: 100%;
+          }
         }
       `}</style>
-    </div>
+    </>
   );
 }
 
