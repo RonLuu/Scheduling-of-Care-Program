@@ -56,7 +56,7 @@ router.post("/register", async (req, res) => {
         organizationId: user.organizationId || null,
         mobile: user.mobile || null,
         address: user.address || null,
-        emergencyContacts: u.emergencyContacts || null,
+        emergencyContacts: user.emergencyContacts || null,
       },
       session: { jwt: jwtToken, expiresIn: 3600 },
     });
