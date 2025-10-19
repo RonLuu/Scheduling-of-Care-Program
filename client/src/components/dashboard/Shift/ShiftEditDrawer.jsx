@@ -505,17 +505,16 @@ function ShiftEditDrawer({
         .btn-close {
           background: transparent;
           border: none;
-          font-size: 1.75rem;
+          font-size: 1.75rem !important;
           cursor: pointer;
-          color: #6b7280;
-          padding: 0.25rem;
-          width: 40px;
+          color: #6b7280 !important;
+          padding: 0.25rem !important;
+          width: 40px !important;
           height: 40px;
-          display: flex;
           align-items: center;
-          justify-content: center;
           border-radius: 0.5rem;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .btn-close:hover {
@@ -670,54 +669,61 @@ function ShiftEditDrawer({
           border-radius: 0 0 1rem 1rem;
         }
 
-        .btn {
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          cursor: pointer;
-          border: none;
-          transition: all 0.2s;
-          font-size: 0.875rem;
+        /* Protected button styles with higher specificity */
+        .shift-modal .modal-footer .btn {
+          padding: 0.75rem 1.5rem !important;
+          border-radius: 0.5rem !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          border: none !important;
+          transition: all 0.2s !important;
+          font-size: 0.875rem !important;
+          text-decoration: none !important;
         }
 
-        .btn.full-width {
-          flex: 1;
+        .shift-modal .modal-footer .btn.full-width {
+          flex: 1 !important;
         }
 
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-          flex: 1;
+        .shift-modal .modal-footer .btn-primary {
+          background: #3b82f6 !important;
+          background-color: #3b82f6 !important;
+          color: white !important;
         }
 
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        .shift-modal .modal-footer .btn-primary:hover:not(:disabled) {
+          background: #2563eb !important;
+          background-color: #2563eb !important;
+          transform: translateY(-1px) !important;
+          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3) !important;
         }
 
-        .btn-secondary {
-          background: white;
-          color: #374151;
-          border: 1px solid #d1d5db;
+        .shift-modal .modal-footer .btn-secondary {
+          background: white !important;
+          background-color: white !important;
+          color: #374151 !important;
+          border: 1px solid #d1d5db !important;
         }
 
-        .btn-secondary:hover:not(:disabled) {
-          background: #f9fafb;
+        .shift-modal .modal-footer .btn-secondary:hover:not(:disabled) {
+          background: #f9fafb !important;
+          background-color: #f9fafb !important;
         }
 
-        .btn-danger {
-          background: #fee2e2;
-          color: #991b1b;
+        .shift-modal .modal-footer .btn-danger {
+          background: #fee2e2 !important;
+          background-color: #fee2e2 !important;
+          color: #991b1b !important;
         }
 
-        .btn-danger:hover:not(:disabled) {
-          background: #fecaca;
+        .shift-modal .modal-footer .btn-danger:hover:not(:disabled) {
+          background: #fecaca !important;
+          background-color: #fecaca !important;
         }
 
-        .btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .shift-modal .modal-footer .btn:disabled {
+          opacity: 0.5 !important;
+          cursor: not-allowed !important;
         }
 
         @media (max-width: 640px) {
@@ -738,8 +744,8 @@ function ShiftEditDrawer({
             flex-direction: column;
           }
 
-          .btn {
-            width: 100%;
+          .shift-modal .modal-footer .btn {
+            width: 100% !important;
           }
         }
       `}</style>
