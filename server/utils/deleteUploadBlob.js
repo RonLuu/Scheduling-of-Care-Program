@@ -23,6 +23,22 @@ const publicIdFromUrl = (url) => {
   }
 };
 
+// Infer resource type from URL
+const getResourceType = (url) => {
+  const imgExts = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
+  const videoExts = /\.(mp4|avi|mov|wmv|flv|webm)$/i;
+
+  if (imgExts.test(url)) return "image";
+  if (videoExts.test(url)) return "video";
+
+  // Check URL path for resource type hints
+  if (url.includes("/image/upload/")) return "image";
+  if (url.includes("/video/upload/")) return "video";
+  if (url.includes("/raw/upload/")) return "raw";
+
+  return "raw"; // default fallback for documents, etc.
+};
+
 export const deleteUploadBlob = async (urlOrPath) => {
   if (!urlOrPath) return;
 
@@ -32,7 +48,10 @@ export const deleteUploadBlob = async (urlOrPath) => {
       const cloudinary = configureCloudinary();
       const publicId = publicIdFromUrl(urlOrPath);
       if (publicId) {
-        await cloudinary.uploader.destroy(publicId, { resource_type: "auto" });
+        const resourceType = getResourceType(urlOrPath);
+        await cloudinary.uploader.destroy(publicId, {
+          resource_type: resourceType,
+        });
       }
     } catch (e) {
       console.warn("[DELETE] Cloudinary destroy failed:", e.message);

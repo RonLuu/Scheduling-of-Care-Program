@@ -34,6 +34,8 @@ const folderForScope = (scope) => {
 };
 
 const isProd = process.env.NODE_ENV === "production";
+const folderPrefix = process.env.CLOUDINARY_FOLDER_PREFIX;
+console.log("Connected to folder:", folderPrefix);
 
 // Build a storage engine depending on environment
 let storage;
@@ -46,7 +48,7 @@ if (isProd) {
     cloudinary,
     params: async (req, file) => {
       const scope = req.body?.scope || "General";
-      const folder = `scheduling-of-care/${folderForScope(scope)}`;
+      const folder = `${folderPrefix}/${folderForScope(scope)}`;
 
       // For UserProfile, only allow images
       if (scope === "UserProfile") {
@@ -332,7 +334,12 @@ router.post("/upload", requireAuth, (req, res) => {
         if (req.file.path !== correctPath) {
           fs.mkdirSync(correctDir, { recursive: true });
           fs.renameSync(req.file.path, correctPath);
-          console.log("[UPLOAD] Moved file from", req.file.path, "to", correctPath);
+          console.log(
+            "[UPLOAD] Moved file from",
+            req.file.path,
+            "to",
+            correctPath
+          );
         }
 
         publicUrl = `/uploads/${correctFolder}/${req.file.filename}`;
@@ -511,13 +518,13 @@ router.get("/shared", requireAuth, async (req, res) => {
       return res.json([]);
     }
 
-    const bucketIds = buckets.map(b => b._id);
+    const bucketIds = buckets.map((b) => b._id);
 
     // Find all files in these buckets
     // Filter by createdAt instead of effectiveDate to match rolling time ranges
     const fileFilter = {
       scope: "Shared",
-      bucketId: { $in: bucketIds }
+      bucketId: { $in: bucketIds },
     };
 
     // Use createdAt field for filtering since that's when the file was actually uploaded
