@@ -8,13 +8,15 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
   const calendarRef = React.useRef(null);
 
   const mapTasksToEvents = (tasks) => {
-    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
 
     return (tasks || [])
       .map((t) => {
-        // Determine if task is overdue (past due date and not completed)
+        // Determine if task is overdue (before today, not today itself)
         const dueDate = new Date(t.dueDate);
-        const isOverdue = t.status === "Scheduled" && dueDate < now;
+        dueDate.setHours(0, 0, 0, 0); // Start of due date
+        const isOverdue = t.status === "Scheduled" && dueDate < today;
 
         // Determine color based on status and overdue state
         const getColor = () => {
