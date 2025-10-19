@@ -46,6 +46,71 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
     loadShiftSettings();
   }, [jwt, getOrgId]);
 
+  // Helper function to detect overlapping events
+  const detectOverlaps = React.useCallback(() => {
+    if (!fcRef.current) return;
+
+    // Get all time grid columns
+    const columns = document.querySelectorAll(".fc-timegrid-col");
+
+    columns.forEach((column) => {
+      // Get all event harnesses in this column
+      const harnesses = Array.from(
+        column.querySelectorAll(".fc-timegrid-event-harness")
+      );
+
+      if (harnesses.length === 0) return;
+
+      // Get events with their time ranges
+      const events = harnesses
+        .map((harness) => {
+          const event = harness.querySelector(".fc-timegrid-event");
+          if (!event) return null;
+
+          const style = window.getComputedStyle(harness);
+          const top = parseFloat(style.top);
+          const height = parseFloat(style.height);
+
+          return {
+            harness,
+            top,
+            bottom: top + height,
+            element: event,
+          };
+        })
+        .filter((e) => e !== null);
+
+      // For each event, find overlapping events
+      events.forEach((event, index) => {
+        const overlapping = events.filter((other, otherIndex) => {
+          if (index === otherIndex) return false;
+          // Check if they overlap
+          return !(event.bottom <= other.top || event.top >= other.bottom);
+        });
+
+        const totalOverlapping = overlapping.length + 1; // Including self
+        const maxOverlap = Math.min(totalOverlapping, 4); // Cap at 4
+
+        // Calculate which position this event should be in
+        let position = 0;
+        overlapping.forEach((other) => {
+          const otherIndex = events.indexOf(other);
+          if (otherIndex < index) {
+            position++;
+          }
+        });
+
+        // Apply dynamic width and position
+        const width = 100 / maxOverlap;
+        const left = (100 / maxOverlap) * position;
+
+        event.harness.style.setProperty("width", `${width}%`, "important");
+        event.harness.style.setProperty("left", `${left}%`, "important");
+        event.harness.style.setProperty("right", "auto", "important");
+      });
+    });
+  }, []);
+
   const loadShifts = React.useCallback(async () => {
     try {
       setErr("");
@@ -148,11 +213,16 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         validEvents.forEach((event) => {
           fcRef.current.addEvent(event);
         });
+
+        // Apply overlap detection after events are rendered
+        setTimeout(() => {
+          detectOverlaps();
+        }, 100);
       }
     } catch (e) {
       setErr(e.message || String(e));
     }
-  }, [jwt, personId]);
+  }, [jwt, personId, detectOverlaps]);
 
   // Load staff list for editor
   React.useEffect(() => {
@@ -218,7 +288,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       eventMinHeight: 20,
       expandRows: true,
       slotEventOverlap: true,
-      //eventOrderStrict: true,
       nextDayThreshold: "00:00:00",
       eventDidMount: (info) => {
         if (info.view.type.includes("timeGrid")) {
@@ -289,32 +358,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
               el.style.setProperty("cursor", "pointer", "important");
             };
 
-            const handleEventClick = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setDrawer({
-                open: true,
-                shift: {
-                  id: event.id,
-                  title: event.title,
-                  start: event.start,
-                  end: event.end,
-                  notes: event.extendedProps?.notes || "",
-                  staffId: event.extendedProps?.staffId || "",
-                  staffName: event.extendedProps?.staffName || "",
-                  shiftType: event.extendedProps?.shiftType || "custom",
-                },
-              });
-            };
-
-            el.addEventListener("click", handleEventClick);
-            if (harness) {
-              harness.addEventListener("click", handleEventClick);
-            }
-            if (outerHarness) {
-              outerHarness.addEventListener("click", handleEventClick);
-            }
-
             applyPositioning();
             setTimeout(applyPositioning, 10);
             setTimeout(applyPositioning, 50);
@@ -333,8 +376,13 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
             }
           }
         }
+
+        // Trigger overlap detection after mount
+        setTimeout(() => detectOverlaps(), 50);
       },
-      datesSet: () => loadShifts(),
+      datesSet: () => {
+        loadShifts();
+      },
       eventClick: (info) => {
         const e = info.event;
         setDrawer({
@@ -361,7 +409,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       calendar.destroy();
       fcRef.current = null;
     };
-  }, [loadShifts]);
+  }, [loadShifts, detectOverlaps]);
 
   React.useEffect(() => {
     if (personId) loadShifts();
@@ -586,9 +634,12 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           justify-content: flex-start !important;
         }
 
+        /* Dynamic overlap positioning - will be overridden by JavaScript */
         .fc-timegrid-event-harness {
           margin-right: 3px !important;
           height: 100% !important;
+          position: absolute !important;
+          width: 100% !important;
         }
 
         .fc-timegrid-event-harness-inset .fc-timegrid-event {
@@ -674,7 +725,6 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .fc-timegrid-col .fc-timegrid-event-harness {
-          position: absolute !important;
           left: 0 !important;
           right: 0 !important;
         }

@@ -13,7 +13,7 @@ function ShiftPage() {
 
   // Load all clients linked to the current user (with relationshipType merged in)
   const { clients, loading, error } = useClients(me, jwt);
-  
+
   const [personId, setPersonId] = React.useState("");
   const [refreshKey, setRefreshKey] = React.useState(0);
 
@@ -66,7 +66,11 @@ function ShiftPage() {
               </div>
 
               {personId && (
-                <div className={`shift-content ${me?.role === "Admin" ? "admin-layout" : "user-layout"}`}>
+                <div
+                  className={`shift-content ${
+                    me?.role === "Admin" ? "admin-layout" : "user-layout"
+                  }`}
+                >
                   {/* Left Column - Shift Allocation (Admin only) */}
                   {me?.role === "Admin" && (
                     <div className="left-column">
@@ -74,15 +78,25 @@ function ShiftPage() {
                       <div className="tip-box">
                         <div className="tip-icon">💡</div>
                         <div className="tip-content">
-                          <strong>Tip:</strong> Want to change your organization's shift hours? Scroll down and click the "Change Organization Shift Settings" at the bottom of this section.
+                          <strong>Tip:</strong> Want to change your
+                          organization's shift hours? Scroll down and click the
+                          "Change Organization Shift Settings" at the bottom of
+                          this section.
                         </div>
                       </div>
-                      
-                      <ShiftAllocation jwt={jwt} personId={personId} onCreated={bump} />
-                      
+
+                      <ShiftAllocation
+                        jwt={jwt}
+                        personId={personId}
+                        onCreated={bump}
+                      />
+
                       {/* Admin-only shift settings management */}
                       {me?.organizationId && (
-                        <ShiftSettingsManager jwt={jwt} organizationId={me.organizationId} />
+                        <ShiftSettingsManager
+                          jwt={jwt}
+                          organizationId={me.organizationId}
+                        />
                       )}
                     </div>
                   )}
@@ -123,6 +137,8 @@ function ShiftPage() {
           border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
+          width: 90%;
+          max-width: 100%;
         }
 
         .page-header {
@@ -136,7 +152,6 @@ function ShiftPage() {
           font-size: 2rem;
           font-weight: 600;
         }
-
 
         .loading-state,
         .error-state {
@@ -190,7 +205,6 @@ function ShiftPage() {
           border-color: #8189d2;
           box-shadow: 0 0 0 3px rgba(129, 137, 210, 0.1);
         }
-
 
         .shift-content.admin-layout {
           display: grid;
