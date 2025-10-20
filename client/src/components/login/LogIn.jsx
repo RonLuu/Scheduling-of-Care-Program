@@ -60,7 +60,10 @@ function LogIn() {
 
           <div className="auth-form-group">
             <label>
-              Email <span className="required-mark" title="This field is required">*</span>
+              Email{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
             </label>
             <input
               type="email"
@@ -74,7 +77,10 @@ function LogIn() {
 
           <div className="auth-form-group">
             <label>
-              Password <span className="required-mark" title="This field is required">*</span>
+              Password{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
             </label>
             <input
               type="password"
@@ -97,7 +103,7 @@ function LogIn() {
 
         <div className="auth-footer">
           <p>Don't have an account?</p>
-          <Link to="/registeruser" className="auth-footer-link">
+          <Link to="/register" className="auth-footer-link">
             Create Account
           </Link>
         </div>

@@ -87,20 +87,22 @@ describe("LogIn", () => {
     const loginButton = within(form).getByRole("button", { name: /Login/i });
     expect(loginButton).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: /Register/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Register/i })
+    ).toBeInTheDocument();
   });
 
   // Unit test: register button links to correct route
-  it("Register button links to /registeruser", () => {
+  it("Register button links to /register", () => {
     const { container } = render(
       <TestWrapper>
         <LogIn />
       </TestWrapper>
     );
 
-    const registerLink = container.querySelector('a[href="/registeruser"]');
+    const registerLink = container.querySelector('a[href="/register"]');
     expect(registerLink).toBeInTheDocument();
-    expect(registerLink).toHaveAttribute("href", "/registeruser");
+    expect(registerLink).toHaveAttribute("href", "/register");
   });
 
   // Integration test: form submission with valid credentials
@@ -180,8 +182,7 @@ describe("LogIn", () => {
     // Mock failed API response
     global.fetch.mockResolvedValueOnce({
       ok: false,
-      json: () =>
-        Promise.resolve({ error: "Invalid email or password" }),
+      json: () => Promise.resolve({ error: "Invalid email or password" }),
     });
 
     const { container } = render(
@@ -204,9 +205,7 @@ describe("LogIn", () => {
 
     // Verify error message is displayed
     await waitFor(() => {
-      expect(
-        screen.getByText("Invalid email or password")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Invalid email or password")).toBeInTheDocument();
     });
 
     // Verify no navigation occurred
@@ -255,7 +254,7 @@ describe("LogIn", () => {
 
     // Mock a delayed response
     let resolvePromise;
-    const delayedPromise = new Promise(resolve => {
+    const delayedPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
 
@@ -287,10 +286,11 @@ describe("LogIn", () => {
     // Resolve the promise to clean up
     resolvePromise({
       ok: true,
-      json: () => Promise.resolve({
-        session: { jwt: "token", expiresIn: 3600 },
-        user: { id: 1 },
-      }),
+      json: () =>
+        Promise.resolve({
+          session: { jwt: "token", expiresIn: 3600 },
+          user: { id: 1 },
+        }),
     });
   });
 
