@@ -219,7 +219,7 @@ const RegisterUser = () => {
           <p style={{ marginTop: "16px", fontSize: "13px", color: "#6b7280" }}>
             Are you an organization representative?{" "}
             <Link
-              to="/registerorganization"
+              to="/organization"
               style={{
                 color: "#2C3F70",
                 textDecoration: "underline",

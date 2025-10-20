@@ -40,10 +40,7 @@ const App = () => {
   const location = useLocation();
   // Don't show print button on login/register pages
   const shouldShowPrintButton =
-    me &&
-    !["/login", "/register", "/registerorganization"].includes(
-      location.pathname
-    );
+    me && !["/login", "/register", "/organization"].includes(location.pathname);
 
   // Prevent mouse wheel from changing number input values
   React.useEffect(() => {
@@ -93,10 +90,7 @@ const App = () => {
 
           {/* Public routes */}
           <Route path="/register" element={<RegisterUser />} />
-          <Route
-            path="/registerorganization"
-            element={<RegisterOrganization />}
-          />
+          <Route path="/organization" element={<RegisterOrganization />} />
           <Route path="/login" element={<LogIn />} />
 
           {/* Authenticated app routes */}
