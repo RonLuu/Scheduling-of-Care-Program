@@ -196,12 +196,20 @@ async function calculateBudgetStatus(personId, year) {
  */
 export async function checkBudgetAndNotify(personId, year) {
   try {
-    // Get the person/client details
-    const person = await Person.findById(personId);
+    console.log('[checkBudgetAndNotify] Starting with personId:', personId, 'year:', year);
+    
+    // Get the person/client details (force fresh read, no cache)
+    const person = await Person.findById(personId).lean().exec();
     if (!person) {
       console.log('Person not found for budget check:', personId);
       return;
     }
+    
+    console.log('[checkBudgetAndNotify] Found person:', {
+      id: person._id,
+      name: person.name,
+      organizationId: person.organizationId
+    });
 
     // Get all users linked to this person (Family, PoA, Admin in the organization)
     const userLinks = await PersonUserLink.find({ 
@@ -364,6 +372,7 @@ export async function checkBudgetAndNotify(personId, year) {
         
         if (alertResults.length > 0 && alertResults.some(r => r.success)) {
           // Update last alert time
+          const lastAlertKey = `${personId}_${year}`;
           await User.findByIdAndUpdate(user._id, {
             [`emailPreferences.lastBudgetAlertSent.${lastAlertKey}`]: new Date()
           });
