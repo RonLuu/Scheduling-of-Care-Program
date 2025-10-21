@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Select from 'react-select';
+import Select from "react-select";
 import "../../styles/AuthPages.css";
 import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
@@ -14,26 +14,30 @@ const RegisterUser = () => {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [role, setRole] = React.useState("Family"); // default
+  const [role, setRole] = React.useState("Family");
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Map display names to backend role values
   const roleMapping = {
-    'Family': 'Family',
-    'Power of Attorney': 'PoA',
-    'Organization Representative': 'Admin',
-    'Carer': 'GeneralCareStaff',
+    Family: "Family",
+    "Power of Attorney": "PoA",
+    "Organization Representative": "Admin",
+    Carer: "GeneralCareStaff",
   };
 
   const options = [
-    {value: 'Family', label: 'Family'},
-    {value: 'Power of Attorney', label: 'Power of Attorney'},
-    {value: 'Organization Representative', label: 'Organization Representative'},
-    {value: 'Carer', label: 'Carer'},
+    { value: "Family", label: "Family" },
+    { value: "Power of Attorney", label: "Power of Attorney" },
+    {
+      value: "Organization Representative",
+      label: "Organization Representative",
+    },
+    { value: "Carer", label: "Carer" },
   ];
+
   const selectedOption = options.find((opt) => opt.value === role) || null;
+
   function onAuthed(userWithJwt) {
     setMe(userWithJwt);
     localStorage.setItem("jwt", userWithJwt.jwt);
@@ -44,7 +48,6 @@ const RegisterUser = () => {
     setErr("");
     setLoading(true);
     try {
-      // Map the display role to the backend role value
       const backendRole = roleMapping[role] || role;
 
       const res = await fetch("/api/auth/register", {
@@ -53,7 +56,6 @@ const RegisterUser = () => {
         body: JSON.stringify({ name, email, password, role: backendRole }),
       });
 
-      // Try to parse JSON safely
       let data = null;
       try {
         data = await res.json();
@@ -62,12 +64,11 @@ const RegisterUser = () => {
       }
 
       if (!res.ok) {
-        const msg = data?.error || `Registration failed (${res.me})`;
+        const msg = data?.error || `Registration failed (${res.status})`;
         setErr(msg);
         return;
       }
 
-      // Expecting: { session: { jwt }, user: {...} }
       const jwt = data?.session?.jwt;
       const expiresIn = data?.session?.expiresIn ?? 3600;
       if (jwt) {
@@ -79,7 +80,6 @@ const RegisterUser = () => {
       }
       const userData = { ...(data?.user ?? null), jwt, expiresIn };
       onAuthed(userData);
-      // Small delay to ensure state updates before navigation
       setTimeout(() => {
         navigate("/dashboard", { replace: true });
       }, 0);
@@ -103,7 +103,10 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Full Name <span className="required-mark" title="This field is required">*</span>
+              Full Name{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
             </label>
             <input
               placeholder="Enter your full name"
@@ -116,7 +119,10 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Email <span className="required-mark" title="This field is required">*</span>
+              Email{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
             </label>
             <input
               type="email"
@@ -130,7 +136,10 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Password <span className="required-mark" title="This field is required">*</span>
+              Password{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
             </label>
             <input
               type="password"
@@ -145,12 +154,17 @@ const RegisterUser = () => {
 
           <div className="auth-form-group">
             <label>
-              Role <span className="required-mark" title="This field is required">*</span>
+              Role{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
               &nbsp;
               <span className="help-wrapper">
                 <span className="help-icon">?</span>
-                <span className="tool-tip">Your relationship with the Person 
-                  With Special Needs you want to care for</span>
+                <span className="tool-tip">
+                  Your relationship with the Person With Special Needs you want
+                  to care for
+                </span>
               </span>
             </label>
             <div className="select-container access-select">
@@ -169,13 +183,15 @@ const RegisterUser = () => {
                   IndicatorSeparator: () => null,
                 }}
                 classNames={{
-                  control: () => 'select__control',
-                  menu: () => 'select__menu',
+                  control: () => "select__control",
+                  menu: () => "select__menu",
                   option: ({ isFocused, isSelected }) =>
-                    `select__option ${isFocused ? 'select__option--is-focused' : ''}${isSelected ? ' select__option--is-selected' : ''}`,
-                  placeholder: () => 'select__placeholder',
-                  singleValue: () => 'select__single-value',
-                  clearIndicator: () => 'client-select__clear-indicator',
+                    `select__option ${
+                      isFocused ? "select__option--is-focused" : ""
+                    }${isSelected ? " select__option--is-selected" : ""}`,
+                  placeholder: () => "select__placeholder",
+                  singleValue: () => "select__single-value",
+                  clearIndicator: () => "client-select__clear-indicator",
                 }}
               />
               <FontAwesomeIcon
@@ -199,6 +215,20 @@ const RegisterUser = () => {
           <Link to="/login" className="auth-footer-link">
             Sign In
           </Link>
+
+          <p style={{ marginTop: "16px", fontSize: "13px", color: "#6b7280" }}>
+            Are you an organization representative?{" "}
+            <Link
+              to="/organization"
+              style={{
+                color: "#2C3F70",
+                textDecoration: "underline",
+                fontWeight: "500",
+              }}
+            >
+              Register your organization here
+            </Link>
+          </p>
         </div>
       </div>
     </div>

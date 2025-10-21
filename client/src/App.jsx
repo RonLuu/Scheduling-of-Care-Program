@@ -40,25 +40,24 @@ const App = () => {
   const location = useLocation();
   // Don't show print button on login/register pages
   const shouldShowPrintButton =
-    me &&
-    !["/login", "/registeruser", "/registerorganization"].includes(
-      location.pathname
-    );
+    me && !["/login", "/register", "/organization"].includes(location.pathname);
 
   // Prevent mouse wheel from changing number input values
   React.useEffect(() => {
     const preventNumberInputScroll = (e) => {
       // Check if the active element is a number input
-      if (document.activeElement.type === 'number') {
+      if (document.activeElement.type === "number") {
         e.preventDefault();
       }
     };
 
     // Add event listener to prevent wheel events on focused number inputs
-    document.addEventListener('wheel', preventNumberInputScroll, { passive: false });
+    document.addEventListener("wheel", preventNumberInputScroll, {
+      passive: false,
+    });
 
     return () => {
-      document.removeEventListener('wheel', preventNumberInputScroll);
+      document.removeEventListener("wheel", preventNumberInputScroll);
     };
   }, []);
 
@@ -75,7 +74,10 @@ const App = () => {
             path="/"
             element={
               me ? (
-                me.role === "Family" || me.role === "Admin" || me.role === "PoA" || me.role === "GeneralCareStaff" ? (
+                me.role === "Family" ||
+                me.role === "Admin" ||
+                me.role === "PoA" ||
+                me.role === "GeneralCareStaff" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />
@@ -87,11 +89,8 @@ const App = () => {
           />
 
           {/* Public routes */}
-          <Route path="/registeruser" element={<RegisterUser />} />
-          <Route
-            path="/registerorganization"
-            element={<RegisterOrganization />}
-          />
+          <Route path="/register" element={<RegisterUser />} />
+          <Route path="/organization" element={<RegisterOrganization />} />
           <Route path="/login" element={<LogIn />} />
 
           {/* Authenticated app routes */}
@@ -214,7 +213,10 @@ const App = () => {
             path="*"
             element={
               me ? (
-                me.role === "Family" || me.role === "Admin" || me.role === "PoA" || me.role === "GeneralCareStaff" ? (
+                me.role === "Family" ||
+                me.role === "Admin" ||
+                me.role === "PoA" ||
+                me.role === "GeneralCareStaff" ? (
                   <Navigate to="/dashboard" replace />
                 ) : (
                   <Navigate to="/profile" replace />

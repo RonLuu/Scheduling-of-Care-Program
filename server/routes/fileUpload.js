@@ -34,8 +34,6 @@ const folderForScope = (scope) => {
 };
 
 const isProd = process.env.NODE_ENV === "production";
-const folderPrefix = process.env.CLOUDINARY_FOLDER_PREFIX;
-console.log("Connected to folder:", folderPrefix);
 
 // Build a storage engine depending on environment
 let storage;
@@ -43,11 +41,14 @@ let storage;
 if (isProd) {
   // --- PRODUCTION (Heroku) -> Cloudinary ---
   const cloudinary = configureCloudinary();
+  const folderPrefix = process.env.CLOUDINARY_FOLDER_PREFIX;
+  console.log("Connected to folder:", folderPrefix);
 
   storage = new CloudinaryStorage({
     cloudinary,
     params: async (req, file) => {
-      const scope = req.body?.scope || "General";
+      // Use a custom property we'll set before multer runs
+      const scope = req._uploadScope || req.body?.scope || "General";
       const folder = `${folderPrefix}/${folderForScope(scope)}`;
 
       // For UserProfile, only allow images
@@ -75,18 +76,17 @@ if (isProd) {
   });
 } else {
   // --- DEVELOPMENT -> local disk ---
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  // Use a temporary directory for initial upload, then move to correct location
+  const TEMP_DIR = path.join(UPLOAD_DIR, "_temp");
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
   console.log("[UPLOAD] Root folder:", UPLOAD_DIR);
+  console.log("[UPLOAD] Temp folder:", TEMP_DIR);
 
   storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      // IMPORTANT: req.body.scope should be available here because multer parses it first
-      const scope = req.body?.scope || "General";
-      console.log("[MULTER DESTINATION] Scope from req.body:", scope); // Add this debug log
-      const dir = path.join(UPLOAD_DIR, folderForScope(scope));
-      fs.mkdirSync(dir, { recursive: true });
-      console.log("[MULTER DESTINATION] Saving to directory:", dir); // Add this debug log
-      cb(null, dir);
+      // Always save to temp directory initially
+      // We'll move it to the correct location after we know the scope
+      cb(null, TEMP_DIR);
     },
     filename: (req, file, cb) => {
       const safeBase = path
@@ -103,7 +103,8 @@ if (isProd) {
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    const scope = req.body?.scope;
+    // Use custom property if set, otherwise fall back to body
+    const scope = req._uploadScope || req.body?.scope;
 
     // For UserProfile, only allow images
     if (scope === "UserProfile") {
@@ -116,6 +117,30 @@ const upload = multer({
   },
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
+
+// Middleware to extract scope from body before multer processes the file
+const extractScopeMiddleware = (req, res, next) => {
+  // Parse form data to get scope before multer runs
+  const contentType = req.headers["content-type"] || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    // For multipart, we need to peek at the form data
+    // We'll use a simple approach: parse the first field if it's scope
+    let body = "";
+    const chunks = [];
+
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.once("end", () => {
+      // This won't work well because multer expects the stream
+      // Instead, we'll use a different approach
+    });
+
+    // Better approach: Just pass through and let the route handler deal with it
+    next();
+  } else {
+    next();
+  }
+};
 
 // ============ Basic listing ============
 // GET /api/file-upload?scope=CareTask&targetId=...
@@ -249,6 +274,8 @@ router.post("/upload", requireAuth, (req, res) => {
         effectiveDate,
       } = req.body;
 
+      console.log("[UPLOAD] Received scope:", scope);
+
       if (!scope) return res.status(400).json({ error: "MISSING_SCOPE" });
 
       // Resolve bucket if Shared
@@ -320,32 +347,31 @@ router.post("/upload", requireAuth, (req, res) => {
         if (!access.ok) return res.status(403).json({ error: access.code });
       }
 
-      // For local development, the file might be in wrong folder due to multer limitation
-      // So we need to move it to the correct folder based on actual scope
+      // Handle file location based on environment
       let publicUrl;
+
       if (isProd) {
+        // Production: Cloudinary already handled folder placement
         publicUrl = req.file.path; // Cloudinary secure URL
+        console.log("[UPLOAD] Cloudinary URL:", publicUrl);
       } else {
+        // Development: Move file from temp to correct folder
         const correctFolder = folderForScope(scope);
         const correctDir = path.join(UPLOAD_DIR, correctFolder);
         const correctPath = path.join(correctDir, req.file.filename);
 
-        // If file is in wrong folder, move it
-        if (req.file.path !== correctPath) {
-          fs.mkdirSync(correctDir, { recursive: true });
-          fs.renameSync(req.file.path, correctPath);
-          console.log(
-            "[UPLOAD] Moved file from",
-            req.file.path,
-            "to",
-            correctPath
-          );
-        }
+        // Ensure target directory exists
+        fs.mkdirSync(correctDir, { recursive: true });
+
+        // Move file from temp to correct location
+        fs.renameSync(req.file.path, correctPath);
+        console.log("[UPLOAD] Moved file from temp to:", correctPath);
 
         publicUrl = `/uploads/${correctFolder}/${req.file.filename}`;
       }
 
       console.log("[UPLOAD] Final URL:", publicUrl);
+      console.log("[UPLOAD] Final scope:", scope);
 
       const doc = await FileUpload.create({
         scope,
@@ -386,6 +412,7 @@ router.post("/upload", requireAuth, (req, res) => {
 
       res.status(201).json(doc);
     } catch (e) {
+      console.error("[UPLOAD ERROR]", e);
       res.status(400).json({ error: e.message });
     }
   });

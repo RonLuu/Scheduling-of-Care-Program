@@ -1,19 +1,19 @@
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 // Create reusable transporter object using SMTP transport
 const createTransporter = () => {
   // Check if we're in production or development
-  const isProduction = process.env.NODE_ENV === 'production';
-  
+  const isProduction = process.env.NODE_ENV === "production";
+
   if (process.env.EMAIL_SERVICE) {
     // Production email configuration using explicit SMTP settings
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: process.env.SMTP_SECURE === "true",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -22,13 +22,15 @@ const createTransporter = () => {
   } else {
     // Development configuration - using Ethereal Email (fake SMTP service)
     // This allows testing without sending real emails
-    console.log('Email service running in development mode - emails will be logged but not sent');
+    console.log(
+      "Email service running in development mode - emails will be logged but not sent"
+    );
     return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
+      host: "smtp.ethereal.email",
       port: 587,
       auth: {
-        user: 'ethereal.user@ethereal.email',
-        pass: 'ethereal.pass',
+        user: "ethereal.user@ethereal.email",
+        pass: "ethereal.pass",
       },
     });
   }
@@ -47,11 +49,13 @@ const getBudgetWarningEmailTemplate = (data) => {
     percentageUsed,
     remainingAmount,
     year,
-    appUrl
+    appUrl,
   } = data;
 
   return {
-    subject: `Budget Alert: ${percentageUsed}% of ${categoryName || 'Annual'} Budget Used`,
+    subject: `Budget Alert: ${percentageUsed}% of ${
+      categoryName || "Annual"
+    } Budget Used`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -147,8 +151,12 @@ const getBudgetWarningEmailTemplate = (data) => {
               
               <p>
                 <strong>Important Notice:</strong><br>
-                Your client <strong>${clientName}</strong>'s budget ${categoryName ? `for <strong>${categoryName}</strong>` : ''} 
-                has reached <span class="${percentageUsed >= 100 ? 'danger' : 'warning'}"><strong>${percentageUsed}%</strong></span> 
+                Your client <strong>${clientName}</strong>'s budget ${
+      categoryName ? `for <strong>${categoryName}</strong>` : ""
+    } 
+                has reached <span class="${
+                  percentageUsed >= 100 ? "danger" : "warning"
+                }"><strong>${percentageUsed}%</strong></span> 
                 of the annual limit for ${year}.
               </p>
 
@@ -160,11 +168,15 @@ const getBudgetWarningEmailTemplate = (data) => {
                 </div>
                 <div class="budget-item">
                   <span class="label">Amount Spent:</span>
-                  <span class="value ${percentageUsed >= 80 ? 'warning' : ''}">$${amountSpent.toLocaleString()} (${percentageUsed}%)</span>
+                  <span class="value ${
+                    percentageUsed >= 80 ? "warning" : ""
+                  }">$${amountSpent.toLocaleString()} (${percentageUsed}%)</span>
                 </div>
                 <div class="budget-item">
                   <span class="label">Remaining Budget:</span>
-                  <span class="value ${remainingAmount <= 0 ? 'danger' : ''}">$${remainingAmount.toLocaleString()}</span>
+                  <span class="value ${
+                    remainingAmount <= 0 ? "danger" : ""
+                  }">$${remainingAmount.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -172,7 +184,11 @@ const getBudgetWarningEmailTemplate = (data) => {
               <ul>
                 <li>Consider adjusting your budget plan</li>
                 <li>You can increase budget, or reallocate unused budget from other items</li>
-                ${percentageUsed >= 100 ? '<li style="color: #f44336;"><strong>Immediate action required: Budget has been exceeded</strong></li>' : ''}
+                ${
+                  percentageUsed >= 100
+                    ? '<li style="color: #f44336;"><strong>Immediate action required: Budget has been exceeded</strong></li>'
+                    : ""
+                }
               </ul>
 
               <div style="text-align: center;">
@@ -192,7 +208,9 @@ Budget Alert for ${clientName}
 
 Dear ${userName},
 
-Your client ${clientName}'s budget ${categoryName ? `for ${categoryName}` : ''} has reached ${percentageUsed}% of the annual limit for ${year}.
+Your client ${clientName}'s budget ${
+      categoryName ? `for ${categoryName}` : ""
+    } has reached ${percentageUsed}% of the annual limit for ${year}.
 
 Budget Details:
 - Annual Budget: $${annualBudget.toLocaleString()}
@@ -204,7 +222,7 @@ Please review your expenses and consider adjusting future spending.
 View full report at: ${appUrl}/budget-and-reports
 
 This is an automated notification from Schedule of Care.
-    `
+    `,
   };
 };
 
@@ -212,9 +230,11 @@ This is an automated notification from Schedule of Care.
 export async function sendBudgetWarningEmail(recipient, budgetData) {
   try {
     const emailContent = getBudgetWarningEmailTemplate(budgetData);
-    
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || '"Schedule of Care" <notifications@scheduleofcare.com>',
+      from:
+        process.env.EMAIL_FROM ||
+        '"Schedule of Care" <notifications@scheduleofcare.com>',
       to: recipient,
       subject: emailContent.subject,
       text: emailContent.text,
@@ -223,17 +243,17 @@ export async function sendBudgetWarningEmail(recipient, budgetData) {
 
     // Send email
     const info = await transporter.sendMail(mailOptions);
-    
-    console.log('Budget warning email sent:', info.messageId);
-    
+
+    console.log("Budget warning email sent:", info.messageId);
+
     // In development mode, log the preview URL
     if (!process.env.EMAIL_SERVICE) {
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
     }
-    
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending budget warning email:', error);
+    console.error("Error sending budget warning email:", error);
     return { success: false, error: error.message };
   }
 }
@@ -241,16 +261,20 @@ export async function sendBudgetWarningEmail(recipient, budgetData) {
 // Function to check and send budget alerts for a user
 export async function checkAndSendBudgetAlerts(user, person, budgetReport) {
   const alerts = [];
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  
+  const appUrl = process.env.APP_URL || "http://localhost:3000";
+
   // Check overall budget
-  if (budgetReport.warnings?.summary?.level === 'light' || 
-      budgetReport.warnings?.summary?.level === 'serious') {
-    const percentageUsed = Math.round((budgetReport.spent.total / budgetReport.annualBudget) * 100);
-    
+  if (
+    budgetReport.warnings?.summary?.level === "light" ||
+    budgetReport.warnings?.summary?.level === "serious"
+  ) {
+    const percentageUsed = Math.round(
+      (budgetReport.spent.total / budgetReport.annualBudget) * 100
+    );
+
     if (percentageUsed >= 80) {
       alerts.push({
-        type: 'overall',
+        type: "overall",
         data: {
           userName: user.name,
           clientName: person.name,
@@ -260,20 +284,25 @@ export async function checkAndSendBudgetAlerts(user, person, budgetReport) {
           percentageUsed,
           remainingAmount: budgetReport.balance.current,
           year: budgetReport.year,
-          appUrl
-        }
+          appUrl,
+        },
       });
     }
   }
-  
+
   // Check category-level budgets
   for (const category of budgetReport.categories || []) {
-    if (category.warning?.level === 'light' || category.warning?.level === 'serious') {
-      const percentageUsed = Math.round((category.totalSpent / category.annualBudget) * 100);
-      
+    if (
+      category.warning?.level === "light" ||
+      category.warning?.level === "serious"
+    ) {
+      const percentageUsed = Math.round(
+        (category.totalSpent / category.annualBudget) * 100
+      );
+
       if (percentageUsed >= 80) {
         alerts.push({
-          type: 'category',
+          type: "category",
           data: {
             userName: user.name,
             clientName: person.name,
@@ -283,21 +312,26 @@ export async function checkAndSendBudgetAlerts(user, person, budgetReport) {
             percentageUsed,
             remainingAmount: category.currentBalance,
             year: budgetReport.year,
-            appUrl
-          }
+            appUrl,
+          },
         });
       }
     }
 
     // Check item-level budgets within each category
     for (const item of category.items || []) {
-      if (item.warning?.level === 'light' || item.warning?.level === 'serious') {
+      if (
+        item.warning?.level === "light" ||
+        item.warning?.level === "serious"
+      ) {
         const percentageUsed = Math.round((item.spent / item.budget) * 100);
-        
+
         if (percentageUsed >= 80) {
-          console.log(`📧 Sending item-level alert: ${item.name} - ${percentageUsed}%`);
+          console.log(
+            `📧 Sending item-level alert: ${item.name} - ${percentageUsed}%`
+          );
           alerts.push({
-            type: 'item',
+            type: "item",
             data: {
               userName: user.name,
               clientName: person.name,
@@ -307,21 +341,25 @@ export async function checkAndSendBudgetAlerts(user, person, budgetReport) {
               percentageUsed,
               remainingAmount: item.currentBalance,
               year: budgetReport.year,
-              appUrl
-            }
+              appUrl,
+            },
           });
         }
       }
     }
   }
-  
+
   // Send email for each alert (you might want to combine these into a single email)
   const results = [];
   for (const alert of alerts) {
     const result = await sendBudgetWarningEmail(user.email, alert.data);
-    results.push({ ...result, type: alert.type, category: alert.data.categoryName });
+    results.push({
+      ...result,
+      type: alert.type,
+      category: alert.data.categoryName,
+    });
   }
-  
+
   return results;
 }
 

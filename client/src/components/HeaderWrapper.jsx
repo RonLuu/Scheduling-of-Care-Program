@@ -13,7 +13,8 @@ const HeaderWrapper = ({ children }) => {
   const location = useLocation();
 
   // Don't show header on login/register pages
-  const shouldShowHeader = me && !["/login", "/registeruser", "/registerorganization"].includes(location.pathname);
+  const shouldShowHeader =
+    me && !["/login", "/register", "/organization"].includes(location.pathname);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -66,7 +67,11 @@ const HeaderWrapper = ({ children }) => {
         });
 
         pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-        pdf.save(`${location.pathname.slice(1) || "page"}-capture-${new Date().toISOString().split("T")[0]}.pdf`);
+        pdf.save(
+          `${location.pathname.slice(1) || "page"}-capture-${
+            new Date().toISOString().split("T")[0]
+          }.pdf`
+        );
       } else if (format === "print") {
         // Print directly
         const printWindow = window.open("", "_blank");
@@ -115,20 +120,16 @@ const HeaderWrapper = ({ children }) => {
       {/* Print options dropdown */}
       {showPrintOptions && !isPrinting && (
         <div className="print-options-dropdown">
-          <button onClick={() => captureAndDownload("pdf")}>
-            Save as PDF
-          </button>
+          <button onClick={() => captureAndDownload("pdf")}>Save as PDF</button>
           <button onClick={() => captureAndDownload("png")}>
             Save as Image
           </button>
-          <button onClick={() => captureAndDownload("print")}>
-            Print
-          </button>
+          <button onClick={() => captureAndDownload("print")}>Print</button>
         </div>
       )}
 
       {/* Main content with proper spacing */}
-      <div className={`main-content ${shouldShowHeader ? 'with-header' : ''}`}>
+      <div className={`main-content ${shouldShowHeader ? "with-header" : ""}`}>
         {children}
       </div>
 
