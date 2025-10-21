@@ -14,7 +14,10 @@ const HeaderWrapper = ({ children }) => {
 
   // Don't show header on login/register pages
   const shouldShowHeader =
-    me && !["/login", "/register", "/organization"].includes(location.pathname);
+    me &&
+    !["/login", "/register", "/registerorganization"].includes(
+      location.pathname
+    );
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
