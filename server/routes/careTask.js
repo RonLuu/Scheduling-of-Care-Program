@@ -279,6 +279,13 @@ async function completeTask(req, res) {
       setImmediate(async () => {
         try {
           const currentYear = new Date().getFullYear();
+          console.log('[Budget Check] Task completed with cost, checking budget for personId:', updated.personId);
+          console.log('[Budget Check] Task details:', {
+            taskId: updated._id,
+            title: updated.title,
+            personId: updated.personId,
+            cost: updated.cost
+          });
           await checkBudgetAndNotify(updated.personId, currentYear);
         } catch (error) {
           console.error('Error checking budget after task completion:', error);

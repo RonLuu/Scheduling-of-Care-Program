@@ -3,6 +3,8 @@ import React from "react";
 function CareTaskCreate({
   jwt,
   clients,
+  selectedClient,
+  setSelectedClient,
   onTaskCreated,
   onCancel,
   onNavigateToBudget,
@@ -11,7 +13,6 @@ function CareTaskCreate({
     () => new Date().toISOString().split("T")[0],
     []
   );
-  const [selectedClient, setSelectedClient] = React.useState("");
   const [taskData, setTaskData] = React.useState({
     title: "",
     dueDate: todayStr,
@@ -386,7 +387,8 @@ function CareTaskCreate({
       setBudgetItemId("");
 
       if (onTaskCreated) {
-        setTimeout(() => onTaskCreated(), 1500);
+        // Call immediately to trigger refresh
+        onTaskCreated();
       }
     } catch (err) {
       setError(err.message || "Failed to create task");

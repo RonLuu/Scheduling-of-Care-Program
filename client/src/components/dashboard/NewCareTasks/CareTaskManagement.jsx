@@ -3,8 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
 
-const CareTaskManagement = React.forwardRef(({ jwt, clients, me }, ref) => {
-  const [selectedClient, setSelectedClient] = React.useState("");
+const CareTaskManagement = React.forwardRef(({ jwt, clients, me, selectedClient, setSelectedClient }, ref) => {
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -45,9 +44,17 @@ const CareTaskManagement = React.forwardRef(({ jwt, clients, me }, ref) => {
 
   // Expose reloadTasks method to parent component
   React.useImperativeHandle(ref, () => ({
-    reloadTasks: () => {
-      if (selectedClient) {
-        loadTasks(selectedClient);
+    reloadTasks: (clientId) => {
+      // Use provided clientId or the currently selected client
+      const clientToLoad = clientId || selectedClient;
+      
+      if (clientToLoad) {
+        loadTasks(clientToLoad);
+      } else if (clients && clients.length > 0) {
+        // If no client selected but clients exist, select and load the first one
+        const firstClientId = clients[0]._id;
+        setSelectedClient(firstClientId);
+        loadTasks(firstClientId);
       }
     },
   }));

@@ -14,12 +14,13 @@ function TasksPageNew() {
   const { clients, loading, error } = useClients(me, jwt);
   const managementRef = React.useRef(null);
   const [showCreateForm, setShowCreateForm] = React.useState(false);
+  const [selectedClient, setSelectedClient] = React.useState("");
   const navigate = useNavigate();
 
   const handleTaskCreated = () => {
     // Trigger reload in management component
     if (managementRef.current?.reloadTasks) {
-      managementRef.current.reloadTasks();
+      managementRef.current.reloadTasks(selectedClient);
     }
     // Close the form after successful creation
     setShowCreateForm(false);
@@ -61,6 +62,8 @@ function TasksPageNew() {
                       <CareTaskCreate
                         jwt={jwt}
                         clients={clients}
+                        selectedClient={selectedClient}
+                        setSelectedClient={setSelectedClient}
                         onTaskCreated={handleTaskCreated}
                         onCancel={() => setShowCreateForm(false)}
                         onNavigateToBudget={handleNavigateToBudget}
@@ -113,6 +116,8 @@ function TasksPageNew() {
                   jwt={jwt}
                   clients={clients}
                   me={me}
+                  selectedClient={selectedClient}
+                  setSelectedClient={setSelectedClient}
                 />
               </div>
             </div>
