@@ -1051,8 +1051,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         .modal-content {
           background: white;
           border-radius: 12px;
-          max-width: 600px;
-          width: 100%;
+          max-width: 300px;
+          width: 70%;
           max-height: 90vh;
           overflow-y: auto;
           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),

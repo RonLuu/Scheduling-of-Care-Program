@@ -115,13 +115,16 @@ async function updateTask(req, res) {
   const person = await Person.findById(personId);
   if (!person) return res.status(400).json({ error: "INVALID_PERSON" });
 
-  const item = await CareNeedItem.findById(itemId);
-  if (!item) return res.status(400).json({ error: "INVALID_CARE_NEED_ITEM" });
-  if (
-    String(item.personId) !== String(personId) ||
-    String(item.organizationId) !== String(person.organizationId)
-  ) {
-    return res.status(400).json({ error: "ITEM_PERSON_OR_ORG_MISMATCH" });
+  // Only validate careNeedItem if it exists (for non-standalone tasks)
+  if (itemId) {
+    const item = await CareNeedItem.findById(itemId);
+    if (!item) return res.status(400).json({ error: "INVALID_CARE_NEED_ITEM" });
+    if (
+      String(item.personId) !== String(personId) ||
+      String(item.organizationId) !== String(person.organizationId)
+    ) {
+      return res.status(400).json({ error: "ITEM_PERSON_OR_ORG_MISMATCH" });
+    }
   }
 
   if (patch.assignedToUserId) {
@@ -132,8 +135,12 @@ async function updateTask(req, res) {
   }
 
   patch.organizationId = person.organizationId;
-  if (!patch.title && String(existing.careNeedItemId) !== String(itemId)) {
-    patch.title = item.name;
+  // Only update title from item if we have an item and are changing the item ID
+  if (!patch.title && itemId && String(existing.careNeedItemId) !== String(itemId)) {
+    const item = await CareNeedItem.findById(itemId);
+    if (item) {
+      patch.title = item.name;
+    }
   }
 
   const updated = await CareTask.findByIdAndUpdate(req.params.taskId, patch, {
