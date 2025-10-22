@@ -29,7 +29,10 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setAvatarPreview(null);
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       setErr("Please select an image file");
