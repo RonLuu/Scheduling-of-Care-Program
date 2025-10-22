@@ -11,7 +11,7 @@ import { requireAuth, ensureCanWorkOnTask } from "../middleware/authz.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import busboy from "busboy";
+import Busboy from "busboy";
 import { deleteUploadBlob } from "../utils/deleteUploadBlob.js";
 
 // Cloudinary import
@@ -24,6 +24,40 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOAD_DIR = path.join(__dirname, "..", "public", "uploads");
+
+// Middleware to extract scope from multipart before multer
+const extractScopeMiddleware = (req, res, next) => {
+  const contentType = req.headers["content-type"];
+
+  if (!contentType || !contentType.includes("multipart/form-data")) {
+    return next();
+  }
+
+  const busboy = Busboy({ headers: req.headers });
+  let scopeExtracted = false;
+
+  busboy.on("field", (fieldname, value) => {
+    if (fieldname === "scope" && !scopeExtracted) {
+      req._uploadScope = value;
+      scopeExtracted = true;
+      console.log(`[SCOPE] Extracted scope: ${value}`);
+    }
+  });
+
+  busboy.on("file", () => {
+    // Files will be handled by multer, so we ignore them here
+  });
+
+  busboy.on("finish", () => {
+    // Don't call next() here - we want the original request to continue
+  });
+
+  // Pipe the request through busboy to extract fields
+  req.pipe(busboy);
+
+  // Continue immediately - busboy extracts in parallel
+  next();
+};
 
 // ---- helpers ----
 const folderForScope = (scope) => {
@@ -48,8 +82,8 @@ if (isProd) {
   storage = new CloudinaryStorage({
     cloudinary,
     params: async (req, file) => {
-      // Use a custom property we'll set before multer runs
-      const scope = req._uploadScope || req.body?.scope || "General";
+      // Use extracted scope (guaranteed to be set by middleware)
+      const scope = req._uploadScope || "General";
       const folder = `${folderPrefix}/${folderForScope(scope)}`;
 
       // For UserProfile, only allow images
@@ -118,30 +152,6 @@ const upload = multer({
   },
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
-
-// Middleware to extract scope from body before multer processes the file
-const extractScopeMiddleware = (req, res, next) => {
-  // Parse form data to get scope before multer runs
-  const contentType = req.headers["content-type"] || "";
-
-  if (contentType.includes("multipart/form-data")) {
-    // For multipart, we need to peek at the form data
-    // We'll use a simple approach: parse the first field if it's scope
-    let body = "";
-    const chunks = [];
-
-    req.on("data", (chunk) => chunks.push(chunk));
-    req.once("end", () => {
-      // This won't work well because multer expects the stream
-      // Instead, we'll use a different approach
-    });
-
-    // Better approach: Just pass through and let the route handler deal with it
-    next();
-  } else {
-    next();
-  }
-};
 
 // ============ Basic listing ============
 // GET /api/file-upload?scope=CareTask&targetId=...
@@ -248,7 +258,7 @@ router.post("/", requireAuth, async (req, res) => {
 //   - either pass bucketId, OR pass personId+year+month (bucket will be upserted)
 // when scope=UserProfile:
 //   - targetId should be the user's own ID
-router.post("/upload", requireAuth, (req, res) => {
+router.post("/upload", requireAuth, extractScopeMiddleware, (req, res) => {
   upload.single("file")(req, res, async (err) => {
     try {
       if (err) return res.status(400).json({ error: err.message });
