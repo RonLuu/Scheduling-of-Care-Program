@@ -83,7 +83,7 @@ if (isProd) {
     cloudinary,
     params: async (req, file) => {
       // Use extracted scope (guaranteed to be set by middleware)
-      const scope = req._uploadScope || "General";
+      const scope = req.query.scope || "General";
       const folder = `${folderPrefix}/${folderForScope(scope)}`;
 
       // For UserProfile, only allow images
@@ -258,7 +258,7 @@ router.post("/", requireAuth, async (req, res) => {
 //   - either pass bucketId, OR pass personId+year+month (bucket will be upserted)
 // when scope=UserProfile:
 //   - targetId should be the user's own ID
-router.post("/upload", requireAuth, extractScopeMiddleware, (req, res) => {
+router.post("/upload", requireAuth, (req, res) => {
   upload.single("file")(req, res, async (err) => {
     try {
       if (err) return res.status(400).json({ error: err.message });

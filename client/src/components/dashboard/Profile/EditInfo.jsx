@@ -64,7 +64,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
       formData.append("targetId", me._id || me.id);
       formData.append("file", file);
 
-      const r = await fetch("/api/file-upload/upload", {
+      const r = await fetch("/api/file-upload/upload?scope=UserProfile", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + jwt,
