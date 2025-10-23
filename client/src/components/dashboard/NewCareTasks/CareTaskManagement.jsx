@@ -857,7 +857,6 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                         if (!url?.includes("cloudinary.com")) return url;
 
                         // Add fl_attachment flag to force download
-                        // This works for both /image/upload/ and /raw/upload/
                         if (url.includes("/upload/")) {
                           return url.replace(
                             "/upload/",
@@ -866,6 +865,34 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                         }
 
                         return url;
+                      };
+
+                      // Handle download with custom filename
+                      const handleDownload = async (e) => {
+                        e.preventDefault();
+
+                        try {
+                          const response = await fetch(
+                            getDownloadUrl(file.urlOrPath)
+                          );
+                          const blob = await response.blob();
+
+                          // Create a temporary download link
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = file.filename; // Set custom filename
+                          document.body.appendChild(a);
+                          a.click();
+
+                          // Cleanup
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          console.error("Download failed:", error);
+                          // Fallback: open in new tab if download fails
+                          window.open(getDownloadUrl(file.urlOrPath), "_blank");
+                        }
                       };
 
                       return (
@@ -890,11 +917,10 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                               View
                             </a>
 
-                            {/* Download - Forces download with fl_attachment */}
+                            {/* Download - Forces download with custom filename */}
                             <a
                               href={getDownloadUrl(file.urlOrPath)}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              onClick={handleDownload}
                               className="file-action-btn download-btn"
                             >
                               Download
