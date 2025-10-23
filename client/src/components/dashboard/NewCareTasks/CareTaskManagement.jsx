@@ -82,31 +82,6 @@ const CareTaskManagement = React.forwardRef(
         `This will permanently delete the task "${selectedTask.title}"`,
       ];
 
-      // // Check if task has comments or files (shown in UI)
-      // if (comments && comments.length > 0) {
-      //   warningParts.push(
-      //     `• ${comments.length} comment${comments.length > 1 ? "s" : ""}`
-      //   );
-      // }
-
-      // const taskFiles = files.filter((f) => f.scope === "CareTask");
-      // if (taskFiles.length > 0) {
-      //   warningParts.push(
-      //     `• ${taskFiles.length} attached file${
-      //       taskFiles.length > 1 ? "s" : ""
-      //     }`
-      //   );
-      // }
-
-      // const sharedFiles = files.filter((f) => f.scope === "Shared");
-      // if (sharedFiles.length > 0) {
-      //   warningParts.push(
-      //     `\nNote: ${sharedFiles.length} shared receipt${
-      //       sharedFiles.length > 1 ? "s" : ""
-      //     } will NOT be deleted (they may be used by other tasks)`
-      //   );
-      // }
-
       const warningMessage = warningParts.join("\n");
 
       if (
@@ -1683,14 +1658,16 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
 
         .remove-btn {
           padding: 0.25rem 0.5rem;
-          background: #fee2e2;
-          color: #dc2626;
+          background: #fee2e2 !important;
+          color: #dc2626 !important;
           border: none;
           border-radius: 4px;
-          font-size: 0.75rem;
+          font-size: 0.75rem !important;
           font-weight: 500;
           cursor: pointer;
           transition: background-color 0.2s;
+          margin: 10px !important;
+          width: 10% !important;
         }
 
         .remove-btn:hover {
