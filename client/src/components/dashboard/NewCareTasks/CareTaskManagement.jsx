@@ -1252,6 +1252,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         .detail-row {
           display: flex;
           justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
           padding: 0.75rem 0;
           border-bottom: 1px solid #f3f4f6;
         }
