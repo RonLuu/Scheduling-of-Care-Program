@@ -12,13 +12,33 @@ const UPLOADS_DIR = path.join(PUBLIC_DIR, "uploads");
 const publicIdFromUrl = (url) => {
   try {
     const u = new URL(url);
-    const parts = u.pathname.split("/");
-    const vIndex = parts.findIndex((p) => /^v\d+/.test(p));
-    const withoutVersion =
-      vIndex > -1 ? parts.slice(vIndex + 1) : parts.slice(1);
-    const noExt = withoutVersion.join("/").replace(/\.[^/.]+$/, "");
-    return noExt; // e.g. scheduling-of-care/Shared/169..._file
-  } catch {
+    const pathname = u.pathname;
+
+    // Cloudinary URL format:
+    // /v1234567890/folder/subfolder/filename.ext
+    // or: /{resource_type}/upload/v1234567890/folder/subfolder/filename.ext
+
+    // Find the version marker (vXXXXXXXXXX)
+    const parts = pathname.split("/");
+    const vIndex = parts.findIndex((p) => /^v\d+$/.test(p));
+
+    if (vIndex === -1) {
+      console.warn("[DELETE] No version marker found in URL:", url);
+      return null;
+    }
+
+    // Everything after version marker is the path
+    // Remove the version marker itself and get the rest
+    const pathAfterVersion = parts.slice(vIndex + 1);
+
+    // Join and remove file extension
+    const fullPath = pathAfterVersion.join("/");
+    const publicId = fullPath.replace(/\.[^/.]+$/, "");
+
+    console.log("[DELETE] Extracted public_id:", publicId);
+    return publicId;
+  } catch (error) {
+    console.warn("[DELETE] Failed to parse URL:", url, error.message);
     return null;
   }
 };
@@ -40,21 +60,41 @@ const getResourceType = (url) => {
 };
 
 export const deleteUploadBlob = async (urlOrPath) => {
-  if (!urlOrPath) return;
+  if (!urlOrPath) {
+    console.log("[DELETE] No URL/path provided");
+    return;
+  }
 
   // Cloudinary?
   if (/cloudinary\.com/.test(urlOrPath)) {
     try {
       const cloudinary = configureCloudinary();
       const publicId = publicIdFromUrl(urlOrPath);
-      if (publicId) {
-        const resourceType = getResourceType(urlOrPath);
-        await cloudinary.uploader.destroy(publicId, {
-          resource_type: resourceType,
-        });
+
+      if (!publicId) {
+        console.warn("[DELETE] Could not extract public_id from:", urlOrPath);
+        return;
+      }
+
+      const resourceType = getResourceType(urlOrPath);
+
+      console.log(`[DELETE] Attempting to delete from Cloudinary:`, {
+        publicId,
+        resourceType,
+        url: urlOrPath,
+      });
+
+      const result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+      });
+
+      console.log("[DELETE] Cloudinary destroy result:", result);
+
+      if (result.result !== "ok" && result.result !== "not found") {
+        console.warn("[DELETE] Unexpected Cloudinary result:", result);
       }
     } catch (e) {
-      console.warn("[DELETE] Cloudinary destroy failed:", e.message);
+      console.error("[DELETE] Cloudinary destroy failed:", e.message);
     }
     return;
   }
@@ -64,11 +104,27 @@ export const deleteUploadBlob = async (urlOrPath) => {
     // strip leading slash and resolve against PUBLIC_DIR
     const rel = urlOrPath.replace(/^[\\/]+/, "");
     const abs = path.join(PUBLIC_DIR, rel);
-    if (!abs.startsWith(UPLOADS_DIR)) return; // safety guard
+
+    // Safety guard: only delete files in uploads directory
+    if (!abs.startsWith(UPLOADS_DIR)) {
+      console.warn(
+        "[DELETE] Attempted to delete file outside uploads dir:",
+        abs
+      );
+      return;
+    }
+
+    console.log("[DELETE] Deleting local file:", abs);
     await fs.unlink(abs);
+    console.log("[DELETE] Local file deleted successfully");
   } catch (e) {
-    if (e.code !== "ENOENT") {
-      console.warn("[DELETE] Local unlink failed:", e.message);
+    if (e.code === "ENOENT") {
+      console.log(
+        "[DELETE] Local file not found (already deleted?):",
+        urlOrPath
+      );
+    } else {
+      console.error("[DELETE] Local unlink failed:", e.message);
     }
   }
 };

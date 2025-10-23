@@ -73,12 +73,46 @@ const CareTaskManagement = React.forwardRef(
       setShowTaskModal(true);
     };
 
-    // Handle task deletion
+    // Handle task deletion with comprehensive warning
     const handleDeleteTask = async () => {
       if (!selectedTask) return;
 
+      // Build warning message based on what will be deleted
+      let warningParts = [
+        `This will permanently delete the task "${selectedTask.title}"`,
+      ];
+
+      // // Check if task has comments or files (shown in UI)
+      // if (comments && comments.length > 0) {
+      //   warningParts.push(
+      //     `• ${comments.length} comment${comments.length > 1 ? "s" : ""}`
+      //   );
+      // }
+
+      // const taskFiles = files.filter((f) => f.scope === "CareTask");
+      // if (taskFiles.length > 0) {
+      //   warningParts.push(
+      //     `• ${taskFiles.length} attached file${
+      //       taskFiles.length > 1 ? "s" : ""
+      //     }`
+      //   );
+      // }
+
+      // const sharedFiles = files.filter((f) => f.scope === "Shared");
+      // if (sharedFiles.length > 0) {
+      //   warningParts.push(
+      //     `\nNote: ${sharedFiles.length} shared receipt${
+      //       sharedFiles.length > 1 ? "s" : ""
+      //     } will NOT be deleted (they may be used by other tasks)`
+      //   );
+      // }
+
+      const warningMessage = warningParts.join("\n");
+
       if (
-        !confirm(`Are you sure you want to delete "${selectedTask.title}"?`)
+        !confirm(
+          `⚠️ WARNING\n\n${warningMessage}\n\nThis action cannot be undone. Continue?`
+        )
       ) {
         return;
       }
@@ -92,7 +126,8 @@ const CareTaskManagement = React.forwardRef(
         });
 
         if (!response.ok) {
-          throw new Error("Failed to delete task");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to delete task");
         }
 
         // Close modal and reload tasks
@@ -1029,6 +1064,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
 
         <div className="modal-footer">
           {isEditing ? (
+            // Edit mode buttons
             <>
               <button
                 className="btn-save"
@@ -1046,7 +1082,19 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
               </button>
             </>
           ) : (
+            // Normal mode buttons - arranged horizontally
             <>
+              {/* Complete Task Button */}
+              {task.status !== "Completed" && task.status !== "Returned" && (
+                <button
+                  className="btn-complete"
+                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                >
+                  Complete Task
+                </button>
+              )}
+
+              {/* Refund Button (for Completed tasks) */}
               {task.status === "Completed" && (
                 <button
                   className="btn-refund"
@@ -1057,14 +1105,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                   {isSaving ? "Processing..." : "Refund"}
                 </button>
               )}
-              {task.status !== "Completed" && task.status !== "Returned" && (
-                <button
-                  className="btn-complete"
-                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
-                >
-                  Complete Task
-                </button>
-              )}
+
+              {/* Reschedule Button (for Scheduled tasks) */}
               {task.status !== "Completed" &&
                 task.status !== "Returned" &&
                 (me?.role === "Family" ||
@@ -1077,15 +1119,17 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                     Reschedule
                   </button>
                 )}
-              {task.status !== "Completed" &&
-                task.status !== "Returned" &&
-                (me?.role === "Family" ||
-                  me?.role === "PoA" ||
-                  me?.role === "Admin") && (
-                  <button className="btn-delete" onClick={onDelete}>
-                    Delete Task
-                  </button>
-                )}
+
+              {/* Delete Button - Now available for ALL statuses */}
+              {(me?.role === "Family" ||
+                me?.role === "PoA" ||
+                me?.role === "Admin") && (
+                <button className="btn-delete" onClick={onDelete}>
+                  Delete Task
+                </button>
+              )}
+
+              {/* Close Button */}
               <button className="btn-close" onClick={onClose}>
                 Close
               </button>
@@ -1292,8 +1336,9 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           padding: 1.5rem;
           border-top: 1px solid #e5e7eb;
           display: flex;
-          flex-direction: column;
+          flex-wrap: wrap; /* Allow wrapping on small screens */
           gap: 0.75rem;
+          justify-content: flex-end; /* Align buttons to the right */
         }
 
         .modal-footer button {
@@ -1304,7 +1349,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           font-size: 0.95rem;
           cursor: pointer;
           transition: all 0.2s;
-          width: 100%;
+          min-width: 120px; /* Ensure readable button size */
         }
 
         .modal-footer button:disabled {
@@ -1697,6 +1742,14 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         @media (max-width: 640px) {
           .modal-content {
             margin: 0;
+          }
+
+          .modal-footer {
+            flex-direction: column; /* Stack buttons on mobile */
+          }
+
+          .modal-footer button {
+            width: 100%; /* Full width on mobile */
           }
 
           .detail-row {
