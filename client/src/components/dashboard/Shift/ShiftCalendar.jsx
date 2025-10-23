@@ -296,10 +296,8 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
 
           const start = event.start;
           const end = event.end;
-          if (start && end) {
-            const durationMs = end.getTime() - start.getTime();
-            const durationHours = durationMs / (1000 * 60 * 60);
 
+          if (start && end) {
             const harness = el.closest(".fc-timegrid-event-harness-inset");
             const outerHarness = el.closest(".fc-timegrid-event-harness");
             const timeGrid = el.closest(".fc-timegrid-body");
@@ -311,10 +309,58 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
               hourHeight = slotElements[0].offsetHeight;
             }
 
-            const expectedHeight = Math.max(20, durationHours * hourHeight);
+            // ============================================================
+            // KEY FIX: Get the column's date to calculate visible portion
+            // ============================================================
+            const column = el.closest(".fc-timegrid-col");
+            const columnDateAttr = column?.getAttribute("data-date");
+
+            let columnDate = null;
+            if (columnDateAttr) {
+              columnDate = new Date(columnDateAttr);
+              columnDate.setHours(0, 0, 0, 0); // Normalize to midnight
+            }
+
+            // Calculate the visible portion of the event for THIS column
+            let visibleStart, visibleEnd;
+
+            if (columnDate) {
+              // Get the column's boundaries (midnight to midnight)
+              const columnStartOfDay = new Date(columnDate);
+              columnStartOfDay.setHours(0, 0, 0, 0);
+
+              const columnEndOfDay = new Date(columnDate);
+              columnEndOfDay.setHours(23, 59, 59, 999);
+
+              // Clamp the event's start/end to this column's boundaries
+              visibleStart = new Date(
+                Math.max(start.getTime(), columnStartOfDay.getTime())
+              );
+              visibleEnd = new Date(
+                Math.min(end.getTime(), columnEndOfDay.getTime() + 1)
+              ); // +1ms to include midnight
+            } else {
+              // Fallback if we can't determine column date
+              visibleStart = start;
+              visibleEnd = end;
+            }
+
+            // Calculate duration in hours for the VISIBLE portion
+            const visibleDurationMs =
+              visibleEnd.getTime() - visibleStart.getTime();
+            const visibleDurationHours = visibleDurationMs / (1000 * 60 * 60);
+
+            // Calculate top position based on VISIBLE start time
             const expectedTop =
-              start.getHours() * hourHeight +
-              (start.getMinutes() / 60) * hourHeight;
+              visibleStart.getHours() * hourHeight +
+              (visibleStart.getMinutes() / 60) * hourHeight;
+
+            // Calculate height based on VISIBLE duration
+            const expectedHeight = Math.max(
+              20,
+              visibleDurationHours * hourHeight
+            );
+            // ============================================================
 
             const applyPositioning = () => {
               if (outerHarness) {
@@ -523,6 +569,7 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .calendar-container {
+          height: 95vh !important;
           border: 1px solid #e5e7eb;
           border-radius: 1rem;
           padding: 1.5rem;
@@ -587,11 +634,16 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .fc-timegrid-slot {
-          height: 4rem !important;
+          height: 40px !important;
+        }
+
+        .fc-timegrid-slot-label-cushion {
+          padding-top: 2px !important;
+          padding-bottom: 2px !important;
         }
 
         .fc-timegrid-slot-label {
-          font-size: 0.875rem !important;
+          font-size: 0.85rem !important;
           color: #6b7280 !important;
           padding: 0.5rem !important;
           font-weight: 500 !important;
