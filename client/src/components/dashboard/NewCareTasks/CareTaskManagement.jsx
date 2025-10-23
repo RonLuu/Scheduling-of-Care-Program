@@ -851,36 +851,58 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                     Receipts & Documents ({files.length})
                   </h4>
                   <div className="files-list">
-                    {files.map((file) => (
-                      <div key={file._id} className="file-item">
-                        <div className="file-info">
-                          <div className="file-details">
-                            <span className="file-name">{file.filename}</span>
-                            <span className="file-meta">
-                              {file.description && `${file.description} • `}
-                              {(file.size / 1024).toFixed(1)} KB
-                            </span>
+                    {files.map((file) => {
+                      // Generate download URL with fl_attachment flag
+                      const getDownloadUrl = (url) => {
+                        if (!url?.includes("cloudinary.com")) return url;
+
+                        // Add fl_attachment flag to force download
+                        // This works for both /image/upload/ and /raw/upload/
+                        if (url.includes("/upload/")) {
+                          return url.replace(
+                            "/upload/",
+                            "/upload/fl_attachment/"
+                          );
+                        }
+
+                        return url;
+                      };
+
+                      return (
+                        <div key={file._id} className="file-item">
+                          <div className="file-info">
+                            <div className="file-details">
+                              <span className="file-name">{file.filename}</span>
+                              <span className="file-meta">
+                                {file.description && `${file.description} • `}
+                                {(file.size / 1024).toFixed(1)} KB
+                              </span>
+                            </div>
+                          </div>
+                          <div className="file-actions">
+                            {/* View - Opens in new tab */}
+                            <a
+                              href={file.urlOrPath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="file-action-btn view-btn"
+                            >
+                              View
+                            </a>
+
+                            {/* Download - Forces download with fl_attachment */}
+                            <a
+                              href={getDownloadUrl(file.urlOrPath)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="file-action-btn download-btn"
+                            >
+                              Download
+                            </a>
                           </div>
                         </div>
-                        <div className="file-actions">
-                          <a
-                            href={file.urlOrPath}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="file-action-btn view-btn"
-                          >
-                            View
-                          </a>
-                          <a
-                            href={file.urlOrPath}
-                            download={file.filename}
-                            className="file-action-btn download-btn"
-                          >
-                            Download
-                          </a>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
