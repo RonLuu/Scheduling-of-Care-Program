@@ -512,8 +512,8 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             attorney to access this client.
             <div className="org-warning">
               <strong>Note:</strong> If the person you invite is part of an
-              organization, you and all related clients will automatically join
-              their organization.
+              organization, you and all related clients will automatically be
+              appointed to their organization.
             </div>
           </>
         );

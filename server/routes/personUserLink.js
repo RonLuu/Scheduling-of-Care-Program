@@ -211,7 +211,7 @@ router.post("/invite", requireAuth, async (req, res) => {
         ) {
           return res.status(400).json({
             error:
-              "Organization mismatch. You are in a different organization than the administrator you're trying to invite. Please contact support if you need to merge organizations.",
+              "Organization mismatch. You are in a different organization than the administrator you're trying to invite. Please contact organization support if you believe this is a mistake.",
           });
         }
 

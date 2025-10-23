@@ -138,8 +138,8 @@ if (isProd) {
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    // Use custom property if set, otherwise fall back to body
-    const scope = req._uploadScope || req.body?.scope;
+    // Get scope from query parameter
+    const scope = req.query.scope;
 
     // For UserProfile, only allow images
     if (scope === "UserProfile") {

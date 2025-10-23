@@ -20,14 +20,16 @@ function Dashboard() {
   const hasJoinedOrganization = Boolean(me?.organizationId);
 
   // Check if user has completed onboarding (Step 2) - use state for reactivity
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState(() => {
-    return localStorage.getItem(`onboarding_completed_${me?.id}`) === 'true';
-  });
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState(
+    () => {
+      return localStorage.getItem(`onboarding_completed_${me?.id}`) === "true";
+    }
+  );
 
   // Mark onboarding as completed
   const completeOnboarding = () => {
     if (me?.id) {
-      localStorage.setItem(`onboarding_completed_${me.id}`, 'true');
+      localStorage.setItem(`onboarding_completed_${me.id}`, "true");
       setHasCompletedOnboarding(true);
     }
   };
@@ -46,11 +48,11 @@ function Dashboard() {
     const isAdmin = me?.role === "Admin";
     const isStaff = me?.role === "GeneralCareStaff";
     const requiresOrgFirst = isAdmin || isStaff;
-    
-    const hasCompletedRequirements = requiresOrgFirst 
-      ? (hasJoinedOrganization && clients.length > 0)
-      : (clients.length > 0);
-    
+
+    const hasCompletedRequirements = requiresOrgFirst
+      ? hasJoinedOrganization && clients.length > 0
+      : clients.length > 0;
+
     if (hasCompletedRequirements && !hasCompletedOnboarding) {
       // For Family/PoA, also check if they've joined an org OR explicitly skipped
       if (!requiresOrgFirst && hasJoinedOrganization) {
@@ -127,11 +129,15 @@ function Dashboard() {
     const isAdmin = me?.role === "Admin";
     const isStaff = me?.role === "GeneralCareStaff";
     const requiresOrgFirst = isAdmin || isStaff; // Both Admin and Staff must join org first
-    
+
     // For Admin/Staff: Step 1 is Join Org (required), Step 2 is Add Client
     // For Family/PoA: Step 1 is Add Client, Step 2 is Join Org (optional)
-    const hasCompletedStep1 = requiresOrgFirst ? hasJoinedOrganization : hasClients;
-    const hasCompletedStep2 = requiresOrgFirst ? hasClients : hasJoinedOrganization;
+    const hasCompletedStep1 = requiresOrgFirst
+      ? hasJoinedOrganization
+      : hasClients;
+    const hasCompletedStep2 = requiresOrgFirst
+      ? hasClients
+      : hasJoinedOrganization;
 
     return (
       <div className="page">
@@ -149,7 +155,9 @@ function Dashboard() {
               <div className="onboarding-steps">
                 {/* Step 1 - Different for Admin/Staff vs Family/PoA */}
                 <div className={`step ${hasCompletedStep1 ? "completed" : ""}`}>
-                  <div className="step-number">{hasCompletedStep1 ? "✓" : "1"}</div>
+                  <div className="step-number">
+                    {hasCompletedStep1 ? "✓" : "1"}
+                  </div>
                   <div className="step-content">
                     {requiresOrgFirst ? (
                       <>
@@ -157,9 +165,9 @@ function Dashboard() {
                         <p>
                           {hasJoinedOrganization
                             ? "You have successfully joined an organization."
-                            : isAdmin 
-                              ? "As an organization representative, you need to join an organization before you can manage clients and staff. "
-                              : "As a carer, you need to join an organization before you can access clients. "}
+                            : isAdmin
+                            ? "As an organization representative, you need to join an organization before you can manage clients and staff. "
+                            : "As a carer, you need to join an organization before you can access clients. "}
                         </p>
                         {!hasJoinedOrganization && (
                           <a href="/organization" className="step-button">
@@ -167,7 +175,10 @@ function Dashboard() {
                           </a>
                         )}
                         {hasJoinedOrganization && (
-                          <a href="/organization" className="step-button secondary">
+                          <a
+                            href="/organization"
+                            className="step-button secondary"
+                          >
                             View Organization
                           </a>
                         )}
@@ -209,8 +220,8 @@ function Dashboard() {
                             ? "You've successfully added your first client."
                             : hasJoinedOrganization
                             ? isAdmin
-                              ? "You can now add a client using invite tokens shared with you by a family member or power of attorney."
-                              : "You can now add a client using invite tokens shared with you by your organization's representative."
+                              ? "You can now add a client by waiting for a family member or power of attorney to share the access with you."
+                              : "You can now add a client by waiting your organization's representative to invite you."
                             : "After joining an organization, you'll be able to add clients."}
                         </p>
                         {!hasClients && hasJoinedOrganization && (
@@ -253,10 +264,16 @@ function Dashboard() {
                               </>
                             ) : (
                               <>
-                                <button className="step-button disabled" disabled>
+                                <button
+                                  className="step-button disabled"
+                                  disabled
+                                >
                                   Join Organization
                                 </button>
-                                <button className="step-text-button disabled" disabled>
+                                <button
+                                  className="step-text-button disabled"
+                                  disabled
+                                >
                                   Skip for Now
                                 </button>
                               </>
@@ -264,7 +281,10 @@ function Dashboard() {
                           </div>
                         )}
                         {hasJoinedOrganization && (
-                          <a href="/organization" className="step-button secondary">
+                          <a
+                            href="/organization"
+                            className="step-button secondary"
+                          >
                             View Organization
                           </a>
                         )}
@@ -279,7 +299,7 @@ function Dashboard() {
                   <div className="step-content">
                     <h3>Start Managing Care</h3>
                     <p>
-                      {isAdmin 
+                      {isAdmin
                         ? "Once you've joined an organization and added clients, you'll be able to add tasks, allocate shifts, and monitor budgets."
                         : isStaff
                         ? "Once you've joined an organization and added clients, you'll be able to complete tasks and track your shifts."
@@ -288,8 +308,6 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-
-              
             </div>
           </div>
         </div>
@@ -374,7 +392,6 @@ function Dashboard() {
             background: #f0f9ff;
             border-color: #22c55e;
           }
-
 
           .step-number {
             width: 4rem;
@@ -524,12 +541,6 @@ function Dashboard() {
             margin: 0;
           }
 
-
-
-
-
-
-
           @media (max-width: 768px) {
             .page-main {
               padding: 1rem 0.5rem;
@@ -538,7 +549,7 @@ function Dashboard() {
               max-width: calc(100vw - 140px);
             }
           }
-          
+
           @media (max-width: 1200px) {
             .page-main {
               margin-left: 90px;
@@ -590,8 +601,6 @@ function Dashboard() {
               padding: 0.75rem 1.5rem;
               font-size: 0.9rem;
             }
-
-
           }
         `}</style>
       </div>
@@ -649,21 +658,34 @@ function Dashboard() {
                   ? "Providing care for:"
                   : "Managing care for:"}
               </label>
-              <select
-                id="client-select"
-                value={selectedClient?._id || ""}
-                onChange={(e) => {
-                  const client = clients.find((c) => c._id === e.target.value);
-                  setSelectedClient(client);
-                }}
-                className="client-dropdown"
-              >
-                {clients.map((client) => (
-                  <option key={client._id} value={client._id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
+
+              {clients.length > 0 ? (
+                <select
+                  id="client-select"
+                  value={selectedClient?._id || ""}
+                  onChange={(e) => {
+                    const client = clients.find(
+                      (c) => c._id === e.target.value
+                    );
+                    setSelectedClient(client);
+                  }}
+                  className="client-dropdown"
+                >
+                  {clients.map((client) => (
+                    <option key={client._id} value={client._id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="no-clients-message">
+                  {me?.role === "Admin"
+                    ? "No active clients. Please wait for Family or Power of Attorney to share access with you."
+                    : me?.role === "GeneralCareStaff"
+                    ? "No assigned clients. Please wait for an organization representative to share access with you."
+                    : "Add clients or wait for other Family or Power of Attorney members to share access with you."}
+                </div>
+              )}
             </div>
 
             <div className="access-buttons">
@@ -724,9 +746,11 @@ function Dashboard() {
           width: 100%;
           max-width: 100%;
         }
-        
+
         /* Force all dashboard content to respect container bounds */
-        .page-main *, .dashboard-container *, .onboarding-guide * {
+        .page-main *,
+        .dashboard-container *,
+        .onboarding-guide * {
           max-width: 100%;
           box-sizing: border-box;
         }
@@ -758,6 +782,23 @@ function Dashboard() {
         .header-title p {
           margin: 0;
           opacity: 0.9;
+        }
+
+        .no-clients-message {
+          padding: 0.75rem 1rem;
+          background: #fef3c7;
+          border: 1px solid #fcd34d;
+          border-radius: 6px;
+          color: #92400e;
+          font-size: 0.875rem;
+          line-height: 1.5;
+          max-width: 800px;
+        }
+
+        /* Add icon for visual emphasis */
+        .no-clients-message::before {
+          content: "ℹ️ ";
+          margin-right: 0.5rem;
         }
 
         .organization-status {
@@ -1118,11 +1159,6 @@ function Dashboard() {
           transform: translateX(2px);
         }
 
-
-
-
-
-
         @media (max-width: 768px) {
           .page-main {
             padding: 1rem 0.5rem;
@@ -1131,7 +1167,7 @@ function Dashboard() {
             max-width: calc(100vw - 140px);
           }
         }
-        
+
         @media (max-width: 1200px) {
           .page-main {
             margin-left: 90px;
@@ -1193,7 +1229,6 @@ function Dashboard() {
             padding: 0.75rem 1.5rem;
             font-size: 0.9rem;
           }
-
         }
       `}</style>
     </div>
@@ -1286,7 +1321,7 @@ function DashboardContent({ client, jwt, me }) {
         let totalSpent = 0;
         const itemSpending = {};
 
-        console.log('[Dashboard] spendingData:', spendingData);
+        console.log("[Dashboard] spendingData:", spendingData);
 
         if (spendingData?.spending) {
           // Calculate total net spending (gross - returned)
@@ -1305,8 +1340,8 @@ function DashboardContent({ client, jwt, me }) {
           });
         }
 
-        console.log('[Dashboard] itemSpending:', itemSpending);
-        console.log('[Dashboard] totalSpent:', totalSpent);
+        console.log("[Dashboard] itemSpending:", itemSpending);
+        console.log("[Dashboard] totalSpent:", totalSpent);
 
         // Find budget items that need warnings
         const itemWarnings = [];
@@ -1322,26 +1357,34 @@ function DashboardContent({ client, jwt, me }) {
             const percentTimeRemaining = (timeRemaining / totalDuration) * 100;
             hasSignificantTimeRemaining = percentTimeRemaining >= 50;
 
-            console.log('[Dashboard] Budget period:', {
+            console.log("[Dashboard] Budget period:", {
               start: start.toISOString(),
               end: end.toISOString(),
               now: now.toISOString(),
               totalDuration: totalDuration / (1000 * 60 * 60 * 24), // days
               timeRemaining: timeRemaining / (1000 * 60 * 60 * 24), // days
-              percentTimeRemaining: percentTimeRemaining.toFixed(1) + '%'
+              percentTimeRemaining: percentTimeRemaining.toFixed(1) + "%",
             });
           }
 
-          console.log('[Dashboard] hasSignificantTimeRemaining:', hasSignificantTimeRemaining);
-          console.log('[Dashboard] budgetPlan.categories:', budgetPlan.categories);
+          console.log(
+            "[Dashboard] hasSignificantTimeRemaining:",
+            hasSignificantTimeRemaining
+          );
+          console.log(
+            "[Dashboard] budgetPlan.categories:",
+            budgetPlan.categories
+          );
 
           // Load dismissed warnings from localStorage
           const dismissedWarnings = (() => {
             try {
-              const saved = localStorage.getItem(`dismissedWarnings-${client._id}-${currentYear}`);
+              const saved = localStorage.getItem(
+                `dismissedWarnings-${client._id}-${currentYear}`
+              );
               return saved ? JSON.parse(saved) : [];
             } catch (e) {
-              console.error('Error loading dismissed warnings:', e);
+              console.error("Error loading dismissed warnings:", e);
               return [];
             }
           })();
@@ -1354,7 +1397,13 @@ function DashboardContent({ client, jwt, me }) {
 
               if (allocated > 0) {
                 const percentSpent = (spent / allocated) * 100;
-                console.log(`[Dashboard] Item ${item.name} (${itemId}): spent=${spent}, allocated=${allocated}, percent=${percentSpent.toFixed(1)}%`);
+                console.log(
+                  `[Dashboard] Item ${
+                    item.name
+                  } (${itemId}): spent=${spent}, allocated=${allocated}, percent=${percentSpent.toFixed(
+                    1
+                  )}%`
+                );
 
                 // Check if warning is dismissed
                 const warningKey = `${category.id}-${item._id}`;
@@ -1372,14 +1421,16 @@ function DashboardContent({ client, jwt, me }) {
                     isOver: spent > allocated,
                   });
                 } else if (percentSpent >= 80 && isDismissed) {
-                  console.log(`[Dashboard] Warning dismissed for item ${item.name}`);
+                  console.log(
+                    `[Dashboard] Warning dismissed for item ${item.name}`
+                  );
                 }
               }
             });
           });
         }
 
-        console.log('[Dashboard] itemWarnings:', itemWarnings);
+        console.log("[Dashboard] itemWarnings:", itemWarnings);
 
         // Calculate total expected/reserved budget
         let totalExpected = 0;
@@ -1392,10 +1443,11 @@ function DashboardContent({ client, jwt, me }) {
           });
         }
 
-        console.log('[Dashboard] totalExpected:', totalExpected);
+        console.log("[Dashboard] totalExpected:", totalExpected);
 
         // Available = Total Budget - Spent - Reserved
-        const totalAvailable = (budgetPlan?.yearlyBudget || 0) - totalSpent - totalExpected;
+        const totalAvailable =
+          (budgetPlan?.yearlyBudget || 0) - totalSpent - totalExpected;
 
         const budgetStats = budgetPlan
           ? {
@@ -1505,13 +1557,13 @@ function DashboardContent({ client, jwt, me }) {
             hasBudget={budget.allocated > 0}
             hasTasks={tasks.total > 0}
           />
-          
+
           {/* Allocated Staff Widget - Only for Family and PoA */}
           {(me?.role === "Family" || me?.role === "PoA") && (
-            <AllocatedStaffWidget 
-              jwt={jwt} 
-              clientId={client._id} 
-              clientName={client.name} 
+            <AllocatedStaffWidget
+              jwt={jwt}
+              clientId={client._id}
+              clientName={client.name}
             />
           )}
 
@@ -3540,7 +3592,9 @@ function BudgetWidget({ budget, client }) {
   const percentSpent =
     budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0;
   const percentCommitted =
-    budget.allocated > 0 ? ((budget.spent + budget.reserved) / budget.allocated) * 100 : 0;
+    budget.allocated > 0
+      ? ((budget.spent + budget.reserved) / budget.allocated) * 100
+      : 0;
   const isOverBudget = budget.spent > budget.allocated;
   const isNearLimit = percentSpent >= 80 && !isOverBudget;
 
@@ -3608,7 +3662,12 @@ function BudgetWidget({ budget, client }) {
               </div>
               <div className="summary-item">
                 <div className="summary-label">Available</div>
-                <div className="summary-value" style={{ color: budget.available < 0 ? '#dc2626' : '#047857' }}>
+                <div
+                  className="summary-value"
+                  style={{
+                    color: budget.available < 0 ? "#dc2626" : "#047857",
+                  }}
+                >
                   ${budget.available.toLocaleString()}
                 </div>
               </div>
@@ -3635,7 +3694,9 @@ function BudgetWidget({ budget, client }) {
                 <div
                   className="expected-marker"
                   style={{ left: `${Math.min(percentCommitted, 100)}%` }}
-                  title={`Total Commitment: ${percentCommitted.toFixed(1)}% (Spent + Reserved)`}
+                  title={`Total Commitment: ${percentCommitted.toFixed(
+                    1
+                  )}% (Spent + Reserved)`}
                 />
               )}
             </div>
@@ -5034,10 +5095,6 @@ function OrganizationManagementModal({
               <span className="detail-value">{organizationData?.name}</span>
             </div>
             <div className="org-detail-item">
-              <span className="detail-label">Organization ID:</span>
-              <span className="detail-value">{organizationData?._id}</span>
-            </div>
-            <div className="org-detail-item">
               <span className="detail-label">Your Role:</span>
               <span className="detail-value">{user?.role}</span>
             </div>
@@ -5289,8 +5346,8 @@ function OrganizationManagementModal({
 
           .action-buttons {
             display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+            flex-direction: row;
+            gap: 0;
           }
 
           .change-org-btn {
@@ -5302,6 +5359,7 @@ function OrganizationManagementModal({
             font-weight: 600;
             cursor: pointer;
             transition: background-color 0.2s;
+            font-size: 1rem !important;
           }
 
           .change-org-btn:hover {
@@ -5428,6 +5486,7 @@ function OrganizationManagementModal({
             font-weight: 600;
             cursor: pointer;
             transition: background-color 0.2s;
+            font-size: 1rem !important;
           }
 
           .leave-org-btn:hover {

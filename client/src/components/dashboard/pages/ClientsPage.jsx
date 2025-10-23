@@ -41,6 +41,10 @@ function ClientsPage() {
             created, you can invite other family members, power of attorney, or
             care organizations to share access.
           </p>
+          <p style={{ marginTop: "1rem" }}>
+            Or, if another family member or power of attorney has already
+            created a client profile, ask them to invite you to access it.
+          </p>
         </div>
       );
     } else if (me?.role === "Admin") {
@@ -72,7 +76,7 @@ function ClientsPage() {
               As an administrator, you'll gain access to clients when family
               members invite your organization. Family members can invite you by
               selecting their client and clicking "Invite User" to share access
-              with you.
+              with you. For now, please wait for them to send an invitation.
             </p>
           </div>
         );
@@ -106,7 +110,8 @@ function ClientsPage() {
               As a care staff member, you'll gain access to clients when your
               organization administrator assigns you to them. Please contact
               your administrator if you believe you should have access to
-              specific clients.
+              specific clients. Or else, please wait for them to assign clients
+              to you.
             </p>
           </div>
         );
