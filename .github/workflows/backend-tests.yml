@@ -15,6 +15,7 @@ jobs:
   test:
     name: Run Backend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     strategy:
       matrix:
@@ -44,24 +45,10 @@ jobs:
         echo "JWT_SECRET=test-jwt-secret-key-for-ci" >> .env
         echo "TOKEN_PEPPER=test-token-pepper-for-ci" >> .env
         echo "NODE_ENV=test" >> .env
+        echo "EMAIL_SERVICE=" >> .env
     
-    - name: Run Models Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/models.test.js --verbose
-    
-    - name: Run Routes Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/routes.test.js --verbose
-    
-    - name: Run Services Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/services.test.js --verbose
-    
-    - name: Run Utils Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/utils.test.js --verbose
-    
-    - name: Run Integration Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/integration.test.js --verbose
-    
-    - name: Run Middleware Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/middleware.test.js --verbose
+    - name: Run All Backend Tests
+      run: NODE_OPTIONS='--experimental-vm-modules' npx jest --testPathPattern="tests/(models|routes|services|utils|integration|middleware)\.test\.js" --silent
     
     - name: Generate Test Coverage
       run: NODE_OPTIONS='--experimental-vm-modules' npx jest --coverage --coverageReporters=lcov --coverageReporters=text-summary
