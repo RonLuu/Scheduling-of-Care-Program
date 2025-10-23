@@ -689,6 +689,14 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Task Details</h2>
+          <button
+            className="btn-close-x"
+            onClick={onClose}
+            title="Close"
+            aria-label="Close modal"
+          >
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -1144,10 +1152,51 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           border-bottom: 1px solid #e5e7eb;
         }
 
+        .modal-header {
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+        }
+
         .modal-header h2 {
           margin: 0;
           font-size: 1.5rem;
           color: #1f2937;
+          flex: 1;
+        }
+
+        .btn-close-x {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 32px !important;
+          height: 32px;
+          border: none !important;
+          background: transparent;
+          color: #6b7280 !important;
+          font-size: 28px !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          transition: all 0.2s;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        .btn-close-x:hover {
+          background: #f3f4f6;
+          color: #1f2937;
+        }
+
+        .btn-close-x:active {
+          background: #e5e7eb;
         }
 
         .modal-body {
@@ -1311,9 +1360,10 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           padding: 1.5rem;
           border-top: 1px solid #e5e7eb;
           display: flex;
-          flex-wrap: wrap; /* Allow wrapping on small screens */
+          flex-direction: row; /* Force horizontal on desktop */
+          flex-wrap: wrap;
           gap: 0.75rem;
-          justify-content: flex-end; /* Align buttons to the right */
+          justify-content: flex-end;
         }
 
         .modal-footer button {
@@ -1321,10 +1371,12 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           border: none;
           border-radius: 6px;
           font-weight: 600;
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           cursor: pointer;
           transition: all 0.2s;
-          min-width: 120px; /* Ensure readable button size */
+          flex: 0 0 auto; /* Don't grow, don't shrink, auto width */
+          white-space: nowrap; /* Prevent text wrapping */
+          width: 23%; /* Default to 23% width */
         }
 
         .modal-footer button:disabled {
