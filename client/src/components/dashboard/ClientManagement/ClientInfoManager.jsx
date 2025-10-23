@@ -441,6 +441,44 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
     return { text: "Protected User", type: "protected", canAct: false };
   };
 
+  const getSortedAccessLinks = (links) => {
+    if (!links || links.length === 0) return [];
+
+    // Define role priority (lower number = higher priority)
+    const rolePriority = {
+      Family: 1,
+      PoA: 2,
+      Admin: 3,
+      GeneralCareStaff: 4,
+    };
+
+    return [...links].sort((a, b) => {
+      const userA = a.userId;
+      const userB = b.userId;
+
+      // 1. Current user (me) always comes first
+      const isASelf = String(userA._id) === String(me.id);
+      const isBSelf = String(userB._id) === String(me.id);
+
+      if (isASelf && !isBSelf) return -1; // A is current user, comes first
+      if (!isASelf && isBSelf) return 1; // B is current user, comes first
+
+      // 2. Sort by role priority
+      const priorityA = rolePriority[userA.role] || 999;
+      const priorityB = rolePriority[userB.role] || 999;
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // 3. Within same role, sort alphabetically by name (or email if no name)
+      const nameA = (userA.name || userA.email || "").toLowerCase();
+      const nameB = (userB.name || userB.email || "").toLowerCase();
+
+      return nameA.localeCompare(nameB);
+    });
+  };
+
   const openInviteModal = () => {
     setShowInviteModal(true);
     setInviteEmail("");
@@ -512,8 +550,8 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
             attorney to access this client.
             <div className="org-warning">
               <strong>Note:</strong> If the person you invite is part of an
-              organization, you and all related clients will automatically join
-              their organization.
+              organization, you and all related clients will automatically be
+              appointed to their organization.
             </div>
           </>
         );
@@ -759,12 +797,22 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {accessLinks.filter(shouldShowUser).map((l) => {
+                        {getSortedAccessLinks(accessLinks).map((l) => {
                           const u = l.userId;
                           const actionStatus = getActionStatus(l);
+                          const isSelf = String(u._id) === String(me.id);
+
                           return (
-                            <tr key={l._id}>
-                              <td>{u.name || "—"}</td>
+                            <tr
+                              key={l._id}
+                              className={isSelf ? "current-user-row" : ""}
+                            >
+                              <td>
+                                {u.name || "—"}
+                                {isSelf && (
+                                  <span className="you-badge"> (You)</span>
+                                )}
+                              </td>
                               <td>{u.email}</td>
                               <td>
                                 <span
@@ -2155,6 +2203,11 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           border-radius: 0.25rem;
           font-size: 0.75rem;
           font-weight: 600;
+        }
+
+        .current-user-row {
+          background-color: #f0f9ff; /* Light blue background */
+          font-weight: 500;
         }
 
         .role-admin {

@@ -1,12 +1,10 @@
 // TaskCompletionPage.jsx
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 
 function TaskCompletionPage() {
   const { taskId } = useParams();
-  const { me } = useAuth();
   const navigate = useNavigate();
   const jwt =
     typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
@@ -24,7 +22,7 @@ function TaskCompletionPage() {
 
   // Receipt selection state
   const [receiptMode, setReceiptMode] = React.useState("upload"); // "upload" or "select"
-  const [timeRange, setTimeRange] = React.useState("30"); // days
+  const [timeRange, setTimeRange] = React.useState("7"); // days
   const [existingReceipts, setExistingReceipts] = React.useState([]);
   const [selectedExistingReceipts, setSelectedExistingReceipts] =
     React.useState([]);
@@ -96,11 +94,39 @@ function TaskCompletionPage() {
 
   const handleReceiptChange = (e) => {
     const files = Array.from(e.target.files);
+
+    // Validate file sizes (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = files.filter((f) => f.size > maxSize);
+
+    if (oversizedFiles.length > 0) {
+      alert(
+        `The following files exceed 10MB limit:\n${oversizedFiles
+          .map((f) => f.name)
+          .join("\n")}`
+      );
+      return;
+    }
+
     setReceipts((prev) => [...prev, ...files]);
   };
 
   const handleOtherFilesChange = (e) => {
     const files = Array.from(e.target.files);
+
+    // Validate file sizes (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = files.filter((f) => f.size > maxSize);
+
+    if (oversizedFiles.length > 0) {
+      alert(
+        `The following files exceed 10MB limit:\n${oversizedFiles
+          .map((f) => f.name)
+          .join("\n")}`
+      );
+      return;
+    }
+
     setOtherFiles((prev) => [...prev, ...files]);
   };
 
@@ -133,11 +159,12 @@ function TaskCompletionPage() {
     }
 
     setIsSubmitting(true);
+    setError(""); // Clear any previous errors
 
     try {
       // 1. Add comment if provided (before completion so it's there regardless)
       if (comments.trim()) {
-        await fetch(`/api/comments`, {
+        const commentResponse = await fetch(`/api/comments`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -148,6 +175,10 @@ function TaskCompletionPage() {
             text: comments.trim(),
           }),
         });
+
+        if (!commentResponse.ok) {
+          throw new Error("Failed to add comment");
+        }
       }
 
       // 2. Upload new receipts to Shared bucket and reference them
@@ -167,17 +198,32 @@ function TaskCompletionPage() {
         formData.append("effectiveDate", effectiveDateStr);
         formData.append("description", "Receipt");
 
-        const uploadResponse = await fetch("/api/file-upload/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${jwt}` },
-          body: formData,
-        });
+        // FIX: Add timeout and error handling
+        const uploadResponse = await Promise.race([
+          fetch("/api/file-upload/upload?scope=Shared", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${jwt}` },
+            body: formData,
+          }),
+          new Promise(
+            (_, reject) =>
+              setTimeout(() => reject(new Error("Upload timeout")), 60000) // 60s timeout
+          ),
+        ]);
 
-        if (uploadResponse.ok) {
-          const uploadedFile = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `Failed to upload receipt: ${file.name}`
+          );
+        }
 
-          // Reference the uploaded file to this task
-          await fetch("/api/file-upload/shared/reference-to-task", {
+        const uploadedFile = await uploadResponse.json();
+
+        // Reference the uploaded file to this task
+        const refResponse = await fetch(
+          "/api/file-upload/shared/reference-to-task",
+          {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -187,26 +233,37 @@ function TaskCompletionPage() {
               careTaskId: taskId,
               fileId: uploadedFile._id,
             }),
-          });
+          }
+        );
+
+        if (!refResponse.ok) {
+          throw new Error(`Failed to reference receipt: ${file.name}`);
         }
       }
 
       // 2b. Reference selected existing receipts
       for (const fileId of selectedExistingReceipts) {
-        await fetch("/api/file-upload/shared/reference-to-task", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({
-            careTaskId: taskId,
-            fileId: fileId,
-          }),
-        });
+        const refResponse = await fetch(
+          "/api/file-upload/shared/reference-to-task",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: JSON.stringify({
+              careTaskId: taskId,
+              fileId: fileId,
+            }),
+          }
+        );
+
+        if (!refResponse.ok) {
+          throw new Error("Failed to reference existing receipt");
+        }
       }
 
-      // 3. Upload other files
+      // 3. Upload other files with proper error handling
       for (const file of otherFiles) {
         const formData = new FormData();
         formData.append("file", file);
@@ -214,11 +271,25 @@ function TaskCompletionPage() {
         formData.append("targetId", taskId);
         formData.append("description", "Document");
 
-        await fetch("/api/file-upload/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${jwt}` },
-          body: formData,
-        });
+        // FIX: Add timeout and error handling
+        const uploadResponse = await Promise.race([
+          fetch("/api/file-upload/upload?scope=CareTask", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${jwt}` },
+            body: formData,
+          }),
+          new Promise(
+            (_, reject) =>
+              setTimeout(() => reject(new Error("Upload timeout")), 60000) // 60s timeout
+          ),
+        ]);
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `Failed to upload file: ${file.name}`
+          );
+        }
       }
 
       // 4. Mark task as complete
@@ -235,12 +306,15 @@ function TaskCompletionPage() {
       });
 
       if (!completeResponse.ok) {
-        throw new Error("Failed to complete task");
+        const errorData = await completeResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to complete task");
       }
 
       // Success - navigate back to tasks page
       navigate("/tasks-new");
     } catch (err) {
+      console.error("Error completing task:", err);
+      setError(err.message || "An error occurred while completing the task");
       alert("Error completing task: " + err.message);
     } finally {
       setIsSubmitting(false);
@@ -403,6 +477,8 @@ function TaskCompletionPage() {
                         onChange={(e) => setTimeRange(e.target.value)}
                         className="time-range-select"
                       >
+                        <option value="1">Today</option>
+                        <option value="7">Last 7 days</option>
                         <option value="30">Last 30 days</option>
                         <option value="90">Last 3 months</option>
                         <option value="180">Last 6 months</option>
@@ -584,6 +660,7 @@ function TaskCompletionPage() {
           opacity: 0.95;
           font-size: 1rem;
           line-height: 1.6;
+          color: #f9f6ee;
         }
 
         .loading-state,
@@ -770,7 +847,7 @@ function TaskCompletionPage() {
 
         .form-actions {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           gap: 0.75rem;
           margin-top: 1rem;
         }

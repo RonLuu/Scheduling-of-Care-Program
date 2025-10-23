@@ -3,290 +3,304 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import CareTaskCalendar from "../CareTasks/CareTaskCalendar";
 
-const CareTaskManagement = React.forwardRef(({ jwt, clients, me, selectedClient, setSelectedClient }, ref) => {
-  const [tasks, setTasks] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [selectedTask, setSelectedTask] = React.useState(null);
-  const [showTaskModal, setShowTaskModal] = React.useState(false);
+const CareTaskManagement = React.forwardRef(
+  ({ jwt, clients, me, selectedClient, setSelectedClient }, ref) => {
+    const [tasks, setTasks] = React.useState([]);
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState("");
+    const [selectedTask, setSelectedTask] = React.useState(null);
+    const [showTaskModal, setShowTaskModal] = React.useState(false);
 
-  // Load tasks for selected client
-  const loadTasks = React.useCallback(
-    async (clientId) => {
-      if (!clientId) {
-        setTasks([]);
+    // Load tasks for selected client
+    const loadTasks = React.useCallback(
+      async (clientId) => {
+        if (!clientId) {
+          setTasks([]);
+          return;
+        }
+
+        setLoading(true);
+        setError("");
+
+        try {
+          const response = await fetch(`/api/care-tasks/client/${clientId}`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to load tasks");
+          }
+
+          const data = await response.json();
+          setTasks(data);
+        } catch (err) {
+          setError(err.message || "Failed to load tasks");
+          setTasks([]);
+        } finally {
+          setLoading(false);
+        }
+      },
+      [jwt]
+    );
+
+    // Expose reloadTasks method to parent component
+    React.useImperativeHandle(ref, () => ({
+      reloadTasks: (clientId) => {
+        // Use provided clientId or the currently selected client
+        const clientToLoad = clientId || selectedClient;
+
+        if (clientToLoad) {
+          loadTasks(clientToLoad);
+        } else if (clients && clients.length > 0) {
+          // If no client selected but clients exist, select and load the first one
+          const firstClientId = clients[0]._id;
+          setSelectedClient(firstClientId);
+          loadTasks(firstClientId);
+        }
+      },
+    }));
+
+    // Handle client change
+    const handleClientChange = (e) => {
+      const clientId = e.target.value;
+      setSelectedClient(clientId);
+      loadTasks(clientId);
+    };
+
+    // Handle task click
+    const handleTaskClick = (task) => {
+      setSelectedTask(task);
+      setShowTaskModal(true);
+    };
+
+    // Handle task deletion with comprehensive warning
+    const handleDeleteTask = async () => {
+      if (!selectedTask) return;
+
+      // Build warning message based on what will be deleted
+      let warningParts = [
+        `This will permanently delete the task "${selectedTask.title}"`,
+      ];
+
+      const warningMessage = warningParts.join("\n");
+
+      if (
+        !confirm(
+          `⚠️ WARNING\n\n${warningMessage}\n\nThis action cannot be undone. Continue?`
+        )
+      ) {
         return;
       }
 
-      setLoading(true);
-      setError("");
-
       try {
-        const response = await fetch(`/api/care-tasks/client/${clientId}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
+        const response = await fetch(`/api/care-tasks/${selectedTask._id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
         });
 
         if (!response.ok) {
-          throw new Error("Failed to load tasks");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to delete task");
         }
 
-        const data = await response.json();
-        setTasks(data);
+        // Close modal and reload tasks
+        setShowTaskModal(false);
+        setSelectedTask(null);
+        loadTasks(selectedClient);
       } catch (err) {
-        setError(err.message || "Failed to load tasks");
-        setTasks([]);
-      } finally {
-        setLoading(false);
+        alert("Error deleting task: " + err.message);
       }
-    },
-    [jwt]
-  );
+    };
 
-  // Expose reloadTasks method to parent component
-  React.useImperativeHandle(ref, () => ({
-    reloadTasks: (clientId) => {
-      // Use provided clientId or the currently selected client
-      const clientToLoad = clientId || selectedClient;
-      
-      if (clientToLoad) {
-        loadTasks(clientToLoad);
-      } else if (clients && clients.length > 0) {
-        // If no client selected but clients exist, select and load the first one
+    // Auto-select first client on mount
+    React.useEffect(() => {
+      if (clients.length > 0 && !selectedClient) {
         const firstClientId = clients[0]._id;
         setSelectedClient(firstClientId);
         loadTasks(firstClientId);
       }
-    },
-  }));
+    }, [clients, selectedClient, loadTasks]);
 
-  // Handle client change
-  const handleClientChange = (e) => {
-    const clientId = e.target.value;
-    setSelectedClient(clientId);
-    loadTasks(clientId);
-  };
+    return (
+      <div className="task-management">
+        <div className="management-header">
+          <div className="client-selector">
+            {clients.length > 1 ? (
+              <>
+                <label htmlFor="client-select">Client:</label>
+                <select
+                  id="client-select"
+                  value={selectedClient}
+                  onChange={handleClientChange}
+                >
+                  <option value="">Select a client...</option>
+                  {clients.map((client) => (
+                    <option key={client._id} value={client._id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : clients.length === 1 ? (
+              <div className="single-client">
+                <strong>Client:</strong> {clients[0].name}
+              </div>
+            ) : null}
+          </div>
 
-  // Handle task click
-  const handleTaskClick = (task) => {
-    setSelectedTask(task);
-    setShowTaskModal(true);
-  };
-
-  // Handle task deletion
-  const handleDeleteTask = async () => {
-    if (!selectedTask) return;
-
-    if (!confirm(`Are you sure you want to delete "${selectedTask.title}"?`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/care-tasks/${selectedTask._id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
-
-      // Close modal and reload tasks
-      setShowTaskModal(false);
-      setSelectedTask(null);
-      loadTasks(selectedClient);
-    } catch (err) {
-      alert("Error deleting task: " + err.message);
-    }
-  };
-
-  // Auto-select first client on mount
-  React.useEffect(() => {
-    if (clients.length > 0 && !selectedClient) {
-      const firstClientId = clients[0]._id;
-      setSelectedClient(firstClientId);
-      loadTasks(firstClientId);
-    }
-  }, [clients, selectedClient, loadTasks]);
-
-  return (
-    <div className="task-management">
-      <div className="management-header">
-        <div className="client-selector">
-          {clients.length > 1 ? (
-            <>
-              <label htmlFor="client-select">Client:</label>
-              <select
-                id="client-select"
-                value={selectedClient}
-                onChange={handleClientChange}
-              >
-                <option value="">Select a client...</option>
-                {clients.map((client) => (
-                  <option key={client._id} value={client._id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : clients.length === 1 ? (
-            <div className="single-client">
-              <strong>Client:</strong> {clients[0].name}
-            </div>
-          ) : null}
+          <div className="view-controls">
+            <button
+              className="refresh-btn"
+              onClick={() => selectedClient && loadTasks(selectedClient)}
+              title="Refresh tasks"
+            >
+              ↻ Refresh
+            </button>
+          </div>
         </div>
 
-        <div className="view-controls">
-          <button
-            className="refresh-btn"
-            onClick={() => selectedClient && loadTasks(selectedClient)}
-            title="Refresh tasks"
-          >
-            ↻ Refresh
-          </button>
-        </div>
-      </div>
+        {loading && <div className="loading-state">Loading tasks...</div>}
+        {error && <div className="error-state">{error}</div>}
 
-      {loading && <div className="loading-state">Loading tasks...</div>}
-      {error && <div className="error-state">{error}</div>}
+        {!loading && !error && !selectedClient && (
+          <div className="empty-state">
+            <p>Please select a client to view their tasks</p>
+          </div>
+        )}
 
-      {!loading && !error && !selectedClient && (
-        <div className="empty-state">
-          <p>Please select a client to view their tasks</p>
-        </div>
-      )}
+        {!loading && !error && selectedClient && tasks.length === 0 && (
+          <div className="empty-state">
+            <p>No tasks found for this client</p>
+            <p className="hint">Create a task using the form above</p>
+          </div>
+        )}
 
-      {!loading && !error && selectedClient && tasks.length === 0 && (
-        <div className="empty-state">
-          <p>No tasks found for this client</p>
-          <p className="hint">Create a task using the form above</p>
-        </div>
-      )}
+        {!loading && !error && tasks.length > 0 && (
+          <div className="tasks-view">
+            <CareTaskCalendar tasks={tasks} onTaskClick={handleTaskClick} />
+          </div>
+        )}
 
-      {!loading && !error && tasks.length > 0 && (
-        <div className="tasks-view">
-          <CareTaskCalendar tasks={tasks} onTaskClick={handleTaskClick} />
-        </div>
-      )}
+        {/* Task Detail Modal */}
+        {showTaskModal && selectedTask && (
+          <TaskDetailModal
+            task={selectedTask}
+            jwt={jwt}
+            me={me}
+            onClose={() => {
+              setShowTaskModal(false);
+              setSelectedTask(null);
+            }}
+            onDelete={handleDeleteTask}
+            onSave={() => {
+              setShowTaskModal(false);
+              setSelectedTask(null);
+              loadTasks(selectedClient);
+            }}
+          />
+        )}
 
-      {/* Task Detail Modal */}
-      {showTaskModal && selectedTask && (
-        <TaskDetailModal
-          task={selectedTask}
-          jwt={jwt}
-          me={me}
-          onClose={() => {
-            setShowTaskModal(false);
-            setSelectedTask(null);
-          }}
-          onDelete={handleDeleteTask}
-          onSave={() => {
-            setShowTaskModal(false);
-            setSelectedTask(null);
-            loadTasks(selectedClient);
-          }}
-        />
-      )}
+        <style jsx>{`
+          .task-management {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+          }
 
-      <style jsx>{`
-        .task-management {
-          background: white;
-          border-radius: 8px;
-          padding: 1.5rem;
-          border: 1px solid #e5e7eb;
-        }
-
-        .management-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .client-selector {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .client-selector label {
-          font-weight: 600;
-          color: #374151;
-        }
-
-        .client-selector select {
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 0.95rem;
-        }
-
-        .single-client {
-          color: #374151;
-        }
-
-        .view-controls {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-        }
-
-        .refresh-btn {
-          padding: 0.5rem 1rem;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .refresh-btn:hover {
-          background: #f3f4f6;
-        }
-
-        .loading-state,
-        .error-state,
-        .empty-state {
-          padding: 3rem;
-          text-align: center;
-          color: #6b7280;
-        }
-
-        .error-state {
-          color: #dc2626;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          border-radius: 6px;
-        }
-
-        .empty-state .hint {
-          font-size: 0.875rem;
-          color: #9ca3af;
-          margin-top: 0.5rem;
-        }
-
-        .tasks-view {
-          margin-top: 1.5rem;
-        }
-
-        @media (max-width: 768px) {
           .management-header {
-            flex-direction: column;
-            align-items: stretch;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+          }
+
+          .client-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+
+          .client-selector label {
+            font-weight: 600;
+            color: #374151;
+          }
+
+          .client-selector select {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+          }
+
+          .single-client {
+            color: #374151;
           }
 
           .view-controls {
-            flex-direction: column;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
           }
-        }
-      `}</style>
-    </div>
-  );
-});
+
+          .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+
+          .refresh-btn:hover {
+            background: #f3f4f6;
+          }
+
+          .loading-state,
+          .error-state,
+          .empty-state {
+            padding: 3rem;
+            text-align: center;
+            color: #6b7280;
+          }
+
+          .error-state {
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+          }
+
+          .empty-state .hint {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+          }
+
+          .tasks-view {
+            margin-top: 1.5rem;
+          }
+
+          @media (max-width: 768px) {
+            .management-header {
+              flex-direction: column;
+              align-items: stretch;
+            }
+
+            .view-controls {
+              flex-direction: column;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+);
 
 CareTaskManagement.displayName = "CareTaskManagement";
 
@@ -635,7 +649,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         formData.append("targetId", task._id);
         formData.append("description", "Additional Document");
 
-        await fetch("/api/file-upload/upload", {
+        await fetch("/api/file-upload/upload?scope=CareTask", {
           method: "POST",
           headers: { Authorization: `Bearer ${jwt}` },
           body: formData,
@@ -666,13 +680,23 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
   };
 
   const isOverdue =
-    task.status === "Scheduled" && new Date(task.dueDate) < new Date();
+    task.status === "Scheduled" &&
+    new Date(task.dueDate).setHours(0, 0, 0, 0) <
+      new Date().setHours(0, 0, 0, 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Task Details</h2>
+          <button
+            className="btn-close-x"
+            onClick={onClose}
+            title="Close"
+            aria-label="Close modal"
+          >
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
@@ -847,36 +871,84 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                     Receipts & Documents ({files.length})
                   </h4>
                   <div className="files-list">
-                    {files.map((file) => (
-                      <div key={file._id} className="file-item">
-                        <div className="file-info">
-                          <div className="file-details">
-                            <span className="file-name">{file.filename}</span>
-                            <span className="file-meta">
-                              {file.description && `${file.description} • `}
-                              {(file.size / 1024).toFixed(1)} KB
-                            </span>
+                    {files.map((file) => {
+                      // Generate download URL with fl_attachment flag
+                      const getDownloadUrl = (url) => {
+                        if (!url?.includes("cloudinary.com")) return url;
+
+                        // Add fl_attachment flag to force download
+                        if (url.includes("/upload/")) {
+                          return url.replace(
+                            "/upload/",
+                            "/upload/fl_attachment/"
+                          );
+                        }
+
+                        return url;
+                      };
+
+                      // Handle download with custom filename
+                      const handleDownload = async (e) => {
+                        e.preventDefault();
+
+                        try {
+                          const response = await fetch(
+                            getDownloadUrl(file.urlOrPath)
+                          );
+                          const blob = await response.blob();
+
+                          // Create a temporary download link
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = file.filename; // Set custom filename
+                          document.body.appendChild(a);
+                          a.click();
+
+                          // Cleanup
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          console.error("Download failed:", error);
+                          // Fallback: open in new tab if download fails
+                          window.open(getDownloadUrl(file.urlOrPath), "_blank");
+                        }
+                      };
+
+                      return (
+                        <div key={file._id} className="file-item">
+                          <div className="file-info">
+                            <div className="file-details">
+                              <span className="file-name">{file.filename}</span>
+                              <span className="file-meta">
+                                {file.description && `${file.description} • `}
+                                {(file.size / 1024).toFixed(1)} KB
+                              </span>
+                            </div>
+                          </div>
+                          <div className="file-actions">
+                            {/* View - Opens in new tab */}
+                            <a
+                              href={file.urlOrPath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="file-action-btn view-btn"
+                            >
+                              View
+                            </a>
+
+                            {/* Download - Forces download with custom filename */}
+                            <a
+                              href={getDownloadUrl(file.urlOrPath)}
+                              onClick={handleDownload}
+                              className="file-action-btn download-btn"
+                            >
+                              Download
+                            </a>
                           </div>
                         </div>
-                        <div className="file-actions">
-                          <a
-                            href={file.urlOrPath}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="file-action-btn view-btn"
-                          >
-                            View
-                          </a>
-                          <a
-                            href={file.urlOrPath}
-                            download={file.filename}
-                            className="file-action-btn download-btn"
-                          >
-                            Download
-                          </a>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -975,6 +1047,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
 
         <div className="modal-footer">
           {isEditing ? (
+            // Edit mode buttons
             <>
               <button
                 className="btn-save"
@@ -992,7 +1065,19 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
               </button>
             </>
           ) : (
+            // Normal mode buttons - arranged horizontally
             <>
+              {/* Complete Task Button */}
+              {task.status !== "Completed" && task.status !== "Returned" && (
+                <button
+                  className="btn-complete"
+                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
+                >
+                  Complete Task
+                </button>
+              )}
+
+              {/* Refund Button (for Completed tasks) */}
               {task.status === "Completed" && (
                 <button
                   className="btn-refund"
@@ -1003,14 +1088,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                   {isSaving ? "Processing..." : "Refund"}
                 </button>
               )}
-              {task.status !== "Completed" && task.status !== "Returned" && (
-                <button
-                  className="btn-complete"
-                  onClick={() => navigate(`/tasks/${task._id}/complete`)}
-                >
-                  Complete Task
-                </button>
-              )}
+
+              {/* Reschedule Button (for Scheduled tasks) */}
               {task.status !== "Completed" &&
                 task.status !== "Returned" &&
                 (me?.role === "Family" ||
@@ -1023,15 +1102,17 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                     Reschedule
                   </button>
                 )}
-              {task.status !== "Completed" &&
-                task.status !== "Returned" &&
-                (me?.role === "Family" ||
-                  me?.role === "PoA" ||
-                  me?.role === "Admin") && (
-                  <button className="btn-delete" onClick={onDelete}>
-                    Delete Task
-                  </button>
-                )}
+
+              {/* Delete Button - Now available for ALL statuses */}
+              {(me?.role === "Family" ||
+                me?.role === "PoA" ||
+                me?.role === "Admin") && (
+                <button className="btn-delete" onClick={onDelete}>
+                  Delete Task
+                </button>
+              )}
+
+              {/* Close Button */}
               <button className="btn-close" onClick={onClose}>
                 Close
               </button>
@@ -1071,10 +1152,51 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           border-bottom: 1px solid #e5e7eb;
         }
 
+        .modal-header {
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+        }
+
         .modal-header h2 {
           margin: 0;
           font-size: 1.5rem;
           color: #1f2937;
+          flex: 1;
+        }
+
+        .btn-close-x {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 32px !important;
+          height: 32px;
+          border: none !important;
+          background: transparent;
+          color: #6b7280 !important;
+          font-size: 28px !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          transition: all 0.2s;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        .btn-close-x:hover {
+          background: #f3f4f6;
+          color: #1f2937;
+        }
+
+        .btn-close-x:active {
+          background: #e5e7eb;
         }
 
         .modal-body {
@@ -1130,6 +1252,8 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         .detail-row {
           display: flex;
           justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
           padding: 0.75rem 0;
           border-bottom: 1px solid #f3f4f6;
         }
@@ -1238,8 +1362,10 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           padding: 1.5rem;
           border-top: 1px solid #e5e7eb;
           display: flex;
-          flex-direction: column;
+          flex-direction: row; /* Force horizontal on desktop */
+          flex-wrap: wrap;
           gap: 0.75rem;
+          justify-content: flex-end;
         }
 
         .modal-footer button {
@@ -1247,10 +1373,12 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           border: none;
           border-radius: 6px;
           font-weight: 600;
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           cursor: pointer;
           transition: all 0.2s;
-          width: 100%;
+          flex: 0 0 auto; /* Don't grow, don't shrink, auto width */
+          white-space: nowrap; /* Prevent text wrapping */
+          width: 23%; /* Default to 23% width */
         }
 
         .modal-footer button:disabled {
@@ -1584,14 +1712,16 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
 
         .remove-btn {
           padding: 0.25rem 0.5rem;
-          background: #fee2e2;
-          color: #dc2626;
+          background: #fee2e2 !important;
+          color: #dc2626 !important;
           border: none;
           border-radius: 4px;
-          font-size: 0.75rem;
+          font-size: 0.75rem !important;
           font-weight: 500;
           cursor: pointer;
           transition: background-color 0.2s;
+          margin: 10px !important;
+          width: 10% !important;
         }
 
         .remove-btn:hover {
@@ -1643,6 +1773,14 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         @media (max-width: 640px) {
           .modal-content {
             margin: 0;
+          }
+
+          .modal-footer {
+            flex-direction: column; /* Stack buttons on mobile */
+          }
+
+          .modal-footer button {
+            width: 100%; /* Full width on mobile */
           }
 
           .detail-row {

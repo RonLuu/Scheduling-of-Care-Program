@@ -29,7 +29,10 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setAvatarPreview(null);
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       setErr("Please select an image file");
@@ -61,7 +64,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
       formData.append("targetId", me._id || me.id);
       formData.append("file", file);
 
-      const r = await fetch("/api/file-upload/upload", {
+      const r = await fetch("/api/file-upload/upload?scope=UserProfile", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + jwt,

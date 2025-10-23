@@ -57,7 +57,6 @@ function BudgetPlanningPage() {
   });
   const [openActionMenu, setOpenActionMenu] = React.useState(null);
 
-
   const {
     budgetPlan,
     loading: budgetLoading,
@@ -68,9 +67,11 @@ function BudgetPlanningPage() {
 
   // Fetch previous year's budget to offer copying
   const previousYear = selectedYear - 1;
-  const {
-    budgetPlan: previousYearBudget,
-  } = useBudgetPlan(selectedClient?._id, previousYear, jwt);
+  const { budgetPlan: previousYearBudget } = useBudgetPlan(
+    selectedClient?._id,
+    previousYear,
+    jwt
+  );
 
   // Check if budget plan is complete
   const isBudgetPlanComplete = React.useMemo(() => {
@@ -92,10 +93,18 @@ function BudgetPlanningPage() {
 
     // Only initialize once per client/year combination and only when budgetPlan first loads
     // Don't auto-close if user has already started interacting with the wizard
-    if (budgetPlan !== null && budgetPlan !== undefined && !initializedRef.current[key] && !hasUserInteracted) {
-      const isComplete = budgetPlan?.yearlyBudget &&
-                        budgetPlan?.categories?.length > 0 &&
-                        budgetPlan?.categories?.some((cat) => cat.items && cat.items.length > 0);
+    if (
+      budgetPlan !== null &&
+      budgetPlan !== undefined &&
+      !initializedRef.current[key] &&
+      !hasUserInteracted
+    ) {
+      const isComplete =
+        budgetPlan?.yearlyBudget &&
+        budgetPlan?.categories?.length > 0 &&
+        budgetPlan?.categories?.some(
+          (cat) => cat.items && cat.items.length > 0
+        );
       setShowWizard(!isComplete);
       initializedRef.current[key] = true;
     }
@@ -587,13 +596,13 @@ function BudgetPlanningPage() {
 
     try {
       // Copy categories and items from previous year to current year
-      const copiedCategories = previousYearBudget.categories.map(cat => ({
+      const copiedCategories = previousYearBudget.categories.map((cat) => ({
         ...cat,
-        items: cat.items.map(item => ({
+        items: cat.items.map((item) => ({
           name: item.name,
           budget: item.budget,
           description: item.description,
-        }))
+        })),
       }));
 
       const yearlyBudget = copiedCategories.reduce(
@@ -645,10 +654,13 @@ function BudgetPlanningPage() {
         <NavigationTab />
         <div className="page-main">
           <h2>Budget & Reports</h2>
-          <p>Please add a client first to create a budget plan.</p>
-          <a href="/clients" className="btn">
-            Add Client
-          </a>
+          <p>
+            Please{" "}
+            <a href="/clients" className="btn-add-client">
+              <strong>add a client</strong>
+            </a>{" "}
+            first to manage a budget plan.
+          </p>
         </div>
       </div>
     );
@@ -719,22 +731,22 @@ function BudgetPlanningPage() {
                 <button
                   className="plan-future-btn"
                   onClick={() => {
-                    console.log('Plan for Future Years clicked');
-                    console.log('selectedClient:', selectedClient);
-                    console.log('selectedYear:', selectedYear);
-                    console.log('budgetPlan:', budgetPlan);
+                    console.log("Plan for Future Years clicked");
+                    console.log("selectedClient:", selectedClient);
+                    console.log("selectedYear:", selectedYear);
+                    console.log("budgetPlan:", budgetPlan);
 
                     if (!selectedClient?._id || !budgetPlan) {
-                      alert('Missing required data. Please try again.');
+                      alert("Missing required data. Please try again.");
                       return;
                     }
 
-                    navigate('/budget-planning/plan-future', {
+                    navigate("/budget-planning/plan-future", {
                       state: {
                         clientId: selectedClient._id,
                         sourceYear: selectedYear,
-                        budgetPlan
-                      }
+                        budgetPlan,
+                      },
                     });
                   }}
                 >
@@ -761,7 +773,10 @@ function BudgetPlanningPage() {
                       <div className="banner-content">
                         <div className="banner-text">
                           <h4>No budget found for {selectedYear}</h4>
-                          <p>Would you like to copy your {previousYear} budget as a starting point?</p>
+                          <p>
+                            Would you like to copy your {previousYear} budget as
+                            a starting point?
+                          </p>
                         </div>
                         <button
                           className="copy-from-previous-btn"
@@ -775,10 +790,14 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>{isBudgetPlanComplete ? 'Step 1: Edit Categories' : 'Step 1: Select Categories'}</h3>
+                      <h3>
+                        {isBudgetPlanComplete
+                          ? "Step 1: Edit Categories"
+                          : "Step 1: Select Categories"}
+                      </h3>
                       <p className="step-description">
-                        Add or remove categories as needed. 
-                        You can also add custom categories.
+                        Add or remove categories as needed. You can also add
+                        custom categories.
                       </p>
                     </div>
 
@@ -845,7 +864,11 @@ function BudgetPlanningPage() {
                             <div key={category.id} className="category-card">
                               <div className="category-header">
                                 <span className="category-emoji">
-                                  {typeof category.emoji === 'string' ? category.emoji : <category.emoji />}
+                                  {typeof category.emoji === "string" ? (
+                                    category.emoji
+                                  ) : (
+                                    <category.emoji />
+                                  )}
                                 </span>
                                 <div className="category-info">
                                   <h4 className="category-name">
@@ -896,12 +919,15 @@ function BudgetPlanningPage() {
 
                   <div className="budget-step">
                     <div className="step-header">
-                      <h3>{isBudgetPlanComplete ? 'Step 2: Edit Budget Items (Sub-elements)' : 'Step 2: Add Budget Items'}</h3>
+                      <h3>
+                        {isBudgetPlanComplete
+                          ? "Step 2: Edit Budget Items (Sub-elements)"
+                          : "Step 2: Add Budget Items"}
+                      </h3>
                       <p className="step-description">
                         {isBudgetPlanComplete
-                          ? 'Click on a category to add new items.'
-                          : 'Click on a category to add, delete, or edit items.'
-                        }
+                          ? "Click on a category to add new items."
+                          : "Click on a category to add, delete, or edit items."}
                       </p>
                     </div>
 
@@ -934,7 +960,11 @@ function BudgetPlanningPage() {
                             >
                               <div className="category-items-info">
                                 <span className="category-emoji">
-                                  {typeof category.emoji === 'string' ? category.emoji : <category.emoji />}
+                                  {typeof category.emoji === "string" ? (
+                                    category.emoji
+                                  ) : (
+                                    <category.emoji />
+                                  )}
                                 </span>
                                 <div>
                                   <h4>{category.name}</h4>
@@ -1198,7 +1228,8 @@ function BudgetPlanningPage() {
                           }
                         }}
                       >
-                        <BiCheckCircle /> {isBudgetPlanComplete ? 'Save Changes' : 'Save Changes'}
+                        <BiCheckCircle />{" "}
+                        {isBudgetPlanComplete ? "Save Changes" : "Save Changes"}
                       </button>
                     </div>
                   )}
@@ -1208,7 +1239,9 @@ function BudgetPlanningPage() {
                     <div className="budget-summary-sticky">
                       <div className="summary-content">
                         <div className="summary-item-sticky">
-                          <span className="summary-label-sticky">Total Budget:</span>
+                          <span className="summary-label-sticky">
+                            Total Budget:
+                          </span>
                           <span className="summary-value-sticky">
                             ${getTotalYearlyBudget().toLocaleString()}
                           </span>
@@ -1217,10 +1250,13 @@ function BudgetPlanningPage() {
                         <div className="summary-item-sticky">
                           <span className="summary-label-sticky">Period:</span>
                           <span className="summary-value-sticky">
-                            {budgetPeriod.startDate.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}{" "}
+                            {budgetPeriod.startDate.toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}{" "}
                             -{" "}
                             {budgetPeriod.endDate.toLocaleDateString("en-US", {
                               month: "short",
