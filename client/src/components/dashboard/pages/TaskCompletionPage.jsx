@@ -1,12 +1,10 @@
 // TaskCompletionPage.jsx
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 
 function TaskCompletionPage() {
   const { taskId } = useParams();
-  const { me } = useAuth();
   const navigate = useNavigate();
   const jwt =
     typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
@@ -24,7 +22,7 @@ function TaskCompletionPage() {
 
   // Receipt selection state
   const [receiptMode, setReceiptMode] = React.useState("upload"); // "upload" or "select"
-  const [timeRange, setTimeRange] = React.useState("30"); // days
+  const [timeRange, setTimeRange] = React.useState("7"); // days
   const [existingReceipts, setExistingReceipts] = React.useState([]);
   const [selectedExistingReceipts, setSelectedExistingReceipts] =
     React.useState([]);
@@ -479,6 +477,8 @@ function TaskCompletionPage() {
                         onChange={(e) => setTimeRange(e.target.value)}
                         className="time-range-select"
                       >
+                        <option value="1">Today</option>
+                        <option value="7">Last 7 days</option>
                         <option value="30">Last 30 days</option>
                         <option value="90">Last 3 months</option>
                         <option value="180">Last 6 months</option>
@@ -660,6 +660,7 @@ function TaskCompletionPage() {
           opacity: 0.95;
           font-size: 1rem;
           line-height: 1.6;
+          color: #f9f6ee;
         }
 
         .loading-state,
@@ -846,7 +847,7 @@ function TaskCompletionPage() {
 
         .form-actions {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           gap: 0.75rem;
           margin-top: 1rem;
         }
