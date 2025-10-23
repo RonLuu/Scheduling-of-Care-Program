@@ -670,7 +670,9 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
   };
 
   const isOverdue =
-    task.status === "Scheduled" && new Date(task.dueDate) < new Date();
+    task.status === "Scheduled" &&
+    new Date(task.dueDate).setHours(0, 0, 0, 0) <
+      new Date().setHours(0, 0, 0, 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
