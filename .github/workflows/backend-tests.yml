@@ -153,5 +153,9 @@ jobs:
         echo "JWT_SECRET=test-jwt-secret-key-for-ci" >> .env
         echo "TOKEN_PEPPER=test-token-pepper-for-ci" >> .env
         echo "NODE_ENV=test" >> .env
+        echo "EMAIL_SERVICE=" >> .env
+        echo "CLOUDINARY_CLOUD_NAME=test-cloud" >> .env
+        echo "CLOUDINARY_API_KEY=test-api-key" >> .env
+        echo "CLOUDINARY_API_SECRET=test-api-secret" >> .env
         echo "PORT=3001" >> .env
         timeout 30s npm start || code=$?; if [[ $code -ne 124 && $code -ne 0 ]]; then exit $code; fi
