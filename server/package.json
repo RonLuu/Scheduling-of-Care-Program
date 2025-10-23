@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
@@ -30,7 +30,11 @@
     "passport-local": "^1.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.2.3",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.4"
   },
   "description": ""
 }
