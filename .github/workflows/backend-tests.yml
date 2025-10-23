@@ -48,7 +48,7 @@ jobs:
         echo "EMAIL_SERVICE=" >> .env
     
     - name: Run All Backend Tests
-      run: NODE_OPTIONS='--experimental-vm-modules' npx jest --testPathPattern="tests/(models|routes|services|utils|integration|middleware)\.test\.js" --silent
+      run: NODE_OPTIONS='--experimental-vm-modules' npx jest tests/ --testPathIgnorePatterns="/e2e/" --silent
     
     - name: Generate Test Coverage
       run: NODE_OPTIONS='--experimental-vm-modules' npx jest --coverage --coverageReporters=lcov --coverageReporters=text-summary
