@@ -1,10 +1,10 @@
-import User from '../models/User.js';
-import Person from '../models/PersonWithNeeds.js';
-import PersonUserLink from '../models/PersonUserLink.js';
-import CareTask from '../models/CareTask.js';
-import CareNeedItem from '../models/CareNeedItem.js';
-import BudgetPlan from '../models/BudgetPlan.js';
-import { checkAndSendBudgetAlerts } from './emailService.js';
+import User from "../models/User.js";
+import Person from "../models/PersonWithNeeds.js";
+import PersonUserLink from "../models/PersonUserLink.js";
+import CareTask from "../models/CareTask.js";
+import CareNeedItem from "../models/CareNeedItem.js";
+import BudgetPlan from "../models/BudgetPlan.js";
+import { checkAndSendBudgetAlerts } from "./emailService.js";
 
 // Simple warning function - only for overspending
 function makeWarn(spent, budget) {
@@ -39,24 +39,31 @@ async function calculateBudgetStatus(personId, year) {
   // Get person details
   const person = await Person.findById(personId).lean();
   if (!person) {
-    throw new Error('Person not found');
+    throw new Error("Person not found");
   }
 
-  console.log(`Looking for budget plan with personId: ${person._id}, organizationId: ${person.organizationId}, year: ${y}`);
+  console.log(
+    `Looking for budget plan with personId: ${person._id}, organizationId: ${person.organizationId}, year: ${y}`
+  );
 
   // Get the budget plan for this person and year
   const budgetPlan = await BudgetPlan.findOne({
     personId: person._id,
     organizationId: person.organizationId,
     year: y,
-    status: "Active"
+    status: "Active",
   }).lean();
 
-  console.log(`Found budget plan:`, budgetPlan ? {
-    id: budgetPlan._id,
-    yearlyBudget: budgetPlan.yearlyBudget,
-    categoriesCount: budgetPlan.categories?.length || 0
-  } : 'No budget plan found');
+  console.log(
+    `Found budget plan:`,
+    budgetPlan
+      ? {
+          id: budgetPlan._id,
+          yearlyBudget: budgetPlan.yearlyBudget,
+          categoriesCount: budgetPlan.categories?.length || 0,
+        }
+      : "No budget plan found"
+  );
 
   if (!budgetPlan) {
     console.log(`No budget plan found for person ${person.name} in year ${y}`);
@@ -93,7 +100,8 @@ async function calculateBudgetStatus(personId, year) {
   console.log(`Budget calculation for ${person.name}:`, {
     annualBudget,
     totalSpent,
-    percentage: annualBudget > 0 ? Math.round((totalSpent / annualBudget) * 100) : 0
+    percentage:
+      annualBudget > 0 ? Math.round((totalSpent / annualBudget) * 100) : 0,
   });
 
   // Calculate spending by individual budget items
@@ -112,19 +120,22 @@ async function calculateBudgetStatus(personId, year) {
       $group: {
         _id: {
           categoryId: "$budgetCategoryId",
-          itemId: "$budgetItemId"
+          itemId: "$budgetItemId",
         },
         spent: { $sum: "$cost" },
       },
     },
   ]);
 
-  console.log(`Found ${spendingByItem.length} item spending records:`, spendingByItem);
+  console.log(
+    `Found ${spendingByItem.length} item spending records:`,
+    spendingByItem
+  );
 
   // Build categories and items with budget and spending info
   const categories = [];
   let hasItemWarnings = false;
-  
+
   for (const category of budgetPlan.categories || []) {
     const categoryData = {
       category: category.name,
@@ -133,18 +144,19 @@ async function calculateBudgetStatus(personId, year) {
       totalSpent: 0,
       warning: null,
       currentBalance: category.budget || 0,
-      items: []
+      items: [],
     };
 
     // Process each item in the category
     for (const item of category.items || []) {
-      const itemSpending = spendingByItem.find(s => 
-        s._id.categoryId === category.id && 
-        String(s._id.itemId) === String(item._id)
+      const itemSpending = spendingByItem.find(
+        (s) =>
+          s._id.categoryId === category.id &&
+          String(s._id.itemId) === String(item._id)
       );
       const itemSpent = itemSpending?.spent || 0;
       const itemBudget = item.budget || 0;
-      
+
       const itemData = {
         name: item.name,
         id: item._id,
@@ -152,22 +164,32 @@ async function calculateBudgetStatus(personId, year) {
         spent: itemSpent,
         warning: makeWarn(itemSpent, itemBudget),
         currentBalance: itemBudget - itemSpent,
-        percentage: itemBudget > 0 ? Math.round((itemSpent / itemBudget) * 100) : 0
+        percentage:
+          itemBudget > 0 ? Math.round((itemSpent / itemBudget) * 100) : 0,
       };
 
       // Check if this item has warnings
-      if (itemData.warning?.level === 'light' || itemData.warning?.level === 'serious') {
+      if (
+        itemData.warning?.level === "light" ||
+        itemData.warning?.level === "serious"
+      ) {
         hasItemWarnings = true;
-        console.log(`⚠️ Item warning: ${item.name} - spent $${itemSpent} of $${itemBudget} (${itemData.percentage}%)`);
+        console.log(
+          `⚠️ Item warning: ${item.name} - spent $${itemSpent} of $${itemBudget} (${itemData.percentage}%)`
+        );
       }
 
       categoryData.items.push(itemData);
       categoryData.totalSpent += itemSpent;
     }
 
-    categoryData.currentBalance = categoryData.annualBudget - categoryData.totalSpent;
-    categoryData.warning = makeWarn(categoryData.totalSpent, categoryData.annualBudget);
-    
+    categoryData.currentBalance =
+      categoryData.annualBudget - categoryData.totalSpent;
+    categoryData.warning = makeWarn(
+      categoryData.totalSpent,
+      categoryData.annualBudget
+    );
+
     categories.push(categoryData);
   }
 
@@ -176,7 +198,7 @@ async function calculateBudgetStatus(personId, year) {
     year: y,
     annualBudget,
     warnings: {
-      summary: makeWarn(totalSpent, annualBudget)
+      summary: makeWarn(totalSpent, annualBudget),
     },
     spent: {
       completed: completedSpend,
@@ -196,106 +218,132 @@ async function calculateBudgetStatus(personId, year) {
  */
 export async function checkBudgetAndNotify(personId, year) {
   try {
-    console.log('[checkBudgetAndNotify] Starting with personId:', personId, 'year:', year);
-    
+    console.log(
+      "[checkBudgetAndNotify] Starting with personId:",
+      personId,
+      "year:",
+      year
+    );
+
     // Get the person/client details (force fresh read, no cache)
     const person = await Person.findById(personId).lean().exec();
     if (!person) {
-      console.log('Person not found for budget check:', personId);
+      console.log("Person not found for budget check:", personId);
       return;
     }
-    
-    console.log('[checkBudgetAndNotify] Found person:', {
+
+    console.log("[checkBudgetAndNotify] Found person:", {
       id: person._id,
       name: person.name,
-      organizationId: person.organizationId
+      organizationId: person.organizationId,
     });
 
     // Get all users linked to this person (Family, PoA, Admin in the organization)
-    const userLinks = await PersonUserLink.find({ 
+    const userLinks = await PersonUserLink.find({
       personId: personId,
-      active: true 
+      active: true,
     });
-    
-    console.log(`Found ${userLinks.length} PersonUserLink records for person ${person.name}`);
+
+    console.log(
+      `Found ${userLinks.length} PersonUserLink records for person ${person.name}`
+    );
 
     // Also get organization admins if person is in an organization
     let adminUsers = [];
-    if (person.organizationId) {
-      adminUsers = await User.find({
-        organizationId: person.organizationId,
-        role: 'Admin',
-        isActive: true,
-        'emailPreferences.budgetAlerts': true
-      });
-      console.log(`Found ${adminUsers.length} admin users in organization`);
-    }
+    // if (person.organizationId) {
+    //   adminUsers = await User.find({
+    //     organizationId: person.organizationId,
+    //     role: 'Admin',
+    //     isActive: true,
+    //     'emailPreferences.budgetAlerts': true
+    //   });
+    //   console.log(`Found ${adminUsers.length} admin users in organization`);
+    // }
 
     // Get linked users
-    const linkedUserIds = userLinks.map(link => link.userId);
-    
+    const linkedUserIds = userLinks.map((link) => link.userId);
+
     // Also check for the creator/owner of the person (fallback)
     if (linkedUserIds.length === 0 && person.createdByUserId) {
-      console.log('No PersonUserLinks found, checking creator:', person.createdByUserId);
+      console.log(
+        "No PersonUserLinks found, checking creator:",
+        person.createdByUserId
+      );
       linkedUserIds.push(person.createdByUserId);
     }
-    
-    console.log('Linked user IDs:', linkedUserIds);
-    
+
+    console.log("Linked user IDs:", linkedUserIds);
+
     const linkedUsers = await User.find({
       _id: { $in: linkedUserIds },
       isActive: true,
-      'emailPreferences.budgetAlerts': true
+      "emailPreferences.budgetAlerts": true,
     });
-    
-    console.log(`Found ${linkedUsers.length} linked users with notifications enabled`);
+
+    console.log(
+      `Found ${linkedUsers.length} linked users with notifications enabled`
+    );
 
     // Combine all users who should be notified
     const allUsersToNotify = [...linkedUsers, ...adminUsers];
-    
+
     // Remove duplicates
     const uniqueUsers = Array.from(
-      new Map(allUsersToNotify.map(user => [user._id.toString(), user])).values()
+      new Map(
+        allUsersToNotify.map((user) => [user._id.toString(), user])
+      ).values()
     );
 
     if (uniqueUsers.length === 0) {
-      console.log('No users to notify for person:', person.name);
+      console.log("No users to notify for person:", person.name);
       return;
     }
 
     // Calculate budget status directly
     const budgetReport = await calculateBudgetStatus(personId, year);
 
-    console.log('Budget report for', person.name, ':', {
+    console.log("Budget report for", person.name, ":", {
       annualBudget: budgetReport.annualBudget,
       totalSpent: budgetReport.spent.total,
-      percentage: budgetReport.annualBudget > 0 ? Math.round((budgetReport.spent.total / budgetReport.annualBudget) * 100) : 0,
-      warning: budgetReport.warnings?.summary
+      percentage:
+        budgetReport.annualBudget > 0
+          ? Math.round(
+              (budgetReport.spent.total / budgetReport.annualBudget) * 100
+            )
+          : 0,
+      warning: budgetReport.warnings?.summary,
     });
 
     // Check if any budget items exceed the threshold
-    const hasOverallWarnings = budgetReport.warnings?.summary?.level === 'light' || 
-                              budgetReport.warnings?.summary?.level === 'serious';
-    
+    const hasOverallWarnings =
+      budgetReport.warnings?.summary?.level === "light" ||
+      budgetReport.warnings?.summary?.level === "serious";
+
     const hasCategoryWarnings = (budgetReport.categories || []).some(
-      cat => cat.warning?.level === 'light' || cat.warning?.level === 'serious'
+      (cat) =>
+        cat.warning?.level === "light" || cat.warning?.level === "serious"
     );
 
     // Check for item-level warnings (this is the main trigger)
-    const hasItemWarnings = budgetReport.hasItemWarnings || 
-                           (budgetReport.categories || []).some(cat => 
-                             (cat.items || []).some(item => 
-                               item.warning?.level === 'light' || item.warning?.level === 'serious'
-                             )
-                           );
+    const hasItemWarnings =
+      budgetReport.hasItemWarnings ||
+      (budgetReport.categories || []).some((cat) =>
+        (cat.items || []).some(
+          (item) =>
+            item.warning?.level === "light" || item.warning?.level === "serious"
+        )
+      );
 
     if (!hasOverallWarnings && !hasCategoryWarnings && !hasItemWarnings) {
-      console.log('No budget warnings for person:', person.name);
+      console.log("No budget warnings for person:", person.name);
       return;
     }
 
     if (hasItemWarnings) {
-      console.log('⚠️ Item-level budget warnings detected for person:', person.name);
+      console.log(
+        "⚠️ Item-level budget warnings detected for person:",
+        person.name
+      );
     }
 
     // Send notifications to each user
@@ -303,11 +351,14 @@ export async function checkBudgetAndNotify(personId, year) {
       try {
         // Check user's threshold preference
         const threshold = user.emailPreferences?.budgetThreshold || 80;
-        
+
         // Calculate overall percentage
-        const overallPercentage = budgetReport.annualBudget > 0 
-          ? Math.round((budgetReport.spent.total / budgetReport.annualBudget) * 100)
-          : 0;
+        const overallPercentage =
+          budgetReport.annualBudget > 0
+            ? Math.round(
+                (budgetReport.spent.total / budgetReport.annualBudget) * 100
+              )
+            : 0;
 
         // Check if we should send alert based on user's threshold
         let shouldSendAlert = false;
@@ -318,29 +369,36 @@ export async function checkBudgetAndNotify(personId, year) {
         }
 
         // Check category-level thresholds
-        const exceedsCategoryThreshold = (budgetReport.categories || []).some(cat => {
-          const catPercentage = cat.annualBudget > 0
-            ? Math.round((cat.totalSpent / cat.annualBudget) * 100)
-            : 0;
-          return catPercentage >= threshold;
-        });
+        const exceedsCategoryThreshold = (budgetReport.categories || []).some(
+          (cat) => {
+            const catPercentage =
+              cat.annualBudget > 0
+                ? Math.round((cat.totalSpent / cat.annualBudget) * 100)
+                : 0;
+            return catPercentage >= threshold;
+          }
+        );
 
         if (exceedsCategoryThreshold) {
           shouldSendAlert = true;
         }
 
         // Check item-level thresholds (main trigger)
-        const exceedsItemThreshold = (budgetReport.categories || []).some(cat =>
-          (cat.items || []).some(item => {
-            const itemPercentage = item.budget > 0
-              ? Math.round((item.spent / item.budget) * 100)
-              : 0;
-            if (itemPercentage >= threshold) {
-              console.log(`🚨 Item threshold exceeded: ${item.name} - ${itemPercentage}% (threshold: ${threshold}%)`);
-              return true;
-            }
-            return false;
-          })
+        const exceedsItemThreshold = (budgetReport.categories || []).some(
+          (cat) =>
+            (cat.items || []).some((item) => {
+              const itemPercentage =
+                item.budget > 0
+                  ? Math.round((item.spent / item.budget) * 100)
+                  : 0;
+              if (itemPercentage >= threshold) {
+                console.log(
+                  `🚨 Item threshold exceeded: ${item.name} - ${itemPercentage}% (threshold: ${threshold}%)`
+                );
+                return true;
+              }
+              return false;
+            })
         );
 
         if (exceedsItemThreshold) {
@@ -348,7 +406,9 @@ export async function checkBudgetAndNotify(personId, year) {
         }
 
         if (!shouldSendAlert) {
-          console.log(`No thresholds exceeded for user ${user.email} (threshold: ${threshold}%)`);
+          console.log(
+            `No thresholds exceeded for user ${user.email} (threshold: ${threshold}%)`
+          );
           continue;
         }
 
@@ -368,24 +428,30 @@ export async function checkBudgetAndNotify(personId, year) {
         */
 
         // Send the alert
-        const alertResults = await checkAndSendBudgetAlerts(user, person, budgetReport);
-        
-        if (alertResults.length > 0 && alertResults.some(r => r.success)) {
+        const alertResults = await checkAndSendBudgetAlerts(
+          user,
+          person,
+          budgetReport
+        );
+
+        if (alertResults.length > 0 && alertResults.some((r) => r.success)) {
           // Update last alert time
           const lastAlertKey = `${personId}_${year}`;
           await User.findByIdAndUpdate(user._id, {
-            [`emailPreferences.lastBudgetAlertSent.${lastAlertKey}`]: new Date()
+            [`emailPreferences.lastBudgetAlertSent.${lastAlertKey}`]:
+              new Date(),
           });
-          
-          console.log(`Budget alert email sent to ${user.email} for ${person.name}`);
+
+          console.log(
+            `Budget alert email sent to ${user.email} for ${person.name}`
+          );
         }
       } catch (error) {
         console.error(`Error sending alert to ${user.email}:`, error);
       }
     }
-
   } catch (error) {
-    console.error('Error in budget monitoring:', error);
+    console.error("Error in budget monitoring:", error);
   }
 }
 
@@ -396,23 +462,25 @@ export async function checkBudgetAndNotify(personId, year) {
 export async function runScheduledBudgetCheck() {
   try {
     const currentYear = new Date().getFullYear();
-    
+
     // Get all active persons with budgets
     const persons = await Person.find({ isActive: true });
-    
-    console.log(`Running scheduled budget check for ${persons.length} clients...`);
-    
+
+    console.log(
+      `Running scheduled budget check for ${persons.length} clients...`
+    );
+
     for (const person of persons) {
       await checkBudgetAndNotify(person._id, currentYear);
     }
-    
-    console.log('Scheduled budget check completed');
+
+    console.log("Scheduled budget check completed");
   } catch (error) {
-    console.error('Error in scheduled budget check:', error);
+    console.error("Error in scheduled budget check:", error);
   }
 }
 
 export default {
   checkBudgetAndNotify,
-  runScheduledBudgetCheck
+  runScheduledBudgetCheck,
 };
