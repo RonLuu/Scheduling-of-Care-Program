@@ -4,7 +4,11 @@ import "../../styles/AuthPages.css";
 import "../../css/login_layout.css";
 import useAuth from "../dashboard/hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faEye,
+  faEyeSlash,
+} from "@fortawesome/free-solid-svg-icons";
 import { Link, useNavigate } from "react-router-dom";
 
 const RegisterUser = () => {
@@ -14,10 +18,13 @@ const RegisterUser = () => {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
   const [role, setRole] = React.useState("Family");
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const roleMapping = {
     Family: "Family",
@@ -46,6 +53,13 @@ const RegisterUser = () => {
   async function submit(e) {
     e.preventDefault();
     setErr("");
+
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      setErr("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
     try {
       const backendRole = roleMapping[role] || role;
@@ -141,15 +155,65 @@ const RegisterUser = () => {
                 *
               </span>
             </label>
-            <input
-              type="password"
-              placeholder="Password (at least 6 characters)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              minLength={6}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password (at least 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ paddingRight: "40px" }}
+              />
+              <FontAwesomeIcon
+                icon={showPassword ? faEyeSlash : faEye}
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="auth-form-group">
+            <label>
+              Confirm Password{" "}
+              <span className="required-mark" title="This field is required">
+                *
+              </span>
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ paddingRight: "40px" }}
+              />
+              <FontAwesomeIcon
+                icon={showConfirmPassword ? faEyeSlash : faEye}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
           </div>
 
           <div className="auth-form-group">
@@ -175,7 +239,7 @@ const RegisterUser = () => {
                 onMenuOpen={() => setIsOpen(true)}
                 onMenuClose={() => setIsOpen(false)}
                 classNamePrefix="role-select"
-                isClearable
+                isClearable={false}
                 placeholder="-- Select a role --"
                 unstyled
                 components={{
