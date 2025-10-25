@@ -274,24 +274,62 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
 
         /* Events */
         :global(.fc-event) {
-          border-radius: 4px;
-          padding: 2px 4px;
-          margin: 1px 2px;
-          font-size: 0.8125rem;
-          font-weight: 500;
+          border-radius: 0.5rem;
+          padding: 0.375rem 0.625rem;
+          margin: 0.25rem 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 600;
           border: none;
           cursor: pointer;
           transition: all 0.2s;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .fc-event {
+          border: none !important;
+          padding: 0.375rem 0.5rem !important;
+          font-size: 0.813rem !important;
+          font-weight: 500 !important;
+          border-radius: 0.5rem !important;
+          cursor: pointer !important;
+          transition: all 0.2s !important;
+          overflow: hidden !important;
         }
 
         :global(.fc-event:hover) {
-          opacity: 0.85;
-          transform: translateY(-1px);
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          opacity: 0.9;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .fc-event:hover {
+          opacity: 0.9 !important;
+          transform: translateX(2px);
         }
 
         :global(.fc-event-title) {
-          font-weight: 500;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+
+        /* Day Grid Event Specific Styling */
+        :global(.fc-daygrid-event) {
+          border-radius: 0.5rem;
+          padding: 0.375rem 0.625rem;
+          margin: 0.25rem 0.375rem;
+          font-weight: 600;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        :global(.fc-daygrid-block-event .fc-event-main) {
+          padding: 0.375rem 0.625rem;
+        }
+
+        :global(.fc-daygrid-event .fc-event-title) {
+          font-weight: 600;
+          color: white;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          font-size: 0.875rem;
+          line-height: 1.4;
         }
 
         /* More Link */
@@ -372,8 +410,10 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           }
 
           :global(.fc-event) {
-            font-size: 0.75rem;
-            padding: 1px 3px;
+            font-size: 0.8125rem;
+            padding: 0.25rem 0.5rem;
+            margin: 0.125rem 0.25rem;
+            border-radius: 0.375rem;
           }
 
           :global(.fc .fc-col-header-cell) {
