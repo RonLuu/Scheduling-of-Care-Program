@@ -118,7 +118,8 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
       if (fcRef.current) {
         const v = fcRef.current.view;
 
-        if (v.type === "timeGridDay") {
+        // Expand date range for day and week views to include shifts that span across boundaries
+        if (v.type === "timeGridDay" || v.type === "timeGridWeek") {
           const startDate = new Date(v.activeStart);
           startDate.setDate(startDate.getDate() - 1);
           const endDate = new Date(v.activeEnd);
@@ -813,6 +814,8 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
 
         .fc-day-today {
           background: #eff6ff !important;
+          position: relative !important;
+          z-index: 0 !important;
         }
 
         .fc-day-today .fc-daygrid-day-number {

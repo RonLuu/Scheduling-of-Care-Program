@@ -333,6 +333,10 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
       ? new Date(task.startAt).toTimeString().slice(0, 5)
       : "",
     endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
+    expectedCost:
+      task.expectedCost !== undefined && task.expectedCost !== null
+        ? task.expectedCost
+        : "", // ADD THIS LINE
   });
 
   // Load budget category and item names
@@ -468,6 +472,12 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
       return;
     }
 
+    const costValue = parseFloat(editedTask.expectedCost);
+    if (editedTask.expectedCost !== "" && (isNaN(costValue) || costValue < 0)) {
+      alert("Please enter a valid expected cost amount");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -485,6 +495,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         title: editedTask.title.trim(),
         dueDate: editedTask.dueDate,
         scheduleType: editedTask.scheduleType,
+        expectedCost: editedTask.expectedCost !== "" ? costValue : 0, // ADD THIS LINE
       };
 
       // Only add time fields if schedule type is Timed
@@ -538,6 +549,10 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
         ? new Date(task.startAt).toTimeString().slice(0, 5)
         : "",
       endAt: task.endAt ? new Date(task.endAt).toTimeString().slice(0, 5) : "",
+      expectedCost:
+        task.expectedCost !== undefined && task.expectedCost !== null
+          ? task.expectedCost
+          : "", // ADD THIS LINE
     });
     setIsEditing(false);
   };
@@ -730,7 +745,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
             {isEditing ? (
               <input
                 type="date"
-                className="edit-input"
+                className="edit-input date-input"
                 value={editedTask.dueDate}
                 onChange={(e) =>
                   setEditedTask({ ...editedTask, dueDate: e.target.value })
@@ -764,17 +779,34 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
             </div>
           )}
 
-          {task.expectedCost !== undefined &&
-            task.expectedCost !== null &&
-            task.status !== "Completed" &&
-            task.status !== "Returned" && (
-              <div className="detail-row">
-                <span className="detail-label">Expected Cost:</span>
+          {task.status !== "Completed" && task.status !== "Returned" && (
+            <div className="detail-row">
+              <span className="detail-label">Expected Cost:</span>
+              {isEditing ? (
+                <div className="cost-edit-inline">
+                  <span className="currency-symbol">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="edit-input cost-input"
+                    value={editedTask.expectedCost}
+                    onChange={(e) =>
+                      setEditedTask({
+                        ...editedTask,
+                        expectedCost: e.target.value,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+              ) : (
                 <span className="detail-value cost">
-                  ${task.expectedCost.toFixed(2)}
+                  ${(task.expectedCost || 0).toFixed(2)}
                 </span>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
           {/* Cost section for Completed/Returned tasks */}
           {(task.status === "Completed" || task.status === "Returned") && (
@@ -1099,7 +1131,7 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
                     className="btn-reschedule"
                     onClick={() => setIsEditing(true)}
                   >
-                    Reschedule
+                    Edit Task
                   </button>
                 )}
 
@@ -1298,6 +1330,28 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
           border: 1px solid #d1d5db;
           border-radius: 4px;
           font-size: 0.875rem;
+        }
+
+        .cost-edit-inline {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex: 1;
+          justify-content: flex-end;
+        }
+
+        .currency-symbol {
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        .date-input {
+          max-width: 170px !important;
+        }
+
+        .cost-input {
+          max-width: 100px !important;
+          text-align: right;
         }
 
         .btn-inline {
@@ -1797,6 +1851,16 @@ function TaskDetailModal({ task, jwt, me, onClose, onDelete, onSave }) {
 
           .cost-edit-input {
             width: 100%;
+          }
+
+          .cost-edit-inline {
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+          }
+
+          .cost-input {
+            width: 100% !important;
           }
 
           .btn-inline {

@@ -2,6 +2,8 @@ import React from "react";
 import "../../styles/AuthPages.css";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../dashboard/hooks/useAuth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
 function LogIn() {
   const navigate = useNavigate();
@@ -10,6 +12,7 @@ function LogIn() {
   const [password, setPassword] = React.useState("");
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   function onAuthed(userWithJwt) {
     setMe(userWithJwt);
@@ -82,14 +85,30 @@ function LogIn() {
                 *
               </span>
             </label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                style={{ paddingRight: "40px" }}
+              />
+              <FontAwesomeIcon
+                icon={showPassword ? faEyeSlash : faEye}
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
