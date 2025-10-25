@@ -68,7 +68,7 @@ The Scheduling of Care Program addresses a critical need in care management by p
 - Add observations and comments
 - Track daily shift assignments
 
-## 🚀 Getting Started
+## 2. Getting Started
 
 ### Prerequisites
 
@@ -189,7 +189,7 @@ cd ..
 npm start
 ```
 
-## 📁 Project Structure
+## 3. Project Structure
 
 ```
 scheduling-of-care/
@@ -218,7 +218,7 @@ scheduling-of-care/
 └── README.md                # This file
 ```
 
-## 🔌 API Endpoints
+## 4. API Endpoints
 
 **Authentication:**
 
@@ -254,7 +254,7 @@ scheduling-of-care/
 
 See `server/routes/` directory for complete API documentation.
 
-## 🧪 Testing
+## 5. Testing
 
 **Frontend Tests:**
 
@@ -282,7 +282,7 @@ cd server
 npm test -- --coverage
 ```
 
-## 🚢 Deployment
+## 6. Deployment
 
 ### Heroku Deployment
 
@@ -330,7 +330,7 @@ The project includes GitHub Actions workflows for automated deployment:
 
 See `.github/workflows/` for configuration details.
 
-## 🔐 Security Considerations
+## 7. Security Considerations
 
 - All passwords are hashed using bcrypt before storage
 - JWT tokens expire after 24 hours
@@ -357,7 +357,7 @@ See `.github/workflows/` for configuration details.
 | **Manager**                 | Manage care plans, grant staff, access, allocate staff shifts, track budgets |
 | **Carer (Staff)**           | Complete tasks, record costs, upload receipts, add comments                  |
 
-## 🐛 Troubleshooting
+## 8. Troubleshooting
 
 **Database connection errors:**
 
@@ -382,7 +382,7 @@ See `.github/workflows/` for configuration details.
 - Verify `JWT_SECRET` is set in `.env`
 - Check token expiration time
 
-## 📖 Documentation
+## 9. Documentation
 
 **Additional documentation available:**
 
@@ -391,7 +391,7 @@ See `.github/workflows/` for configuration details.
 - **API Documentation**: Endpoint specifications (see `server/routes/`)
 - **Testing Guide**: Test coverage and writing new tests
 
-## 🤝 Contributing
+## 10. Contributing
 
 This project was developed as a university capstone project. For future development:
 
@@ -409,7 +409,7 @@ This project was developed as a university capstone project. For future developm
 - Write tests for new features
 - Run linting before committing: `npm run lint`
 
-## 📄 License
+## 11. License
 
 This project was developed as part of COMP30022 IT Project Semester 2 2025 at the University of Melbourne.
 
@@ -417,7 +417,7 @@ This project was developed as part of COMP30022 IT Project Semester 2 2025 at th
 
 The codebase and all associated intellectual property rights are transferred to the client upon project completion. Future use, modification, and distribution are at the client's discretion.
 
-## 👨‍💻 Development Team
+## 12. Development Team
 
 **Team Members:**
 
@@ -427,16 +427,15 @@ The codebase and all associated intellectual property rights are transferred to 
 - Phuong Trang Tran (Lead front-end developer, UI designer)
 - Quy Trong Duc Tran (Lead back-end developer)
 
-## 📞 Support
+## 13. Support
 
 For questions or issues with the application:
 
 1. Check the Troubleshooting section above
 2. Review the Handover Documentation
 3. Contact the development team (contact details in handover document)
-4. For post-handover support, contact Peter Mansourian
 
-## 🙏 Acknowledgments
+## 14. Acknowledgments
 
 - **Peter Mansourian** - Our client, providing the project vision and domain expertise
 - **Harry Wang** - Our tutor, academic supervision and guidance
