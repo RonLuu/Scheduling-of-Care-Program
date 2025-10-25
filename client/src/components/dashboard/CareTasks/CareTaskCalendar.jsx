@@ -63,6 +63,17 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
         center: "title",
         right: "dayGridMonth,listMonth",
       },
+      fixedWeekCount: false, // Only show weeks that belong to current month
+      showNonCurrentDates: false, // Hide dates from other months
+      aspectRatio: 1.8, // Better width-to-height ratio
+      eventMaxStack: 5, // Limit number of events shown per day
+      dayMaxEvents: true, // Show "+more" link when there are too many events
+      eventTimeFormat: {
+        // Better time format if you use timed events later
+        hour: "2-digit",
+        minute: "2-digit",
+        meridiem: false,
+      },
       height: "auto",
       nowIndicator: true,
       timeZone: "local",
@@ -130,17 +141,18 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
         .calendar-container {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.5rem;
         }
 
         .calendar-legend {
           display: flex;
           gap: 1.5rem;
-          padding: 0.75rem 1rem;
-          background: #f9fafb;
+          padding: 1rem 1.5rem;
+          background: #ffffff;
           border-radius: 8px;
           border: 1px solid #e5e7eb;
           flex-wrap: wrap;
+          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
 
         .legend-item {
@@ -150,9 +162,10 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
         }
 
         .legend-dot {
-          width: 16px;
-          height: 16px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .legend-dot.scheduled {
@@ -177,13 +190,195 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           font-weight: 500;
         }
 
+        /* Global Calendar Styling */
+        :global(.fc) {
+          font-family: inherit;
+        }
+
+        /* Calendar Header */
+        :global(.fc .fc-toolbar-title) {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        :global(.fc .fc-button) {
+          background-color: #ffffff;
+          border: 1px solid #d1d5db;
+          color: #374151;
+          padding: 0.5rem 1rem;
+          font-weight: 500;
+          text-transform: capitalize;
+          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          transition: all 0.2s;
+        }
+
+        :global(.fc .fc-button:hover) {
+          background-color: #f9fafb;
+          border-color: #9ca3af;
+        }
+
+        :global(.fc .fc-button-primary:not(:disabled).fc-button-active) {
+          background-color: #667eea;
+          border-color: #667eea;
+          color: white;
+        }
+
+        :global(.fc .fc-button-primary:not(:disabled).fc-button-active:hover) {
+          background-color: #5a67d8;
+          border-color: #5a67d8;
+        }
+
+        /* Day Headers */
+        :global(.fc .fc-col-header-cell) {
+          padding: 0.75rem 0.5rem;
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+          font-weight: 600;
+          font-size: 0.875rem;
+          color: #6b7280;
+          text-transform: uppercase;
+        }
+
+        /* Day Cells */
+        :global(.fc .fc-daygrid-day) {
+          background-color: #ffffff;
+          border-color: #e5e7eb;
+        }
+
+        :global(.fc .fc-daygrid-day:hover) {
+          background-color: #f9fafb;
+        }
+
+        :global(.fc .fc-daygrid-day.fc-day-today) {
+          background-color: #fef3c7 !important;
+        }
+
+        :global(.fc .fc-daygrid-day-number) {
+          padding: 0.5rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        :global(.fc .fc-day-today .fc-daygrid-day-number) {
+          background-color: #f59e0b;
+          color: white;
+          border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* Events */
+        :global(.fc-event) {
+          border-radius: 4px;
+          padding: 2px 4px;
+          margin: 1px 2px;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        :global(.fc-event:hover) {
+          opacity: 0.85;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        :global(.fc-event-title) {
+          font-weight: 500;
+        }
+
+        /* More Link */
+        :global(.fc-daygrid-more-link) {
+          color: #667eea;
+          font-weight: 500;
+          font-size: 0.75rem;
+          padding: 2px 4px;
+        }
+
+        :global(.fc-daygrid-more-link:hover) {
+          color: #5a67d8;
+          text-decoration: underline;
+        }
+
+        /* List View Styling */
+        :global(.fc-list) {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        :global(.fc-list-day-cushion) {
+          background-color: #f9fafb;
+          padding: 0.75rem 1rem;
+        }
+
+        :global(.fc-list-day-text) {
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        :global(.fc-list-day-side-text) {
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        :global(.fc-list-event:hover) {
+          background-color: #f9fafb;
+        }
+
+        :global(.fc-list-event-dot) {
+          border-width: 5px;
+        }
+
+        :global(.fc-list-event-title) {
+          font-weight: 500;
+          color: #374151;
+        }
+
+        /* Remove border from last row */
+        :global(.fc-scrollgrid-section-body > tr:last-child td) {
+          border-bottom: none;
+        }
+
         @media (max-width: 640px) {
           .calendar-legend {
             gap: 1rem;
+            padding: 0.75rem 1rem;
           }
 
           .legend-label {
             font-size: 0.8125rem;
+          }
+
+          :global(.fc .fc-toolbar-title) {
+            font-size: 1.25rem;
+          }
+
+          :global(.fc .fc-button) {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+          }
+
+          :global(.fc .fc-daygrid-day-number) {
+            font-size: 0.8125rem;
+            padding: 0.375rem;
+          }
+
+          :global(.fc-event) {
+            font-size: 0.75rem;
+            padding: 1px 3px;
+          }
+
+          :global(.fc .fc-col-header-cell) {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.75rem;
           }
         }
       `}</style>
