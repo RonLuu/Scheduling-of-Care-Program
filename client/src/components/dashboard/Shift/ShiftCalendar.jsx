@@ -813,6 +813,8 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
 
         .fc-day-today {
           background: #eff6ff !important;
+          position: relative !important;
+          z-index: 0 !important;
         }
 
         .fc-day-today .fc-daygrid-day-number {
