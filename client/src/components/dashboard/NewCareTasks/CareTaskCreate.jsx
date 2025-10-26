@@ -569,7 +569,7 @@ function CareTaskCreate({
 
         {/* Date */}
         <div className="form-group">
-          <label>{taskData.isRecurring ? "Start Date *" : "Task's Due Date *"}</label>
+          <label>{taskData.isRecurring ? "Start Date *" : "Task's Due Date "} <span className="required-mark" title="This field is required">*</span></label>
           <input
             type="date"
             value={taskData.dueDate}

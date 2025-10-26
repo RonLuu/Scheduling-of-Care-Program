@@ -5,6 +5,9 @@ import useAuth from "../hooks/useAuth";
 import { useClients } from "../hooks/useClients";
 import { useBudgetPlan } from "../hooks/useBudgetPlan";
 import BudgetOverviewView from "./BudgetOverviewView";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleCheck } from '@fortawesome/free-regular-svg-icons';
+import { faPlus, faMinus, faCheck } from '@fortawesome/free-solid-svg-icons';
 import {
   BiDollarCircle,
   BiPlusCircle,
@@ -20,7 +23,6 @@ import {
   BiPencil,
   BiBulb,
   BiFolder,
-  BiPlus,
   BiCheck,
   BiX,
   BiEdit,
@@ -808,7 +810,7 @@ function BudgetPlanningPage() {
                             className="add-category-btn"
                             onClick={() => setShowAddCategory(true)}
                           >
-                            <BiPlus /> Add Custom Category
+                            <FontAwesomeIcon icon={faPlus} /> Add Custom Category
                           </button>
                         ) : (
                           <div className="add-category-form">
@@ -835,7 +837,7 @@ function BudgetPlanningPage() {
                                 className="btn-save"
                                 onClick={handleAddCustomCategory}
                               >
-                                <BiCheck />
+                                <FontAwesomeIcon icon={faCheck} />
                               </button>
                               <button
                                 className="btn-cancel"
@@ -977,9 +979,8 @@ function BudgetPlanningPage() {
                                   </div>
                                 </div>
                               </div>
-                              <span className="expand-icon">
-                                {isExpanded ? "−" : "+"}
-                              </span>
+                              {/* finish editing */}
+                              <FontAwesomeIcon className={'expand-icon'} icon={isExpanded ? faMinus : faPlus}/>
                             </div>
 
                             {isExpanded && (
@@ -1206,7 +1207,7 @@ function BudgetPlanningPage() {
                                       )
                                     }
                                   >
-                                    <BiPlus /> Add
+                                    <FontAwesomeIcon icon={faPlus} /> Add
                                   </button>
                                 </div>
                               </div>
@@ -1228,7 +1229,7 @@ function BudgetPlanningPage() {
                           }
                         }}
                       >
-                        <BiCheckCircle />{" "}
+                        <FontAwesomeIcon icon={faCircleCheck} />{" "}
                         {isBudgetPlanComplete ? "Save Changes" : "Save Changes"}
                       </button>
                     </div>
@@ -1878,6 +1879,9 @@ function BudgetPlanningPage() {
           font-weight: 600;
           cursor: pointer;
           white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
         }
         .add-item-btn:hover {
           background: #2563eb;

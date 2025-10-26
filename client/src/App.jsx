@@ -191,9 +191,11 @@ const App = () => {
           <Route
             path="/budget-and-reports"
             element={
-              <RequireAuth>
-                <BudgetAndReportsPage />
-              </RequireAuth>
+              <BudgetAndReportsPage />
+
+              // <RequireAuth>
+              //   <BudgetAndReportsPage />
+              // </RequireAuth>
             }
           />
           <Route

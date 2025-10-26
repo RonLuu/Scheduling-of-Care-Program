@@ -12,6 +12,9 @@
     "heroku-postbuild": "cd client && rm -rf package-lock.json node_modules && npm install --include=optional --include=dev && npm run build && cd ../server && npm ci"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
+    "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "@fortawesome/react-fontawesome": "^3.1.0",
     "cloudinary": "^1.41.3",
     "concurrently": "^7.6.0",
     "multer-storage-cloudinary": "^4.0.0"

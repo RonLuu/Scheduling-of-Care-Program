@@ -1,19 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  BiMenu,
-  BiHelpCircle,
-  BiUser,
-  BiBuilding,
-  BiLockAlt,
-  BiGroup,
-  BiCalendar,
-  BiGitBranch,
-  BiTask,
-  BiBarChartSquare,
-  BiExit,
-  BiHome,
-  BiDollarCircle,
-} from "react-icons/bi";
+  faWallet, 
+  faListCheck, 
+  faHouseChimney, 
+  faUser, 
+  faUsers,
+  faRightFromBracket,
+  faBars,
+  faCalendarDays} from '@fortawesome/free-solid-svg-icons';
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/NavigationTab.css";
 import useAuth from "./dashboard/hooks/useAuth";
@@ -76,7 +71,8 @@ const NavigationTab = () => {
           onClick={() => setShowTab(!showTab)}
           type="button"
         >
-          <BiMenu />
+          <FontAwesomeIcon className="menu-icon" icon={faBars} />
+
         </button>
       </div>
 
@@ -95,7 +91,7 @@ const NavigationTab = () => {
           <div className="navigationtab-link-wrapper">
             {(me?.role === "Family" || me?.role === "Admin" || me?.role === "PoA" || me?.role === "GeneralCareStaff") && (
               <NavItem to="/dashboard">
-                <BiHome className="navigationtab-icon" />
+                <FontAwesomeIcon className="navigationtab-icon" icon={faHouseChimney} />
                 Dashboard
               <span className="tooltip-wrapper">
                 <span className="tooltip-icon">?</span>
@@ -106,7 +102,8 @@ const NavigationTab = () => {
               </NavItem>
             )}
             <NavItem to="/tasks">
-              <BiTask className="navigationtab-icon" />
+              <FontAwesomeIcon className="navigationtab-icon" icon={faListCheck} />
+
               Tasks
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
@@ -117,7 +114,7 @@ const NavigationTab = () => {
             </NavItem>
             {me?.role !== "GeneralCareStaff" && (
               <NavItem to="/budget-and-reports">
-                <BiDollarCircle className="navigationtab-icon" />
+                <FontAwesomeIcon className="navigationtab-icon" icon={faWallet} />
                 Budget & Reports
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
@@ -128,7 +125,7 @@ const NavigationTab = () => {
               </NavItem>
             )}
             <NavItem to="/clients">
-              <BiGroup className="navigationtab-icon" />
+              <FontAwesomeIcon className="navigationtab-icon" icon={faUsers} />
               Clients
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
@@ -138,7 +135,7 @@ const NavigationTab = () => {
             </span>
             </NavItem>
             <NavItem to="/shift-allocation">
-              <BiCalendar className="navigationtab-icon" />
+              <FontAwesomeIcon className="navigationtab-icon" icon={faCalendarDays} />
               Shift Allocation
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
@@ -148,7 +145,7 @@ const NavigationTab = () => {
             </span>
             </NavItem>
             <NavItem to="/profile">
-              <BiUser className="navigationtab-icon" />
+              <FontAwesomeIcon className="navigationtab-icon" icon={faUser} />
               Profile
             <span className="tooltip-wrapper">
               <span className="tooltip-icon">?</span>
@@ -160,7 +157,7 @@ const NavigationTab = () => {
 
             {/* Log Out as a button but styled like links */}
             <NavItem onClick={handleLogout}>
-              <BiExit className="navigationtab-icon" />
+              <FontAwesomeIcon className= {"navigationtab-icon"} icon={faRightFromBracket} />
               Log Out
             </NavItem>
           </div>

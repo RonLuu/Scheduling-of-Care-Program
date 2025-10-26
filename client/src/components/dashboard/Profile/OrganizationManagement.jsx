@@ -83,7 +83,7 @@ function OrganizationManagement({ me, jwt, refreshMe, showAdd, setShowAdd }) {
         );
         if (!ok) {
           setOrgSaveMsg("Change cancelled. No updates made.");
-          return; // 🔒 bail out completely
+          return; // bail out completely
         }
         migrateClients = true; // proceed with cascade
       }

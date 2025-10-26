@@ -10,6 +10,10 @@
     width: 50%;
   }
 }
+.menu-icon
+{
+  padding:0.5rem;
+}
 
 .navigationtab-panel {
   width: 20%;
@@ -57,7 +61,7 @@
   font-size: 300%;
   padding: 0px 0px 0px 0px;
   margin: 25px 0 0 30px;
-  border-radius: 30%;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
 }

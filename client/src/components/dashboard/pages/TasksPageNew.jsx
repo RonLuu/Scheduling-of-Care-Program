@@ -5,6 +5,8 @@ import CareTaskCreate from "../NewCareTasks/CareTaskCreate";
 import CareTaskManagement from "../NewCareTasks/CareTaskManagement";
 import { useClients } from "../hooks/useClients";
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
 function TasksPageNew() {
   const { me } = useAuth();
@@ -47,7 +49,8 @@ function TasksPageNew() {
           {/* Page Content */}
           {!loading && !error && jwt && me && (
             <div className="page-content">
-              {/* Task Creation Section - Hidden for GeneralCareStaff */}
+              {/* 
+              Creation Section - Hidden for GeneralCareStaff */}
               {(me?.role === "Family" || me?.role === "PoA" || me?.role === "Admin") && (
                 <div className="left-column">
                   <div className="info-box">
@@ -75,8 +78,8 @@ function TasksPageNew() {
                         className="create-task-btn"
                         onClick={() => setShowCreateForm(true)}
                       >
-                        <span className="plus-icon">+</span>
-                        <span>Create Task</span>
+                        <FontAwesomeIcon className="plus-icon"icon={faPlus} />
+                        <span className="create-task-label">Create Task</span>
                       </button>
                     </div>
                   )}
@@ -256,6 +259,7 @@ function TasksPageNew() {
         }
 
         .plus-icon {
+          margin-right: 0.5rem;
           font-size: 1.5rem;
           line-height: 1;
         }

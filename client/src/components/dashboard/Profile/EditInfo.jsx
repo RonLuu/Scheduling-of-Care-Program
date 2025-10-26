@@ -1,6 +1,8 @@
 import React from "react";
 import { BiX, BiUpload, BiPlus, BiTrash } from "react-icons/bi";
 import "../../../styles/UserProfile.css";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {faUpload, faPlus} from '@fortawesome/free-solid-svg-icons';
 
 const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
   const [name, setName] = React.useState(me?.name || "");
@@ -201,9 +203,8 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
         <div className="userprofile-edit-content">
           {/* Avatar Upload Section */}
+          <label className="avatar-label">PROFILE PICTURE</label>
           <div className="avatar-upload-section">
-            <label className="avatar-label">Profile Picture</label>
-
             {displayAvatar && (
               <div className="avatar-preview">
                 <img src={displayAvatar} alt="Avatar preview" />
@@ -225,7 +226,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
               >
-                <BiUpload />{" "}
+                <FontAwesomeIcon icon={faUpload} />{" "}
                 {currentAvatarUrl ? "Change Picture" : "Upload Picture"}
               </button>
 
@@ -297,7 +298,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
                 className="add-contact-btn"
                 onClick={addEmergencyContact}
               >
-                <BiPlus /> Add Contact
+                <FontAwesomeIcon icon={faPlus} /> Add Contact
               </button>
             </div>
 
@@ -371,7 +372,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         .avatar-label {
           display: block;
           font-weight: 600;
-          margin-bottom: 1rem;
+          margin-bottom: 0.5rem;
           color: #374151;
           font-size: 1rem;
         }
@@ -445,19 +446,31 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         .emergency-contacts-section {
           margin-bottom: 1.25rem;
           padding: 1.5rem;
+          overflow: hidden;
           border: 1px solid #e5e7eb;
           border-radius: 12px;
           background: #f9fafb;
         }
+        # I'm making the scolling bar looks better
+        .emergency-contacts-section::-webkit-scrollbar {
+          width: 8px;
+        }
 
+        .emergency-contacts-section::-webkit-scrollbar-thumb {
+        background: #888;
+          border-radius: 10px;
+        }
         .emergency-contacts-header {
+        
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
           margin-bottom: 1rem;
         }
 
         .add-contact-btn {
+          margin: 0;
           padding: 0.5rem 1rem;
           border: none;
           border-radius: 8px;
@@ -506,6 +519,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         }
 
         .remove-contact-btn {
+          margin: 0;
           padding: 0.625rem;
           border: none;
           border-radius: 8px;

@@ -4,6 +4,8 @@ import useAuth from "../hooks/useAuth";
 import NavigationTab from "../../NavigationTab";
 import ClientManagement from "../ClientManagement";
 import { useClients } from "../hooks/useClients";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus, faMinus } from '@fortawesome/free-solid-svg-icons';
 
 function ClientsPage() {
   const { me } = useAuth();
@@ -156,7 +158,8 @@ function ClientsPage() {
                   className="action-btn"
                   onClick={() => setShowAddClient(!showAddClient)}
                 >
-                  <span className="btn-icon">{showAddClient ? "−" : "+"}</span>
+                {/* end changing */}
+                  <FontAwesomeIcon className={'btn-icon'} icon={showAddClient ? faMinus : faPlus} />
                   {showAddClient ? "Cancel" : "Add New Client"}
                 </button>
               </div>
@@ -295,6 +298,7 @@ function ClientsPage() {
             font-size: 1.2rem;
             font-weight: bold;
             line-height: 1;
+            padding:0.35rem;
           }
 
           .form-wrapper {
