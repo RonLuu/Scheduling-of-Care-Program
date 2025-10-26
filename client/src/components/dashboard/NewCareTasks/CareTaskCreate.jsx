@@ -410,7 +410,12 @@ function CareTaskCreate({
       <div className="form-content">
         {/* Client */}
         <div className="form-group">
-          <label>Client <span className="required-mark" title="This field is required">*</span></label>
+          <label>
+            Client{" "}
+            <span className="required-mark" title="This field is required">
+              *
+            </span>
+          </label>
           <select
             value={selectedClient}
             onChange={(e) => setSelectedClient(e.target.value)}
@@ -424,139 +429,14 @@ function CareTaskCreate({
           </select>
         </div>
 
-        {/* Budget */}
-        {selectedClient && (
-          <div className="budget-settings">
-            <div className="form-group">
-              <label>Budget Category <span className="required-mark" title="This field is required">*</span></label>
-              <select
-                value={budgetCategoryId}
-                onChange={(e) => setBudgetCategoryId(e.target.value)}
-              >
-                <option value="">Select a category...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {budgetCategoryId && (
-              <div className="form-group">
-                <label>Item Type <span className="required-mark" title="This field is required">*</span></label>
-                <select
-                  value={budgetItemId}
-                  onChange={(e) => setBudgetItemId(e.target.value)}
-                >
-                  <option value="">Select an item type...</option>
-                  {budgetItems.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {budgetItemId &&
-              (() => {
-                const selectedItem = budgetItems.find(
-                  (item) => item._id === budgetItemId
-                );
-                if (!selectedItem) return null;
-
-                const itemGrossSpent = getItemSpent(
-                  budgetCategoryId,
-                  budgetItemId
-                );
-                const itemReturned = getItemReturned(
-                  budgetCategoryId,
-                  budgetItemId
-                );
-                const itemNetSpent = itemGrossSpent - itemReturned;
-                const itemReserved = getItemExpected(
-                  budgetCategoryId,
-                  budgetItemId
-                );
-                const availableBudget =
-                  selectedItem.budget - itemNetSpent - itemReserved;
-
-                return (
-                  <>
-                    <div className="budget-info-box">
-                      <div className="budget-info-row">
-                        <span className="budget-info-label">
-                          Available Budget for {selectedItem.name}:
-                        </span>
-                        <span
-                          className={`budget-info-value available ${
-                            availableBudget < 0 ? "negative" : ""
-                          }`}
-                        >
-                          {isLoadingSpending
-                            ? "Loading..."
-                            : formatCurrency(availableBudget)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Expected Cost</label>
-                      <small>
-                        Enter the expected cost for this task. Leave it blank if
-                        there’s no cost. You can always come back and add a cost
-                        later.{" "}
-                      </small>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={taskData.expectedCost}
-                        onChange={(e) =>
-                          setTaskData({
-                            ...taskData,
-                            expectedCost: e.target.value,
-                          })
-                        }
-                        placeholder="e.g., 50.00"
-                      />
-                    </div>
-                  </>
-                );
-              })()}
-
-            <div className="tip-box">
-              <span className="tip-icon">💡</span>
-              <div className="tip-content">
-                <strong>Can't find the right category or item?</strong>
-                <p>
-                  Go to the{" "}
-                  {onNavigateToBudget ? (
-                    <a
-                      href="#"
-                      className="tip-link"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onNavigateToBudget();
-                      }}
-                    >
-                      Budget & Reports page
-                    </a>
-                  ) : (
-                    <span className="tip-link-text">Budget & Reports page</span>
-                  )}{" "}
-                  to add new categories or items to your budget plan before
-                  creating tasks.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Title */}
         <div className="form-group">
-          <label>Task Title<span className="required-mark" title="This field is required">*</span></label>
+          <label>
+            Task Title
+            <span className="required-mark" title="This field is required">
+              *
+            </span>
+          </label>
           <input
             type="text"
             value={taskData.title}
@@ -746,6 +626,149 @@ function CareTaskCreate({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Budget */}
+        {selectedClient && (
+          <div className="budget-settings">
+            <div className="form-group">
+              <label>
+                Budget Category{" "}
+                <span className="required-mark" title="This field is required">
+                  *
+                </span>
+              </label>
+              <select
+                value={budgetCategoryId}
+                onChange={(e) => setBudgetCategoryId(e.target.value)}
+              >
+                <option value="">Select a category...</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {budgetCategoryId && (
+              <div className="form-group">
+                <label>
+                  Item Type{" "}
+                  <span
+                    className="required-mark"
+                    title="This field is required"
+                  >
+                    *
+                  </span>
+                </label>
+                <select
+                  value={budgetItemId}
+                  onChange={(e) => setBudgetItemId(e.target.value)}
+                >
+                  <option value="">Select an item type...</option>
+                  {budgetItems.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {budgetItemId &&
+              (() => {
+                const selectedItem = budgetItems.find(
+                  (item) => item._id === budgetItemId
+                );
+                if (!selectedItem) return null;
+
+                const itemGrossSpent = getItemSpent(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const itemReturned = getItemReturned(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const itemNetSpent = itemGrossSpent - itemReturned;
+                const itemReserved = getItemExpected(
+                  budgetCategoryId,
+                  budgetItemId
+                );
+                const availableBudget =
+                  selectedItem.budget - itemNetSpent - itemReserved;
+
+                return (
+                  <>
+                    <div className="budget-info-box">
+                      <div className="budget-info-row">
+                        <span className="budget-info-label">
+                          Available Budget for {selectedItem.name}:
+                        </span>
+                        <span
+                          className={`budget-info-value available ${
+                            availableBudget < 0 ? "negative" : ""
+                          }`}
+                        >
+                          {isLoadingSpending
+                            ? "Loading..."
+                            : formatCurrency(availableBudget)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Expected Cost</label>
+                      <small>
+                        Enter the expected cost for this task. Leave it blank if
+                        there’s no cost. You can always come back and add a cost
+                        later.{" "}
+                      </small>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={taskData.expectedCost}
+                        onChange={(e) =>
+                          setTaskData({
+                            ...taskData,
+                            expectedCost: e.target.value,
+                          })
+                        }
+                        placeholder="e.g., 50.00"
+                      />
+                    </div>
+                  </>
+                );
+              })()}
+
+            <div className="tip-box">
+              <span className="tip-icon">💡</span>
+              <div className="tip-content">
+                <strong>Can't find the right category or item?</strong>
+                <p>
+                  Go to the{" "}
+                  {onNavigateToBudget ? (
+                    <a
+                      href="#"
+                      className="tip-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigateToBudget();
+                      }}
+                    >
+                      Budget & Reports page
+                    </a>
+                  ) : (
+                    <span className="tip-link-text">Budget & Reports page</span>
+                  )}{" "}
+                  to add new categories or items to your budget plan before
+                  creating tasks.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
