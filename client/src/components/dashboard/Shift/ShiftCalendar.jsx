@@ -119,7 +119,11 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         const v = fcRef.current.view;
 
         // Expand date range for day and week views to include shifts that span across boundaries
-        if (v.type === "timeGridDay" || v.type === "timeGridWeek") {
+        if (
+          v.type === "timeGridDay" ||
+          v.type === "timeGridWeek" ||
+          v.type === "listWeek"
+        ) {
           const startDate = new Date(v.activeStart);
           startDate.setDate(startDate.getDate() - 1);
           const endDate = new Date(v.activeEnd);
@@ -602,21 +606,20 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
         }
 
         .fc .fc-button-primary {
-          background: #3b82f6 !important;
-          border-color: #3b82f6 !important;
+          background: #8189d2 !important;
+          border-color: #8189d2 !important;
         }
 
         .fc .fc-button-primary:hover {
-          background: #2563eb !important;
-          border-color: #2563eb !important;
+          background: #515788ff !important;
+          border-color: #515788ff !important;
           transform: translateY(-1px);
-          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
         }
 
         .fc .fc-button-primary:not(:disabled):active,
         .fc .fc-button-primary:not(:disabled).fc-button-active {
-          background: #1d4ed8 !important;
-          border-color: #1d4ed8 !important;
+          background: #515788ff !important;
+          border-color: #515788ff !important;
         }
 
         .fc-theme-standard td,

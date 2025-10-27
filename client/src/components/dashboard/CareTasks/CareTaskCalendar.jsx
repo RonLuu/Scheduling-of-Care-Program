@@ -218,15 +218,29 @@ function CareTaskCalendar({ tasks, onTaskClick }) {
           border-color: #9ca3af;
         }
 
-        :global(.fc .fc-button-primary:not(:disabled).fc-button-active) {
-          background-color: #667eea;
-          border-color: #667eea;
-          color: white;
+        .fc .fc-button {
+          padding: 0.625rem 1.125rem !important;
+          font-weight: 500 !important;
+          border-radius: 0.5rem !important;
+          transition: all 0.2s !important;
+          font-size: 0.875rem !important;
         }
 
-        :global(.fc .fc-button-primary:not(:disabled).fc-button-active:hover) {
-          background-color: #5a67d8;
-          border-color: #5a67d8;
+        .fc .fc-button-primary {
+          background: #8189d2 !important;
+          border-color: #8189d2 !important;
+        }
+
+        .fc .fc-button-primary:hover {
+          background: #515788ff !important;
+          border-color: #515788ff !important;
+          transform: translateY(-1px);
+        }
+
+        .fc .fc-button-primary:not(:disabled):active,
+        .fc .fc-button-primary:not(:disabled).fc-button-active {
+          background: #515788ff !important;
+          border-color: #515788ff !important;
         }
 
         /* Day Headers */
