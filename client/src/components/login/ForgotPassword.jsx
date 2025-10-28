@@ -340,13 +340,15 @@ function ForgotPassword() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-header" style={{ backgroundColor: "#4caf50" }}>
+        <div
+          className="auth-header"
+          style={{ backgroundColor: "#4caf50", padding: "20px 10px" }}
+        >
           <FontAwesomeIcon
             icon={faCheckCircle}
-            style={{ fontSize: "48px", marginBottom: "10px" }}
+            style={{ fontSize: "48px", marginBottom: "10px", color: "#2c3f70" }}
           />
           <h2>Password Reset Successful!</h2>
-          <p>Your password has been changed</p>
         </div>
 
         <div
