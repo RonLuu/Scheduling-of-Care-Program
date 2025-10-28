@@ -596,13 +596,19 @@ function ShiftCalendar({ jwt, personId, isAdmin, refreshKey }) {
           font-weight: 600 !important;
           color: #111827 !important;
         }
+        @media (max-width: 768px) {
+          .fc-toolbar {
+            display: block !important;
+            text-align: center;
+          }
+        }
 
         .fc .fc-button {
-          padding: 0.625rem 1.125rem !important;
-          font-weight: 500 !important;
+          font-weight: bold !important;
           border-radius: 0.5rem !important;
           transition: all 0.2s !important;
           font-size: 0.875rem !important;
+          margin: 0.5rem;
         }
 
         .fc .fc-button-primary {

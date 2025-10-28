@@ -226,7 +226,7 @@ function Dashboard() {
                         </p>
                         {!hasClients && hasJoinedOrganization && (
                           <a href="/clients" className="step-button">
-                            Add Client
+                            Wait for Client
                           </a>
                         )}
                         {!hasClients && !hasJoinedOrganization && (
@@ -404,7 +404,6 @@ function Dashboard() {
             justify-content: center;
             font-weight: 700;
             font-size: 1.5rem;
-            margin-right: 2rem;
             flex-shrink: 0;
             box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
             position: relative;
@@ -1083,7 +1082,7 @@ function Dashboard() {
           justify-content: center;
           font-weight: 700;
           font-size: 1.5rem;
-          margin-right: 2rem;
+
           flex-shrink: 0;
           box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
           position: relative;
@@ -2547,8 +2546,9 @@ function GettingStartedOrSchedule({ client, jwt, hasBudget, hasTasks }) {
           .guidance-steps {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1.5rem 0;
             background: white;
             border-radius: 8px;
             border: 1px solid #93c5fd;

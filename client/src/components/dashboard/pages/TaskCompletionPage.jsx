@@ -783,7 +783,7 @@ function TaskCompletionPage() {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
-          color: #374151;
+          color: #abababff;
         }
 
         .file-input-label:hover {
@@ -814,7 +814,8 @@ function TaskCompletionPage() {
         }
 
         .remove-file-btn {
-          padding: 0.25rem 0.75rem;
+          width: 50% !important;
+          margin-right: 0px !important;
           background: #ff2d2dff;
           color: #fff7f7ff;
           border: none;
@@ -921,7 +922,7 @@ function TaskCompletionPage() {
         .mode-btn.active {
           background: #667eea;
           border-color: #667eea;
-          color: white;
+          color: white !important;
         }
 
         .time-range-selector {

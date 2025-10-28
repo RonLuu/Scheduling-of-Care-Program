@@ -1,4 +1,6 @@
 import React from "react";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck} from '@fortawesome/free-solid-svg-icons';
 
 function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [selectedClientId, setSelectedClientId] = React.useState("");
@@ -1296,7 +1298,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
               {inviteSuccess && (
                 <div className="invite-success">
-                  <div className="success-icon">✓</div>
+                  <div className="success-icon"><FontAwesomeIcon icon={faCheck} /></div>
                   <p>{inviteSuccess}</p>
                 </div>
               )}
@@ -1306,6 +1308,10 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
       )}
 
       <style jsx>{`
+        button
+        {
+        margin:0px !important;
+        }
         .client-info-manager {
           width: 100%;
         }
@@ -2403,7 +2409,166 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           margin: 0;
         }
+        .invite-form input:disabled {
+          background: #f3f4f6;
+          cursor: not-allowed;
+        }
 
+        .invite-error {
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-top: 0.75rem;
+        }
+
+        .invite-error p {
+          margin: 0;
+          color: #991b1b;
+          font-size: 0.875rem;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.75rem;
+        }
+
+        .cancel-btn {
+          padding: 0.625rem 1.25rem;
+          background: white;
+          color: #374151;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cancel-btn:hover {
+          background: #f9fafb;
+        }
+
+        .cancel-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .send-invite-btn {
+          padding: 0.625rem 1.25rem;
+          background: #8189d2;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .send-invite-btn:hover:not(:disabled) {
+          background: #6d76c4;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+        }
+
+        .send-invite-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .invite-success {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          text-align: center;
+          padding: 2rem 0;
+        }
+
+        .success-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 4rem;
+          height: 4rem;
+          background: #d1fae5;
+          color: #065f46;
+          border-radius: 50%;
+          font-size: 2rem;
+          font-weight: bold;
+        }
+
+        .invite-success p {
+          color: #065f46;
+          font-size: 1rem;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        @media (max-width: 768px) {
+          .selector-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+          }
+
+          .client-selector {
+            margin-bottom: 0;
+          }
+
+          .token-section {
+            width: 100%;
+          }
+
+          .create-token-btn {
+            width: 100%;
+          }
+
+          .info-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .access-table {
+            font-size: 0.75rem;
+          }
+
+          .access-table th,
+          .access-table td {
+            padding: 0.5rem;
+          }
+
+          .modal-content,
+          .edit-modal-content {
+            max-width: 95%;
+            width: 95%;
+          }
+
+          .token-type-selection {
+            gap: 0.75rem;
+          }
+
+          .edit-row {
+            grid-template-columns: 1fr;
+          }
+
+          .custom-field-item {
+            grid-template-columns: 1fr;
+          }
+
+          .remove-field-btn {
+            width: 100%;
+          }
+
+          .modal-actions {
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+          }
+
+          .cancel-btn,
+          .send-invite-btn {
+            width: 100%;
+          }
         @media (max-width: 768px) {
           .selector-container {
             flex-direction: column;
