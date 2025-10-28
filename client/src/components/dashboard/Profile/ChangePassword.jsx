@@ -1,4 +1,6 @@
 // client/src/components/dashboard/profile/ChangePassword.jsx
+// IMPROVED VERSION with better success message
+
 import React, { useState } from "react";
 import { BiX, BiLock, BiCheckCircle } from "react-icons/bi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -78,18 +80,145 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
     }
   };
 
-  // Success screen
+  // IMPROVED: Success overlay that covers the entire screen
   if (success) {
     return (
-      <div className="change-password-wrapper">
-        <div className="change-password-panel success-panel">
-          <div className="change-password-success">
-            <BiCheckCircle className="success-icon" />
-            <h2>Password Changed Successfully!</h2>
-            <p>Your password has been updated.</p>
+      <>
+        {/* Full screen backdrop */}
+        <div className="success-backdrop" onClick={handleClose}>
+          {/* Centered success card */}
+          <div className="success-card" onClick={(e) => e.stopPropagation()}>
+            <div className="success-icon-wrapper">
+              <BiCheckCircle className="success-icon" />
+            </div>
+            <h2 className="success-title">Password Changed!</h2>
+            <p className="success-message">
+              Your password has been successfully updated.
+            </p>
+            <div className="success-timer">Closing automatically...</div>
           </div>
         </div>
-      </div>
+
+        <style jsx>{`
+          .success-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1003;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+          }
+
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
+
+          .success-card {
+            background: white;
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: default;
+          }
+
+          @keyframes slideUp {
+            from {
+              transform: translateY(50px) scale(0.9);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0) scale(1);
+              opacity: 1;
+            }
+          }
+
+          .success-icon-wrapper {
+            margin-bottom: 1.5rem;
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s
+              backwards;
+          }
+
+          @keyframes scaleIn {
+            from {
+              transform: scale(0);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+
+          .success-icon {
+            font-size: 5rem;
+            color: #4caf50;
+            filter: drop-shadow(0 4px 12px rgba(76, 175, 80, 0.3));
+          }
+
+          .success-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0 0 0.75rem 0;
+            animation: fadeInUp 0.5s ease 0.3s backwards;
+          }
+
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .success-message {
+            font-size: 1rem;
+            color: #6b7280;
+            margin: 0 0 1.5rem 0;
+            line-height: 1.6;
+            animation: fadeInUp 0.5s ease 0.4s backwards;
+          }
+
+          .success-timer {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            font-style: italic;
+            animation: fadeInUp 0.5s ease 0.5s backwards;
+          }
+
+          @media (max-width: 576px) {
+            .success-card {
+              padding: 2.5rem 2rem;
+            }
+
+            .success-icon {
+              font-size: 4rem;
+            }
+
+            .success-title {
+              font-size: 1.75rem;
+            }
+          }
+        `}</style>
+      </>
     );
   }
 
@@ -223,6 +352,7 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             left: 0;
             width: 100%;
             height: 100%;
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -248,10 +378,6 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             border-radius: 24px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.3s ease;
-          }
-
-          .success-panel {
-            padding: 3rem;
           }
 
           @keyframes slideUp {
@@ -422,42 +548,6 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-          }
-
-          .change-password-success {
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-          }
-
-          .success-icon {
-            font-size: 4rem;
-            color: #4caf50;
-            animation: scaleIn 0.4s ease;
-          }
-
-          @keyframes scaleIn {
-            from {
-              transform: scale(0);
-            }
-            to {
-              transform: scale(1);
-            }
-          }
-
-          .change-password-success h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1a202c;
-            margin: 0;
-          }
-
-          .change-password-success p {
-            font-size: 1rem;
-            color: #6b7280;
-            margin: 0;
           }
 
           @media (max-width: 576px) {

@@ -356,6 +356,7 @@ const EditInfo = ({
           >
             {saving ? "Saving..." : uploading ? "Uploading..." : "Save Changes"}
           </button>
+
           {/* Change Password Link */}
           <div className="change-password-link-container">
             <button
