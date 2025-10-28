@@ -1,5 +1,5 @@
 import React from "react";
-import "../../../styles/AddClient.css"
+import "../../../styles/AddClient.css";
 import { useNavigate } from "react-router-dom";
 
 function AddClient({ me, jwt, setClients }) {
@@ -255,7 +255,9 @@ function AddClient({ me, jwt, setClients }) {
       setClients(persons);
 
       // Show success message
-      setSuccessMessage(`Client "${formData.name}" has been successfully added!`);
+      setSuccessMessage(
+        `Client "${formData.name}" has been successfully added!`
+      );
 
       // Clear form
       setFormData({
@@ -280,7 +282,7 @@ function AddClient({ me, jwt, setClients }) {
       });
 
       // Scroll to top to show success message
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setAddErr(err.message || String(err));
       setSuccessMessage("");
@@ -299,7 +301,7 @@ function AddClient({ me, jwt, setClients }) {
               <p className="success-text">{successMessage}</p>
               <button
                 type="button"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate("/dashboard")}
                 className="return-dashboard-btn"
               >
                 Return to Dashboard
@@ -328,7 +330,9 @@ function AddClient({ me, jwt, setClients }) {
         {/* Basic Information */}
         <div className="client-section">
           <h4>Basic Information</h4>
-          <label>Full Name <span className="required-mark">*</span></label>
+          <label>
+            Full Name <span className="required-mark">*</span>
+          </label>
           <input
             placeholder="Client name *"
             value={formData.name}
@@ -337,7 +341,9 @@ function AddClient({ me, jwt, setClients }) {
           />
           <div className="row">
             <div>
-              <label>Date of birth<span className="required-mark">*</span></label>
+              <label>
+                Date of birth<span className="required-mark">*</span>
+              </label>
               <input
                 type="date"
                 value={formData.dateOfBirth}
@@ -345,7 +351,9 @@ function AddClient({ me, jwt, setClients }) {
               />
             </div>
             <div>
-              <label>Sex<span className="required-mark">*</span></label>
+              <label>
+                Sex<span className="required-mark">*</span>
+              </label>
               <select value={formData.sex} onChange={handleInputChange("sex")}>
                 {sexOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -356,7 +364,9 @@ function AddClient({ me, jwt, setClients }) {
             </div>
           </div>
           <div>
-            <label>Mobile phone<span className="required-mark">*</span></label>
+            <label>
+              Mobile phone<span className="required-mark">*</span>
+            </label>
             <input
               type="tel"
               value={formData.mobilePhone}
@@ -657,7 +667,7 @@ function AddClient({ me, jwt, setClients }) {
         </button>
         {addErr && <p style={{ color: "#b91c1c" }}>Error: {addErr}</p>}
       </form>
-  </div>
+    </div>
   );
 }
 
