@@ -1,3 +1,4 @@
+/* client/src/styles/AuthPages.css */
 /* Modern Authentication Pages Styling */
 
 .auth-container {
@@ -80,7 +81,7 @@
 
 .auth-submit-btn {
   padding: 14px 24px;
-  background: #2C3F70;
+  background: #2c3f70;
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -93,7 +94,7 @@
 }
 
 .auth-submit-btn:hover:not(:disabled) {
-  background: #252E47;
+  background: #252e47;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(44, 63, 112, 0.4);
 }
@@ -151,17 +152,17 @@
 .auth-footer-link {
   display: inline-block;
   padding: 10px 24px;
-  color: #2C3F70;
+  color: #2c3f70;
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
-  border: 2px solid #2C3F70;
+  border: 2px solid #2c3f70;
   border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .auth-footer-link:hover {
-  background: #2C3F70;
+  background: #2c3f70;
   color: #ffffff;
 }
 
@@ -170,27 +171,26 @@
   margin-left: 2px;
 }
 .required-mark::after {
-    content: 'Required';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #1f2937;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    margin-bottom: 5px;
+  content: "Required";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1f2937;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  margin-bottom: 5px;
 }
 
 .required-mark:hover::after {
-    opacity: 1;
+  opacity: 1;
 }
-
 
 /* Help icon and tooltip styling (matching budget page style) */
 .help-wrapper {
@@ -202,11 +202,11 @@
   margin-left: 5px;
   cursor: pointer;
   font-weight: bold;
-  border: 1px solid #A5231C;
+  border: 1px solid #a5231c;
   border-radius: 50%;
   padding: 0 5px;
   font-size: 12px;
-  color: #A5231C;
+  color: #a5231c;
   display: inline-block;
   line-height: 1.4;
 }

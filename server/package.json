@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@fullcalendar/interaction": "^6.1.19",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "busboy": "^1.6.0",

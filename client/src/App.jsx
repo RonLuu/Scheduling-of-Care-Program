@@ -1,3 +1,4 @@
+// App.jsx
 import React from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import useAuth from "./components/dashboard/hooks/useAuth";
@@ -5,6 +6,7 @@ import useAuth from "./components/dashboard/hooks/useAuth";
 // Public pages
 import RegisterUser from "./components/register/RegisterUser";
 import LogIn from "./components/login/LogIn";
+import ForgotPassword from "./components/login/ForgotPassword";
 import RegisterOrganization from "./components/register/RegisterOrganization";
 
 // Authenticated route pages (create these as shown earlier)
@@ -41,9 +43,12 @@ const App = () => {
   // Don't show print button on login/register pages
   const shouldShowPrintButton =
     me &&
-    !["/login", "/register", "/registerorganization"].includes(
-      location.pathname
-    );
+    ![
+      "/login",
+      "/register",
+      "/registerorganization",
+      "/forgot-password",
+    ].includes(location.pathname);
 
   // Prevent mouse wheel from changing number input values
   React.useEffect(() => {
@@ -98,6 +103,7 @@ const App = () => {
             element={<RegisterOrganization />}
           />
           <Route path="/login" element={<LogIn />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Authenticated app routes */}
           <Route

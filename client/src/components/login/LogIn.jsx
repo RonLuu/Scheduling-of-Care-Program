@@ -1,3 +1,4 @@
+// client/src/components/login/LogIn.jsx
 import React from "react";
 import "../../styles/AuthPages.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -109,6 +110,27 @@ function LogIn() {
                 }}
               />
             </div>
+          </div>
+
+          {/* Forgot Password Link */}
+          <div
+            style={{
+              textAlign: "right",
+              marginTop: "-8px",
+              marginBottom: "12px",
+            }}
+          >
+            <Link
+              to="/forgot-password"
+              style={{
+                color: "#8189d2",
+                fontSize: "14px",
+                textDecoration: "none",
+                fontWeight: "500",
+              }}
+            >
+              Forgot password?
+            </Link>
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>

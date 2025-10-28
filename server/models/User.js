@@ -55,7 +55,7 @@ const UserSchema = new Schema(
 
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
-    
+
     // Email notification preferences
     emailPreferences: {
       budgetAlerts: { type: Boolean, default: true },
@@ -64,7 +64,11 @@ const UserSchema = new Schema(
       weeklyReports: { type: Boolean, default: false },
       lastBudgetAlertSent: { type: Map, of: Date }, // Track last alert per client/category to avoid spam
     },
+
+    passwordResetToken: { type: String, default: null },
+    passwordResetExpires: { type: Date, default: null },
   },
+
   { timestamps: true }
 );
 
