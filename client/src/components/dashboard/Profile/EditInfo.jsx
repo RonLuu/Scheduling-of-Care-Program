@@ -482,12 +482,12 @@ const EditInfo = ({
           border-radius: 10px;
         }
         .emergency-contacts-header {
-        
           display: flex;
-          flex-direction: column;
-          align-items: flex-start;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
           gap: 0.5rem;
-          margin-bottom: 1rem;
+          margin-bottom: 1.8rem;
         }
 
         .add-contact-btn {
@@ -537,6 +537,7 @@ const EditInfo = ({
         .emergency-contact-phone {
           flex: 1;
           min-width: 150px;
+          height: 2.5rem;
         }
 
         .remove-contact-btn {
@@ -552,6 +553,7 @@ const EditInfo = ({
           justify-content: center;
           transition: all 0.2s ease;
           flex-shrink: 0;
+          font-size: 1.15rem;
         }
 
         .remove-contact-btn:hover {

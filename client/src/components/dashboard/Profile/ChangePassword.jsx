@@ -65,7 +65,7 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
       setTimeout(() => {
         if (onSuccess) onSuccess();
         onClose();
-      }, 2000);
+      }, 4000);
     } catch (err) {
       console.error("Change password error:", err);
       setError("Failed to change password. Please try again.");
@@ -134,6 +134,9 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             cursor: default;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
           }
 
           @keyframes slideUp {
@@ -148,7 +151,7 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
           }
 
           .success-icon-wrapper {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.3rem;
             animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s
               backwards;
           }
@@ -176,6 +179,7 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             color: #1a202c;
             margin: 0 0 0.75rem 0;
             animation: fadeInUp 0.5s ease 0.3s backwards;
+            margin-bottom: 1rem;
           }
 
           @keyframes fadeInUp {
@@ -427,6 +431,7 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             justify-content: center;
             border-radius: 8px;
             transition: all 0.2s ease;
+            margin: 0;
           }
 
           .change-password-close-btn:hover:not(:disabled) {
@@ -534,7 +539,8 @@ function ChangePassword({ jwt, onClose, onSuccess }) {
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(129, 137, 210, 0.3);
-            margin-top: 0.5rem;
+            margin: 0;
+            margin-top: 0.8rem;
             box-sizing: border-box;
           }
 
