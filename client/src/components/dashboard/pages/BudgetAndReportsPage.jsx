@@ -7,10 +7,8 @@ import { useBudgetPlan } from "../hooks/useBudgetPlan";
 import BudgetOverviewView from "./BudgetOverviewView";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleCheck } from '@fortawesome/free-regular-svg-icons';
-import { faPlus, faMinus, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMinus, faCalendarPlus, faPencil} from '@fortawesome/free-solid-svg-icons';
 import {
-  BiDollarCircle,
-  BiPlusCircle,
   BiFirstAid,
   BiSpa,
   BiCloset,
@@ -20,16 +18,8 @@ import {
   BiCar,
   BiHome,
   BiClipboard,
-  BiPencil,
-  BiBulb,
-  BiFolder,
-  BiCheck,
-  BiX,
-  BiEdit,
   BiDotsVerticalRounded,
   BiTrash,
-  BiCheckCircle,
-  BiCalendarPlus,
   BiCopy,
 } from "react-icons/bi";
 
@@ -728,7 +718,7 @@ function BudgetPlanningPage() {
                   className="reconfigure-btn"
                   onClick={() => setShowWizard(true)}
                 >
-                  <BiPencil /> Edit Budget
+                  <FontAwesomeIcon icon={faPencil} /> Edit Budget
                 </button>
                 <button
                   className="plan-future-btn"
@@ -752,7 +742,7 @@ function BudgetPlanningPage() {
                     });
                   }}
                 >
-                  <BiCalendarPlus /> Plan for Future Years
+                <FontAwesomeIcon icon={faCalendarPlus} /> Plan for Future Years
                 </button>
               </div>
             )}
@@ -1110,7 +1100,7 @@ function BudgetPlanningPage() {
                                                           );
                                                         }}
                                                       >
-                                                        <BiPencil /> Edit
+                                                      <FontAwesomeIcon icon={faPencil} /> Edit
                                                       </button>
                                                       <button
                                                         className="menu-item delete"
