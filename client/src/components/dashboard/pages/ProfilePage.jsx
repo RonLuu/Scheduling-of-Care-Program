@@ -1,8 +1,6 @@
-import React from "react";
 import useAuth from "../hooks/useAuth";
 import UserProfile from "../Profile/UserProfile";
 import NavigationTab from "../../NavigationTab";
-import Header from "../../Header";
 
 function ProfilePage() {
   const { me, setMe } = useAuth();
