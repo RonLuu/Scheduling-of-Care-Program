@@ -24,21 +24,20 @@ router.post("/request", async (req, res) => {
     // Find user by email
     const user = await User.findOne({ email: email.toLowerCase().trim() });
 
-    // Always return success to prevent email enumeration
+    // Check if user exists
+    // NOTE: This allows email enumeration but provides better UX
     if (!user) {
-      return res.json({
-        success: true,
-        message:
-          "If an account exists with this email, a reset code has been sent.",
+      return res.status(404).json({
+        error:
+          "This email is not found in our system. Please check your email or create an account.",
+        emailNotFound: true,
       });
     }
 
     // Check if user is active
     if (!user.isActive) {
-      return res.json({
-        success: true,
-        message:
-          "If an account exists with this email, a reset code has been sent.",
+      return res.status(403).json({
+        error: "This account is inactive. Please contact support.",
       });
     }
 
@@ -64,8 +63,7 @@ router.post("/request", async (req, res) => {
 
     res.json({
       success: true,
-      message:
-        "If an account exists with this email, a reset code has been sent.",
+      message: "A reset code has been sent to your email.",
     });
   } catch (error) {
     console.error("Error in password reset request:", error);

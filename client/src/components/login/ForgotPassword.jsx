@@ -17,6 +17,7 @@ function ForgotPassword() {
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [err, setErr] = React.useState("");
+  const [emailNotFound, setEmailNotFound] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [showNewPassword, setShowNewPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
@@ -25,6 +26,7 @@ function ForgotPassword() {
   async function handleRequestCode(e) {
     e.preventDefault();
     setErr("");
+    setEmailNotFound(false);
     setLoading(true);
 
     try {
@@ -37,13 +39,19 @@ function ForgotPassword() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if it's an email not found error
+        if (data.error && data.error.includes("not found")) {
+          setEmailNotFound(true);
+          return setErr(data.error);
+        }
         return setErr(data.error || "Failed to send reset code");
       }
 
       // Move to step 2
       setStep(2);
     } catch (error) {
-      setErr("Failed to send reset code. Please try again. ", error);
+      setErr("Failed to send reset code. Please try again.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -86,7 +94,8 @@ function ForgotPassword() {
       // Success - move to step 3
       setStep(3);
     } catch (error) {
-      setErr("Failed to reset password. Please try again.", error);
+      setErr("Failed to reset password. Please try again.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -103,7 +112,25 @@ function ForgotPassword() {
           </div>
 
           <form onSubmit={handleRequestCode} className="auth-form">
-            {err && <div className="auth-error">{err}</div>}
+            {err && (
+              <div className="auth-error">
+                {err}
+                {emailNotFound && (
+                  <div style={{ marginTop: "10px" }}>
+                    <Link
+                      to="/register"
+                      style={{
+                        color: "#2C3F70",
+                        fontWeight: "600",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Create an account here
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="auth-form-group">
               <label>
@@ -116,7 +143,11 @@ function ForgotPassword() {
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setErr("");
+                  setEmailNotFound(false);
+                }}
                 required
                 autoComplete="email"
               />
@@ -127,7 +158,7 @@ function ForgotPassword() {
               className="auth-submit-btn"
               disabled={loading}
             >
-              {loading ? "Sending Code..." : "Send Reset Code"}
+              {loading ? "Checking..." : "Send Reset Code"}
             </button>
           </form>
 
