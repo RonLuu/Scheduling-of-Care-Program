@@ -1,4 +1,6 @@
 import React from "react";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck} from '@fortawesome/free-solid-svg-icons';
 
 function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [selectedClientId, setSelectedClientId] = React.useState("");
@@ -1296,7 +1298,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
               {inviteSuccess && (
                 <div className="invite-success">
-                  <div className="success-icon">✓</div>
+                  <div className="success-icon"><FontAwesomeIcon icon={faCheck} /></div>
                   <p>{inviteSuccess}</p>
                 </div>
               )}
@@ -2477,6 +2479,9 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
         }
 
         .invite-success {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
           text-align: center;
           padding: 2rem 0;
         }
@@ -2492,7 +2497,6 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           border-radius: 50%;
           font-size: 2rem;
           font-weight: bold;
-          margin-bottom: 1rem;
         }
 
         .invite-success p {
