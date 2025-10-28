@@ -569,7 +569,6 @@ function PlanForNextYear() {
                   onClick={handleCopyPlan}
                   disabled={copying || selectedCategories.size === 0}
                 >
-                  <BiCopy />
                   {copying ? "Copying..." : `Copy to ${targetYear}`}
                 </button>
               </div>
@@ -595,7 +594,7 @@ function PlanForNextYear() {
           overflow: hidden;
         }
         .plan-header {
-          background: #8189d2;
+          background: #5B61B2;
           color: white;
           padding: 2rem 2.5rem;
           position: relative;
@@ -664,7 +663,7 @@ function PlanForNextYear() {
         }
         .help-text {
           margin: 0 0 1rem 0;
-          color: #6b7280;
+          color: #9a9db9;
           font-size: 1rem;
           text-align: left;
           font-family: "Inter", sans-serif;
@@ -689,7 +688,7 @@ function PlanForNextYear() {
         }
         .year-selector select:focus {
           outline: none;
-          border-color: #8189d2;
+          border-color: #5B61B2;
         }
         .year-info {
           display: flex;
@@ -705,7 +704,7 @@ function PlanForNextYear() {
         }
         .info-item .label {
           font-size: 0.75rem;
-          color: #6b7280;
+          color: #9a9db9;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -762,7 +761,7 @@ function PlanForNextYear() {
           background: #059669;
         }
         .text-btn:last-of-type {
-          background: #6b7280;
+          background: #9a9db9;
           color: white;
         }
         .text-btn:last-of-type:hover {
@@ -786,10 +785,10 @@ function PlanForNextYear() {
           overflow: hidden;
         }
         .category-item:hover {
-          border-color: #8189d2;
+          border-color: #5B61B2;
         }
         .category-item.selected {
-          border-color: #8189d2;
+          border-color: #5B61B2;
           background: #eff6ff;
         }
         .category-header-row {
@@ -823,7 +822,7 @@ function PlanForNextYear() {
         }
         .category-icon {
           font-size: 1.5rem;
-          color: #8189d2;
+          color: #5B61B2;
           display: flex;
           align-items: center;
           flex-shrink: 0;
@@ -850,7 +849,7 @@ function PlanForNextYear() {
         }
         .category-meta {
           font-size: 0.875rem;
-          color: #6b7280;
+          color: #9a9db9;
           margin-top: 0.25rem;
         }
         .expand-indicator {
@@ -902,7 +901,7 @@ function PlanForNextYear() {
         }
         .item-description {
           font-size: 0.75rem;
-          color: #6b7280;
+          color: #9a9db9;
         }
         .item-budget {
           font-weight: 600;
@@ -926,11 +925,11 @@ function PlanForNextYear() {
         }
         .summary-text strong {
           font-size: 1.25rem;
-          color: #8189d2;
+          color: #5B61B2;
         }
         .summary-budget {
           font-size: 0.875rem;
-          color: #6b7280;
+          color: #9a9db9;
         }
         .budget-amount {
           font-size: 1.5rem;
@@ -944,7 +943,7 @@ function PlanForNextYear() {
         }
         .cancel-btn {
           padding: 0.75rem 1.5rem;
-          background: #6b7280;
+          background: #9a9db9;
           color: white;
           border: none;
           border-radius: 8px;
@@ -957,12 +956,12 @@ function PlanForNextYear() {
           background: #4b5563;
         }
         .cancel-btn:disabled {
-          opacity: 0.5;
+          opacity: 0.;
           cursor: not-allowed;
         }
         .copy-btn {
           padding: 0.75rem 1.5rem;
-          background: #8189d2;
+          background: #5B61B2;
           color: white;
           border: none;
           border-radius: 8px;
@@ -976,11 +975,11 @@ function PlanForNextYear() {
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.3);
         }
         .copy-btn:hover {
-          background: #6b73c1;
+          background: #4A51A7;
           box-shadow: 0 4px 8px rgba(129, 137, 210, 0.4);
         }
         .copy-btn:disabled {
-          opacity: 0.5;
+          background: #5B61B2;
           cursor: not-allowed;
           box-shadow: none;
         }
@@ -993,12 +992,12 @@ function PlanForNextYear() {
           margin-bottom: 1rem;
         }
         .error-container p {
-          color: #6b7280;
+          color: #9a9db9;
           margin-bottom: 2rem;
         }
         .back-btn {
           padding: 0.75rem 1.5rem;
-          background: #8189d2;
+          background: #5B61B2;
           color: white;
           border: none;
           border-radius: 8px;

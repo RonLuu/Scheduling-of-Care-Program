@@ -837,7 +837,6 @@ function BudgetPlanningPage() {
                                 className="btn-save"
                                 onClick={handleAddCustomCategory}
                               >
-                                <FontAwesomeIcon icon={faCheck} />
                               </button>
                               <button
                                 className="btn-cancel"
@@ -847,7 +846,6 @@ function BudgetPlanningPage() {
                                   setNewCategoryDescription("");
                                 }}
                               >
-                                <BiX />
                               </button>
                             </div>
                           </div>
@@ -1059,13 +1057,13 @@ function BudgetPlanningPage() {
                                                     )
                                                   }
                                                 >
-                                                  <BiCheck /> Save
+                                                   Save
                                                 </button>
                                                 <button
                                                   className="btn-cancel"
                                                   onClick={handleCancelEditItem}
                                                 >
-                                                  <BiX /> Cancel
+                                                   Cancel
                                                 </button>
                                               </div>
                                             </>
@@ -1543,8 +1541,6 @@ function BudgetPlanningPage() {
           color: white;
           border: none;
           border-radius: 4px;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
           font-weight: 600;
           cursor: pointer;
         }
@@ -1552,9 +1548,7 @@ function BudgetPlanningPage() {
           background: #059669;
         }
         .btn-cancel {
-          background: #f3f4f6;
-          color: #374151;
-          border: 1px solid #d1d5db;
+          background: #9a9db9;
           border-radius: 4px;
           padding: 0.5rem 0.75rem;
           font-size: 0.875rem;
@@ -1562,7 +1556,7 @@ function BudgetPlanningPage() {
           cursor: pointer;
         }
         .btn-cancel:hover {
-          background: #e5e7eb;
+          background: #4b5563;
         }
 
         .categories-grid {
