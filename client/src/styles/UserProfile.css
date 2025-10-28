@@ -1,3 +1,4 @@
+/* UserProfile.css */
 .userprofile-wrapper {
   position: relative;
   width: 100vw;
@@ -11,7 +12,7 @@
 }
 
 .userprofile-wrapper.showEditOn::before {
-  content: '';
+  content: "";
   position: fixed;
   top: 0;
   left: 0;

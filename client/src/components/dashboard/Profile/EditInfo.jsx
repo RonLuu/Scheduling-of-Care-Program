@@ -1,10 +1,17 @@
 import React from "react";
 import { BiX, BiUpload, BiPlus, BiTrash } from "react-icons/bi";
 import "../../../styles/UserProfile.css";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {faUpload, faPlus} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUpload, faPlus } from "@fortawesome/free-solid-svg-icons";
 
-const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
+const EditInfo = ({
+  me,
+  jwt,
+  refreshMe,
+  showEdit,
+  setShowEdit,
+  onChangePassword,
+}) => {
   const [name, setName] = React.useState(me?.name || "");
   const [mobile, setMobile] = React.useState(me?.mobile || "");
   const [address, setAddress] = React.useState(me?.address || "");
@@ -349,6 +356,20 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           >
             {saving ? "Saving..." : uploading ? "Uploading..." : "Save Changes"}
           </button>
+
+          {/* Change Password Link */}
+          <div className="change-password-link-container">
+            <button
+              type="button"
+              className="change-password-link"
+              onClick={() => {
+                setShowEdit(false); // Close EditInfo
+                onChangePassword?.(); // Open ChangePassword
+              }}
+            >
+              Change password?
+            </button>
+          </div>
         </div>
       </div>
 
@@ -461,12 +482,12 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           border-radius: 10px;
         }
         .emergency-contacts-header {
-        
           display: flex;
-          flex-direction: column;
-          align-items: flex-start;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
           gap: 0.5rem;
-          margin-bottom: 1rem;
+          margin-bottom: 1.8rem;
         }
 
         .add-contact-btn {
@@ -516,6 +537,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
         .emergency-contact-phone {
           flex: 1;
           min-width: 150px;
+          height: 2.5rem;
         }
 
         .remove-contact-btn {
@@ -531,6 +553,7 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
           justify-content: center;
           transition: all 0.2s ease;
           flex-shrink: 0;
+          font-size: 1.15rem;
         }
 
         .remove-contact-btn:hover {
@@ -541,6 +564,30 @@ const EditInfo = ({ me, jwt, refreshMe, showEdit, setShowEdit }) => {
 
         .userprofile-edit-header button {
           margin: 0;
+        }
+
+        .change-password-link-container {
+          text-align: center;
+          padding-top: 1rem;
+          border-top: 1px solid #e5e7eb;
+          margin-top: 1rem;
+        }
+
+        .change-password-link {
+          background: none;
+          border: none;
+          color: #8189d2;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0.5rem;
+          text-decoration: none;
+          transition: all 0.2s ease;
+        }
+
+        .change-password-link:hover {
+          color: #6d76c4;
+          text-decoration: underline;
         }
       `}</style>
     </div>

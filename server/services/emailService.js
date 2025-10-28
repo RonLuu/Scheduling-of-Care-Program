@@ -1,3 +1,4 @@
+// server/services/emailService.js
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
@@ -363,7 +364,194 @@ export async function checkAndSendBudgetAlerts(user, person, budgetReport) {
   return results;
 }
 
+// Email template for password reset
+const getPasswordResetEmailTemplate = (data) => {
+  const { userName, resetCode, expiryMinutes, appUrl } = data;
+
+  return {
+    subject: "Password Reset Code - Schedule of Care",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.6;
+              color: #333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+              background-color: #f9f9f9;
+            }
+            .header {
+              background-color: #2C3F70;
+              color: white;
+              padding: 30px 20px;
+              border-radius: 10px 10px 0 0;
+              text-align: center;
+            }
+            .content {
+              background-color: white;
+              padding: 40px 30px;
+              border-radius: 0 0 10px 10px;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            .code-box {
+              background-color: #f5f5f5;
+              border: 2px dashed #8189d2;
+              padding: 25px;
+              text-align: center;
+              margin: 30px 0;
+              border-radius: 8px;
+            }
+            .reset-code {
+              font-size: 36px;
+              font-weight: 700;
+              color: #2C3F70;
+              letter-spacing: 8px;
+              font-family: 'Courier New', monospace;
+            }
+            .warning-box {
+              background-color: #fff3e0;
+              border-left: 4px solid #ff9800;
+              padding: 15px;
+              margin: 20px 0;
+              border-radius: 4px;
+            }
+            .button {
+              display: inline-block;
+              padding: 14px 32px;
+              background-color: #8189d2;
+              color: white !important;
+              text-decoration: none;
+              border-radius: 25px;
+              margin: 20px 0;
+              font-weight: 600;
+            }
+            .footer {
+              text-align: center;
+              color: #666;
+              font-size: 12px;
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #e0e0e0;
+            }
+            .info-text {
+              color: #666;
+              font-size: 14px;
+              line-height: 1.8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Reset Request</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${userName},</p>
+              
+              <p>
+                We received a request to reset your password for your Schedule of Care account. 
+                Use the code below to reset your password:
+              </p>
+
+              <div class="code-box">
+                <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Your Reset Code</p>
+                <div class="reset-code">${resetCode}</div>
+                <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
+                  This code expires in ${expiryMinutes} minutes
+                </p>
+              </div>
+
+              <p class="info-text">
+                Enter this code on the password reset page along with your new password. 
+                Make sure your new password is at least 6 characters long.
+              </p>
+
+              <div style="text-align: center;">
+                <a href="${appUrl}/forgot-password" class="button">Reset Password</a>
+              </div>
+
+              <div class="warning-box">
+                <strong>Security Notice:</strong><br>
+                If you didn't request this password reset, please ignore this email or contact support if you have concerns.
+                Your password will remain unchanged.
+              </div>
+
+              <div class="footer">
+                <p>This is an automated email from Schedule of Care. Please do not reply.</p>
+                <p>© ${new Date().getFullYear()} Schedule of Care. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Password Reset Request - Schedule of Care
+
+Dear ${userName},
+
+We received a request to reset your password for your Schedule of Care account.
+
+Your Reset Code: ${resetCode}
+
+This code expires in ${expiryMinutes} minutes.
+
+To reset your password:
+1. Go to: ${appUrl}/forgot-password
+2. Enter your email address
+3. Enter this code: ${resetCode}
+4. Set your new password (at least 6 characters)
+
+Security Notice:
+If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+
+This is an automated email from Schedule of Care. Please do not reply.
+
+© ${new Date().getFullYear()} Schedule of Care. All rights reserved.
+    `,
+  };
+};
+
+// Function to send password reset email
+export async function sendPasswordResetEmail(recipient, resetData) {
+  try {
+    const emailContent = getPasswordResetEmailTemplate(resetData);
+
+    const mailOptions = {
+      from:
+        process.env.EMAIL_FROM ||
+        '"Schedule of Care" <noreply@scheduleofcare.com>',
+      to: recipient,
+      subject: emailContent.subject,
+      text: emailContent.text,
+      html: emailContent.html,
+    };
+
+    // Send email using the transporter from your existing emailService.js
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("Password reset email sent:", info.messageId);
+
+    // In development mode, log the preview URL
+    if (!process.env.EMAIL_SERVICE) {
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+    }
+
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export default {
   sendBudgetWarningEmail,
   checkAndSendBudgetAlerts,
+  sendPasswordResetEmail,
 };

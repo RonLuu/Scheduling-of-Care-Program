@@ -10,11 +10,13 @@ import {
 import { MdEmergency } from "react-icons/md";
 import NavigationTab from "../../NavigationTab";
 import EditInfo from "./EditInfo";
+import ChangePassword from "./ChangePassword";
 
 import "../../../styles/UserProfile.css";
 
 function UserProfile({ me, refreshMe, jwt }) {
   const [showEdit, setShowEdit] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const avatarUrl = me?.avatarFileId?.urlOrPath;
 
@@ -43,11 +45,23 @@ function UserProfile({ me, refreshMe, jwt }) {
           refreshMe={refreshMe}
           showEdit={showEdit}
           setShowEdit={setShowEdit}
+          onChangePassword={() => setShowChangePassword(true)} // ADD THIS
+        />
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <ChangePassword
+          jwt={jwt}
+          onClose={() => setShowChangePassword(false)}
+          onSuccess={() => {
+            setShowChangePassword(false);
+            // Optional: show success notification
+          }}
         />
       )}
 
       <NavigationTab className="navigationtab" />
-
       <div className="userprofile-container">
         <div className="userprofile-content">
           {/* Profile Header Card */}
@@ -171,7 +185,6 @@ function UserProfile({ me, refreshMe, jwt }) {
           </div>
         </div>
       </div>
-
       <style jsx>{`
         .emergency-icon {
           color: white;

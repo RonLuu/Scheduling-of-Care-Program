@@ -16,6 +16,7 @@ import accessRequestRouter from "./accessRequest.js";
 import shiftAllocationRouter from "./shiftAllocation.js";
 import budgetPlanRouter from "./budgetPlan.js";
 import notificationsRouter from "./notifications.js";
+import passwordReset from "./passwordReset.js";
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use("/access-requests", accessRequestRouter);
 router.use("/shift-allocations", shiftAllocationRouter);
 router.use("/budget-plans", budgetPlanRouter);
 router.use("/notifications", notificationsRouter);
+router.use("/password-reset", passwordReset);
 
 export default router;
