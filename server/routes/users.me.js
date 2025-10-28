@@ -8,6 +8,8 @@ import BudgetPlan from "../models/BudgetPlan.js";
 import CareTask from "../models/CareTask.js";
 import PersonUserLink from "../models/PersonUserLink.js";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+
 const router = Router();
 
 /**
@@ -456,6 +458,74 @@ router.get("/me", requireAuth, async (req, res) => {
     res.json(user);
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+/*
+ * PATCH /api/users/me/change-password
+ * Body: { currentPassword: string, newPassword: string }
+ * Allows user to change their own password
+ */
+router.patch("/me/change-password", requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: "Current password and new password are required",
+      });
+    }
+
+    // Validate new password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: "New password must be at least 6 characters long",
+      });
+    }
+
+    // Get user with password hash
+    const user = await User.findById(req.user.id).select("+passwordHash");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash
+    );
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        error: "Current password is incorrect",
+      });
+    }
+
+    // Check if new password is same as current
+    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSamePassword) {
+      return res.status(400).json({
+        error: "New password must be different from current password",
+      });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json({
+      error: "Failed to change password. Please try again.",
+    });
   }
 });
 
