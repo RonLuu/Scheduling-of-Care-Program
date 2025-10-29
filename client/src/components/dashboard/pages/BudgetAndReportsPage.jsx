@@ -827,6 +827,7 @@ function BudgetPlanningPage() {
                                 className="btn-save"
                                 onClick={handleAddCustomCategory}
                               >
+                              Save
                               </button>
                               <button
                                 className="btn-cancel"
@@ -836,6 +837,7 @@ function BudgetPlanningPage() {
                                   setNewCategoryDescription("");
                                 }}
                               >
+                                Cancel
                               </button>
                             </div>
                           </div>
