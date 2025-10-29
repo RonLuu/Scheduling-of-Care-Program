@@ -322,7 +322,6 @@ function Dashboard() {
             max-width: calc(100vw - 220px);
             margin: 0 auto;
             padding: 2rem 1rem;
-            /* Ensure content doesn't overlap with nav and print buttons */
             margin-left: 100px;
             margin-right: 120px;
           }
