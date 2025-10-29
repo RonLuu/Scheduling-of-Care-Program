@@ -1,6 +1,6 @@
 import React from "react";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
   const [selectedClientId, setSelectedClientId] = React.useState("");
@@ -1298,7 +1298,9 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
               {inviteSuccess && (
                 <div className="invite-success">
-                  <div className="success-icon"><FontAwesomeIcon icon={faCheck} /></div>
+                  <div className="success-icon">
+                    <FontAwesomeIcon icon={faCheck} />
+                  </div>
                   <p>{inviteSuccess}</p>
                 </div>
               )}
@@ -1308,10 +1310,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
       )}
 
       <style jsx>{`
-        button
-        {
-        margin:0px !important;
-        }
+
         .client-info-manager {
           width: 100%;
         }
@@ -1416,6 +1415,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           transition: all 0.2s;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
           white-space: nowrap;
+          margin: 0 !important;
         }
 
         .create-token-btn:hover {
@@ -1457,6 +1457,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           cursor: pointer;
           transition: all 0.2s;
           box-shadow: 0 2px 4px rgba(129, 137, 210, 0.2);
+          margin: 0 !important;
         }
 
         .edit-client-btn:hover {
@@ -1589,6 +1590,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           display: flex;
           align-items: center;
           justify-content: center;
+          margin: 0 !important;
         }
 
         .modal-body {
@@ -1751,6 +1753,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           white-space: nowrap;
           height: fit-content;
           min-width: fit-content;
+          margin: 0 !important;
         }
 
         .remove-field-btn:hover {
@@ -1777,6 +1780,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-size: 0.875rem;
           font-weight: 500;
           align-self: flex-start;
+          margin: 0 !important;
         }
 
         .add-custom-field-btn:hover {
@@ -1815,6 +1819,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .cancel-btn:hover {
@@ -1831,6 +1836,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .save-btn:hover:not(:disabled) {
@@ -2242,6 +2248,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .revoke-btn:hover {
@@ -2350,6 +2357,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .cancel-btn:hover {
@@ -2371,6 +2379,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .send-invite-btn:hover:not(:disabled) {
@@ -2444,6 +2453,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .cancel-btn:hover {
@@ -2465,6 +2475,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          margin: 0 !important;
         }
 
         .send-invite-btn:hover:not(:disabled) {
@@ -2558,6 +2569,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
           .remove-field-btn {
             width: 100%;
+            margin: 0 !important;
           }
 
           .modal-actions {
@@ -2568,6 +2580,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
           .cancel-btn,
           .send-invite-btn {
             width: 100%;
+            margin: 0 !important;
           }
         @media (max-width: 768px) {
           .selector-container {
@@ -2621,6 +2634,7 @@ function ClientInfoManager({ me, jwt, clients, onClientUpdate }) {
 
           .remove-field-btn {
             width: 100%;
+            margin: 0 !important;
           }
 
           .modal-actions {
